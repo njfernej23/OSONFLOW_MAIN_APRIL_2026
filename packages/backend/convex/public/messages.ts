@@ -1,13 +1,14 @@
 
 import { ConvexError, v } from "convex/values";
 import { action, query } from "../_generated/server";
-import { components, internal } from "../_generated/api";
+import { api, components, internal } from "../_generated/api";
 import { supportAgent } from "../system/ai/agents/supportAgent";
 import { paginationOptsValidator } from "convex/server";
 import { escalateConversation } from "../system/ai/tools/escalateConversation";
 import { resolveConversation } from "../system/ai/tools/resolveConversation";
 import { saveMessage } from "@convex-dev/agent";
 import { search } from "../system/ai/tools/search";
+import { SUPPORT_AGENT_PROMPT } from "../system/ai/constants";
 
 export const create = action({
     args: {
@@ -68,11 +69,22 @@ export const create = action({
         const shouldTriggerAgent =
             conversation.status === 'unresolved' && subscription?.status === 'active'
 
+        const widgetSettings = await ctx.runQuery(
+            api.public.widgetSettings.getByOrganizationId,
+            {
+                organizationId: conversation.organizationId,
+            }
+        );
+
+        const systemPrompt =
+            widgetSettings?.systemPrompt?.trim() || SUPPORT_AGENT_PROMPT;
+
         if (shouldTriggerAgent) {
             await supportAgent.generateText(
                 ctx,
                 { threadId: args.threadId },
                 {
+                    system: systemPrompt,
                     prompt: args.prompt,
                     tools: {
                         escalateConversationTool: escalateConversation,

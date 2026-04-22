@@ -1,10 +1,15 @@
+import { type ChangeEvent, useRef } from "react"
 import { UseFormReturn } from "react-hook-form"
 import {
   CircleHelpIcon,
+  ImageIcon,
   MessageSquareTextIcon,
   SparklesIcon,
+  UploadIcon,
+  XIcon,
 } from "lucide-react"
 import { cn } from "@workspace/ui/lib/utils"
+import { Button } from "@workspace/ui/components/button"
 import {
   FormControl,
   FormDescription,
@@ -15,8 +20,10 @@ import {
 } from "@workspace/ui/components/form"
 import { Input } from "@workspace/ui/components/input"
 import { Switch } from "@workspace/ui/components/switch"
+import { toast } from "sonner"
 import { FormSchema } from "../../types"
 import { ColorFormField } from "./color-form-field"
+import { IMAGE_UPLOAD_ACCEPT, readImageAsDataUrl } from "./image-upload-utils"
 
 interface AppearanceFormFieldsProps {
   form: UseFormReturn<FormSchema>
@@ -41,6 +48,37 @@ const launcherIcons = [
 ]
 
 export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
+  const launcherUploadInputRef = useRef<HTMLInputElement>(null)
+  const hasLauncherImage = Boolean(
+    form.watch("appearance.launcherIconUrl")?.trim()
+  )
+
+  const handleLauncherImageChange = async (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0]
+    event.target.value = ""
+
+    if (!file) {
+      return
+    }
+
+    try {
+      const dataUrl = await readImageAsDataUrl(file)
+      form.setValue("appearance.launcherIconUrl", dataUrl, {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
+      toast.success("Launcher image uploaded")
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to upload this image"
+      toast.error(message)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Launcher label + color */}
@@ -77,6 +115,84 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
         />
       </div>
 
+      <FormField
+        control={form.control}
+        name="appearance.launcherIconUrl"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel className="text-xs font-medium">
+              Launcher Image (optional)
+            </FormLabel>
+            <FormControl>
+              <div className="space-y-2.5">
+                <div className="relative">
+                  <ImageIcon className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    className="bg-muted/20 pl-8"
+                    placeholder="https://example.com/launcher.png"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    accept={IMAGE_UPLOAD_ACCEPT}
+                    className="hidden"
+                    onChange={handleLauncherImageChange}
+                    ref={launcherUploadInputRef}
+                    type="file"
+                  />
+                  <Button
+                    onClick={() => launcherUploadInputRef.current?.click()}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    <UploadIcon className="size-3.5" />
+                    Upload from device
+                  </Button>
+
+                  {field.value ? (
+                    <>
+                      <Button
+                        onClick={() => {
+                          form.setValue("appearance.launcherIconUrl", "", {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          })
+                        }}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <XIcon className="size-3.5" />
+                        Remove
+                      </Button>
+                      <div className="flex items-center gap-2 rounded-md border bg-muted/20 px-2 py-1">
+                        <img
+                          alt="Launcher image preview"
+                          className="size-5 rounded-full object-cover"
+                          src={field.value}
+                        />
+                        <span className="text-[11px] text-muted-foreground">
+                          Preview
+                        </span>
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+            </FormControl>
+            <FormDescription className="text-xs">
+              Upload an image to use as the launcher button. Label text is
+              hidden when an image is set.
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
       {/* Launcher icon visual picker */}
       <FormField
         control={form.control}
@@ -85,7 +201,9 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
           <FormItem>
             <FormLabel className="text-xs font-medium">Launcher Icon</FormLabel>
             <FormDescription className="mb-3 text-xs">
-              Icon displayed in the embed launcher button
+              {hasLauncherImage
+                ? "Fallback icon used when launcher image is removed"
+                : "Icon displayed in the embed launcher button"}
             </FormDescription>
             <FormControl>
               <div className="grid grid-cols-3 gap-2">
@@ -113,6 +231,28 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
         )}
       />
 
+      <FormField
+        control={form.control}
+        name="appearance.poweredByText"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel className="text-xs font-medium">Powered By Text</FormLabel>
+            <FormControl>
+              <Input
+                {...field}
+                className="bg-muted/20"
+                placeholder="Osonflow"
+                value={field.value ?? ""}
+              />
+            </FormControl>
+            <FormDescription className="text-xs">
+              Footer displays as: Powered by {field.value || "Osonflow"}
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
       {/* Powered by toggle */}
       <FormField
         control={form.control}
@@ -121,10 +261,10 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
           <FormItem className="flex flex-row items-center justify-between gap-4 rounded-xl border bg-muted/10 px-4 py-3.5">
             <div className="space-y-0.5">
               <FormLabel className="text-sm font-medium">
-                Show "Powered by Osonflow"
+                Show Powered By Footer
               </FormLabel>
               <FormDescription className="text-xs">
-                Display the Osonflow branding footer in the widget
+                Enable or disable the powered-by text shown in the widget footer
               </FormDescription>
             </div>
             <FormControl>

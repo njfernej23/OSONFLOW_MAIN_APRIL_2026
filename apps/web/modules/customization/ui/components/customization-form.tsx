@@ -69,6 +69,7 @@ type WidgetSettings = Doc<"widgetSettings">
 type WidgetSettingsSnapshot = Pick<
   WidgetSettings,
   | "greetMessage"
+  | "systemPrompt"
   | "defaultSuggestions"
   | "vapiSettings"
   | "theme"
@@ -101,6 +102,7 @@ const buildFormDefaultValues = (
 
   return {
     greetMessage: snapshot.greetMessage || "Hi! How can I help you today?",
+    systemPrompt: snapshot.systemPrompt || "",
     defaultSuggestions: {
       suggestion1: snapshot.defaultSuggestions.suggestion1 || "",
       suggestion2: snapshot.defaultSuggestions.suggestion2 || "",
@@ -226,10 +228,15 @@ export const CustomizationForm = ({
       launcherLabel:
         values.appearance.launcherLabel.trim() ||
         DEFAULT_WIDGET_APPEARANCE.launcherLabel,
+      launcherIconUrl: values.appearance.launcherIconUrl.trim(),
+      poweredByText:
+        values.appearance.poweredByText.trim() ||
+        DEFAULT_WIDGET_APPEARANCE.poweredByText,
     }
 
     return {
       greetMessage: values.greetMessage,
+      systemPrompt: values.systemPrompt.trim(),
       defaultSuggestions: values.defaultSuggestions,
       vapiSettings,
       theme,
@@ -528,6 +535,30 @@ export const CustomizationForm = ({
                           <FormDescription className="text-xs">
                             The first message customers see when they open the
                             chat
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="systemPrompt"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">
+                            System Prompt
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              {...field}
+                              className="min-h-[180px] bg-muted/20 font-mono text-xs"
+                              placeholder="Set the assistant's default behavior and rules"
+                              value={field.value ?? ""}
+                            />
+                          </FormControl>
+                          <FormDescription className="text-xs">
+                            Controls how the AI assistant behaves by default for customer conversations.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>

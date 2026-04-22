@@ -5,16 +5,24 @@ const hexColorField = z
     .string()
     .regex(HEX_COLOR_REGEX, "Please provide a valid HEX color (e.g. #3b82f6)");
 
-const logoUrlField = z
+const imageUrlField = z
     .string()
     .trim()
     .refine(
-        (value) => value === "" || z.string().url().safeParse(value).success,
-        "Please provide a valid URL"
+        (value) =>
+            value === "" ||
+            value.startsWith("data:image/") ||
+            z.string().url().safeParse(value).success,
+        "Please provide a valid image URL"
     );
 
 export const widgetSettingsSchema = z.object({
     greetMessage: z.string().min(1, "Greeting message is required"),
+    systemPrompt: z
+        .string()
+        .trim()
+        .min(1, "System prompt is required")
+        .max(12000, "System prompt must be at most 12000 characters"),
     defaultSuggestions: z.object({
         suggestion1: z.string().optional(),
         suggestion2: z.string().optional(),
@@ -31,7 +39,7 @@ export const widgetSettingsSchema = z.object({
         userBubbleColor: hexColorField,
         botBubbleColor: hexColorField,
         borderRadius: z.coerce.number().min(0).max(32),
-        logoUrl: logoUrlField,
+        logoUrl: imageUrlField,
         assistantName: z
             .string()
             .trim()
@@ -46,6 +54,12 @@ export const widgetSettingsSchema = z.object({
             .min(1, "Launcher label is required")
             .max(40, "Launcher label must be at most 40 characters"),
         launcherIcon: z.enum(["chat", "sparkles", "question"]),
+        launcherIconUrl: imageUrlField,
+        poweredByText: z
+            .string()
+            .trim()
+            .min(1, "Powered by text is required")
+            .max(40, "Powered by text must be at most 40 characters"),
         showPoweredBy: z.boolean(),
     }),
 });

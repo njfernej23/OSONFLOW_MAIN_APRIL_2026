@@ -39,7 +39,7 @@ export const WidgetFooter = () => {
 
       {appearance.showPoweredBy && (
         <p className="pb-3 text-center text-[11px] text-muted-foreground">
-          Powered by Osonflow
+          Powered by {appearance.poweredByText}
         </p>
       )}
     </footer>

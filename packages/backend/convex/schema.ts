@@ -29,11 +29,14 @@ const appearanceValidator = v.object({
     launcherIcon: v.optional(
         v.union(v.literal("chat"), v.literal("sparkles"), v.literal("question"))
     ),
+    launcherIconUrl: v.optional(v.string()),
+    poweredByText: v.optional(v.string()),
     showPoweredBy: v.optional(v.boolean()),
 });
 
 const widgetSettingsSnapshotValidator = v.object({
     greetMessage: v.string(),
+    systemPrompt: v.optional(v.string()),
     defaultSuggestions: defaultSuggestionsValidator,
     vapiSettings: vapiSettingsValidator,
     theme: v.optional(themeValidator),
@@ -73,6 +76,7 @@ export default defineSchema({
     widgetSettings: defineTable({
         organizationId: v.string(),
         greetMessage: v.string(),
+        systemPrompt: v.optional(v.string()),
         defaultSuggestions: defaultSuggestionsValidator,
         vapiSettings: vapiSettingsValidator,
         theme: v.optional(themeValidator),

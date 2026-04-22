@@ -8,6 +8,7 @@ type WidgetAppearancePayload = {
   launcherColor?: string;
   launcherLabel?: string;
   launcherIcon?: WidgetLauncherIcon;
+  launcherIconUrl?: string;
   showPoweredBy?: boolean;
 };
 
@@ -17,10 +18,16 @@ type WidgetAppearancePayload = {
   let button: HTMLButtonElement | null = null;
   let isOpen = false;
 
-  const launcherAppearance: Required<Pick<WidgetAppearancePayload, 'launcherColor' | 'launcherLabel' | 'launcherIcon'>> = {
+  const launcherAppearance: Required<
+    Pick<
+      WidgetAppearancePayload,
+      'launcherColor' | 'launcherLabel' | 'launcherIcon' | 'launcherIconUrl'
+    >
+  > = {
     launcherColor: '#3b82f6',
     launcherLabel: 'Chat with us',
     launcherIcon: 'chat',
+    launcherIconUrl: '',
   };
   
   // Get configuration from script tag
@@ -94,16 +101,24 @@ type WidgetAppearancePayload = {
       .replaceAll("'", '&#039;');
   };
 
+  const getLauncherImageMarkup = (imageUrl: string): string => {
+    return `<img src="${escapeHtml(imageUrl)}" alt="Launcher" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; display: block;" />`;
+  };
+
   const applyLauncherAppearance = () => {
     if (!button) {
       return;
     }
 
     const cleanedLabel = launcherAppearance.launcherLabel.trim();
-    const hasVisibleLabel = !isOpen && cleanedLabel.length > 0;
+    const hasLauncherImage =
+      !isOpen && launcherAppearance.launcherIconUrl.trim().length > 0;
+    const hasVisibleLabel = !isOpen && !hasLauncherImage && cleanedLabel.length > 0;
     const iconMarkup = isOpen
       ? closeIcon
-      : getLauncherIconMarkup(launcherAppearance.launcherIcon);
+      : hasLauncherImage
+        ? getLauncherImageMarkup(launcherAppearance.launcherIconUrl)
+        : getLauncherIconMarkup(launcherAppearance.launcherIcon);
 
     button.style.width = hasVisibleLabel ? 'auto' : '60px';
     button.style.padding = hasVisibleLabel ? '0 16px' : '0';
@@ -135,6 +150,10 @@ type WidgetAppearancePayload = {
 
     if (typeof appearance.launcherIcon === 'string') {
       launcherAppearance.launcherIcon = parseLauncherIcon(appearance.launcherIcon);
+    }
+
+    if (typeof appearance.launcherIconUrl === 'string') {
+      launcherAppearance.launcherIconUrl = appearance.launcherIconUrl.trim();
     }
 
     applyLauncherAppearance();

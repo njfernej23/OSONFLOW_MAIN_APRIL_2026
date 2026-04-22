@@ -13,6 +13,7 @@ import {
   WidgetLauncherIcon,
   WidgetThemeSettings,
 } from "@workspace/ui/lib/widget-customization"
+import { cn } from "@workspace/ui/lib/utils"
 import {
   Card,
   CardContent,
@@ -44,6 +45,8 @@ export const WidgetLivePreview = ({
   const botTextColor = getContrastingTextColor(theme.botBubbleColor, "#111111")
   const launcherTextColor = getContrastingTextColor(appearance.launcherColor)
   const primaryTextColor = getContrastingTextColor(theme.primaryColor)
+  const launcherImageUrl = appearance.launcherIconUrl?.trim() || ""
+  const hasLauncherImage = launcherImageUrl.length > 0
 
   return (
     <Card className="overflow-hidden border-border/60 shadow-sm">
@@ -199,7 +202,7 @@ export const WidgetLivePreview = ({
                   </div>
                   {appearance.showPoweredBy && (
                     <p className="mt-1.5 text-center text-[9px] text-muted-foreground/50">
-                      Powered by Osonflow
+                      Powered by {appearance.poweredByText}
                     </p>
                   )}
                 </div>
@@ -207,15 +210,30 @@ export const WidgetLivePreview = ({
 
               {/* Launcher button */}
               <button
-                className="inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-medium shadow-lg transition-all hover:scale-105"
+                className={cn(
+                  "inline-flex text-xs font-medium shadow-lg transition-all hover:scale-105",
+                  hasLauncherImage
+                    ? "size-[52px] items-center justify-center rounded-full p-0"
+                    : "items-center gap-2 rounded-full px-3.5 py-2"
+                )}
                 style={{
                   backgroundColor: appearance.launcherColor,
                   color: launcherTextColor,
                 }}
                 type="button"
               >
-                {launcherIconMap[appearance.launcherIcon]}
-                <span>{appearance.launcherLabel}</span>
+                {hasLauncherImage ? (
+                  <img
+                    alt="Launcher"
+                    className="size-full rounded-full object-cover"
+                    src={launcherImageUrl}
+                  />
+                ) : (
+                  <>
+                    {launcherIconMap[appearance.launcherIcon]}
+                    <span>{appearance.launcherLabel}</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -228,15 +246,30 @@ export const WidgetLivePreview = ({
           </p>
           <div className="flex items-center gap-3">
             <button
-              className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium shadow-md"
+              className={cn(
+                "inline-flex text-sm font-medium shadow-md",
+                hasLauncherImage
+                  ? "size-[56px] items-center justify-center rounded-full p-0"
+                  : "items-center gap-2 rounded-full px-4 py-2.5"
+              )}
               style={{
                 backgroundColor: appearance.launcherColor,
                 color: launcherTextColor,
               }}
               type="button"
             >
-              {launcherIconMap[appearance.launcherIcon]}
-              <span>{appearance.launcherLabel}</span>
+              {hasLauncherImage ? (
+                <img
+                  alt="Launcher"
+                  className="size-full rounded-full object-cover"
+                  src={launcherImageUrl}
+                />
+              ) : (
+                <>
+                  {launcherIconMap[appearance.launcherIcon]}
+                  <span>{appearance.launcherLabel}</span>
+                </>
+              )}
             </button>
             <div className="text-xs text-muted-foreground">
               ← Click to open chat

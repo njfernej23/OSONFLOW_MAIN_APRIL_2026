@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
+import { SUPPORT_AGENT_PROMPT } from "../system/ai/constants";
 
 const DEFAULT_THEME = {
     primaryColor: "#111111",
@@ -16,6 +17,8 @@ const DEFAULT_APPEARANCE = {
     launcherColor: "#3b82f6",
     launcherLabel: "Chat with us",
     launcherIcon: "chat" as const,
+    launcherIconUrl: "",
+    poweredByText: "Osonflow",
     showPoweredBy: true,
 };
 
@@ -47,11 +50,14 @@ const appearanceValidator = v.object({
     launcherIcon: v.optional(
         v.union(v.literal("chat"), v.literal("sparkles"), v.literal("question"))
     ),
+    launcherIconUrl: v.optional(v.string()),
+    poweredByText: v.optional(v.string()),
     showPoweredBy: v.optional(v.boolean()),
 });
 
 const widgetSettingsArgsValidator = {
     greetMessage: v.string(),
+    systemPrompt: v.optional(v.string()),
     defaultSuggestions: defaultSuggestionsValidator,
     vapiSettings: vapiSettingsValidator,
     theme: v.optional(themeValidator),
@@ -73,11 +79,14 @@ type WidgetAppearance = {
     launcherColor?: string;
     launcherLabel?: string;
     launcherIcon?: "chat" | "sparkles" | "question";
+    launcherIconUrl?: string;
+    poweredByText?: string;
     showPoweredBy?: boolean;
 };
 
 type WidgetSettingsSnapshot = {
     greetMessage: string;
+    systemPrompt?: string;
     defaultSuggestions: {
         suggestion1?: string;
         suggestion2?: string;
@@ -95,6 +104,7 @@ type VersionAction = "publish" | "rollback" | "bootstrap";
 
 const createDefaultWidgetSettings = (): WidgetSettingsSnapshot => ({
     greetMessage: "Hi! How can I help you today?",
+    systemPrompt: SUPPORT_AGENT_PROMPT,
     defaultSuggestions: {
         suggestion1: "",
         suggestion2: "",
@@ -150,6 +160,14 @@ const mergeAppearance = (
         incoming?.launcherLabel ?? base?.launcherLabel ?? DEFAULT_APPEARANCE.launcherLabel,
     launcherIcon:
         incoming?.launcherIcon ?? base?.launcherIcon ?? DEFAULT_APPEARANCE.launcherIcon,
+    launcherIconUrl:
+        incoming?.launcherIconUrl ??
+        base?.launcherIconUrl ??
+        DEFAULT_APPEARANCE.launcherIconUrl,
+    poweredByText:
+        incoming?.poweredByText ??
+        base?.poweredByText ??
+        DEFAULT_APPEARANCE.poweredByText,
     showPoweredBy:
         incoming?.showPoweredBy ??
         base?.showPoweredBy ??
@@ -164,6 +182,7 @@ const normalizeSnapshot = (
 
     return {
         greetMessage: snapshot.greetMessage,
+        systemPrompt: snapshot.systemPrompt ?? fallback.systemPrompt ?? SUPPORT_AGENT_PROMPT,
         defaultSuggestions: {
             suggestion1:
                 snapshot.defaultSuggestions.suggestion1 ??
@@ -199,6 +218,7 @@ const getPublishedSnapshot = (widgetSettings: any | null): WidgetSettingsSnapsho
     return normalizeSnapshot(
         {
             greetMessage: widgetSettings.greetMessage ?? fallback.greetMessage,
+            systemPrompt: widgetSettings.systemPrompt ?? fallback.systemPrompt,
             defaultSuggestions: widgetSettings.defaultSuggestions ?? fallback.defaultSuggestions,
             vapiSettings: widgetSettings.vapiSettings ?? fallback.vapiSettings,
             theme: widgetSettings.theme,
@@ -252,6 +272,7 @@ const getWidgetSettingsByOrganizationId = async (ctx: any, organizationId: strin
 
 const applyPublishedSnapshotPatch = (snapshot: WidgetSettingsSnapshot) => ({
     greetMessage: snapshot.greetMessage,
+    systemPrompt: snapshot.systemPrompt,
     defaultSuggestions: snapshot.defaultSuggestions,
     vapiSettings: snapshot.vapiSettings,
     theme: snapshot.theme,

@@ -15,6 +15,8 @@ export type WidgetAppearanceSettings = {
   launcherColor: string;
   launcherLabel: string;
   launcherIcon: WidgetLauncherIcon;
+  launcherIconUrl: string;
+  poweredByText: string;
   showPoweredBy: boolean;
 };
 
@@ -33,6 +35,8 @@ export const DEFAULT_WIDGET_APPEARANCE: WidgetAppearanceSettings = {
   launcherColor: "#3b82f6",
   launcherLabel: "Chat with us",
   launcherIcon: "chat",
+  launcherIconUrl: "",
+  poweredByText: "Osonflow",
   showPoweredBy: true,
 };
 

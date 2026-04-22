@@ -1,5 +1,6 @@
+import { type ChangeEvent, useRef } from "react"
 import { UseFormReturn } from "react-hook-form"
-import { ImageIcon, PaletteIcon, TypeIcon } from "lucide-react"
+import { ImageIcon, PaletteIcon, TypeIcon, UploadIcon, XIcon } from "lucide-react"
 import {
   FormControl,
   FormDescription,
@@ -10,8 +11,11 @@ import {
 } from "@workspace/ui/components/form"
 import { Input } from "@workspace/ui/components/input"
 import { Slider } from "@workspace/ui/components/slider"
+import { Button } from "@workspace/ui/components/button"
+import { toast } from "sonner"
 import { FormSchema } from "../../types"
 import { ColorFormField } from "./color-form-field"
+import { IMAGE_UPLOAD_ACCEPT, readImageAsDataUrl } from "./image-upload-utils"
 
 interface ThemeFormFieldsProps {
   form: UseFormReturn<FormSchema>
@@ -38,6 +42,32 @@ const SectionHeader = ({
 )
 
 export const ThemeFormFields = ({ form }: ThemeFormFieldsProps) => {
+  const logoUploadInputRef = useRef<HTMLInputElement>(null)
+
+  const handleLogoFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ""
+
+    if (!file) {
+      return
+    }
+
+    try {
+      const dataUrl = await readImageAsDataUrl(file)
+      form.setValue("theme.logoUrl", dataUrl, {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
+      toast.success("Logo image uploaded")
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to upload this image"
+      toast.error(message)
+    }
+  }
+
   return (
     <div className="space-y-7">
       {/* Identity section */}
@@ -75,15 +105,69 @@ export const ThemeFormFields = ({ form }: ThemeFormFieldsProps) => {
               <FormItem>
                 <FormLabel className="text-xs font-medium">Logo URL</FormLabel>
                 <FormControl>
-                  <div className="relative">
-                    <ImageIcon className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
-                    <Input
-                      {...field}
-                      className="bg-muted/20 pl-8"
-                      placeholder="https://example.com/logo.png"
-                    />
+                  <div className="space-y-2.5">
+                    <div className="relative">
+                      <ImageIcon className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
+                      <Input
+                        {...field}
+                        value={field.value ?? ""}
+                        className="bg-muted/20 pl-8"
+                        placeholder="https://example.com/logo.png"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        accept={IMAGE_UPLOAD_ACCEPT}
+                        className="hidden"
+                        onChange={handleLogoFileChange}
+                        ref={logoUploadInputRef}
+                        type="file"
+                      />
+                      <Button
+                        onClick={() => logoUploadInputRef.current?.click()}
+                        size="sm"
+                        type="button"
+                        variant="outline"
+                      >
+                        <UploadIcon className="size-3.5" />
+                        Upload from device
+                      </Button>
+
+                      {field.value ? (
+                        <>
+                          <Button
+                            onClick={() => {
+                              form.setValue("theme.logoUrl", "", {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              })
+                            }}
+                            size="sm"
+                            type="button"
+                            variant="ghost"
+                          >
+                            <XIcon className="size-3.5" />
+                            Remove
+                          </Button>
+                          <div className="flex items-center gap-2 rounded-md border bg-muted/20 px-2 py-1">
+                            <img
+                              alt="Logo preview"
+                              className="size-5 rounded object-cover"
+                              src={field.value}
+                            />
+                            <span className="text-[11px] text-muted-foreground">
+                              Preview
+                            </span>
+                          </div>
+                        </>
+                      ) : null}
+                    </div>
                   </div>
                 </FormControl>
+                <FormDescription className="text-xs">
+                  Paste an image URL or upload from your computer/device
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
