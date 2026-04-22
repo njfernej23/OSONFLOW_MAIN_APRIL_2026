@@ -1,0 +1,12 @@
+{
+  "extends": "@workspace/typescript-config/base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "types": ["node"],
+    "paths": {
+      "@workspace/backend/*": ["./convex/*"]
+    }
+  },
+  "include": ["."],
+  "exclude": ["node_modules"]
+}
