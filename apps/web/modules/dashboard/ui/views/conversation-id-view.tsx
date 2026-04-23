@@ -425,7 +425,16 @@ export const ConversationIdView = ({
                     </Button>
                 )}
                 {/* Contact identity */}
-                <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                <button
+                    aria-label={isMobile ? "Open contact details" : undefined}
+                    className={cn(
+                        "flex min-w-0 flex-1 appearance-none items-center gap-2.5 border-0 bg-transparent p-0 text-left",
+                        isMobile && "rounded-lg transition-colors active:bg-muted/70"
+                    )}
+                    disabled={!isMobile}
+                    onClick={() => setIsContactPanelOpen(true)}
+                    type="button"
+                >
                     <DicebearAvatar
                         seed={conversation.contactSession._id}
                         size={32}
@@ -439,7 +448,7 @@ export const ConversationIdView = ({
                             {conversation.contactSession.email}
                         </p>
                     </div>
-                </div>
+                </button>
 
                 {/* Actions */}
                 <div className="flex shrink-0 items-center gap-1.5">

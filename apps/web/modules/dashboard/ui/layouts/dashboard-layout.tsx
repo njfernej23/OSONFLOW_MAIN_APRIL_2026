@@ -3,6 +3,7 @@ import { OrganizationGuard } from "@/modules/auth/ui/components/organization-gua
 import { SidebarProvider, SidebarTrigger } from "@workspace/ui/components/sidebar";
 import { cookies } from "next/headers"
 import { DashboardSidebar } from "../components/dashboard-sidebar";
+import { DashboardSwipeMenu } from "../components/dashboard-swipe-menu";
 import { Provider } from "jotai";
 
 
@@ -17,6 +18,7 @@ export const DashboardLayout = async ({ children }: { children: React.ReactNode 
                 <Provider>
                     <SidebarProvider defaultOpen={defaultOpen}>
                         <DashboardSidebar />
+                        <DashboardSwipeMenu />
                         {/* main must be flex-col + h-svh so resizable panels inside get a real height */}
                         <main className="flex h-svh flex-1 flex-col overflow-hidden bg-muted">
                             <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-b bg-background/95 px-3 backdrop-blur-sm md:hidden">

@@ -195,9 +195,9 @@ export const ConversationsPanel = () => {
   };
 
   return (
-    <div className="flex h-full w-full flex-col bg-background">
+    <div className="flex h-full min-h-0 w-full flex-col bg-background">
       {/* Panel header */}
-      <div className="border-b bg-background/95 px-3 pb-2.5 pt-3.5 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="shrink-0 border-b bg-background/95 px-3 pb-2.5 pt-3.5 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="mb-2.5 flex items-center justify-between">
           <h2 className="text-[13px] font-semibold tracking-tight text-foreground">
             Conversations
@@ -281,8 +281,8 @@ export const ConversationsPanel = () => {
       {isLoadingFirstPage ? (
         <SkeletonConversations />
       ) : (
-        <ScrollArea className="max-h-[calc(100vh-53px)]">
-          <div className="flex w-full flex-1 flex-col gap-0.5 p-2">
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="flex w-full flex-col gap-0.5 p-2">
             {!hasSearchResults && normalizedSearchQuery ? (
               <div className="mx-auto mt-10 flex max-w-[200px] flex-col items-center gap-3 text-center">
                 <div className="flex size-11 items-center justify-center rounded-2xl border bg-muted/50">
