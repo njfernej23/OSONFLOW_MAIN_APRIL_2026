@@ -101,12 +101,48 @@
   </div>
   
   <!-- Load the widget with default config -->
-  <!-- Echo support widget -->
-<script
-  src="https://osonflow-main-april-2026.vercel.app"
-  data-organization-id="org_3CRWr58AdbEEnRYzfABrn1RdE7y"
-  data-position="bottom-right"
-  defer
-></script>
+  <script type="module" src="/embed.ts" data-organization-id="org_3CRWr58AdbEEnRYzfABrn1RdE7y"></script>
+  
+  <script type="module">
+    import { EMBED_CONFIG } from './config.ts';
+    
+    // Set display values on load
+    document.getElementById('example-org-id').textContent = EMBED_CONFIG.DEFAULT_ORG_ID;
+    document.getElementById('orgId').value = EMBED_CONFIG.DEFAULT_ORG_ID;
+    
+    window.initWidget = function() {
+      const config = {
+        organizationId: document.getElementById('orgId').value || EMBED_CONFIG.DEFAULT_ORG_ID,
+        position: document.getElementById('position').value
+      };
+      
+      if (window.EchoWidget) {
+        window.EchoWidget.init(config);
+        console.log('Widget reinitialized with config:', config);
+      }
+    }
+    
+    window.showWidget = function() {
+      if (window.EchoWidget) {
+        window.EchoWidget.show();
+      } else {
+        alert('Please initialize the widget first');
+      }
+    }
+    
+    window.hideWidget = function() {
+      if (window.EchoWidget) {
+        window.EchoWidget.hide();
+      }
+    }
+    
+    window.destroyWidget = function() {
+      if (window.EchoWidget) {
+        window.EchoWidget.destroy();
+        console.log('Widget destroyed');
+      }
+    }
+    
+  </script>
 </body>
 </html>
