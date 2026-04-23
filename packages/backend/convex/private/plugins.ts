@@ -1,9 +1,11 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 
+const serviceValidator = v.union(v.literal("vapi"), v.literal("openai_realtime"), v.literal("gemini_live"));
+
 export const remove = mutation({
     args: {
-        service: v.union(v.literal("vapi")),
+        service: serviceValidator,
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -42,13 +44,9 @@ export const remove = mutation({
     },
 });
 
-
-
-
-
 export const getOne = query({
     args: {
-        service: v.union(v.literal("vapi")),
+        service: serviceValidator,
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();

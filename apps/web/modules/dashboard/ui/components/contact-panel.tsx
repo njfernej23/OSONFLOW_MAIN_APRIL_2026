@@ -138,7 +138,7 @@ export const ContactPanel = () => {
     }
 
     return (
-        <div className="flex h-full w-full flex-col overflow-y-auto bg-background text-foreground">
+        <div className="flex h-full min-w-0 w-full flex-col overflow-x-hidden overflow-y-auto bg-background text-foreground">
             {/* Profile card */}
             <div className="border-b px-4 pb-4 pt-4">
                 <div className="flex items-start gap-3">

@@ -1,0 +1,343 @@
+import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
+import { api } from "@workspace/backend/_generated/api";
+import { useAction } from "convex/react";
+import { useAtomValue } from "jotai";
+import { useEffect, useRef, useState } from "react";
+import { organizationIdAtom } from "../atoms/widget-atoms";
+
+type TranscriptMessage = {
+  role: "user" | "assistant";
+  text: string;
+};
+
+type GeminiTokenResponse = {
+  token?: string;
+  model?: string;
+  voice?: string;
+  error?: string;
+};
+
+const INPUT_SAMPLE_RATE = 16000;
+const DEFAULT_OUTPUT_SAMPLE_RATE = 24000;
+
+const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i] ?? 0);
+  }
+  return btoa(binary);
+};
+
+const base64ToArrayBuffer = (base64: string) => {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+};
+
+const parseSampleRate = (mimeType?: string) => {
+  const match = mimeType?.match(/rate=(\d+)/i);
+  return match?.[1] ? Number(match[1]) : DEFAULT_OUTPUT_SAMPLE_RATE;
+};
+
+const parseJsonResponse = async <T>(response: Response): Promise<T> => {
+  const text = await response.text();
+  if (!text) return {} as T;
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return { error: text } as T;
+  }
+};
+
+const floatTo16BitPcm = (input: Float32Array) => {
+  const output = new Int16Array(input.length);
+  for (let i = 0; i < input.length; i++) {
+    const sample = Math.max(-1, Math.min(1, input[i] ?? 0));
+    output[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+  }
+  return output;
+};
+
+const downsample = (input: Float32Array, sourceRate: number, targetRate: number) => {
+  if (sourceRate === targetRate) return input;
+  const ratio = sourceRate / targetRate;
+  const outputLength = Math.floor(input.length / ratio);
+  const output = new Float32Array(outputLength);
+
+  for (let i = 0; i < outputLength; i++) {
+    const start = Math.floor(i * ratio);
+    const end = Math.min(Math.floor((i + 1) * ratio), input.length);
+    let sum = 0;
+    for (let j = start; j < end; j++) sum += input[j] ?? 0;
+    output[i] = sum / Math.max(1, end - start);
+  }
+
+  return output;
+};
+
+export const useGeminiLive = () => {
+  const organizationId = useAtomValue(organizationIdAtom);
+  const searchKnowledgeBase = useAction(api.public.voiceKnowledgeBase.search);
+  const sessionRef = useRef<Session | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const inputContextRef = useRef<AudioContext | null>(null);
+  const outputContextRef = useRef<AudioContext | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const inputSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const silenceGainRef = useRef<GainNode | null>(null);
+  const playbackTimeRef = useRef(0);
+
+  const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [transcript, setTranscript] = useState<TranscriptMessage[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const appendTranscript = (message: TranscriptMessage) => {
+    if (!message.text.trim()) return;
+    setTranscript((prev) => [...prev, { ...message, text: message.text.trim() }]);
+  };
+
+  const playPcmAudio = async (base64Data: string, mimeType?: string) => {
+    const outputContext = outputContextRef.current ?? new AudioContext();
+    outputContextRef.current = outputContext;
+
+    if (outputContext.state === "suspended") {
+      await outputContext.resume();
+    }
+
+    const sampleRate = parseSampleRate(mimeType);
+    const pcm = new Int16Array(base64ToArrayBuffer(base64Data));
+    const audioBuffer = outputContext.createBuffer(1, pcm.length, sampleRate);
+    const channel = audioBuffer.getChannelData(0);
+    for (let i = 0; i < pcm.length; i++) {
+      channel[i] = (pcm[i] ?? 0) / 0x8000;
+    }
+
+    const source = outputContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(outputContext.destination);
+    const startAt = Math.max(outputContext.currentTime, playbackTimeRef.current);
+    source.start(startAt);
+    playbackTimeRef.current = startAt + audioBuffer.duration;
+  };
+
+  const handleToolCall = async (message: LiveServerMessage) => {
+    const functionCalls = message.toolCall?.functionCalls ?? [];
+    const session = sessionRef.current;
+
+    if (!session || !organizationId || functionCalls.length === 0) return;
+
+    const functionResponses = await Promise.all(
+      functionCalls.map(async (functionCall) => {
+        const query =
+          typeof functionCall.args?.query === "string"
+            ? functionCall.args.query
+            : "Search the knowledge base for information related to the user's latest question.";
+
+        if (functionCall.name !== "search_knowledge_base") {
+          return {
+            id: functionCall.id,
+            name: functionCall.name,
+            response: { error: `Unknown function: ${functionCall.name}` },
+          };
+        }
+
+        try {
+          const result = await searchKnowledgeBase({ organizationId, query });
+          return {
+            id: functionCall.id,
+            name: functionCall.name,
+            response: { output: result },
+          };
+        } catch {
+          return {
+            id: functionCall.id,
+            name: functionCall.name,
+            response: {
+              error: "The knowledge base search failed. Offer to connect the user with a human support agent.",
+            },
+          };
+        }
+      })
+    );
+
+    session.sendToolResponse({ functionResponses });
+  };
+
+  const handleServerMessage = (message: LiveServerMessage) => {
+    void handleToolCall(message);
+
+    const serverContent = message.serverContent;
+
+    if (serverContent?.interrupted) {
+      playbackTimeRef.current = outputContextRef.current?.currentTime ?? 0;
+      setIsSpeaking(false);
+    }
+
+    if (serverContent?.inputTranscription?.text) {
+      appendTranscript({ role: "user", text: serverContent.inputTranscription.text });
+    }
+
+    if (serverContent?.outputTranscription?.text) {
+      appendTranscript({ role: "assistant", text: serverContent.outputTranscription.text });
+    }
+
+    const parts = serverContent?.modelTurn?.parts ?? [];
+    for (const part of parts) {
+      if (part.inlineData?.data) {
+        setIsSpeaking(true);
+        void playPcmAudio(part.inlineData.data, part.inlineData.mimeType);
+      }
+      if (part.text) {
+        appendTranscript({ role: "assistant", text: part.text });
+      }
+    }
+
+    if (serverContent?.turnComplete || serverContent?.generationComplete) {
+      setIsSpeaking(false);
+    }
+  };
+
+  const stopInputCapture = () => {
+    processorRef.current?.disconnect();
+    inputSourceRef.current?.disconnect();
+    silenceGainRef.current?.disconnect();
+    localStreamRef.current?.getTracks().forEach((track) => track.stop());
+
+    processorRef.current = null;
+    inputSourceRef.current = null;
+    silenceGainRef.current = null;
+    localStreamRef.current = null;
+
+    void inputContextRef.current?.close();
+    inputContextRef.current = null;
+  };
+
+  const startInputCapture = async (session: Session) => {
+    const localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const inputContext = new AudioContext();
+    const source = inputContext.createMediaStreamSource(localStream);
+    const processor = inputContext.createScriptProcessor(4096, 1, 1);
+    const silenceGain = inputContext.createGain();
+    silenceGain.gain.value = 0;
+
+    processor.onaudioprocess = (event) => {
+      const input = event.inputBuffer.getChannelData(0);
+      const resampled = downsample(input, inputContext.sampleRate, INPUT_SAMPLE_RATE);
+      const pcm = floatTo16BitPcm(resampled);
+      session.sendRealtimeInput({
+        audio: {
+          data: arrayBufferToBase64(pcm.buffer),
+          mimeType: `audio/pcm;rate=${INPUT_SAMPLE_RATE}`,
+        },
+      });
+    };
+
+    source.connect(processor);
+    processor.connect(silenceGain);
+    silenceGain.connect(inputContext.destination);
+
+    localStreamRef.current = localStream;
+    inputContextRef.current = inputContext;
+    inputSourceRef.current = source;
+    processorRef.current = processor;
+    silenceGainRef.current = silenceGain;
+  };
+
+  const endCall = () => {
+    try {
+      sessionRef.current?.sendRealtimeInput({ audioStreamEnd: true });
+      sessionRef.current?.close();
+    } catch {
+      // Session may already be closed.
+    }
+
+    sessionRef.current = null;
+    stopInputCapture();
+    void outputContextRef.current?.close();
+    outputContextRef.current = null;
+    playbackTimeRef.current = 0;
+
+    setIsConnected(false);
+    setIsConnecting(false);
+    setIsSpeaking(false);
+  };
+
+  const startCall = async () => {
+    if (!organizationId) {
+      setError("Missing organization ID.");
+      return;
+    }
+
+    setIsConnecting(true);
+    setError(null);
+    setTranscript([]);
+
+    try {
+      const tokenResponse = await fetch("/api/gemini-live-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ organizationId }),
+      });
+      const tokenData = await parseJsonResponse<GeminiTokenResponse>(tokenResponse);
+
+      if (!tokenResponse.ok || !tokenData.token || !tokenData.model) {
+        throw new Error(tokenData.error || "Unable to start Gemini Live.");
+      }
+
+      const ai = new GoogleGenAI({
+        apiKey: tokenData.token,
+        httpOptions: { apiVersion: "v1alpha" },
+      });
+
+      const session = await ai.live.connect({
+        model: tokenData.model,
+        config: {
+          responseModalities: [Modality.AUDIO],
+        },
+        callbacks: {
+          onopen: () => {
+            setIsConnected(true);
+            setIsConnecting(false);
+          },
+          onmessage: handleServerMessage,
+          onerror: (event) => {
+            setError(event.message || "Gemini Live session error.");
+            setIsConnecting(false);
+          },
+          onclose: () => {
+            setIsConnected(false);
+            setIsConnecting(false);
+            setIsSpeaking(false);
+          },
+        },
+      });
+
+      sessionRef.current = session;
+      await startInputCapture(session);
+    } catch (err) {
+      endCall();
+      setError(err instanceof Error ? err.message : "Unable to start Gemini Live.");
+    }
+  };
+
+  // Close sockets and media devices if the user navigates away mid-call.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => endCall, []);
+
+  return {
+    isSpeaking,
+    isConnecting,
+    isConnected,
+    transcript,
+    error,
+    startCall,
+    endCall,
+  };
+};

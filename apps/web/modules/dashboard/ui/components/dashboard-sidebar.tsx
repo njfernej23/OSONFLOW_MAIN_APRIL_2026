@@ -8,7 +8,6 @@ import {
     InboxIcon,
     LayoutDashboardIcon,
     LibraryBigIcon,
-    Mic,
     PaletteIcon,
 } from "lucide-react";
 
@@ -53,19 +52,17 @@ const configurationItems = [
         title: "Widget Customization",
         url: "/customization",
         icon: PaletteIcon,
-
     },
-
     {
         title: "Integrations",
         url: "/integrations",
         icon: LayoutDashboardIcon,
     },
-
     {
-        title: "Voice Assistant",
+        title: "Vapi Voice",
         url: "/plugins/vapi",
-        icon: Mic,
+        icon: null, // Will use custom image
+        customIcon: "/vapi.jpg",
     },
 ];
 
@@ -148,7 +145,17 @@ export const DashboardSidebar = () => {
                                         isActive(item.url) && "bg-sidebar-primary! text-sidebar-primary-foreground!"
                                     )}>
                                         <Link href={item.url}>
-                                            <item.icon  className="size-4"/>
+                                            {item.customIcon ? (
+                                                <Image 
+                                                    src={item.customIcon} 
+                                                    alt={item.title}
+                                                    width={16}
+                                                    height={16}
+                                                    className="size-4 rounded-sm object-cover"
+                                                />
+                                            ) : item.icon ? (
+                                                <item.icon className="size-4"/>
+                                            ) : null}
                                             <span>{item.title}</span>
                                         </Link>
                                     </SidebarMenuButton>

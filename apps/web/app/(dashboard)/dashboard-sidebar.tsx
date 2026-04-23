@@ -63,7 +63,7 @@ const configurationItems = [
     },
 
     {
-        title: "Voice Assistant",
+        title: "Vapi Voice",
         url: "/plugins/vapi",
         icon: Mic,
     },

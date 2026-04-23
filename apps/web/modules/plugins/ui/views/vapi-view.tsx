@@ -110,7 +110,7 @@ const VapiPluginForm = ({
                     <DialogTitle>Enable Vapi</DialogTitle>
                 </DialogHeader>
                 <DialogDescription>
-                    Your API keys are safely encrypted and stored using AWS Secrets Manager.
+                    Your API keys are securely stored in your account.
                 </DialogDescription>
                 <Form {...form}>
                     <form
@@ -228,7 +228,7 @@ export const VapiView = () => {
         <>
             <VapiPluginForm open={connectOpen} setOpen={setConnectOpen} />
             <VapiPluginRemoveForm  open={removeOpen} setOpen={setRemoveOpen}/>
-            <div className="flex min-h-screen flex-col bg-muted p-8">
+            <div className="flex min-h-screen flex-col bg-muted px-4 py-6 sm:px-6 sm:py-8">
                 <div className="mx-auto w-full max-w-screen-md">
                     <div className="space-y-2">
                         <h1 className="text-2xl md:text-4xl">Vapi Plugin</h1>

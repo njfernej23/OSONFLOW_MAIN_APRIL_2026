@@ -4,8 +4,9 @@ import { v } from "convex/values"
 
 export const upsert = internalMutation({
     args: {
-        service: v.union(v.literal("vapi")),
+        service: v.union(v.literal("vapi"), v.literal("openai_realtime"), v.literal("gemini_live")),
         secretName: v.string(),
+        secretValue: v.optional(v.string()),
         organizationId: v.string(),
     },
     handler: async (ctx, args) => {
@@ -20,12 +21,14 @@ export const upsert = internalMutation({
             await ctx.db.patch(existingPlugin._id, {
                 service: args.service,
                 secretName: args.secretName,
+                secretValue: args.secretValue,
             });
         } else {
             await ctx.db.insert("plugins", {
                 organizationId: args.organizationId,
                 service: args.service,
                 secretName: args.secretName,
+                secretValue: args.secretValue,
             });
         }
     },
@@ -34,7 +37,7 @@ export const upsert = internalMutation({
 export const getByOrganizationIdAndService = internalQuery({
     args: {
         organizationId: v.string(),
-        service: v.union(v.literal("vapi")),
+        service: v.union(v.literal("vapi"), v.literal("openai_realtime"), v.literal("gemini_live")),
     },
     handler: async (ctx, args) => {
         return await ctx.db

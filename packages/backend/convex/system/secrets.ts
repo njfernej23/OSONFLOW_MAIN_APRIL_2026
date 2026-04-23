@@ -1,22 +1,22 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
-import { upsertSecret } from "../lib/secrets";
+import { serializeSecretValue } from "../lib/secrets";
 
 export const upsert = internalAction({
     args: {
         organizationId: v.string(),
-        service: v.union(v.literal("vapi")),
+        service: v.union(v.literal("vapi"), v.literal("openai_realtime"), v.literal("gemini_live")),
         value: v.any(),
     },
     handler: async (ctx, args) => {
         const secretName = `tenant/${args.organizationId}/${args.service}`;
-
-        await upsertSecret(secretName, args.value);
+        const secretValue = serializeSecretValue(args.value);
 
         await ctx.runMutation(internal.system.plugins.upsert, {
             service: args.service,
             secretName,
+            secretValue,
             organizationId: args.organizationId,
         });
 

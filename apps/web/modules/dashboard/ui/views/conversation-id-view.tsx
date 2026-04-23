@@ -10,7 +10,15 @@ import { Button } from "@workspace/ui/components/button";
 import { Badge } from "@workspace/ui/components/badge";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { toUIMessages, useThreadMessages } from "@convex-dev/agent/react"
-import { MoreHorizontalIcon, UserCheckIcon, UserXIcon, Wand2Icon } from "lucide-react";
+import { ArrowLeftIcon, MoreHorizontalIcon, PanelRightIcon, UserCheckIcon, UserXIcon, Wand2Icon } from "lucide-react";
+import { useIsMobile } from "@workspace/ui/hooks/use-mobile";
+import { useRouter } from "next/navigation";
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+} from "@workspace/ui/components/sheet";
 import {
     AIConversation,
     AIConversationContent,
@@ -55,6 +63,7 @@ import {
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Textarea } from "@workspace/ui/components/textarea";
+import { ContactPanel } from "../components/contact-panel";
 
 
 
@@ -88,6 +97,8 @@ export const ConversationIdView = ({
     conversationId: Id<"conversations">,
 }) => {
     const { userId } = useAuth();
+    const isMobile = useIsMobile();
+    const router = useRouter();
 
     const conversation = useQuery(api.private.conversations.getOne, {
         conversationId,
@@ -159,6 +170,7 @@ export const ConversationIdView = ({
     const [isSavingSavedReply, setIsSavingSavedReply] = useState(false);
     const [deletingSavedReplyId, setDeletingSavedReplyId] = useState<Id<"savedReplies"> | null>(null);
     const [activeSlashIndex, setActiveSlashIndex] = useState(0);
+    const [isContactPanelOpen, setIsContactPanelOpen] = useState(false);
 
     const currentMessage = form.watch("message");
     const normalizedMessage = currentMessage.trimStart();
@@ -400,7 +412,18 @@ export const ConversationIdView = ({
 
     return (
         <div className="flex h-full flex-col bg-muted/40">
-            <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b bg-background/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+            <header className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b bg-background/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+                {/* Back button on mobile */}
+                {isMobile && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0 p-1.5"
+                        onClick={() => router.push("/conversations")}
+                    >
+                        <ArrowLeftIcon className="size-4" />
+                    </Button>
+                )}
                 {/* Contact identity */}
                 <div className="flex min-w-0 flex-1 items-center gap-2.5">
                     <DicebearAvatar
@@ -420,8 +443,18 @@ export const ConversationIdView = ({
 
                 {/* Actions */}
                 <div className="flex shrink-0 items-center gap-1.5">
+                    {isMobile && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="size-7 p-0"
+                            onClick={() => setIsContactPanelOpen(true)}
+                        >
+                            <PanelRightIcon className="size-4" />
+                        </Button>
+                    )}
                     <Badge
-                        className="h-5 px-1.5 text-[11px]"
+                        className="hidden h-5 px-1.5 text-[11px] sm:inline-flex"
                         variant={isAssignedToMe ? "default" : "outline"}
                     >
                         {assignmentLabel}
@@ -478,6 +511,15 @@ export const ConversationIdView = ({
                     )}
                 </div>
             </header>
+
+            <Sheet open={isContactPanelOpen} onOpenChange={setIsContactPanelOpen}>
+                <SheetContent side="right" className="w-[min(90vw,360px)] p-0">
+                    <SheetHeader className="sr-only">
+                        <SheetTitle>Contact details</SheetTitle>
+                    </SheetHeader>
+                    <ContactPanel />
+                </SheetContent>
+            </Sheet>
 
             <AIConversation className="max-h-[calc(100vh-180px)] px-2 pb-1 pt-2">
                 <AIConversationContent>

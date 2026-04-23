@@ -1,50 +1,24 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { action } from "../_generated/server";
-import { getSecretValue, parseSecretString } from "../lib/secrets";
+import { Doc } from "../_generated/dataModel";
+import { parseSecretValue } from "../lib/secrets";
 
 export const getVapiSecrets = action({
-    args: {
-        organizationId: v.string()
-    },
-    handler: async (ctx, args) => {
-        const plugin = await ctx.runQuery(
+    args: { organizationId: v.string() },
+    handler: async (ctx, args): Promise<{ publicApiKey: string } | null> => {
+        const plugin: Doc<"plugins"> | null = await ctx.runQuery(
             internal.system.plugins.getByOrganizationIdAndService,
-            {
-                organizationId: args.organizationId,
-                service: "vapi",
-            },
+            { organizationId: args.organizationId, service: "vapi" },
         );
 
-        if (!plugin) {
-            return null;
-        }
+        if (!plugin?.secretValue) return null;
 
-        const secretName = plugin.secretName;
+        const secretData: { privateApiKey: string; publicApiKey: string } | null =
+            parseSecretValue<{ privateApiKey: string; publicApiKey: string }>(plugin.secretValue);
 
-        const secret = await getSecretValue(secretName);
+        if (!secretData?.publicApiKey || !secretData?.privateApiKey) return null;
 
-        const secretData = parseSecretString<{
-            privateApiKey: string;
-            publicApiKey: string;
-        }>(secret);
-
-        if (!secretData) {
-            return null;
-        }
-
-        if (!secretData.publicApiKey) {
-            return null;
-        }
-
-        if (!secretData.privateApiKey) {
-            return null;
-        }
-        
-        return {
-            publicApiKey: secretData.publicApiKey,
-        };
-
-
+        return { publicApiKey: secretData.publicApiKey };
     },
 });

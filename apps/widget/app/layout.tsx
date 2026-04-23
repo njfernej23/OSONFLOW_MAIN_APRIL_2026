@@ -20,11 +20,11 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", geist.variable)}
+      className={cn("h-full overflow-hidden antialiased", fontMono.variable, "font-sans", geist.variable)}
     >
-      <body suppressHydrationWarning>
+      <body className="h-full overflow-hidden" suppressHydrationWarning>
         <Providers>
-          <div className="w-screen h-screen">
+          <div className="h-full min-h-0 w-full min-w-0 overflow-hidden">
             {children}
           </div>
         </Providers>

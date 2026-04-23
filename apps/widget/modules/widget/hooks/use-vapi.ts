@@ -5,7 +5,7 @@ import { vapiSecretsAtom, widgetSettingsAtom } from "../atoms/widget-atoms";
 
 interface TranscriptMessage {
     role: "user" | "assistant";
-    text: "string";
+    text: string;
 };
 
 export const useVapi = () => {

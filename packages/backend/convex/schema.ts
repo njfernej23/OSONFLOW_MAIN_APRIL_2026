@@ -12,6 +12,18 @@ const vapiSettingsValidator = v.object({
     phoneNumber: v.optional(v.string()),
 });
 
+const openaiRealtimeSettingsValidator = v.object({
+    enabled: v.optional(v.boolean()),
+    model: v.optional(v.string()),
+    voice: v.optional(v.string()),
+});
+
+const geminiLiveSettingsValidator = v.object({
+    enabled: v.optional(v.boolean()),
+    model: v.optional(v.string()),
+    voice: v.optional(v.string()),
+});
+
 const themeValidator = v.object({
     primaryColor: v.optional(v.string()),
     headerGradientStart: v.optional(v.string()),
@@ -39,6 +51,8 @@ const widgetSettingsSnapshotValidator = v.object({
     systemPrompt: v.optional(v.string()),
     defaultSuggestions: defaultSuggestionsValidator,
     vapiSettings: vapiSettingsValidator,
+    openaiRealtimeSettings: v.optional(openaiRealtimeSettingsValidator),
+    geminiLiveSettings: v.optional(geminiLiveSettingsValidator),
     theme: v.optional(themeValidator),
     appearance: v.optional(appearanceValidator),
 });
@@ -79,6 +93,8 @@ export default defineSchema({
         systemPrompt: v.optional(v.string()),
         defaultSuggestions: defaultSuggestionsValidator,
         vapiSettings: vapiSettingsValidator,
+        openaiRealtimeSettings: v.optional(openaiRealtimeSettingsValidator),
+        geminiLiveSettings: v.optional(geminiLiveSettingsValidator),
         theme: v.optional(themeValidator),
         appearance: v.optional(appearanceValidator),
         draft: v.optional(widgetSettingsSnapshotValidator),
@@ -102,8 +118,9 @@ export default defineSchema({
         .index("by_organization_id_and_version", ["organizationId", "version"]),
     plugins: defineTable({
         organizationId: v.string(),
-        service: v.union(v.literal("vapi")),
+        service: v.union(v.literal("vapi"), v.literal("openai_realtime"), v.literal("gemini_live")),
         secretName: v.string(),
+        secretValue: v.optional(v.string()),
     })
         .index("by_organization_id", ["organizationId"])
         .index("by_organization_id_and_service", ["organizationId", "service"]),

@@ -33,6 +33,18 @@ const vapiSettingsValidator = v.object({
     phoneNumber: v.optional(v.string()),
 });
 
+const openaiRealtimeSettingsValidator = v.object({
+    enabled: v.optional(v.boolean()),
+    model: v.optional(v.string()),
+    voice: v.optional(v.string()),
+});
+
+const geminiLiveSettingsValidator = v.object({
+    enabled: v.optional(v.boolean()),
+    model: v.optional(v.string()),
+    voice: v.optional(v.string()),
+});
+
 const themeValidator = v.object({
     primaryColor: v.optional(v.string()),
     headerGradientStart: v.optional(v.string()),
@@ -60,6 +72,8 @@ const widgetSettingsArgsValidator = {
     systemPrompt: v.optional(v.string()),
     defaultSuggestions: defaultSuggestionsValidator,
     vapiSettings: vapiSettingsValidator,
+    openaiRealtimeSettings: v.optional(openaiRealtimeSettingsValidator),
+    geminiLiveSettings: v.optional(geminiLiveSettingsValidator),
     theme: v.optional(themeValidator),
     appearance: v.optional(appearanceValidator),
 } as const;
@@ -96,6 +110,16 @@ type WidgetSettingsSnapshot = {
         assistantId?: string;
         phoneNumber?: string;
     };
+    openaiRealtimeSettings?: {
+        enabled?: boolean;
+        model?: string;
+        voice?: string;
+    };
+    geminiLiveSettings?: {
+        enabled?: boolean;
+        model?: string;
+        voice?: string;
+    };
     theme?: WidgetTheme;
     appearance?: WidgetAppearance;
 };
@@ -113,6 +137,16 @@ const createDefaultWidgetSettings = (): WidgetSettingsSnapshot => ({
     vapiSettings: {
         assistantId: "",
         phoneNumber: "",
+    },
+    openaiRealtimeSettings: {
+        enabled: false,
+        model: "gpt-realtime",
+        voice: "marin",
+    },
+    geminiLiveSettings: {
+        enabled: false,
+        model: "gemini-2.5-flash-native-audio-preview-12-2025",
+        voice: "Kore",
     },
     theme: { ...DEFAULT_THEME },
     appearance: { ...DEFAULT_APPEARANCE },
@@ -203,6 +237,34 @@ const normalizeSnapshot = (
             phoneNumber:
                 snapshot.vapiSettings.phoneNumber ?? fallback.vapiSettings.phoneNumber ?? "",
         },
+        openaiRealtimeSettings: {
+            enabled:
+                snapshot.openaiRealtimeSettings?.enabled ??
+                fallback.openaiRealtimeSettings?.enabled ??
+                false,
+            model:
+                snapshot.openaiRealtimeSettings?.model ??
+                fallback.openaiRealtimeSettings?.model ??
+                "gpt-realtime",
+            voice:
+                snapshot.openaiRealtimeSettings?.voice ??
+                fallback.openaiRealtimeSettings?.voice ??
+                "marin",
+        },
+        geminiLiveSettings: {
+            enabled:
+                snapshot.geminiLiveSettings?.enabled ??
+                fallback.geminiLiveSettings?.enabled ??
+                false,
+            model:
+                snapshot.geminiLiveSettings?.model ??
+                fallback.geminiLiveSettings?.model ??
+                "gemini-2.5-flash-native-audio-preview-12-2025",
+            voice:
+                snapshot.geminiLiveSettings?.voice ??
+                fallback.geminiLiveSettings?.voice ??
+                "Kore",
+        },
         theme: mergeTheme(fallback.theme, snapshot.theme),
         appearance: mergeAppearance(fallback.appearance, snapshot.appearance),
     };
@@ -221,6 +283,10 @@ const getPublishedSnapshot = (widgetSettings: any | null): WidgetSettingsSnapsho
             systemPrompt: widgetSettings.systemPrompt ?? fallback.systemPrompt,
             defaultSuggestions: widgetSettings.defaultSuggestions ?? fallback.defaultSuggestions,
             vapiSettings: widgetSettings.vapiSettings ?? fallback.vapiSettings,
+            openaiRealtimeSettings:
+                widgetSettings.openaiRealtimeSettings ?? fallback.openaiRealtimeSettings,
+            geminiLiveSettings:
+                widgetSettings.geminiLiveSettings ?? fallback.geminiLiveSettings,
             theme: widgetSettings.theme,
             appearance: widgetSettings.appearance,
         },
@@ -275,6 +341,8 @@ const applyPublishedSnapshotPatch = (snapshot: WidgetSettingsSnapshot) => ({
     systemPrompt: snapshot.systemPrompt,
     defaultSuggestions: snapshot.defaultSuggestions,
     vapiSettings: snapshot.vapiSettings,
+    openaiRealtimeSettings: snapshot.openaiRealtimeSettings,
+    geminiLiveSettings: snapshot.geminiLiveSettings,
     theme: snapshot.theme,
     appearance: snapshot.appearance,
 });

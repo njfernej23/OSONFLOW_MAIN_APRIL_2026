@@ -58,7 +58,7 @@ export const WidgetView = ({ organizationId }: Props) => {
 
   return (
     <main
-      className="min-h-screen min-w-screen flex h-full w-full flex-col overflow-hidden border bg-muted"
+      className="flex h-full max-h-svh min-h-0 w-full min-w-0 flex-col overflow-hidden border bg-muted"
       style={{
         ...widgetStyles,
         borderRadius: `${theme.borderRadius}px`,

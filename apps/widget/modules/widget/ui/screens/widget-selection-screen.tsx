@@ -2,8 +2,19 @@
 "use client"
 import { Button } from "@workspace/ui/components/button"
 import { WidgetHeader } from "@/modules/widget/ui/components/widget-header";
-import { MessageSquareTextIcon, ChevronRightIcon, MicIcon, PhoneIcon } from "lucide-react";
-import { contactSessionIdAtomFamily, conversationIdAtom, errorMessageAtom, hasVapiSecretsAtom, organizationIdAtom, screenAtom, widgetSettingsAtom } from "../../atoms/widget-atoms";
+import { MessageSquareTextIcon, ChevronRightIcon, MicIcon, PhoneIcon, SparklesIcon } from "lucide-react";
+import {
+    contactSessionIdAtomFamily,
+    conversationIdAtom,
+    errorMessageAtom,
+    hasGeminiLiveVoiceAtom,
+    hasVapiSecretsAtom,
+    hasOpenAIRealtimeVoiceAtom,
+    organizationIdAtom,
+    screenAtom,
+    widgetSettingsAtom,
+    activeVoiceProviderAtom,
+} from "../../atoms/widget-atoms";
 
 import { useAtomValue, useSetAtom } from "jotai";
 import { api } from "@workspace/backend/_generated/api";
@@ -20,16 +31,16 @@ export const WidgetSelectionScreen = () => {
     const widgetSettings = useAtomValue(widgetSettingsAtom)
     const theme = mergeWidgetTheme(widgetSettings?.theme)
     const hasVapiSecrets = useAtomValue(hasVapiSecretsAtom)
+    const hasOpenAIRealtimeVoice = useAtomValue(hasOpenAIRealtimeVoiceAtom)
+    const hasGeminiLiveVoice = useAtomValue(hasGeminiLiveVoiceAtom)
     const organizationId = useAtomValue(organizationIdAtom);
     const contactSessionId = useAtomValue(contactSessionIdAtomFamily(organizationId || ""))
-
+    const setActiveVoiceProvider = useSetAtom(activeVoiceProviderAtom);
 
     const createConversation = useMutation(api.public.conversations.create);
     const [isPending, setIsPending] = useState(false);
 
-
     const handleNewConversation = async () => {
-
         if (!organizationId) {
             setScreen("error");
             setErrorMessage("Missing Organization ID");
@@ -53,6 +64,11 @@ export const WidgetSelectionScreen = () => {
             setIsPending(false);
         }
     }
+
+    const handleVoiceClick = (provider: "gemini" | "openai" | "vapi") => {
+        setActiveVoiceProvider(provider);
+        setScreen("voice");
+    };
 
     return (
         <>
@@ -80,19 +96,49 @@ export const WidgetSelectionScreen = () => {
                         <MessageSquareTextIcon className="size-4" />
                         <span>Start Chat</span>
                     </div>
-
                     <ChevronRightIcon />
                 </Button>
+
+                {hasOpenAIRealtimeVoice && (
+                    <Button
+                        className="h-16 w-full justify-between border-primary/20 bg-primary/5 hover:bg-primary/10"
+                        variant="outline"
+                        onClick={() => handleVoiceClick("openai")}
+                        disabled={isPending}
+                    >
+                        <div className="flex items-center gap-x-2">
+                            <SparklesIcon className="size-4" />
+                            <span>Talk with AI</span>
+                        </div>
+                        <ChevronRightIcon />
+                    </Button>
+                )}
+
+                {hasGeminiLiveVoice && (
+                    <Button
+                        className="h-16 w-full justify-between border-cyan-500/20 bg-cyan-500/5 hover:bg-cyan-500/10"
+                        variant="outline"
+                        onClick={() => handleVoiceClick("gemini")}
+                        disabled={isPending}
+                    >
+                        <div className="flex items-center gap-x-2">
+                            <SparklesIcon className="size-4" />
+                            <span>Talk with Gemini</span>
+                        </div>
+                        <ChevronRightIcon />
+                    </Button>
+                )}
+
                 {hasVapiSecrets && widgetSettings?.vapiSettings?.assistantId && (
                     <Button
                         className="h-16 w-full justify-between"
                         variant="outline"
-                        onClick={() => setScreen("voice")}
+                        onClick={() => handleVoiceClick("vapi")}
                         disabled={isPending}
                     >
                         <div className="flex items-center gap-x-2">
                             <MicIcon className="size-4" />
-                            <span>Start voice call</span>
+                            <span>Voice Call</span>
                         </div>
                         <ChevronRightIcon />
                     </Button>

@@ -523,7 +523,7 @@ export const FilesView = () => {
       {/* ── page ── */}
       <div className="flex min-h-screen flex-col bg-muted/40">
         {/* page header */}
-        <div className="border-b bg-background px-8 py-6">
+        <div className="border-b bg-background px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-screen-lg">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -566,8 +566,8 @@ export const FilesView = () => {
         </div>
 
         {/* toolbar */}
-        <div className="border-b bg-background px-8 py-3">
-          <div className="mx-auto flex max-w-screen-lg items-center gap-3">
+        <div className="border-b bg-background px-4 py-3 sm:px-6 lg:px-8">
+          <div className="mx-auto flex max-w-screen-lg flex-wrap items-center gap-3">
             {/* search */}
             <div className="relative flex-1">
               <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -666,7 +666,7 @@ export const FilesView = () => {
         </div>
 
         {/* content */}
-        <div className="flex-1 px-8 py-6">
+        <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-screen-lg">
             {/* ── loading skeleton ── */}
             {isLoadingFirstPage ? (

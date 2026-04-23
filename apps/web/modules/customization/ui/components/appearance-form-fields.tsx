@@ -2,7 +2,6 @@ import { type ChangeEvent, useRef } from "react"
 import { UseFormReturn } from "react-hook-form"
 import {
   CircleHelpIcon,
-  ImageIcon,
   MessageSquareTextIcon,
   SparklesIcon,
   UploadIcon,
@@ -120,21 +119,9 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
         name="appearance.launcherIconUrl"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-xs font-medium">
-              Launcher Image (optional)
-            </FormLabel>
+            <FormLabel className="text-xs font-medium">Launcher Image</FormLabel>
             <FormControl>
               <div className="space-y-2.5">
-                <div className="relative">
-                  <ImageIcon className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
-                  <Input
-                    {...field}
-                    value={field.value ?? ""}
-                    className="bg-muted/20 pl-8"
-                    placeholder="https://example.com/launcher.png"
-                  />
-                </div>
-
                 <div className="flex flex-wrap items-center gap-2">
                   <input
                     accept={IMAGE_UPLOAD_ACCEPT}
@@ -175,9 +162,12 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
                           className="size-5 rounded-full object-cover"
                           src={field.value}
                         />
-                        <span className="text-[11px] text-muted-foreground">
-                          Preview
-                        </span>
+                        <div className="text-[11px] text-muted-foreground">
+                          <p className="leading-none">Thumbnail</p>
+                          <p className="mt-0.5 leading-none text-muted-foreground/70">
+                            Uploaded image
+                          </p>
+                        </div>
                       </div>
                     </>
                   ) : null}
@@ -185,8 +175,7 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
               </div>
             </FormControl>
             <FormDescription className="text-xs">
-              Upload an image to use as the launcher button. Label text is
-              hidden when an image is set.
+              Upload an image from your device. Label text is hidden when an image is set.
             </FormDescription>
             <FormMessage />
           </FormItem>
@@ -206,7 +195,7 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
                 : "Icon displayed in the embed launcher button"}
             </FormDescription>
             <FormControl>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {launcherIcons.map((option) => (
                   <button
                     className={cn(

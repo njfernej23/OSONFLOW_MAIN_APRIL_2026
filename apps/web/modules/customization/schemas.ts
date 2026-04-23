@@ -32,6 +32,16 @@ export const widgetSettingsSchema = z.object({
         assistantId: z.string().optional(),
         phoneNumber: z.string().optional(),
     }),
+    openaiRealtimeSettings: z.object({
+        enabled: z.boolean().optional(),
+        model: z.string().trim().min(1, "Model is required"),
+        voice: z.string().trim().min(1, "Voice is required"),
+    }),
+    geminiLiveSettings: z.object({
+        enabled: z.boolean().optional(),
+        model: z.string().trim().min(1, "Model is required"),
+        voice: z.string().trim().min(1, "Voice is required"),
+    }),
     theme: z.object({
         primaryColor: hexColorField,
         headerGradientStart: hexColorField,

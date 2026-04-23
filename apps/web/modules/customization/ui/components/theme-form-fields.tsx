@@ -1,6 +1,6 @@
 import { type ChangeEvent, useRef } from "react"
 import { UseFormReturn } from "react-hook-form"
-import { ImageIcon, PaletteIcon, TypeIcon, UploadIcon, XIcon } from "lucide-react"
+import { PaletteIcon, TypeIcon, UploadIcon, XIcon } from "lucide-react"
 import {
   FormControl,
   FormDescription,
@@ -103,19 +103,9 @@ export const ThemeFormFields = ({ form }: ThemeFormFieldsProps) => {
             name="theme.logoUrl"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-xs font-medium">Logo URL</FormLabel>
+                <FormLabel className="text-xs font-medium">Logo</FormLabel>
                 <FormControl>
                   <div className="space-y-2.5">
-                    <div className="relative">
-                      <ImageIcon className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
-                      <Input
-                        {...field}
-                        value={field.value ?? ""}
-                        className="bg-muted/20 pl-8"
-                        placeholder="https://example.com/logo.png"
-                      />
-                    </div>
-
                     <div className="flex flex-wrap items-center gap-2">
                       <input
                         accept={IMAGE_UPLOAD_ACCEPT}
@@ -156,9 +146,12 @@ export const ThemeFormFields = ({ form }: ThemeFormFieldsProps) => {
                               className="size-5 rounded object-cover"
                               src={field.value}
                             />
-                            <span className="text-[11px] text-muted-foreground">
-                              Preview
-                            </span>
+                            <div className="text-[11px] text-muted-foreground">
+                              <p className="leading-none">Thumbnail</p>
+                              <p className="mt-0.5 leading-none text-muted-foreground/70">
+                                Uploaded image
+                              </p>
+                            </div>
                           </div>
                         </>
                       ) : null}
@@ -166,7 +159,7 @@ export const ThemeFormFields = ({ form }: ThemeFormFieldsProps) => {
                   </div>
                 </FormControl>
                 <FormDescription className="text-xs">
-                  Paste an image URL or upload from your computer/device
+                  Upload an image from your device
                 </FormDescription>
                 <FormMessage />
               </FormItem>
