@@ -1,5 +1,5 @@
 export const DEFAULT_WIDGET_SCRIPT_URL =
-    process.env.NEXT_PUBLIC_WIDGET_SCRIPT_URL ?? "https://osonflow-main-april-2026-web.vercel.app";
+    process.env.NEXT_PUBLIC_WIDGET_SCRIPT_URL ?? "https://osonflow-main-april-2026.vercel.app";
 
 export const INTEGRATIONS = [
     {
