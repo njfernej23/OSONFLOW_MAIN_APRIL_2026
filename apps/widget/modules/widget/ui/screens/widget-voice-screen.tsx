@@ -41,8 +41,8 @@ const VoiceCallUI = ({
     <>
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[radial-gradient(circle_at_top,var(--primary)/0.12,transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--muted))/0.55)]">
             <div className="absolute inset-x-6 top-5 h-28 rounded-full bg-primary/10 blur-3xl" />
-            <div className="relative flex shrink-0 flex-col items-center px-5 py-6 text-center">
-                <div className="relative mb-4 flex size-28 items-center justify-center rounded-full border border-primary/20 bg-background/80 shadow-2xl shadow-primary/20 backdrop-blur">
+            <div className="relative flex shrink-0 flex-col items-center px-5 pb-4 pt-5 text-center">
+                <div className="relative mb-3 flex size-24 items-center justify-center rounded-full border border-primary/20 bg-background/80 shadow-2xl shadow-primary/20 backdrop-blur">
                     <div className={cn("absolute inset-2 rounded-full border border-primary/20", isConnected && "animate-ping")} />
                     <div className="absolute inset-5 rounded-full bg-primary/10" />
                     <AudioWaveformIcon className={cn("relative size-10 text-primary", isSpeaking && "animate-pulse")} />
@@ -50,15 +50,9 @@ const VoiceCallUI = ({
                 <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">
                     {providerLabel}
                 </p>
-                <h2 className="mt-2 text-xl font-semibold">
-                    {isConnected ? (isSpeaking ? "Assistant is replying" : "I am listening") : "Start a live voice chat"}
-                </h2>
-                <p className="mt-1 max-w-[280px] text-sm text-muted-foreground">
-                    Speak naturally. The conversation transcript will build below as the call continues.
-                </p>
             </div>
 
-            <div className="relative min-h-0 flex-1 overflow-hidden px-4 pb-4">
+            <div className="relative min-h-0 flex-1 overflow-hidden px-4 pb-5">
                 {transcript.length > 0 ? (
                     <AIConversation className="h-full min-h-0 rounded-2xl border bg-background/85 shadow-sm backdrop-blur">
                         <AIConversationContent>
