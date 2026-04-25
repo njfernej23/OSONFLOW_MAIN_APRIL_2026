@@ -4,6 +4,7 @@ import { useAction } from "convex/react";
 import { useAtomValue } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { organizationIdAtom } from "../atoms/widget-atoms";
+import { usePersistedVoiceConversation } from "./use-persisted-voice-conversation";
 
 type TranscriptMessage = {
   role: "user" | "assistant";
@@ -83,6 +84,8 @@ const downsample = (input: Float32Array, sourceRate: number, targetRate: number)
 export const useGeminiLive = () => {
   const organizationId = useAtomValue(organizationIdAtom);
   const searchKnowledgeBase = useAction(api.public.voiceKnowledgeBase.search);
+  const { finishConversation, persistTranscriptMessage } =
+    usePersistedVoiceConversation("gemini_live");
   const sessionRef = useRef<Session | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const inputContextRef = useRef<AudioContext | null>(null);
@@ -91,6 +94,13 @@ export const useGeminiLive = () => {
   const inputSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const silenceGainRef = useRef<GainNode | null>(null);
   const playbackTimeRef = useRef(0);
+  const transcriptRef = useRef<TranscriptMessage[]>([]);
+  const draftTranscriptRef = useRef({
+    user: { index: -1, text: "" },
+    assistant: { index: -1, text: "" },
+  });
+  const assistantTextBufferRef = useRef("");
+  const lastPersistedTranscriptSignatureRef = useRef<string | null>(null);
 
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -98,9 +108,108 @@ export const useGeminiLive = () => {
   const [transcript, setTranscript] = useState<TranscriptMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const appendTranscript = (message: TranscriptMessage) => {
-    if (!message.text.trim()) return;
-    setTranscript((prev) => [...prev, { ...message, text: message.text.trim() }]);
+  const mergeTranscriptText = (currentText: string, incomingText: string) => {
+    if (!currentText) {
+      return incomingText;
+    }
+
+    if (incomingText.startsWith(currentText)) {
+      return incomingText;
+    }
+
+    if (currentText.startsWith(incomingText)) {
+      return currentText;
+    }
+
+    const joinWithoutSpace = /^[.,!?;:)\]%]/.test(incomingText);
+    return `${currentText}${joinWithoutSpace ? "" : " "}${incomingText}`.trim();
+  };
+
+  const persistFinalTranscript = (message: TranscriptMessage) => {
+    const text = message.text.trim();
+
+    if (!text) {
+      return;
+    }
+
+    const signature = `${message.role}:${text}`;
+
+    if (lastPersistedTranscriptSignatureRef.current === signature) {
+      return;
+    }
+
+    lastPersistedTranscriptSignatureRef.current = signature;
+
+    const normalizedMessage = { ...message, text };
+    void persistTranscriptMessage(normalizedMessage);
+  };
+
+  const syncTranscript = (nextTranscript: TranscriptMessage[]) => {
+    transcriptRef.current = nextTranscript;
+    setTranscript(nextTranscript);
+  };
+
+  const updateTranscriptDraft = (
+    role: TranscriptMessage["role"],
+    rawText: string,
+    { isFinal = false }: { isFinal?: boolean } = {}
+  ) => {
+    const text = rawText.trim();
+
+    if (!text) {
+      return;
+    }
+
+    const draft = draftTranscriptRef.current[role];
+    const nextText = mergeTranscriptText(draft.text, text);
+    const nextTranscript = [...transcriptRef.current];
+
+    if (draft.index >= 0 && nextTranscript[draft.index]?.role === role) {
+      nextTranscript[draft.index] = { role, text: nextText };
+    } else {
+      draft.index = nextTranscript.length;
+      nextTranscript.push({ role, text: nextText });
+    }
+
+    draft.text = nextText;
+    syncTranscript(nextTranscript);
+
+    if (isFinal) {
+      draft.index = -1;
+      draft.text = "";
+      persistFinalTranscript({ role, text: nextText });
+    }
+  };
+
+  const finalizeTranscriptDraft = (
+    role: TranscriptMessage["role"],
+    { persist = true }: { persist?: boolean } = {}
+  ) => {
+    const draft = draftTranscriptRef.current[role];
+
+    if (draft.index < 0 || !draft.text.trim()) {
+      draft.index = -1;
+      draft.text = "";
+      return;
+    }
+
+    const finalizedMessage = { role, text: draft.text.trim() };
+    draft.index = -1;
+    draft.text = "";
+
+    if (persist) {
+      persistFinalTranscript(finalizedMessage);
+    }
+  };
+
+  const resetTranscriptState = () => {
+    draftTranscriptRef.current = {
+      user: { index: -1, text: "" },
+      assistant: { index: -1, text: "" },
+    };
+    assistantTextBufferRef.current = "";
+    lastPersistedTranscriptSignatureRef.current = null;
+    syncTranscript([]);
   };
 
   const playPcmAudio = async (base64Data: string, mimeType?: string) => {
@@ -178,29 +287,52 @@ export const useGeminiLive = () => {
     if (serverContent?.interrupted) {
       playbackTimeRef.current = outputContextRef.current?.currentTime ?? 0;
       setIsSpeaking(false);
+      assistantTextBufferRef.current = "";
+      finalizeTranscriptDraft("assistant", { persist: false });
     }
 
     if (serverContent?.inputTranscription?.text) {
-      appendTranscript({ role: "user", text: serverContent.inputTranscription.text });
+      updateTranscriptDraft("user", serverContent.inputTranscription.text, {
+        isFinal: Boolean(serverContent.inputTranscription.finished),
+      });
     }
 
     if (serverContent?.outputTranscription?.text) {
-      appendTranscript({ role: "assistant", text: serverContent.outputTranscription.text });
+      updateTranscriptDraft("assistant", serverContent.outputTranscription.text, {
+        isFinal: Boolean(serverContent.outputTranscription.finished),
+      });
     }
 
+    const hasOutputTranscription = Boolean(serverContent?.outputTranscription?.text);
     const parts = serverContent?.modelTurn?.parts ?? [];
     for (const part of parts) {
       if (part.inlineData?.data) {
         setIsSpeaking(true);
         void playPcmAudio(part.inlineData.data, part.inlineData.mimeType);
       }
-      if (part.text) {
-        appendTranscript({ role: "assistant", text: part.text });
+
+      if (part.thought) {
+        continue;
+      }
+
+      if (part.text && !hasOutputTranscription) {
+        assistantTextBufferRef.current = mergeTranscriptText(
+          assistantTextBufferRef.current,
+          part.text.trim()
+        );
+        updateTranscriptDraft("assistant", assistantTextBufferRef.current);
       }
     }
 
     if (serverContent?.turnComplete || serverContent?.generationComplete) {
       setIsSpeaking(false);
+      if (!hasOutputTranscription && assistantTextBufferRef.current.trim()) {
+        updateTranscriptDraft("assistant", assistantTextBufferRef.current, { isFinal: true });
+      } else {
+        finalizeTranscriptDraft("assistant");
+      }
+      finalizeTranscriptDraft("user");
+      assistantTextBufferRef.current = "";
     }
   };
 
@@ -267,6 +399,9 @@ export const useGeminiLive = () => {
     setIsConnected(false);
     setIsConnecting(false);
     setIsSpeaking(false);
+    resetTranscriptState();
+
+    void finishConversation();
   };
 
   const startCall = async () => {
@@ -277,7 +412,7 @@ export const useGeminiLive = () => {
 
     setIsConnecting(true);
     setError(null);
-    setTranscript([]);
+    resetTranscriptState();
 
     try {
       const tokenResponse = await fetch("/api/gemini-live-token", {

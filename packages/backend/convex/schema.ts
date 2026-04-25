@@ -24,6 +24,16 @@ const geminiLiveSettingsValidator = v.object({
     voice: v.optional(v.string()),
 });
 
+const aiVoiceConversationProviderValidator = v.union(
+    v.literal("openai_realtime"),
+    v.literal("gemini_live")
+);
+
+const aiVoiceConversationRoleValidator = v.union(
+    v.literal("user"),
+    v.literal("assistant")
+);
+
 const themeValidator = v.object({
     primaryColor: v.optional(v.string()),
     headerGradientStart: v.optional(v.string()),
@@ -209,6 +219,26 @@ export default defineSchema({
     })
         .index("by_organization_id", ["organizationId"])
         .index("by_expires_at", ["expiresAt"]),
+
+    aiVoiceConversations: defineTable({
+        organizationId: v.string(),
+        contactSessionId: v.id("contactSessions"),
+        provider: aiVoiceConversationProviderValidator,
+        lastActivityAt: v.number(),
+        endedAt: v.optional(v.number()),
+        lastMessagePreview: v.optional(v.string()),
+        lastMessageRole: v.optional(aiVoiceConversationRoleValidator),
+    })
+        .index("by_organization_id", ["organizationId"])
+        .index("by_contact_session_id", ["contactSessionId"])
+        .index("by_organization_id_and_last_activity_at", ["organizationId", "lastActivityAt"]),
+
+    aiVoiceConversationMessages: defineTable({
+        conversationId: v.id("aiVoiceConversations"),
+        role: aiVoiceConversationRoleValidator,
+        text: v.string(),
+    })
+        .index("by_conversation_id", ["conversationId"]),
 
 
 

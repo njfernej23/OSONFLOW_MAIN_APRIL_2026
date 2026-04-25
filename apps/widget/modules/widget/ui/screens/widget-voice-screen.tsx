@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, AudioWaveformIcon, MicIcon, MicOffIcon, SparklesIcon } from "lucide-react";
+import { ArrowLeftIcon, MicIcon, MicOffIcon, SparklesIcon } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import {
     AIConversation,
@@ -27,7 +27,6 @@ const VoiceCallUI = ({
     startCall,
     endCall,
     error,
-    providerLabel,
 }: {
     isConnected: boolean;
     isConnecting: boolean;
@@ -36,23 +35,10 @@ const VoiceCallUI = ({
     startCall: () => void;
     endCall: () => void;
     error?: string | null;
-    providerLabel: string;
 }) => (
     <>
-        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[radial-gradient(circle_at_top,var(--primary)/0.12,transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--muted))/0.55)]">
-            <div className="absolute inset-x-6 top-5 h-28 rounded-full bg-primary/10 blur-3xl" />
-            <div className="relative flex shrink-0 flex-col items-center px-5 pb-4 pt-5 text-center">
-                <div className="relative mb-3 flex size-24 items-center justify-center rounded-full border border-primary/20 bg-background/80 shadow-2xl shadow-primary/20 backdrop-blur">
-                    <div className={cn("absolute inset-2 rounded-full border border-primary/20", isConnected && "animate-ping")} />
-                    <div className="absolute inset-5 rounded-full bg-primary/10" />
-                    <AudioWaveformIcon className={cn("relative size-10 text-primary", isSpeaking && "animate-pulse")} />
-                </div>
-                <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">
-                    {providerLabel}
-                </p>
-            </div>
-
-            <div className="relative min-h-0 flex-1 overflow-hidden px-4 pb-5">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[linear-gradient(180deg,hsl(var(--background)),hsl(var(--muted))/0.45)]">
+            <div className="min-h-0 flex-1 overflow-hidden px-4 py-4">
                 {transcript.length > 0 ? (
                     <AIConversation className="h-full min-h-0 rounded-2xl border bg-background/85 shadow-sm backdrop-blur">
                         <AIConversationContent>
@@ -129,17 +115,17 @@ const VoiceCallUI = ({
 
 const VapiVoice = () => {
     const { isConnected, isSpeaking, transcript, startCall, endCall, isConnecting } = useVapi();
-    return <VoiceCallUI {...{ isConnected, isConnecting, isSpeaking, transcript, startCall, endCall }} providerLabel="Vapi voice" />;
+    return <VoiceCallUI {...{ isConnected, isConnecting, isSpeaking, transcript, startCall, endCall }} />;
 };
 
 const OpenAIRealtimeVoice = () => {
     const { isConnected, isSpeaking, transcript, startCall, endCall, isConnecting, error } = useOpenAIRealtime();
-    return <VoiceCallUI {...{ isConnected, isConnecting, isSpeaking, transcript, startCall, endCall, error }} providerLabel="OpenAI realtime" />;
+    return <VoiceCallUI {...{ isConnected, isConnecting, isSpeaking, transcript, startCall, endCall, error }} />;
 };
 
 const GeminiLiveVoice = () => {
     const { isConnected, isSpeaking, transcript, startCall, endCall, isConnecting, error } = useGeminiLive();
-    return <VoiceCallUI {...{ isConnected, isConnecting, isSpeaking, transcript, startCall, endCall, error }} providerLabel="Gemini live" />;
+    return <VoiceCallUI {...{ isConnected, isConnecting, isSpeaking, transcript, startCall, endCall, error }} />;
 };
 
 

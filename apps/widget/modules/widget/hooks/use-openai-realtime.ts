@@ -3,6 +3,7 @@ import { useAction } from "convex/react";
 import { useAtomValue } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { organizationIdAtom } from "../atoms/widget-atoms";
+import { usePersistedVoiceConversation } from "./use-persisted-voice-conversation";
 
 type TranscriptMessage = {
   role: "user" | "assistant";
@@ -46,10 +47,13 @@ const parseJsonResponse = async <T>(response: Response): Promise<T> => {
 export const useOpenAIRealtime = () => {
   const organizationId = useAtomValue(organizationIdAtom);
   const searchKnowledgeBase = useAction(api.public.voiceKnowledgeBase.search);
+  const { finishConversation, persistTranscriptMessage } =
+    usePersistedVoiceConversation("openai_realtime");
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const lastTranscriptSignatureRef = useRef<string | null>(null);
 
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -71,11 +75,30 @@ export const useOpenAIRealtime = () => {
     setIsConnected(false);
     setIsConnecting(false);
     setIsSpeaking(false);
+    lastTranscriptSignatureRef.current = null;
+
+    void finishConversation();
   };
 
   const appendTranscript = (message: TranscriptMessage) => {
-    if (!message.text.trim()) return;
-    setTranscript((prev) => [...prev, { ...message, text: message.text.trim() }]);
+    const text = message.text.trim();
+
+    if (!text) {
+      return;
+    }
+
+    const signature = `${message.role}:${text}`;
+
+    if (lastTranscriptSignatureRef.current === signature) {
+      return;
+    }
+
+    lastTranscriptSignatureRef.current = signature;
+
+    const normalizedMessage = { ...message, text };
+
+    setTranscript((prev) => [...prev, normalizedMessage]);
+    void persistTranscriptMessage(normalizedMessage);
   };
 
   const sendClientEvent = (event: Record<string, unknown>) => {
@@ -183,6 +206,7 @@ export const useOpenAIRealtime = () => {
     setIsConnecting(true);
     setError(null);
     setTranscript([]);
+    lastTranscriptSignatureRef.current = null;
 
     try {
       const tokenResponse = await fetch("/api/openai-realtime-token", {

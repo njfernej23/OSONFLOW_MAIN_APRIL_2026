@@ -1,13 +1,13 @@
 "use client"
 
-import {OrganizationSwitcher, UserButton} from "@clerk/nextjs";
+import {OrganizationSwitcher, Show, UserButton} from "@clerk/nextjs";
 
 import {
     CreditCardIcon,
-    Inbox,
     InboxIcon,
     LayoutDashboardIcon,
     LibraryBigIcon,
+    SparklesIcon,
     PaletteIcon,
 } from "lucide-react";
 
@@ -30,7 +30,6 @@ import {
     SidebarRail,
 } from "@workspace/ui/components/sidebar"
 
-import { Organization } from "@clerk/nextjs/server";
 import {cn} from "@workspace/ui/lib/utils"
 
 const customerSupportItems = [
@@ -39,6 +38,12 @@ const customerSupportItems = [
         url: "/conversations",
         icon: InboxIcon,
 
+    },
+    {
+        title: "AI Conversations",
+        url: "/ai-conversations",
+        icon: SparklesIcon,
+        adminOnly: true,
     },
 
     {
@@ -118,16 +123,31 @@ export const DashboardSidebar = () => {
                     <SidebarGroupContent>
                         <SidebarMenu>
                             {customerSupportItems.map((item) => (
-                                <SidebarMenuItem key={item.title}>
-                                    <SidebarMenuButton asChild tooltip={item.title} isActive={isActive(item.url)} className={cn(
-                                        isActive(item.url) && "bg-sidebar-primary! text-sidebar-primary-foreground!"
-                                    )}>
-                                        <Link href={item.url}>
-                                            <item.icon  className="size-4"/>
-                                            <span>{item.title}</span>
-                                        </Link>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
+                                item.adminOnly ? (
+                                    <Show key={item.title} when={{ role: "admin" }}>
+                                        <SidebarMenuItem>
+                                            <SidebarMenuButton asChild tooltip={item.title} isActive={isActive(item.url)} className={cn(
+                                                isActive(item.url) && "bg-sidebar-primary! text-sidebar-primary-foreground!"
+                                            )}>
+                                                <Link href={item.url}>
+                                                    <item.icon  className="size-4"/>
+                                                    <span>{item.title}</span>
+                                                </Link>
+                                            </SidebarMenuButton>
+                                        </SidebarMenuItem>
+                                    </Show>
+                                ) : (
+                                    <SidebarMenuItem key={item.title}>
+                                        <SidebarMenuButton asChild tooltip={item.title} isActive={isActive(item.url)} className={cn(
+                                            isActive(item.url) && "bg-sidebar-primary! text-sidebar-primary-foreground!"
+                                        )}>
+                                            <Link href={item.url}>
+                                                <item.icon  className="size-4"/>
+                                                <span>{item.title}</span>
+                                            </Link>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                )
                             ))}
                         </SidebarMenu>
                     </SidebarGroupContent>
@@ -213,5 +233,3 @@ export const DashboardSidebar = () => {
         </Sidebar>
     );
 }
-
-
