@@ -1,62 +1,103 @@
-import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
+import { defineSchema, defineTable } from "convex/server"
+import { v } from "convex/values"
 
 const defaultSuggestionsValidator = v.object({
-    suggestion1: v.optional(v.string()),
-    suggestion2: v.optional(v.string()),
-    suggestion3: v.optional(v.string()),
-});
+  suggestion1: v.optional(v.string()),
+  suggestion2: v.optional(v.string()),
+  suggestion3: v.optional(v.string()),
+})
 
 const vapiSettingsValidator = v.object({
-    assistantId: v.optional(v.string()),
-    phoneNumber: v.optional(v.string()),
-});
+  assistantId: v.optional(v.string()),
+  phoneNumber: v.optional(v.string()),
+})
 
 const openaiRealtimeSettingsValidator = v.object({
-    enabled: v.optional(v.boolean()),
-    model: v.optional(v.string()),
-    voice: v.optional(v.string()),
-});
+  enabled: v.optional(v.boolean()),
+  model: v.optional(v.string()),
+  voice: v.optional(v.string()),
+})
 
 const geminiLiveSettingsValidator = v.object({
-    enabled: v.optional(v.boolean()),
-    model: v.optional(v.string()),
-    voice: v.optional(v.string()),
-});
+  enabled: v.optional(v.boolean()),
+  model: v.optional(v.string()),
+  voice: v.optional(v.string()),
+})
 
 const aiVoiceConversationProviderValidator = v.union(
-    v.literal("openai_realtime"),
-    v.literal("gemini_live")
-);
+  v.literal("openai_realtime"),
+  v.literal("gemini_live")
+)
 
 const aiVoiceConversationRoleValidator = v.union(
-    v.literal("user"),
-    v.literal("assistant")
-);
+  v.literal("user"),
+  v.literal("assistant")
+)
 
 const themeValidator = v.object({
-    primaryColor: v.optional(v.string()),
-    headerGradientStart: v.optional(v.string()),
-    headerGradientEnd: v.optional(v.string()),
-    userBubbleColor: v.optional(v.string()),
-    botBubbleColor: v.optional(v.string()),
-    borderRadius: v.optional(v.number()),
-    logoUrl: v.optional(v.string()),
-    assistantName: v.optional(v.string()),
-});
+  primaryColor: v.optional(v.string()),
+  headerGradientStart: v.optional(v.string()),
+  headerGradientEnd: v.optional(v.string()),
+  userBubbleColor: v.optional(v.string()),
+  botBubbleColor: v.optional(v.string()),
+  borderRadius: v.optional(v.number()),
+  logoUrl: v.optional(v.string()),
+  assistantName: v.optional(v.string()),
+})
 
 const appearanceValidator = v.object({
-    launcherColor: v.optional(v.string()),
-    launcherLabel: v.optional(v.string()),
-    launcherIcon: v.optional(
-        v.union(v.literal("chat"), v.literal("sparkles"), v.literal("question"))
-    ),
-    launcherIconUrl: v.optional(v.string()),
-    poweredByText: v.optional(v.string()),
-    showPoweredBy: v.optional(v.boolean()),
-});
+  launcherColor: v.optional(v.string()),
+  launcherLabel: v.optional(v.string()),
+  launcherIcon: v.optional(
+    v.union(v.literal("chat"), v.literal("sparkles"), v.literal("question"))
+  ),
+  launcherIconUrl: v.optional(v.string()),
+  poweredByText: v.optional(v.string()),
+  showPoweredBy: v.optional(v.boolean()),
+})
 
 const widgetSettingsSnapshotValidator = v.object({
+  greetMessage: v.string(),
+  systemPrompt: v.optional(v.string()),
+  defaultSuggestions: defaultSuggestionsValidator,
+  vapiSettings: vapiSettingsValidator,
+  openaiRealtimeSettings: v.optional(openaiRealtimeSettingsValidator),
+  geminiLiveSettings: v.optional(geminiLiveSettingsValidator),
+  theme: v.optional(themeValidator),
+  appearance: v.optional(appearanceValidator),
+})
+
+const webhookEventTypeValidator = v.union(
+  v.literal("contact_session.created"),
+  v.literal("conversation.created"),
+  v.literal("conversation.status_changed"),
+  v.literal("message.received"),
+  v.literal("message.sent")
+)
+
+const webhookProviderValidator = v.union(
+  v.literal("webhook"),
+  v.literal("discord"),
+  v.literal("slack"),
+  v.literal("telegram"),
+  v.literal("whatsapp")
+)
+
+const webhookProviderConfigValidator = v.object({
+  telegramBotToken: v.optional(v.string()),
+  telegramChatId: v.optional(v.string()),
+  whatsappAccessToken: v.optional(v.string()),
+  whatsappPhoneNumberId: v.optional(v.string()),
+  whatsappRecipientPhone: v.optional(v.string()),
+})
+
+export default defineSchema({
+  subscriptions: defineTable({
+    organizationId: v.string(),
+    status: v.string(),
+  }).index("by_organization_id", ["organizationId"]),
+  widgetSettings: defineTable({
+    organizationId: v.string(),
     greetMessage: v.string(),
     systemPrompt: v.optional(v.string()),
     defaultSuggestions: defaultSuggestionsValidator,
@@ -65,185 +106,175 @@ const widgetSettingsSnapshotValidator = v.object({
     geminiLiveSettings: v.optional(geminiLiveSettingsValidator),
     theme: v.optional(themeValidator),
     appearance: v.optional(appearanceValidator),
-});
+    draft: v.optional(widgetSettingsSnapshotValidator),
+    publishedVersion: v.optional(v.number()),
+    publishedAt: v.optional(v.number()),
+    publishedBy: v.optional(v.string()),
+    draftUpdatedAt: v.optional(v.number()),
+    draftUpdatedBy: v.optional(v.string()),
+  }).index("by_organization_id", ["organizationId"]),
+  widgetSettingsVersions: defineTable({
+    organizationId: v.string(),
+    version: v.number(),
+    settings: widgetSettingsSnapshotValidator,
+    publishedAt: v.number(),
+    publishedBy: v.optional(v.string()),
+    action: v.union(
+      v.literal("publish"),
+      v.literal("rollback"),
+      v.literal("bootstrap")
+    ),
+    sourceVersion: v.optional(v.number()),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_organization_id_and_version", ["organizationId", "version"]),
+  plugins: defineTable({
+    organizationId: v.string(),
+    service: v.union(
+      v.literal("vapi"),
+      v.literal("openai_realtime"),
+      v.literal("gemini_live")
+    ),
+    secretName: v.string(),
+    secretValue: v.optional(v.string()),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_organization_id_and_service", ["organizationId", "service"]),
+  integrationWebhooks: defineTable({
+    organizationId: v.string(),
+    url: v.string(),
+    description: v.optional(v.string()),
+    provider: v.optional(webhookProviderValidator),
+    providerConfig: v.optional(webhookProviderConfigValidator),
+    signingSecret: v.string(),
+    isEnabled: v.boolean(),
+    eventTypes: v.array(webhookEventTypeValidator),
+    createdBy: v.optional(v.string()),
+    updatedAt: v.number(),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_organization_id_and_enabled", ["organizationId", "isEnabled"]),
+  webhookDeliveries: defineTable({
+    organizationId: v.string(),
+    webhookId: v.id("integrationWebhooks"),
+    eventId: v.string(),
+    eventType: webhookEventTypeValidator,
+    targetUrl: v.string(),
+    status: v.union(v.literal("success"), v.literal("failed")),
+    attempt: v.number(),
+    responseStatus: v.optional(v.number()),
+    responseBody: v.optional(v.string()),
+    error: v.optional(v.string()),
+    payload: v.optional(v.any()),
+    durationMs: v.optional(v.number()),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_webhook_id", ["webhookId"]),
+  conversations: defineTable({
+    threadId: v.string(),
+    organizationId: v.string(),
+    contactSessionId: v.id("contactSessions"),
+    status: v.union(
+      v.literal("unresolved"),
+      v.literal("escalated"),
+      v.literal("resolved")
+    ),
+    isArchived: v.optional(v.boolean()),
+    assignedToId: v.optional(v.union(v.string(), v.null())),
+    assignedToName: v.optional(v.union(v.string(), v.null())),
+    assignedAt: v.optional(v.union(v.number(), v.null())),
+    contactLastReadAt: v.optional(v.number()),
+    operatorLastReadAt: v.optional(v.number()),
+    lastCustomerMessageAt: v.optional(v.union(v.number(), v.null())),
+    lastOperatorMessageAt: v.optional(v.union(v.number(), v.null())),
+    unreadForContactCount: v.optional(v.number()),
+    unreadForOperatorCount: v.optional(v.number()),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_contact_session_id", ["contactSessionId"])
+    .index("by_thread_id", ["threadId"])
+    .index("by_status_and_organization_id", ["status", "organizationId"])
+    .index("by_organization_id_and_assigned_to", [
+      "organizationId",
+      "assignedToId",
+    ])
+    .index("by_status_and_organization_id_and_assigned_to", [
+      "status",
+      "organizationId",
+      "assignedToId",
+    ]),
 
-const webhookEventTypeValidator = v.union(
-    v.literal("contact_session.created"),
-    v.literal("conversation.created"),
-    v.literal("conversation.status_changed"),
-    v.literal("message.received"),
-    v.literal("message.sent")
-);
+  savedReplies: defineTable({
+    organizationId: v.string(),
+    title: v.string(),
+    body: v.string(),
+    category: v.optional(v.string()),
+    usageCount: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.optional(v.string()),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_organization_id_and_usage_count", [
+      "organizationId",
+      "usageCount",
+    ]),
 
-const webhookProviderValidator = v.union(
-    v.literal("webhook"),
-    v.literal("discord"),
-    v.literal("slack"),
-    v.literal("telegram"),
-    v.literal("whatsapp")
-);
+  contactSessions: defineTable({
+    name: v.string(),
+    email: v.string(),
+    organizationId: v.string(),
+    expiresAt: v.number(),
+    metadata: v.optional(
+      v.object({
+        userAgent: v.optional(v.string()),
+        language: v.optional(v.string()),
+        languages: v.optional(v.string()),
+        platform: v.optional(v.string()),
+        vendor: v.optional(v.string()),
+        screenResolution: v.optional(v.string()),
+        viewportSize: v.optional(v.string()),
+        timezone: v.optional(v.string()),
+        timezoneOffset: v.optional(v.number()),
+        cookieEnabled: v.optional(v.boolean()),
+        referrer: v.optional(v.string()),
+        currentUrl: v.optional(v.string()),
+      })
+    ),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_expires_at", ["expiresAt"]),
 
-const webhookProviderConfigValidator = v.object({
-    telegramBotToken: v.optional(v.string()),
-    telegramChatId: v.optional(v.string()),
-    whatsappAccessToken: v.optional(v.string()),
-    whatsappPhoneNumberId: v.optional(v.string()),
-    whatsappRecipientPhone: v.optional(v.string()),
-});
+  aiVoiceConversations: defineTable({
+    organizationId: v.string(),
+    contactSessionId: v.id("contactSessions"),
+    provider: aiVoiceConversationProviderValidator,
+    status: v.optional(
+      v.union(
+        v.literal("unresolved"),
+        v.literal("escalated"),
+        v.literal("resolved")
+      )
+    ),
+    linkedConversationId: v.optional(v.id("conversations")),
+    lastActivityAt: v.number(),
+    endedAt: v.optional(v.number()),
+    lastMessagePreview: v.optional(v.string()),
+    lastMessageRole: v.optional(aiVoiceConversationRoleValidator),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_contact_session_id", ["contactSessionId"])
+    .index("by_organization_id_and_last_activity_at", [
+      "organizationId",
+      "lastActivityAt",
+    ]),
 
-export default defineSchema({
-    subscriptions: defineTable({
-        organizationId: v.string(),
-        status: v.string(),
-    })
-        .index("by_organization_id", ["organizationId"]),
-    widgetSettings: defineTable({
-        organizationId: v.string(),
-        greetMessage: v.string(),
-        systemPrompt: v.optional(v.string()),
-        defaultSuggestions: defaultSuggestionsValidator,
-        vapiSettings: vapiSettingsValidator,
-        openaiRealtimeSettings: v.optional(openaiRealtimeSettingsValidator),
-        geminiLiveSettings: v.optional(geminiLiveSettingsValidator),
-        theme: v.optional(themeValidator),
-        appearance: v.optional(appearanceValidator),
-        draft: v.optional(widgetSettingsSnapshotValidator),
-        publishedVersion: v.optional(v.number()),
-        publishedAt: v.optional(v.number()),
-        publishedBy: v.optional(v.string()),
-        draftUpdatedAt: v.optional(v.number()),
-        draftUpdatedBy: v.optional(v.string()),
-    })
-        .index('by_organization_id', ["organizationId"]),
-    widgetSettingsVersions: defineTable({
-        organizationId: v.string(),
-        version: v.number(),
-        settings: widgetSettingsSnapshotValidator,
-        publishedAt: v.number(),
-        publishedBy: v.optional(v.string()),
-        action: v.union(v.literal("publish"), v.literal("rollback"), v.literal("bootstrap")),
-        sourceVersion: v.optional(v.number()),
-    })
-        .index("by_organization_id", ["organizationId"])
-        .index("by_organization_id_and_version", ["organizationId", "version"]),
-    plugins: defineTable({
-        organizationId: v.string(),
-        service: v.union(v.literal("vapi"), v.literal("openai_realtime"), v.literal("gemini_live")),
-        secretName: v.string(),
-        secretValue: v.optional(v.string()),
-    })
-        .index("by_organization_id", ["organizationId"])
-        .index("by_organization_id_and_service", ["organizationId", "service"]),
-    integrationWebhooks: defineTable({
-        organizationId: v.string(),
-        url: v.string(),
-        description: v.optional(v.string()),
-        provider: v.optional(webhookProviderValidator),
-        providerConfig: v.optional(webhookProviderConfigValidator),
-        signingSecret: v.string(),
-        isEnabled: v.boolean(),
-        eventTypes: v.array(webhookEventTypeValidator),
-        createdBy: v.optional(v.string()),
-        updatedAt: v.number(),
-    })
-        .index("by_organization_id", ["organizationId"])
-        .index("by_organization_id_and_enabled", ["organizationId", "isEnabled"]),
-    webhookDeliveries: defineTable({
-        organizationId: v.string(),
-        webhookId: v.id("integrationWebhooks"),
-        eventId: v.string(),
-        eventType: webhookEventTypeValidator,
-        targetUrl: v.string(),
-        status: v.union(v.literal("success"), v.literal("failed")),
-        attempt: v.number(),
-        responseStatus: v.optional(v.number()),
-        responseBody: v.optional(v.string()),
-        error: v.optional(v.string()),
-        payload: v.optional(v.any()),
-        durationMs: v.optional(v.number()),
-    })
-        .index("by_organization_id", ["organizationId"])
-        .index("by_webhook_id", ["webhookId"]),
-    conversations: defineTable({
-        threadId: v.string(),
-        organizationId: v.string(),
-        contactSessionId: v.id("contactSessions"),
-        status: v.union(
-            v.literal("unresolved"),
-            v.literal("escalated"),
-            v.literal("resolved")
-        ),
-        isArchived: v.optional(v.boolean()),
-        assignedToId: v.optional(v.union(v.string(), v.null())),
-        assignedToName: v.optional(v.union(v.string(), v.null())),
-        assignedAt: v.optional(v.union(v.number(), v.null())),
-    })
-        .index("by_organization_id", ["organizationId"])
-        .index("by_contact_session_id", ["contactSessionId"])
-        .index("by_thread_id", ["threadId"])
-        .index("by_status_and_organization_id", ['status', 'organizationId'])
-        .index("by_organization_id_and_assigned_to", ["organizationId", "assignedToId"])
-        .index("by_status_and_organization_id_and_assigned_to", ["status", "organizationId", "assignedToId"]),
+  aiVoiceConversationMessages: defineTable({
+    conversationId: v.id("aiVoiceConversations"),
+    role: aiVoiceConversationRoleValidator,
+    text: v.string(),
+  }).index("by_conversation_id", ["conversationId"]),
 
-    savedReplies: defineTable({
-        organizationId: v.string(),
-        title: v.string(),
-        body: v.string(),
-        category: v.optional(v.string()),
-        usageCount: v.number(),
-        updatedAt: v.number(),
-        createdBy: v.optional(v.string()),
-    })
-        .index("by_organization_id", ["organizationId"])
-        .index("by_organization_id_and_usage_count", ["organizationId", "usageCount"]),
-
-    contactSessions: defineTable({
-        name: v.string(),
-        email: v.string(),
-        organizationId: v.string(),
-        expiresAt: v.number(),
-        metadata: v.optional(v.object({
-            userAgent: v.optional(v.string()),
-            language: v.optional(v.string()),
-            languages: v.optional(v.string()),
-            platform: v.optional(v.string()),
-            vendor: v.optional(v.string()),
-            screenResolution: v.optional(v.string()),
-            viewportSize: v.optional(v.string()),
-            timezone: v.optional(v.string()),
-            timezoneOffset: v.optional(v.number()),
-            cookieEnabled: v.optional(v.boolean()),
-            referrer: v.optional(v.string()),
-            currentUrl: v.optional(v.string()),
-        })),
-    })
-        .index("by_organization_id", ["organizationId"])
-        .index("by_expires_at", ["expiresAt"]),
-
-    aiVoiceConversations: defineTable({
-        organizationId: v.string(),
-        contactSessionId: v.id("contactSessions"),
-        provider: aiVoiceConversationProviderValidator,
-        lastActivityAt: v.number(),
-        endedAt: v.optional(v.number()),
-        lastMessagePreview: v.optional(v.string()),
-        lastMessageRole: v.optional(aiVoiceConversationRoleValidator),
-    })
-        .index("by_organization_id", ["organizationId"])
-        .index("by_contact_session_id", ["contactSessionId"])
-        .index("by_organization_id_and_last_activity_at", ["organizationId", "lastActivityAt"]),
-
-    aiVoiceConversationMessages: defineTable({
-        conversationId: v.id("aiVoiceConversations"),
-        role: aiVoiceConversationRoleValidator,
-        text: v.string(),
-    })
-        .index("by_conversation_id", ["conversationId"]),
-
-
-
-
-    users: defineTable({
-        name: v.string(),
-    }),
-});
+  users: defineTable({
+    name: v.string(),
+  }),
+})

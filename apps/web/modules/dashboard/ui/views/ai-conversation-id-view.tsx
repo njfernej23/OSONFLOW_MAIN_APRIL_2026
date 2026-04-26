@@ -1,87 +1,90 @@
-"use client";
+"use client"
 
-import { api } from "@workspace/backend/_generated/api";
-import { Id } from "@workspace/backend/_generated/dataModel";
-import { usePaginatedQuery, useQuery } from "convex/react";
-import { format, isSameDay } from "date-fns";
+import { api } from "@workspace/backend/_generated/api"
+import { Id } from "@workspace/backend/_generated/dataModel"
+import { usePaginatedQuery, useQuery } from "convex/react"
+import { format, isSameDay } from "date-fns"
 import {
   ArrowLeftIcon,
   BotIcon,
   Clock3Icon,
   GlobeIcon,
   MailIcon,
+  MessageSquareTextIcon,
   SparklesIcon,
   UserRoundIcon,
-} from "lucide-react";
-import { useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { Badge } from "@workspace/ui/components/badge";
-import { Button } from "@workspace/ui/components/button";
-import { Skeleton } from "@workspace/ui/components/skeleton";
-import { useIsMobile } from "@workspace/ui/hooks/use-mobile";
+} from "lucide-react"
+import { useMemo } from "react"
+import { useRouter } from "next/navigation"
+import { Badge } from "@workspace/ui/components/badge"
+import { Button } from "@workspace/ui/components/button"
+import { Skeleton } from "@workspace/ui/components/skeleton"
+import { useIsMobile } from "@workspace/ui/hooks/use-mobile"
 import {
   AIConversation,
   AIConversationContent,
   AIConversationScrollButton,
-} from "@workspace/ui/components/ai/conversation";
+} from "@workspace/ui/components/ai/conversation"
 import {
   AIMessage,
   AIMessageContent,
-} from "@workspace/ui/components/ai/message";
-import { AIResponse } from "@workspace/ui/components/ai/response";
-import { DicebearAvatar } from "@workspace/ui/components/dicebear-avatar";
-import { cn } from "@workspace/ui/lib/utils";
+} from "@workspace/ui/components/ai/message"
+import { AIResponse } from "@workspace/ui/components/ai/response"
+import { DicebearAvatar } from "@workspace/ui/components/dicebear-avatar"
+import { cn } from "@workspace/ui/lib/utils"
 import {
   AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES,
   AI_CONVERSATION_PROVIDER_LABELS,
-} from "../../constants";
+  AI_CONVERSATION_STATUS_BADGE_CLASSNAMES,
+  AI_CONVERSATION_STATUS_LABELS,
+} from "../../constants"
 
 const formatTimestamp = (timestamp: number) =>
-  format(new Date(timestamp), "MMM d, yyyy 'at' h:mm a");
+  format(new Date(timestamp), "MMM d, yyyy 'at' h:mm a")
 
 const formatTranscriptTime = (timestamp: number) =>
-  format(new Date(timestamp), "h:mm a");
+  format(new Date(timestamp), "h:mm a")
 
 const formatCurrentPage = (value: string | undefined) => {
   if (!value) {
-    return null;
+    return null
   }
 
   try {
-    const url = new URL(value);
-    return `${url.hostname}${url.pathname}`;
+    const url = new URL(value)
+    return `${url.hostname}${url.pathname}`
   } catch {
-    return value;
+    return value
   }
-};
+}
 
 export const AIConversationIdView = ({
   conversationId,
 }: {
-  conversationId: Id<"aiVoiceConversations">;
+  conversationId: Id<"aiVoiceConversations">
 }) => {
-  const isMobile = useIsMobile();
-  const router = useRouter();
+  const isMobile = useIsMobile()
+  const router = useRouter()
 
   const conversation = useQuery(api.private.aiConversations.getOne, {
     conversationId,
-  });
+  })
 
   const messages = usePaginatedQuery(
     api.private.aiConversations.getMessages,
     { conversationId },
     { initialNumItems: 100 }
-  );
+  )
 
   const orderedMessages = useMemo(
     () => [...messages.results].reverse(),
     [messages.results]
-  );
+  )
 
   const transcriptItems = useMemo(
     () =>
       orderedMessages.map((message, index) => {
-        const previousMessage = orderedMessages[index - 1];
+        const previousMessage = orderedMessages[index - 1]
         const dayLabel =
           !previousMessage ||
           !isSameDay(
@@ -89,18 +92,18 @@ export const AIConversationIdView = ({
             new Date(message._creationTime)
           )
             ? format(new Date(message._creationTime), "EEEE, MMM d")
-            : null;
+            : null
 
         return {
           dayLabel,
           message,
-        };
+        }
       }),
     [orderedMessages]
-  );
+  )
 
   if (conversation === undefined) {
-    return <AIConversationIdSkeleton />;
+    return <AIConversationIdSkeleton />
   }
 
   if (!conversation) {
@@ -108,15 +111,18 @@ export const AIConversationIdView = ({
       <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
         Conversation not found.
       </div>
-    );
+    )
   }
 
-  const providerLabel = AI_CONVERSATION_PROVIDER_LABELS[conversation.provider];
+  const providerLabel = AI_CONVERSATION_PROVIDER_LABELS[conversation.provider]
   const providerBadgeClassName =
-    AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES[conversation.provider];
+    AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES[conversation.provider]
+  const status = conversation.status ?? "unresolved"
+  const statusLabel = AI_CONVERSATION_STATUS_LABELS[status]
+  const statusBadgeClassName = AI_CONVERSATION_STATUS_BADGE_CLASSNAMES[status]
   const currentPage = formatCurrentPage(
     conversation.contactSession?.metadata?.currentUrl
-  );
+  )
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
@@ -124,7 +130,7 @@ export const AIConversationIdView = ({
         <div className="flex items-start gap-4">
           {isMobile ? (
             <Button
-              className="-ml-2 mt-0.5"
+              className="mt-0.5 -ml-2"
               onClick={() => router.push("/ai-conversations")}
               size="icon"
               variant="ghost"
@@ -167,6 +173,15 @@ export const AIConversationIdView = ({
                 >
                   {conversation.endedAt ? "Ended" : "Live"}
                 </Badge>
+                <Badge
+                  className={cn(
+                    "h-7 rounded-full border px-2.5 text-[11px] font-medium",
+                    statusBadgeClassName
+                  )}
+                  variant="outline"
+                >
+                  {statusLabel}
+                </Badge>
                 {conversation.lastMessageRole ? (
                   <Badge
                     className="h-7 rounded-full border px-2.5 text-[11px] font-medium"
@@ -207,6 +222,21 @@ export const AIConversationIdView = ({
                   {conversation.contactSession.email}
                 </span>
               ) : null}
+              {conversation.linkedConversationId ? (
+                <Button
+                  className="h-7 rounded-full px-3 text-[11px]"
+                  onClick={() =>
+                    router.push(
+                      `/conversations/${conversation.linkedConversationId}`
+                    )
+                  }
+                  size="sm"
+                  variant="outline"
+                >
+                  <MessageSquareTextIcon className="size-3.5" />
+                  Open human handoff
+                </Button>
+              ) : null}
             </div>
           </div>
         </div>
@@ -238,7 +268,9 @@ export const AIConversationIdView = ({
                     </div>
                   ) : null}
 
-                  <AIMessage from={message.role === "assistant" ? "assistant" : "user"}>
+                  <AIMessage
+                    from={message.role === "assistant" ? "assistant" : "user"}
+                  >
                     <div className="flex max-w-xl flex-col gap-2">
                       <div
                         className={cn(
@@ -254,7 +286,9 @@ export const AIConversationIdView = ({
                           <UserRoundIcon className="size-3.5" />
                         )}
                         <span>
-                          {message.role === "assistant" ? "Assistant" : "Visitor"}
+                          {message.role === "assistant"
+                            ? "Assistant"
+                            : "Visitor"}
                         </span>
                         <span className="text-muted-foreground/60">
                           {formatTranscriptTime(message._creationTime)}
@@ -285,7 +319,8 @@ export const AIConversationIdView = ({
                     No transcript messages yet
                   </p>
                   <p className="mt-1 text-[12px] text-muted-foreground">
-                    This session was created before transcript lines were stored.
+                    This session was created before transcript lines were
+                    stored.
                   </p>
                 </div>
               </div>
@@ -295,8 +330,8 @@ export const AIConversationIdView = ({
         <AIConversationScrollButton />
       </AIConversation>
     </div>
-  );
-};
+  )
+}
 
 const AIConversationIdSkeleton = () => {
   return (
@@ -345,5 +380,5 @@ const AIConversationIdSkeleton = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
