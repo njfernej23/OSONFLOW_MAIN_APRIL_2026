@@ -4,6 +4,7 @@ import { useMutation } from "convex/react"
 import { useAtomValue, useSetAtom } from "jotai"
 import { useRef } from "react"
 import {
+  chatReturnScreenAtom,
   contactSessionIdAtomFamily,
   conversationIdAtom,
   organizationIdAtom,
@@ -25,6 +26,7 @@ export const usePersistedVoiceConversation = (
     contactSessionIdAtomFamily(organizationId || "")
   )
   const setConversationId = useSetAtom(conversationIdAtom)
+  const setChatReturnScreen = useSetAtom(chatReturnScreenAtom)
   const setScreen = useSetAtom(screenAtom)
 
   const createConversation = useMutation(api.public.aiConversations.create)
@@ -134,6 +136,7 @@ export const usePersistedVoiceConversation = (
       })
 
       setConversationId(result.conversationId)
+      setChatReturnScreen("selection")
       setScreen("chat")
 
       return result.conversationId

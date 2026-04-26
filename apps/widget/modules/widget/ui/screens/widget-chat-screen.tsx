@@ -9,6 +9,7 @@ import { Button } from "@workspace/ui/components/button"
 import { useAtomValue, useSetAtom } from "jotai"
 import { ArrowLeftIcon, MenuIcon } from "lucide-react"
 import {
+  chatReturnScreenAtom,
   contactSessionIdAtomFamily,
   conversationIdAtom,
   organizationIdAtom,
@@ -53,6 +54,7 @@ const formSchema = z.object({
 export const WidgetChatScreen = () => {
   const setScreen = useSetAtom(screenAtom)
   const setConversationId = useSetAtom(conversationIdAtom)
+  const chatReturnScreen = useAtomValue(chatReturnScreenAtom)
   const conversationId = useAtomValue(conversationIdAtom)
   const widgetSettings = useAtomValue(widgetSettingsAtom)
   const theme = mergeWidgetTheme(widgetSettings?.theme)
@@ -63,7 +65,7 @@ export const WidgetChatScreen = () => {
 
   const onBack = () => {
     setConversationId(null)
-    setScreen("selection")
+    setScreen(chatReturnScreen)
   }
 
   const suggestions = useMemo(() => {

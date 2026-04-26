@@ -3,6 +3,7 @@
 import { useAtomValue, useSetAtom } from "jotai"
 import { ArrowLeftIcon } from "lucide-react"
 import {
+  chatReturnScreenAtom,
   screenAtom,
   contactSessionIdAtomFamily,
   organizationIdAtom,
@@ -27,6 +28,7 @@ export const WidgetInboxScreen = () => {
     contactSessionIdAtomFamily(organizationId || "")
   )
   const setConversationId = useSetAtom(conversationIdAtom)
+  const setChatReturnScreen = useSetAtom(chatReturnScreenAtom)
 
   const conversations = usePaginatedQuery(
     api.public.conversations.getMany,
@@ -95,6 +97,7 @@ export const WidgetInboxScreen = () => {
                     className="h-20 w-full justify-between"
                     key={conversation._id}
                     onClick={() => {
+                      setChatReturnScreen("inbox")
                       setScreen("chat")
                       setConversationId(conversation._id)
                     }}
