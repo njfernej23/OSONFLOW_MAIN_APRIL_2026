@@ -31,6 +31,7 @@ import {
 } from "@workspace/ui/components/sidebar"
 
 import { cn } from "@workspace/ui/lib/utils"
+import { DashboardThemeToggle } from "./dashboard-theme-toggle"
 
 const customerSupportItems = [
   {
@@ -211,6 +212,9 @@ export const DashboardSidebar = () => {
 
       <SidebarFooter>
         <SidebarMenu>
+          <SidebarMenuItem>
+            <DashboardThemeToggle sidebar />
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <UserButton
               showName
