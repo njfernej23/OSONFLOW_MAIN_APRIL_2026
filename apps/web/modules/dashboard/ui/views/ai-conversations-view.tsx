@@ -16,7 +16,7 @@ export const AIConversationsView = () => {
             Select a transcript
           </p>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Choose a conversation from the left to review the full AI transcript.
+            Choose a voicechat from the left to review the full AI transcript.
           </p>
         </div>
 

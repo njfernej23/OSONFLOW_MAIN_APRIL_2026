@@ -219,35 +219,32 @@ export const AIConversationsPanel = () => {
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-background">
-      <div className="shrink-0 border-b bg-background px-4 pt-5 pb-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-[16px] font-semibold text-foreground">
-              AI Conversations
+      <div className="shrink-0 border-b bg-background px-3 pt-4 pb-3 sm:px-4 sm:pt-5 sm:pb-4">
+        <div className="flex items-center justify-between gap-2 sm:gap-3">
+          <div className="min-w-0">
+            <h2 className="truncate text-[15px] font-semibold text-foreground sm:text-[16px]">
+              AI Voicechats
             </h2>
-            <p className="mt-1 text-[12px] text-muted-foreground">
-              {summary.total} transcripts
-              {summary.total > 0 ? ` · ${summary.live} live` : ""}
+            <p className="mt-0.5 truncate text-[11px] text-muted-foreground sm:text-[12px]">
+              {summary.total} total · {summary.live} live
             </p>
           </div>
 
-          {conversations.results.length > 0 ? (
+          {conversations.results.length > 0 && (normalizedSearchQuery || hasActiveFilters) ? (
             <Badge
-              className="h-7 rounded-full border px-2.5 text-[11px] font-medium"
+              className="h-6 shrink-0 rounded-full border px-2.5 text-[11px] font-medium"
               variant="outline"
             >
-              {normalizedSearchQuery || hasActiveFilters
-                ? `${filteredConversations.length} of ${conversations.results.length}`
-                : `${conversations.results.length}`}
+              {filteredConversations.length}
             </Badge>
           ) : null}
         </div>
 
-        <div className="relative mt-4">
+        <div className="relative mt-3 sm:mt-4">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            aria-label="Search AI conversations"
-            className="h-10 rounded-xl border bg-muted/35 pr-14 pl-9 text-sm shadow-none transition-all focus-visible:border-border focus-visible:bg-background focus-visible:ring-0"
+            aria-label="Search AI voicechats"
+            className="h-9 rounded-xl border bg-muted/35 pr-14 pl-9 text-[13px] shadow-none transition-all focus-visible:border-border focus-visible:bg-background focus-visible:ring-0 sm:h-10 sm:text-sm"
             onChange={(event) => setSearchQuery(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Escape" && searchQuery) {
@@ -263,7 +260,7 @@ export const AIConversationsPanel = () => {
                 )
               }
             }}
-            placeholder="Search transcripts, visitors, or providers"
+            placeholder="Search transcripts or visitors"
             ref={searchInputRef}
             value={searchQuery}
           />
@@ -285,48 +282,52 @@ export const AIConversationsPanel = () => {
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-2">
-          {PROVIDER_FILTER_OPTIONS.map((option) => {
-            const isActive = providerFilter === option.value
+        <div className="mt-2.5 flex flex-col gap-2 sm:mt-3 sm:flex-row sm:items-center sm:gap-2">
+          <div className="flex flex-1 flex-wrap gap-1.5">
+            {PROVIDER_FILTER_OPTIONS.map((option) => {
+              const isActive = providerFilter === option.value
 
-            return (
-              <button
-                key={option.value}
-                onClick={() => setProviderFilter(option.value)}
-                type="button"
-                className={cn(
-                  "rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors",
-                  isActive
-                    ? "bg-foreground text-background"
-                    : "bg-muted/45 text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                {option.label}
-              </button>
-            )
-          })}
-        </div>
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => setProviderFilter(option.value)}
+                  type="button"
+                  className={cn(
+                    "rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors",
+                    isActive
+                      ? "bg-foreground text-background"
+                      : "bg-muted/45 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
 
-        <div className="mt-2 flex flex-wrap gap-2">
-          {SESSION_FILTER_OPTIONS.map((option) => {
-            const isActive = sessionFilter === option.value
+          <div className="hidden h-4 w-px bg-border sm:block" />
 
-            return (
-              <button
-                key={option.value}
-                onClick={() => setSessionFilter(option.value)}
-                type="button"
-                className={cn(
-                  "rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors",
-                  isActive
-                    ? "bg-foreground text-background"
-                    : "bg-muted/45 text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                {option.label}
-              </button>
-            )
-          })}
+          <div className="flex flex-wrap gap-1.5">
+            {SESSION_FILTER_OPTIONS.map((option) => {
+              const isActive = sessionFilter === option.value
+
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => setSessionFilter(option.value)}
+                  type="button"
+                  className={cn(
+                    "rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors",
+                    isActive
+                      ? "bg-foreground text-background"
+                      : "bg-muted/45 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
       </div>
 
@@ -334,7 +335,7 @@ export const AIConversationsPanel = () => {
         <SkeletonAIConversations />
       ) : (
         <ScrollArea className="min-h-0 flex-1">
-          <div className="p-3">
+          <div className="p-2 sm:p-3">
             {!conversations.results.length && !normalizedSearchQuery ? (
               <div className="mx-auto mt-10 flex max-w-[220px] flex-col items-center gap-3 text-center">
                 <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/45">
@@ -342,7 +343,7 @@ export const AIConversationsPanel = () => {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    No AI conversations yet
+                    No AI voicechats yet
                   </p>
                   <p className="mt-1 text-[12px] text-muted-foreground">
                     OpenAI realtime and Gemini live transcripts will appear
@@ -382,11 +383,11 @@ export const AIConversationsPanel = () => {
               <div className="space-y-5">
                 {groupedConversations.map((group) => (
                   <div key={group.label}>
-                    <p className="px-2 text-[11px] font-medium text-muted-foreground">
+                    <p className="px-1.5 text-[10px] font-medium text-muted-foreground sm:px-2 sm:text-[11px]">
                       {group.label}
                     </p>
 
-                    <div className="mt-2 space-y-1.5">
+                    <div className="mt-1.5 space-y-1 sm:mt-2 sm:space-y-1.5">
                       {group.items.map((conversation) => {
                         const isActive =
                           pathname === `/ai-conversations/${conversation._id}`
@@ -412,35 +413,35 @@ export const AIConversationsPanel = () => {
                           <Link
                             key={conversation._id}
                             className={cn(
-                              "block rounded-2xl px-3 py-3 transition-colors",
+                              "block rounded-2xl px-2.5 py-2.5 transition-colors sm:px-3 sm:py-3",
                               isActive
                                 ? "bg-muted ring-1 ring-border"
                                 : "hover:bg-muted/50"
                             )}
                             href={`/ai-conversations/${conversation._id}`}
                           >
-                            <div className="flex items-start gap-3">
+                            <div className="flex items-start gap-2.5 sm:gap-3">
                               <DicebearAvatar
                                 seed={
                                   conversation.contactSession?._id ??
                                   conversation._id
                                 }
-                                size={40}
+                                size={36}
                                 badgeImageUrl={countryFlagUrl}
-                                className="shrink-0"
+                                className="shrink-0 sm:size-10"
                               />
 
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-start justify-between gap-2">
-                                  <div className="min-w-0">
-                                    <p className="truncate text-[14px] font-medium text-foreground">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-[13px] font-medium text-foreground sm:text-[14px]">
                                       {highlightMatch(
                                         conversation.contactSession?.name ??
                                           "Unknown visitor",
                                         normalizedSearchQuery
                                       )}
                                     </p>
-                                    <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
+                                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground sm:text-[12px]">
                                       {highlightMatch(
                                         conversation.contactSession?.email,
                                         normalizedSearchQuery
@@ -448,48 +449,50 @@ export const AIConversationsPanel = () => {
                                     </p>
                                   </div>
 
-                                  <span className="shrink-0 text-[11px] text-muted-foreground">
+                                  <span className="shrink-0 text-[10px] text-muted-foreground sm:text-[11px]">
                                     {formatConversationTime(
                                       conversation.lastActivityAt
                                     )}
                                   </span>
                                 </div>
 
-                                <p className="mt-2 line-clamp-2 text-[13px] text-foreground/80">
+                                <p className="mt-1.5 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground sm:mt-2 sm:text-[12px]">
                                   {highlightMatch(
                                     conversation.lastMessagePreview,
                                     normalizedSearchQuery
                                   )}
                                 </p>
 
-                                <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
-                                  <span
+                                <div className="mt-2 flex flex-wrap items-center gap-1.5 sm:mt-2.5">
+                                  <Badge
                                     className={cn(
-                                      "inline-flex items-center rounded-full border px-2 py-0.5 font-medium",
+                                      "h-5 rounded-md border px-1.5 text-[10px] font-medium",
                                       providerBadgeClassName
                                     )}
+                                    variant="outline"
                                   >
                                     {providerLabel}
-                                  </span>
-                                  <span className="inline-flex items-center gap-1">
+                                  </Badge>
+                                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground sm:text-[11px]">
                                     <CircleIcon
                                       className={cn(
-                                        "size-2 fill-current",
+                                        "size-1.5 fill-current",
                                         conversation.endedAt
                                           ? "text-muted-foreground/50"
                                           : "text-emerald-500"
                                       )}
                                     />
-                                    {conversation.endedAt ? "Ended" : "Live"}
-                                  </span>
-                                  <span
+                                    <span>{conversation.endedAt ? "Ended" : "Live"}</span>
+                                  </div>
+                                  <Badge
                                     className={cn(
-                                      "inline-flex items-center rounded-full border px-2 py-0.5 font-medium",
+                                      "h-5 rounded-md border px-1.5 text-[10px] font-medium",
                                       statusBadgeClassName
                                     )}
+                                    variant="outline"
                                   >
                                     {statusLabel}
-                                  </span>
+                                  </Badge>
                                 </div>
                               </div>
                             </div>
@@ -517,23 +520,23 @@ export const AIConversationsPanel = () => {
 
 const SkeletonAIConversations = () => {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-auto p-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto p-2 sm:gap-1.5 sm:p-3">
       {Array.from({ length: 8 }).map((_, index) => (
         <div
-          className="flex items-start gap-3 rounded-2xl px-3 py-3"
+          className="flex items-start gap-2.5 rounded-2xl px-2.5 py-2.5 sm:gap-3 sm:px-3 sm:py-3"
           key={index}
         >
-          <Skeleton className="size-10 shrink-0 rounded-full" />
-          <div className="min-w-0 flex-1 space-y-2">
+          <Skeleton className="size-9 shrink-0 rounded-full sm:size-10" />
+          <div className="min-w-0 flex-1 space-y-1.5 sm:space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-3 w-12 shrink-0" />
+              <Skeleton className="h-3.5 w-24 sm:h-4 sm:w-28" />
+              <Skeleton className="h-3 w-10 shrink-0 sm:w-12" />
             </div>
-            <Skeleton className="h-3 w-40" />
-            <Skeleton className="h-3 w-4/5" />
-            <div className="flex gap-2">
-              <Skeleton className="h-5 w-20 rounded-full" />
-              <Skeleton className="h-5 w-14 rounded-full" />
+            <Skeleton className="h-3 w-32 sm:w-40" />
+            <Skeleton className="h-3 w-full sm:w-4/5" />
+            <div className="flex gap-1.5 sm:gap-2">
+              <Skeleton className="h-5 w-16 rounded-md sm:w-20" />
+              <Skeleton className="h-5 w-12 rounded-md sm:w-14" />
             </div>
           </div>
         </div>
