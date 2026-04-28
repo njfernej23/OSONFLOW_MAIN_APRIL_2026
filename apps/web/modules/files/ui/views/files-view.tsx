@@ -112,7 +112,7 @@ function getStatusLabel(status: PublicFile["status"]) {
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="surface-frosted mx-auto flex max-w-md flex-col items-center justify-center gap-4 rounded-[30px] px-8 py-16 text-center">
+    <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-4 px-8 py-16 text-center">
       <div className="flex size-16 items-center justify-center rounded-2xl bg-muted">
         <BookOpenIcon className="size-8 text-muted-foreground" />
       </div>
@@ -567,104 +567,106 @@ export const FilesView = () => {
         </div>
 
         {/* toolbar */}
-        <div className="px-4 py-3 sm:px-6 lg:px-8">
-          <div className="surface-frosted mx-auto flex max-w-screen-lg flex-wrap items-center gap-3 rounded-[26px] px-4 py-3">
-            {/* search */}
-            <div className="relative flex-1">
-              <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="pr-9 pl-9"
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name, type or category…"
-                value={searchQuery}
-              />
-              {searchQuery && (
-                <button
-                  className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  onClick={() => setSearchQuery("")}
-                  type="button"
-                >
-                  <XIcon className="size-4" />
-                </button>
-              )}
-            </div>
-
-            {/* category filter chips */}
-            {categories.length > 0 && (
-              <div className="hidden items-center gap-1.5 sm:flex">
-                <button
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                    !activeCategory
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground"
-                  )}
-                  onClick={() => setActiveCategory(null)}
-                  type="button"
-                >
-                  All
-                </button>
-                {categories.map((cat) => (
+        {(isLoadingFirstPage || allFiles.length > 0) && (
+          <div className="px-4 py-3 sm:px-6 lg:px-8">
+            <div className="surface-frosted mx-auto flex max-w-screen-lg flex-wrap items-center gap-3 rounded-[26px] px-4 py-3">
+              {/* search */}
+              <div className="relative flex-1">
+                <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="pr-9 pl-9"
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by name, type or category…"
+                  value={searchQuery}
+                />
+                {searchQuery && (
                   <button
-                    key={cat}
+                    className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onClick={() => setSearchQuery("")}
+                    type="button"
+                  >
+                    <XIcon className="size-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* category filter chips */}
+              {categories.length > 0 && (
+                <div className="hidden items-center gap-1.5 sm:flex">
+                  <button
                     className={cn(
                       "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                      activeCategory === cat
+                      !activeCategory
                         ? "border-primary bg-primary text-primary-foreground"
                         : "border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground"
                     )}
-                    onClick={() =>
-                      setActiveCategory(activeCategory === cat ? null : cat)
-                    }
+                    onClick={() => setActiveCategory(null)}
                     type="button"
                   >
-                    {cat}
+                    All
                   </button>
-                ))}
-              </div>
-            )}
+                  {categories.map((cat) => (
+                    <button
+                      key={cat}
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                        activeCategory === cat
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                      )}
+                      onClick={() =>
+                        setActiveCategory(activeCategory === cat ? null : cat)
+                      }
+                      type="button"
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-            {/* view mode toggle */}
-            <div className="flex items-center rounded-lg border bg-background p-0.5">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      className={cn(
-                        "flex size-7 items-center justify-center rounded-md transition-colors",
-                        viewMode === "list"
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                      onClick={() => setViewMode("list")}
-                      type="button"
-                    >
-                      <LayoutListIcon className="size-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>List view</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      className={cn(
-                        "flex size-7 items-center justify-center rounded-md transition-colors",
-                        viewMode === "grid"
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                      onClick={() => setViewMode("grid")}
-                      type="button"
-                    >
-                      <GridIcon className="size-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>Grid view</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              {/* view mode toggle */}
+              <div className="flex items-center rounded-lg border bg-background p-0.5">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        className={cn(
+                          "flex size-7 items-center justify-center rounded-md transition-colors",
+                          viewMode === "list"
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                        onClick={() => setViewMode("list")}
+                        type="button"
+                      >
+                        <LayoutListIcon className="size-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>List view</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        className={cn(
+                          "flex size-7 items-center justify-center rounded-md transition-colors",
+                          viewMode === "grid"
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                        onClick={() => setViewMode("grid")}
+                        type="button"
+                      >
+                        <GridIcon className="size-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Grid view</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* content */}
         <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
