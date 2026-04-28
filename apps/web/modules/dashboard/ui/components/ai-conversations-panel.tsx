@@ -49,7 +49,7 @@ const SESSION_FILTER_OPTIONS: Array<{
 const highlightMatch = (value: string | undefined, query: string) => {
   if (!value) {
     return (
-      <span className="text-muted-foreground/60 italic">No transcript yet</span>
+      <span className="text-sidebar-foreground/55 italic">No transcript yet</span>
     )
   }
 
@@ -218,21 +218,21 @@ export const AIConversationsPanel = () => {
   }, [])
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col bg-background">
-      <div className="shrink-0 border-b bg-background px-3 pt-4 pb-3 sm:px-4 sm:pt-5 sm:pb-4">
+    <div className="flex h-full min-h-0 w-full flex-col bg-sidebar text-sidebar-foreground">
+      <div className="shrink-0 border-b border-sidebar-border bg-sidebar px-3 pt-4 pb-3 sm:px-4 sm:pt-5 sm:pb-4">
         <div className="flex items-center justify-between gap-2 sm:gap-3">
           <div className="min-w-0">
-            <h2 className="truncate text-[15px] font-semibold text-foreground sm:text-[16px]">
+            <h2 className="truncate text-[15px] font-semibold text-sidebar-foreground sm:text-[16px]">
               AI Voicechats
             </h2>
-            <p className="mt-0.5 truncate text-[11px] text-muted-foreground sm:text-[12px]">
+            <p className="mt-0.5 truncate text-[11px] text-sidebar-foreground/60 sm:text-[12px]">
               {summary.total} total · {summary.live} live
             </p>
           </div>
 
           {conversations.results.length > 0 && (normalizedSearchQuery || hasActiveFilters) ? (
             <Badge
-              className="h-6 shrink-0 rounded-full border px-2.5 text-[11px] font-medium"
+              className="h-6 shrink-0 rounded-full border-sidebar-border bg-sidebar-accent px-2.5 text-[11px] font-medium text-sidebar-foreground/72"
               variant="outline"
             >
               {filteredConversations.length}
@@ -241,10 +241,10 @@ export const AIConversationsPanel = () => {
         </div>
 
         <div className="relative mt-3 sm:mt-4">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-sidebar-foreground/55" />
           <Input
             aria-label="Search AI voicechats"
-            className="h-9 rounded-xl border bg-muted/35 pr-14 pl-9 text-[13px] shadow-none transition-all focus-visible:border-border focus-visible:bg-background focus-visible:ring-0 sm:h-10 sm:text-sm"
+            className="h-9 rounded-xl border border-sidebar-border/60 bg-sidebar-accent/75 pr-14 pl-9 text-[13px] text-sidebar-foreground placeholder:text-sidebar-foreground/45 shadow-none transition-all focus-visible:border-sidebar-ring focus-visible:bg-sidebar focus-visible:ring-0 sm:h-10 sm:text-sm"
             onChange={(event) => setSearchQuery(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Escape" && searchQuery) {
@@ -267,17 +267,19 @@ export const AIConversationsPanel = () => {
           <div className="absolute inset-y-0 right-2 flex items-center">
             {searchQuery ? (
               <Button
-                className="size-7"
                 onClick={() => setSearchQuery("")}
                 size="icon"
                 type="button"
                 variant="ghost"
+                className="size-7 text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               >
                 <XIcon className="size-3.5" />
                 <span className="sr-only">Clear search</span>
               </Button>
             ) : (
-              <Kbd className="hidden text-[10px] md:inline-flex">⌘K</Kbd>
+              <Kbd className="hidden bg-sidebar-accent text-[10px] text-sidebar-foreground/70 md:inline-flex">
+                ⌘K
+              </Kbd>
             )}
           </div>
         </div>
@@ -295,8 +297,8 @@ export const AIConversationsPanel = () => {
                   className={cn(
                     "rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors",
                     isActive
-                      ? "bg-foreground text-background"
-                      : "bg-muted/45 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "bg-sidebar-accent/80 text-sidebar-foreground/72 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   )}
                 >
                   {option.label}
@@ -305,7 +307,7 @@ export const AIConversationsPanel = () => {
             })}
           </div>
 
-          <div className="hidden h-4 w-px bg-border sm:block" />
+          <div className="hidden h-4 w-px bg-sidebar-border sm:block" />
 
           <div className="flex flex-wrap gap-1.5">
             {SESSION_FILTER_OPTIONS.map((option) => {
@@ -319,8 +321,8 @@ export const AIConversationsPanel = () => {
                   className={cn(
                     "rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors",
                     isActive
-                      ? "bg-foreground text-background"
-                      : "bg-muted/45 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "bg-sidebar-accent/80 text-sidebar-foreground/72 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   )}
                 >
                   {option.label}
@@ -338,14 +340,14 @@ export const AIConversationsPanel = () => {
           <div className="p-2 sm:p-3">
             {!conversations.results.length && !normalizedSearchQuery ? (
               <div className="mx-auto mt-10 flex max-w-[220px] flex-col items-center gap-3 text-center">
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/45">
-                  <BotIcon className="size-5 text-muted-foreground" />
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-sidebar-accent/70">
+                  <BotIcon className="size-5 text-sidebar-foreground/55" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground">
+                  <p className="text-sm font-medium text-sidebar-foreground">
                     No AI voicechats yet
                   </p>
-                  <p className="mt-1 text-[12px] text-muted-foreground">
+                  <p className="mt-1 text-[12px] text-sidebar-foreground/60">
                     OpenAI realtime and Gemini live transcripts will appear
                     here.
                   </p>
@@ -354,14 +356,14 @@ export const AIConversationsPanel = () => {
             ) : !hasSearchResults &&
               (normalizedSearchQuery || hasActiveFilters) ? (
               <div className="mx-auto mt-10 flex max-w-[220px] flex-col items-center gap-3 text-center">
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/45">
-                  <BotIcon className="size-5 text-muted-foreground" />
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-sidebar-accent/70">
+                  <BotIcon className="size-5 text-sidebar-foreground/55" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground">
+                  <p className="text-sm font-medium text-sidebar-foreground">
                     No results found
                   </p>
-                  <p className="mt-1 text-[12px] text-muted-foreground">
+                  <p className="mt-1 text-[12px] text-sidebar-foreground/60">
                     Try a wider search or reset the filters.
                   </p>
                 </div>
@@ -383,7 +385,7 @@ export const AIConversationsPanel = () => {
               <div className="space-y-5">
                 {groupedConversations.map((group) => (
                   <div key={group.label}>
-                    <p className="px-1.5 text-[10px] font-medium text-muted-foreground sm:px-2 sm:text-[11px]">
+                    <p className="px-1.5 text-[10px] font-medium text-sidebar-foreground/55 sm:px-2 sm:text-[11px]">
                       {group.label}
                     </p>
 
@@ -413,10 +415,10 @@ export const AIConversationsPanel = () => {
                           <Link
                             key={conversation._id}
                             className={cn(
-                              "block rounded-2xl px-2.5 py-2.5 transition-colors sm:px-3 sm:py-3",
+                              "block rounded-2xl border border-transparent px-2.5 py-2.5 transition-colors sm:px-3 sm:py-3",
                               isActive
-                                ? "bg-muted ring-1 ring-border"
-                                : "hover:bg-muted/50"
+                                ? "border-sidebar-border bg-sidebar-accent/90"
+                                : "hover:border-sidebar-border/70 hover:bg-sidebar-accent/55"
                             )}
                             href={`/ai-conversations/${conversation._id}`}
                           >
@@ -434,14 +436,14 @@ export const AIConversationsPanel = () => {
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-start justify-between gap-2">
                                   <div className="min-w-0 flex-1">
-                                    <p className="truncate text-[13px] font-medium text-foreground sm:text-[14px]">
+                                    <p className="truncate text-[13px] font-medium text-sidebar-foreground sm:text-[14px]">
                                       {highlightMatch(
                                         conversation.contactSession?.name ??
                                           "Unknown visitor",
                                         normalizedSearchQuery
                                       )}
                                     </p>
-                                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground sm:text-[12px]">
+                                    <p className="mt-0.5 truncate text-[11px] text-sidebar-foreground/58 sm:text-[12px]">
                                       {highlightMatch(
                                         conversation.contactSession?.email,
                                         normalizedSearchQuery
@@ -449,14 +451,14 @@ export const AIConversationsPanel = () => {
                                     </p>
                                   </div>
 
-                                  <span className="shrink-0 text-[10px] text-muted-foreground sm:text-[11px]">
+                                  <span className="shrink-0 text-[10px] text-sidebar-foreground/55 sm:text-[11px]">
                                     {formatConversationTime(
                                       conversation.lastActivityAt
                                     )}
                                   </span>
                                 </div>
 
-                                <p className="mt-1.5 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground sm:mt-2 sm:text-[12px]">
+                                <p className="mt-1.5 line-clamp-2 text-[11px] leading-relaxed text-sidebar-foreground/62 sm:mt-2 sm:text-[12px]">
                                   {highlightMatch(
                                     conversation.lastMessagePreview,
                                     normalizedSearchQuery
@@ -473,12 +475,12 @@ export const AIConversationsPanel = () => {
                                   >
                                     {providerLabel}
                                   </Badge>
-                                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground sm:text-[11px]">
+                                  <div className="flex items-center gap-1 text-[10px] text-sidebar-foreground/58 sm:text-[11px]">
                                     <CircleIcon
                                       className={cn(
                                         "size-1.5 fill-current",
                                         conversation.endedAt
-                                          ? "text-muted-foreground/50"
+                                          ? "text-sidebar-foreground/35"
                                           : "text-emerald-500"
                                       )}
                                     />

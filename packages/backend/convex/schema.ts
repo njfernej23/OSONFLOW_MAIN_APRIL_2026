@@ -78,6 +78,7 @@ const webhookEventTypeValidator = v.union(
 const webhookProviderValidator = v.union(
   v.literal("webhook"),
   v.literal("discord"),
+  // Keep reading legacy Slack rows until the stored data is migrated.
   v.literal("slack"),
   v.literal("telegram"),
   v.literal("whatsapp")

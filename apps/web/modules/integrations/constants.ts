@@ -88,12 +88,6 @@ export const WEBHOOK_PROVIDERS = [
         defaultUrl: "https://discord.com/api/webhooks/...",
     },
     {
-        id: "slack",
-        label: "Slack",
-        description: "Send structured event notifications to a Slack channel.",
-        defaultUrl: "https://hooks.slack.com/services/...",
-    },
-    {
         id: "telegram",
         label: "Telegram",
         description: "Push event updates with your Telegram bot into a chat.",

@@ -17,7 +17,7 @@ type WebhookEventType =
     | "message.received"
     | "message.sent";
 
-type WebhookProvider = "webhook" | "discord" | "slack" | "telegram" | "whatsapp";
+type WebhookProvider = "webhook" | "discord" | "telegram" | "whatsapp";
 
 type WebhookProviderConfig = {
     telegramBotToken?: string;
@@ -98,10 +98,6 @@ const inferProviderFromUrl = (url?: string): WebhookProvider => {
         return "discord";
     }
 
-    if (lower.includes("hooks.slack.com/services")) {
-        return "slack";
-    }
-
     if (lower.includes("api.telegram.org")) {
         return "telegram";
     }
@@ -114,9 +110,13 @@ const inferProviderFromUrl = (url?: string): WebhookProvider => {
 };
 
 const getProvider = (provider?: string, url?: string): WebhookProvider => {
+    // Legacy Slack destinations now fall back to the generic webhook payload.
+    if (provider === "slack") {
+        return "webhook";
+    }
+
     if (
         provider === "discord" ||
-        provider === "slack" ||
         provider === "telegram" ||
         provider === "webhook" ||
         provider === "whatsapp"
@@ -220,46 +220,6 @@ const createProviderRequest = ({
                                 value: `\`\`\`json\n${payloadPreview}\n\`\`\``,
                             },
                         ],
-                    },
-                ],
-            }),
-        };
-    }
-
-    if (provider === "slack") {
-        const payloadPreview = truncateText(safeJsonStringify(payload.payload), 1400);
-
-        return {
-            url: webhook.url,
-            targetUrlForLog: webhook.url,
-            headers: baseHeaders,
-            body: JSON.stringify({
-                text: `Osonflow event: ${formatEventTypeLabel(payload.type)}`,
-                blocks: [
-                    {
-                        type: "header",
-                        text: {
-                            type: "plain_text",
-                            text: `Osonflow: ${formatEventTypeLabel(payload.type)}`,
-                        },
-                    },
-                    {
-                        type: "section",
-                        text: {
-                            type: "mrkdwn",
-                            text: [
-                                `*Organization:* ${payload.organizationId}`,
-                                `*Event ID:* ${payload.id}`,
-                                `*Attempt:* ${payload.attempt}`,
-                            ].join("\n"),
-                        },
-                    },
-                    {
-                        type: "section",
-                        text: {
-                            type: "mrkdwn",
-                            text: `*Payload*\n\`\`\`${payloadPreview}\`\`\``,
-                        },
                     },
                 ],
             }),

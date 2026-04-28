@@ -242,6 +242,9 @@ importers:
       '@convex-dev/workpool':
         specifier: 0.2.18
         version: 0.2.18(convex-helpers@0.1.100(@standard-schema/spec@1.1.0)(convex@1.25.4(react@19.2.5))(hono@4.12.14)(react@19.2.5)(typescript@6.0.3)(zod@3.25.76))(convex@1.25.4(react@19.2.5))
+      '@google/genai':
+        specifier: ^1.50.1
+        version: 1.50.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))
       '@vapi-ai/server-sdk':
         specifier: ^0.11.0
         version: 0.11.0

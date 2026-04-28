@@ -12,7 +12,6 @@ const webhookEventTypeValidator = v.union(
 const webhookProviderValidator = v.union(
     v.literal("webhook"),
     v.literal("discord"),
-    v.literal("slack"),
     v.literal("telegram"),
     v.literal("whatsapp")
 );
@@ -25,7 +24,7 @@ const webhookProviderConfigValidator = v.object({
     whatsappRecipientPhone: v.optional(v.string()),
 });
 
-type WebhookProvider = "webhook" | "discord" | "slack" | "telegram" | "whatsapp";
+type WebhookProvider = "webhook" | "discord" | "telegram" | "whatsapp";
 
 type WebhookProviderConfig = {
     telegramBotToken?: string;
@@ -48,10 +47,6 @@ const inferProviderFromUrl = (url?: string): WebhookProvider => {
         return "discord";
     }
 
-    if (lower.includes("hooks.slack.com/services")) {
-        return "slack";
-    }
-
     if (lower.includes("api.telegram.org")) {
         return "telegram";
     }
@@ -64,9 +59,13 @@ const inferProviderFromUrl = (url?: string): WebhookProvider => {
 };
 
 const getEffectiveProvider = (provider?: string, url?: string): WebhookProvider => {
+    // Legacy Slack destinations now behave like plain webhooks.
+    if (provider === "slack") {
+        return "webhook";
+    }
+
     if (
         provider === "discord" ||
-        provider === "slack" ||
         provider === "telegram" ||
         provider === "whatsapp" ||
         provider === "webhook"

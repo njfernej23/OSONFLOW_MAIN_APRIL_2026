@@ -26,6 +26,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@workspace/ui/components/select";
+import { ScrollArea } from "@workspace/ui/components/scroll-area";
 import { Switch } from "@workspace/ui/components/switch";
 import {
     ActivityIcon,
@@ -111,10 +112,10 @@ const webhookProviderById = WEBHOOK_PROVIDERS.reduce(
 const formatEventTypeLabel = (e: WebhookEventType) => webhookEventTypeById[e]?.label ?? e;
 const formatWebhookProviderLabel = (p: WebhookProvider) => webhookProviderById[p]?.label ?? p;
 const formatTimeAgo = (ts: number) => formatDistanceToNow(ts, { addSuffix: true });
+const DELIVERY_HISTORY_VISIBLE_COUNT = 10;
 
 const PROVIDER_IMAGE_SRC: Partial<Record<WebhookProvider, string>> = {
     discord: "/discord.png",
-    slack: "/slack.png",
     telegram: "/telegram.png",
     whatsapp: "/whatsapp.png",
 };
@@ -272,7 +273,8 @@ export const IntegrationsView = () => {
 
     const handleCreateWebhook = async () => {
         const normalizedUrl = webhookUrl.trim();
-        const isUrlRequired = selectedWebhookProvider === "webhook" || selectedWebhookProvider === "discord" || selectedWebhookProvider === "slack";
+        const isUrlRequired =
+            selectedWebhookProvider === "webhook" || selectedWebhookProvider === "discord";
         if (isUrlRequired && !normalizedUrl) { toast.error("Destination URL is required"); return; }
         if (selectedWebhookProvider === "telegram" && (!telegramBotToken.trim() || !telegramChatId.trim())) {
             toast.error("Telegram requires bot token and chat ID"); return;
@@ -373,6 +375,7 @@ export const IntegrationsView = () => {
 
     const webhookDestinations = webhookDashboard?.webhooks ?? [];
     const deliveryLogs = webhookDashboard?.deliveries ?? [];
+    const hasOverflowingDeliveryHistory = deliveryLogs.length > DELIVERY_HISTORY_VISIBLE_COUNT;
     const successCount = deliveryLogs.filter((d) => d.status === "success").length;
     const failedCount = deliveryLogs.filter((d) => d.status === "failed").length;
 
@@ -1033,42 +1036,44 @@ export const IntegrationsView = () => {
                             {deliveryLogs.length === 0 ? (
                                 <EmptyDeliveriesState />
                             ) : (
-                                <div className="divide-y">
-                                    {deliveryLogs.map((delivery) => (
-                                        <div
-                                            key={delivery._id}
-                                            className="flex items-start gap-3 px-5 py-3.5 hover:bg-muted/20 transition-colors"
-                                        >
+                                <ScrollArea className={cn(hasOverflowingDeliveryHistory && "h-[35rem]")}>
+                                    <div className="divide-y">
+                                        {deliveryLogs.map((delivery) => (
                                             <div
-                                                className={cn(
-                                                    "mt-1.5 size-2 shrink-0 rounded-full",
-                                                    delivery.status === "success" ? "bg-green-500" : "bg-red-500"
-                                                )}
-                                            />
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <span className="text-sm font-medium">{formatEventTypeLabel(delivery.eventType)}</span>
-                                                    <span className="text-xs text-muted-foreground shrink-0">{formatTimeAgo(delivery._creationTime)}</span>
-                                                </div>
-                                                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                                                    <span
-                                                        className={cn(
-                                                            "font-medium",
-                                                            delivery.status === "success" ? "text-green-600 dark:text-green-400" : "text-red-500"
-                                                        )}
-                                                    >
-                                                        {delivery.status}
-                                                    </span>
-                                                    <span className="font-mono truncate max-w-[240px] opacity-70">{delivery.webhookUrl}</span>
-                                                    {delivery.responseStatus && <span>· HTTP {delivery.responseStatus}</span>}
-                                                    {delivery.durationMs && <span>· {delivery.durationMs}ms</span>}
-                                                    {delivery.attempt > 1 && <span>· Attempt #{delivery.attempt}</span>}
-                                                    {delivery.error && <span className="text-red-500 truncate max-w-[200px]">· {delivery.error}</span>}
+                                                key={delivery._id}
+                                                className="flex items-start gap-3 px-5 py-3.5 hover:bg-muted/20 transition-colors"
+                                            >
+                                                <div
+                                                    className={cn(
+                                                        "mt-1.5 size-2 shrink-0 rounded-full",
+                                                        delivery.status === "success" ? "bg-green-500" : "bg-red-500"
+                                                    )}
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-sm font-medium">{formatEventTypeLabel(delivery.eventType)}</span>
+                                                        <span className="text-xs text-muted-foreground shrink-0">{formatTimeAgo(delivery._creationTime)}</span>
+                                                    </div>
+                                                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                                                        <span
+                                                            className={cn(
+                                                                "font-medium",
+                                                                delivery.status === "success" ? "text-green-600 dark:text-green-400" : "text-red-500"
+                                                            )}
+                                                        >
+                                                            {delivery.status}
+                                                        </span>
+                                                        <span className="font-mono truncate max-w-[240px] opacity-70">{delivery.webhookUrl}</span>
+                                                        {delivery.responseStatus && <span>· HTTP {delivery.responseStatus}</span>}
+                                                        {delivery.durationMs && <span>· {delivery.durationMs}ms</span>}
+                                                        {delivery.attempt > 1 && <span>· Attempt #{delivery.attempt}</span>}
+                                                        {delivery.error && <span className="text-red-500 truncate max-w-[200px]">· {delivery.error}</span>}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
                             )}
                         </div>
                     </div>

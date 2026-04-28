@@ -63,7 +63,7 @@ const STATUS_ACCENT: Record<string, string> = {
 const highlightMatch = (value: string | undefined, query: string) => {
   if (!value) {
     return (
-      <span className="text-muted-foreground/60 italic">No messages yet</span>
+      <span className="text-sidebar-foreground/55 italic">No messages yet</span>
     )
   }
 
@@ -195,15 +195,15 @@ export const ConversationsPanel = () => {
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col bg-background">
+    <div className="flex h-full min-h-0 w-full flex-col bg-sidebar text-sidebar-foreground">
       {/* Panel header */}
-      <div className="shrink-0 border-b bg-background/95 px-3 pt-3.5 pb-2.5 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="shrink-0 border-b border-sidebar-border bg-sidebar/95 px-3 pt-3.5 pb-2.5 backdrop-blur supports-[backdrop-filter]:bg-sidebar/90">
         <div className="mb-2.5 flex items-center justify-between">
-          <h2 className="text-[13px] font-semibold tracking-tight text-foreground">
+          <h2 className="text-[13px] font-semibold tracking-tight text-sidebar-foreground">
             Conversations
           </h2>
           {conversations.results.length > 0 && (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground tabular-nums">
+            <span className="rounded-full bg-sidebar-accent px-2 py-0.5 text-[11px] font-medium text-sidebar-foreground/70 tabular-nums">
               {normalizedSearchQuery
                 ? `${filteredConversations.length} / ${conversations.results.length}`
                 : conversations.results.length}
@@ -213,10 +213,10 @@ export const ConversationsPanel = () => {
 
         {/* Search bar */}
         <div className="relative mb-2.5">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-sidebar-foreground/55" />
           <Input
             aria-label="Search conversations"
-            className="h-8 border-transparent bg-muted/60 pr-14 pl-8 text-sm shadow-none transition-all focus-visible:border-border focus-visible:bg-background focus-visible:ring-0"
+            className="h-8 border border-sidebar-border/60 bg-sidebar-accent/80 pr-14 pl-8 text-sm text-sidebar-foreground placeholder:text-sidebar-foreground/45 shadow-none transition-all focus-visible:border-sidebar-ring focus-visible:bg-sidebar focus-visible:ring-0"
             onChange={(event) => setSearchQuery(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Escape" && searchQuery) {
@@ -237,17 +237,19 @@ export const ConversationsPanel = () => {
           <div className="absolute inset-y-0 right-1.5 flex items-center">
             {searchQuery ? (
               <Button
-                className="size-6"
                 onClick={() => setSearchQuery("")}
                 size="icon"
                 type="button"
                 variant="ghost"
+                className="size-6 text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               >
                 <XIcon className="size-3" />
                 <span className="sr-only">Clear search</span>
               </Button>
             ) : (
-              <Kbd className="hidden text-[10px] md:inline-flex">⌘K</Kbd>
+              <Kbd className="hidden bg-sidebar-accent text-[10px] text-sidebar-foreground/70 md:inline-flex">
+                ⌘K
+              </Kbd>
             )}
           </div>
         </div>
@@ -265,8 +267,8 @@ export const ConversationsPanel = () => {
                 className={cn(
                   "flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all duration-150",
                   isActive
-                    ? "bg-foreground text-background shadow-sm"
-                    : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+                    : "bg-sidebar-accent text-sidebar-foreground/72 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground"
                 )}
               >
                 <Icon className="size-3" />
@@ -285,14 +287,14 @@ export const ConversationsPanel = () => {
           <div className="flex w-full flex-col gap-0.5 p-2">
             {!hasSearchResults && normalizedSearchQuery ? (
               <div className="mx-auto mt-10 flex max-w-[200px] flex-col items-center gap-3 text-center">
-                <div className="flex size-11 items-center justify-center rounded-2xl border bg-muted/50">
-                  <InboxIcon className="size-5 text-muted-foreground" />
+                <div className="flex size-11 items-center justify-center rounded-2xl border border-sidebar-border bg-sidebar-accent/55">
+                  <InboxIcon className="size-5 text-sidebar-foreground/55" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-foreground">
+                  <p className="text-xs font-medium text-sidebar-foreground">
                     No results found
                   </p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  <p className="mt-0.5 text-[11px] text-sidebar-foreground/60">
                     Try searching by name, email, or message
                   </p>
                 </div>
@@ -331,6 +333,11 @@ export const ConversationsPanel = () => {
 
                 const statusAccent =
                   STATUS_ACCENT[conversation.status] ?? "bg-transparent"
+                const showOperatorUnreadBadge =
+                  conversation.status === "escalated" &&
+                  (conversation.unreadForOperatorCount ?? 0) > 0
+                const showVisitorUnreadBadge =
+                  (conversation.unreadForContactCount ?? 0) > 0
 
                 return (
                   <Link
@@ -338,8 +345,8 @@ export const ConversationsPanel = () => {
                     className={cn(
                       "group relative flex cursor-pointer items-start gap-2.5 rounded-xl border px-3 py-2.5 text-sm leading-tight transition-all duration-150 hover:shadow-sm",
                       isActive
-                        ? "border-border bg-accent text-accent-foreground shadow-sm"
-                        : "border-transparent hover:border-border hover:bg-accent/40 hover:text-accent-foreground"
+                        ? "border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+                        : "border-transparent hover:border-sidebar-border hover:bg-sidebar-accent/55 hover:text-sidebar-accent-foreground"
                     )}
                     href={`/conversations/${conversation._id}`}
                   >
@@ -370,43 +377,41 @@ export const ConversationsPanel = () => {
                             normalizedSearchQuery
                           )}
                         </span>
-                        <span className="ml-1 shrink-0 text-[11px] text-muted-foreground tabular-nums">
+                        <span className="ml-1 shrink-0 text-[11px] text-sidebar-foreground/55 tabular-nums">
                           {formatConversationTime(activityTimestamp)}
                         </span>
                       </div>
 
                       {/* Assignment badge */}
                       {(!!conversation.assignedToId ||
-                        (conversation.unreadForOperatorCount ?? 0) > 0 ||
-                        (conversation.unreadForContactCount ?? 0) > 0) && (
+                        showOperatorUnreadBadge ||
+                        showVisitorUnreadBadge) && (
                         <div className="mt-0.5">
-                          {(conversation.unreadForOperatorCount ?? 0) > 0 && (
+                          {showOperatorUnreadBadge && (
                             <Badge
-                              className="h-3.5 bg-amber-500 px-1 text-[10px] leading-none text-black hover:bg-amber-500"
+                              className="h-3.5 whitespace-nowrap bg-amber-500 px-1 text-[10px] leading-none text-black hover:bg-amber-500"
                               variant="default"
                             >
-                              New customer {conversation.unreadForOperatorCount}
+                              {conversation.unreadForOperatorCount} unread
                             </Badge>
                           )}
                           {!!conversation.assignedToId && (
                             <Badge
                               className={cn(
                                 "h-3.5 px-1 text-[10px] leading-none",
-                                (conversation.unreadForOperatorCount ?? 0) >
-                                  0 && "ml-1"
+                                showOperatorUnreadBadge && "ml-1"
                               )}
                               variant={isAssignedToMe ? "default" : "outline"}
                             >
                               {assigneeLabel}
                             </Badge>
                           )}
-                          {(conversation.unreadForContactCount ?? 0) > 0 && (
+                          {showVisitorUnreadBadge && (
                             <Badge
-                              className="ml-1 h-3.5 bg-rose-500 px-1 text-[10px] leading-none text-white hover:bg-rose-500"
+                              className="ml-1 h-3.5 whitespace-nowrap bg-rose-500 px-1 text-[10px] leading-none text-white hover:bg-rose-500"
                               variant="default"
                             >
-                              Visitor unread{" "}
-                              {conversation.unreadForContactCount}
+                              Unread {conversation.unreadForContactCount}
                             </Badge>
                           )}
                         </div>
@@ -416,14 +421,14 @@ export const ConversationsPanel = () => {
                       <div className="mt-1.5 flex items-center justify-between gap-2">
                         <div className="flex min-w-0 flex-1 items-center gap-1">
                           {isLastMessageFromOperator && (
-                            <CornerUpLeftIcon className="size-3 shrink-0 text-muted-foreground" />
+                            <CornerUpLeftIcon className="size-3 shrink-0 text-sidebar-foreground/55" />
                           )}
                           <span
                             className={cn(
                               "line-clamp-1 text-[12px]",
                               isLastMessageFromOperator
-                                ? "text-muted-foreground"
-                                : "font-medium text-foreground"
+                                ? "text-sidebar-foreground/60"
+                                : "font-medium text-sidebar-foreground"
                             )}
                           >
                             {highlightMatch(
