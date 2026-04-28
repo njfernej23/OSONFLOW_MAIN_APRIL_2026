@@ -32,7 +32,6 @@ import {
     ActivityIcon,
     CheckCircle2Icon,
     ChevronDownIcon,
-    ChevronRightIcon,
     CopyIcon,
     KeyRoundIcon,
     Loader2Icon,
@@ -400,12 +399,6 @@ export const IntegrationsView = () => {
             <div className="border-b bg-background">
                 <div className="mx-auto w-full max-w-screen-xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
                     <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                            <ZapIcon className="size-3.5" />
-                            <span>Configuration</span>
-                            <ChevronRightIcon className="size-3" />
-                            <span className="text-foreground font-medium">Integrations</span>
-                        </div>
                         <h1 className="text-xl font-bold tracking-tight sm:text-3xl">Setup & Integrations</h1>
                         <p className="hidden text-muted-foreground mt-1 sm:block">
                             Install the widget on your app and wire up real-time event automations.
@@ -583,21 +576,7 @@ export const IntegrationsView = () => {
                                     <span className="text-xs text-zinc-400 font-mono">
                                         {selectedIntegrationItem?.title ?? "snippet"}
                                     </span>
-                                    <button
-                                        className={cn(
-                                            "text-xs transition-colors flex items-center gap-1",
-                                            snippetCopied ? "text-green-400" : "text-zinc-400 hover:text-zinc-200"
-                                        )}
-                                        onClick={handleCopySnippet}
-                                        disabled={!snippet || !scriptUrlIsValid}
-                                        type="button"
-                                    >
-                                        {snippetCopied ? (
-                                            <><CheckCircle2Icon className="size-3" />copied</>
-                                        ) : (
-                                            <><CopyIcon className="size-3" />copy</>
-                                        )}
-                                    </button>
+                                    <div className="w-16" aria-hidden="true" />
                                 </div>
                                 {/* Highlighted code block */}
                                 <div className="min-h-[320px] min-w-0 w-full overflow-auto bg-zinc-950 p-4 sm:min-h-[380px] sm:p-5">

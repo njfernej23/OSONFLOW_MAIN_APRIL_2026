@@ -27,16 +27,16 @@ export const CustomizationView = () => {
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-x-hidden overflow-y-auto bg-transparent">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.14),transparent_34%)]" />
-      <div className="surface-frosted sticky top-0 z-10 mx-3 mt-3 rounded-[28px] sm:mx-4 md:mx-6">
-        <div className="mx-auto w-full max-w-screen-xl px-4 py-5 sm:px-6 sm:py-6 md:px-8">
-          <div className="flex flex-col gap-4">
+      <div className="sticky top-0 z-10 border-b border-border/60 bg-background/78 backdrop-blur-xl">
+        <div className="mx-auto w-full max-w-screen-xl px-4 py-4 sm:px-6 sm:py-5 md:px-8">
+          <div className="max-w-3xl">
             <div className="flex items-start gap-3">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,color-mix(in_srgb,var(--primary)_92%,white_8%),color-mix(in_srgb,var(--primary)_58%,#0f172a_42%))] text-white shadow-[0_20px_40px_-24px_color-mix(in_srgb,var(--primary)_68%,transparent)] sm:size-12">
-                <PaletteIcon className="size-5 sm:size-[1.35rem]" />
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,color-mix(in_srgb,var(--primary)_92%,white_8%),color-mix(in_srgb,var(--primary)_58%,#0f172a_42%))] text-white shadow-[0_20px_40px_-24px_color-mix(in_srgb,var(--primary)_68%,transparent)] sm:size-11">
+                <PaletteIcon className="size-5" />
               </div>
               <div className="space-y-1">
                 <p className="section-kicker">Visual System</p>
-                <h1 className="text-xl font-semibold tracking-tight sm:text-2xl md:text-[2rem]">
+                <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
                   Widget customization
                 </h1>
                 <p className="max-w-2xl text-sm text-muted-foreground sm:text-[0.95rem]">

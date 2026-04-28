@@ -30,6 +30,7 @@ import {
   AIConversation,
   AIConversationContent,
   AIConversationScrollButton,
+  useStickToBottomContext,
 } from "@workspace/ui/components/ai/conversation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import {
@@ -92,6 +93,24 @@ const renderSavedReplyWithContact = ({
   return body
     .replace(/{{\s*(name|customer_name)\s*}}/gi, contactName)
     .replace(/{{\s*(email|customer_email)\s*}}/gi, contactEmail)
+}
+
+const ScrollToLatestOnSignal = ({
+  signal,
+}: {
+  signal: number
+}) => {
+  const { scrollToBottom } = useStickToBottomContext()
+
+  useEffect(() => {
+    if (signal === 0) {
+      return
+    }
+
+    void scrollToBottom()
+  }, [scrollToBottom, signal])
+
+  return null
 }
 
 export const ConversationIdView = ({
@@ -174,6 +193,7 @@ export const ConversationIdView = ({
     useState<Id<"savedReplies"> | null>(null)
   const [activeSlashIndex, setActiveSlashIndex] = useState(0)
   const [isContactPanelOpen, setIsContactPanelOpen] = useState(false)
+  const [operatorScrollSignal, setOperatorScrollSignal] = useState(0)
 
   const currentMessage = form.watch("message")
   const normalizedMessage = currentMessage.trimStart()
@@ -253,6 +273,7 @@ export const ConversationIdView = ({
         prompt: values.message,
       })
 
+      setOperatorScrollSignal((current) => current + 1)
       form.reset()
     } catch (error) {
       console.error(error)
@@ -554,6 +575,7 @@ export const ConversationIdView = ({
       </Sheet>
 
       <AIConversation className="min-h-0 flex-1 px-3 pt-3 pb-3">
+        <ScrollToLatestOnSignal signal={operatorScrollSignal} />
         <AIConversationContent className="surface-panel rounded-[30px] border-0 px-3 py-3 shadow-none">
           <InfiniteScrollTrigger
             canLoadMore={canLoadMore}
