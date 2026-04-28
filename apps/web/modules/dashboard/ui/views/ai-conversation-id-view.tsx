@@ -125,12 +125,12 @@ export const AIConversationIdView = ({
   )
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
-      <header className="shrink-0 border-b bg-background px-3 py-3 sm:px-4 sm:py-4 lg:px-6">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
+      <header className="surface-frosted mx-3 mt-3 shrink-0 rounded-[30px] px-3 py-3 sm:px-4 sm:py-4 lg:px-6">
         <div className="flex items-start gap-2.5 sm:gap-3 lg:gap-4">
           {isMobile ? (
             <Button
-              className="-ml-2 mt-0.5"
+              className="mt-0.5 -ml-2"
               onClick={() => router.push("/ai-conversations")}
               size="icon"
               variant="ghost"
@@ -250,10 +250,12 @@ export const AIConversationIdView = ({
         </div>
       </header>
 
-      <div className="border-b bg-muted/20 px-3 py-2.5 sm:px-4 sm:py-3 lg:px-6">
+      <div className="mx-3 mt-3 rounded-[26px] border border-border/70 bg-background/72 px-3 py-2.5 shadow-sm sm:px-4 sm:py-3 lg:px-6">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[13px] font-medium text-foreground sm:text-sm">Transcript</p>
+            <p className="text-[13px] font-medium text-foreground sm:text-sm">
+              Transcript
+            </p>
             <p className="mt-0.5 text-[10px] text-muted-foreground sm:text-[11px]">
               {orderedMessages.length} message
               {orderedMessages.length === 1 ? "" : "s"}
@@ -262,15 +264,15 @@ export const AIConversationIdView = ({
         </div>
       </div>
 
-      <AIConversation className="min-h-0 flex-1 bg-muted/20 px-3 py-4 sm:px-4 sm:py-5 lg:px-6 lg:py-6">
-        <AIConversationContent>
+      <AIConversation className="min-h-0 flex-1 px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-5">
+        <AIConversationContent className="surface-panel rounded-[32px] border-0 px-4 py-4 shadow-none sm:px-5 sm:py-5">
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
             {transcriptItems.length > 0 ? (
               transcriptItems.map(({ dayLabel, message }) => (
                 <div key={message._id}>
                   {dayLabel ? (
                     <div className="mb-3 flex justify-center sm:mb-4">
-                      <span className="rounded-full bg-background px-2.5 py-1 text-[10px] font-medium text-muted-foreground ring-1 ring-border sm:px-3 sm:text-[11px]">
+                      <span className="rounded-full bg-background/90 px-2.5 py-1 text-[10px] font-medium text-muted-foreground ring-1 ring-border sm:px-3 sm:text-[11px]">
                         {dayLabel}
                       </span>
                     </div>
@@ -309,8 +311,8 @@ export const AIConversationIdView = ({
                         className={cn(
                           "rounded-2xl border px-3 py-2 text-[12px] leading-relaxed shadow-sm sm:px-4 sm:py-2.5 sm:text-[13px]",
                           message.role === "assistant"
-                            ? "border-border bg-background text-foreground"
-                            : "border-transparent bg-foreground text-background"
+                            ? "border-border/70 bg-background text-foreground shadow-[0_14px_34px_-24px_rgba(15,23,42,0.24)]"
+                            : "border-transparent bg-foreground text-background shadow-[0_18px_36px_-24px_rgba(15,23,42,0.38)]"
                         )}
                       >
                         <AIResponse>{message.text}</AIResponse>
@@ -320,7 +322,7 @@ export const AIConversationIdView = ({
                 </div>
               ))
             ) : (
-              <div className="flex min-h-[240px] flex-col items-center justify-center gap-2.5 rounded-3xl border border-dashed bg-background p-4 text-center sm:min-h-[280px] sm:gap-3 sm:p-6">
+              <div className="flex min-h-[240px] flex-col items-center justify-center gap-2.5 rounded-3xl border border-dashed bg-background/85 p-4 text-center sm:min-h-[280px] sm:gap-3 sm:p-6">
                 <div className="flex size-10 items-center justify-center rounded-2xl bg-muted/50 sm:size-11">
                   <SparklesIcon className="size-4 text-muted-foreground sm:size-5" />
                 </div>
@@ -345,8 +347,8 @@ export const AIConversationIdView = ({
 
 const AIConversationIdSkeleton = () => {
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
-      <div className="border-b px-3 py-3 sm:px-4 sm:py-4 lg:px-6">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
+      <div className="surface-frosted mx-3 mt-3 rounded-[30px] px-3 py-3 sm:px-4 sm:py-4 lg:px-6">
         <div className="flex items-start gap-2.5 sm:gap-3 lg:gap-4">
           <Skeleton className="size-10 shrink-0 rounded-full sm:size-11 lg:size-11" />
           <div className="min-w-0 flex-1 space-y-2.5 sm:space-y-3">
@@ -368,12 +370,12 @@ const AIConversationIdSkeleton = () => {
         </div>
       </div>
 
-      <div className="border-b px-3 py-2.5 sm:px-4 sm:py-3 lg:px-6">
+      <div className="mx-3 mt-3 rounded-[26px] border border-border/70 bg-background/72 px-3 py-2.5 shadow-sm sm:px-4 sm:py-3 lg:px-6">
         <Skeleton className="h-9 w-full rounded-xl sm:h-10" />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto bg-muted/20 px-3 py-4 sm:gap-4 sm:px-4 sm:py-5 lg:px-6 lg:py-6">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-3 py-3 sm:gap-4 sm:px-4 sm:py-4 lg:px-6 lg:py-5">
+        <div className="surface-panel mx-auto flex w-full max-w-3xl flex-col gap-3 rounded-[32px] px-4 py-4 shadow-none sm:gap-4 sm:px-5 sm:py-5">
           {Array.from({ length: 6 }).map((_, index) => (
             <div
               key={index}

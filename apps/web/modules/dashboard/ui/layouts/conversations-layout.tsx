@@ -1,23 +1,25 @@
-"use client";
+"use client"
 
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-} from "@workspace/ui/components/resizable";
-import { useIsMobile } from "@workspace/ui/hooks/use-mobile";
-import { usePathname } from "next/navigation";
-import { ConversationsPanel } from "../components/conversations-panel";
+} from "@workspace/ui/components/resizable"
+import { useIsMobile } from "@workspace/ui/hooks/use-mobile"
+import { usePathname } from "next/navigation"
+import { ConversationsPanel } from "../components/conversations-panel"
 
 export const ConversationsLayout = ({
-  children
-}: { children: React.ReactNode; }) => {
-  const isMobile = useIsMobile();
-  const pathname = usePathname();
+  children,
+}: {
+  children: React.ReactNode
+}) => {
+  const isMobile = useIsMobile()
+  const pathname = usePathname()
 
   // On mobile: show either the list OR the detail, never both
   if (isMobile) {
-    const isDetailPage = pathname !== "/conversations";
+    const isDetailPage = pathname !== "/conversations"
 
     return (
       <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
@@ -33,12 +35,12 @@ export const ConversationsLayout = ({
           </div>
         )}
       </div>
-    );
+    )
   }
 
   return (
     <ResizablePanelGroup
-      className="h-full min-h-0 flex-1"
+      className="h-full min-h-0 flex-1 gap-3 px-3 pt-3 pb-3"
       orientation="horizontal"
     >
       <ResizablePanel
@@ -50,7 +52,10 @@ export const ConversationsLayout = ({
       >
         <ConversationsPanel />
       </ResizablePanel>
-      <ResizableHandle withHandle />
+      <ResizableHandle
+        withHandle
+        className="w-0 bg-transparent [&>div]:h-12 [&>div]:w-4 [&>div]:rounded-full [&>div]:border-border/70 [&>div]:bg-background/92 [&>div]:shadow-sm"
+      />
       <ResizablePanel
         id="conversations-content"
         defaultSize={900}
@@ -60,5 +65,5 @@ export const ConversationsLayout = ({
         {children}
       </ResizablePanel>
     </ResizablePanelGroup>
-  );
-};
+  )
+}

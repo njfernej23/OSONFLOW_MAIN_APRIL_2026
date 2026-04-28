@@ -195,9 +195,9 @@ export const ConversationsPanel = () => {
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col bg-sidebar text-sidebar-foreground">
+    <div className="surface-sidebar flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[30px] text-sidebar-foreground">
       {/* Panel header */}
-      <div className="shrink-0 border-b border-sidebar-border bg-sidebar/95 px-3 pt-3.5 pb-2.5 backdrop-blur supports-[backdrop-filter]:bg-sidebar/90">
+      <div className="shrink-0 border-b border-sidebar-border/70 bg-sidebar/72 px-3 pt-3.5 pb-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-sidebar/64">
         <div className="mb-2.5 flex items-center justify-between">
           <h2 className="text-[13px] font-semibold tracking-tight text-sidebar-foreground">
             Conversations
@@ -216,7 +216,7 @@ export const ConversationsPanel = () => {
           <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-sidebar-foreground/55" />
           <Input
             aria-label="Search conversations"
-            className="h-8 border border-sidebar-border/60 bg-sidebar-accent/80 pr-14 pl-8 text-sm text-sidebar-foreground placeholder:text-sidebar-foreground/45 shadow-none transition-all focus-visible:border-sidebar-ring focus-visible:bg-sidebar focus-visible:ring-0"
+            className="h-8 border border-sidebar-border/60 bg-sidebar-accent/80 pr-14 pl-8 text-sm text-sidebar-foreground shadow-none transition-all placeholder:text-sidebar-foreground/45 focus-visible:border-sidebar-ring focus-visible:bg-sidebar focus-visible:ring-0"
             onChange={(event) => setSearchQuery(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Escape" && searchQuery) {
@@ -267,8 +267,8 @@ export const ConversationsPanel = () => {
                 className={cn(
                   "flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all duration-150",
                   isActive
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                    : "bg-sidebar-accent text-sidebar-foreground/72 hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground"
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-[0_14px_28px_-20px_color-mix(in_srgb,var(--sidebar-primary)_70%,transparent)]"
+                    : "bg-sidebar-accent/82 text-sidebar-foreground/72 hover:bg-sidebar-accent/94 hover:text-sidebar-accent-foreground"
                 )}
               >
                 <Icon className="size-3" />
@@ -284,7 +284,7 @@ export const ConversationsPanel = () => {
         <SkeletonConversations />
       ) : (
         <ScrollArea className="min-h-0 flex-1">
-          <div className="flex w-full flex-col gap-0.5 p-2">
+          <div className="flex w-full flex-col gap-1 p-2.5">
             {!hasSearchResults && normalizedSearchQuery ? (
               <div className="mx-auto mt-10 flex max-w-[200px] flex-col items-center gap-3 text-center">
                 <div className="flex size-11 items-center justify-center rounded-2xl border border-sidebar-border bg-sidebar-accent/55">
@@ -343,10 +343,10 @@ export const ConversationsPanel = () => {
                   <Link
                     key={conversation._id}
                     className={cn(
-                      "group relative flex cursor-pointer items-start gap-2.5 rounded-xl border px-3 py-2.5 text-sm leading-tight transition-all duration-150 hover:shadow-sm",
+                      "group relative flex cursor-pointer items-start gap-2.5 rounded-2xl border px-3 py-2.5 text-sm leading-tight transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm",
                       isActive
-                        ? "border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
-                        : "border-transparent hover:border-sidebar-border hover:bg-sidebar-accent/55 hover:text-sidebar-accent-foreground"
+                        ? "border-sidebar-border/80 bg-sidebar-accent/92 text-sidebar-accent-foreground shadow-[0_18px_36px_-24px_rgba(15,23,42,0.45)]"
+                        : "border-transparent bg-transparent hover:border-sidebar-border/70 hover:bg-sidebar-accent/62 hover:text-sidebar-accent-foreground"
                     )}
                     href={`/conversations/${conversation._id}`}
                   >
@@ -389,7 +389,7 @@ export const ConversationsPanel = () => {
                         <div className="mt-0.5">
                           {showOperatorUnreadBadge && (
                             <Badge
-                              className="h-3.5 whitespace-nowrap bg-amber-500 px-1 text-[10px] leading-none text-black hover:bg-amber-500"
+                              className="h-3.5 bg-amber-500 px-1 text-[10px] leading-none whitespace-nowrap text-black hover:bg-amber-500"
                               variant="default"
                             >
                               {conversation.unreadForOperatorCount} unread
@@ -408,7 +408,7 @@ export const ConversationsPanel = () => {
                           )}
                           {showVisitorUnreadBadge && (
                             <Badge
-                              className="ml-1 h-3.5 whitespace-nowrap bg-rose-500 px-1 text-[10px] leading-none text-white hover:bg-rose-500"
+                              className="ml-1 h-3.5 bg-rose-500 px-1 text-[10px] leading-none whitespace-nowrap text-white hover:bg-rose-500"
                               variant="default"
                             >
                               Unread {conversation.unreadForContactCount}

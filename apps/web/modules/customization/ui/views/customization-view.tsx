@@ -14,8 +14,8 @@ export const CustomizationView = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-y-3 bg-muted/50">
-        <div className="rounded-full bg-background p-4 shadow-sm">
+      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-y-3 bg-transparent px-4">
+        <div className="surface-frosted rounded-full p-4">
           <Loader2Icon className="size-6 animate-spin text-muted-foreground" />
         </div>
         <p className="text-sm text-muted-foreground">
@@ -25,26 +25,31 @@ export const CustomizationView = () => {
     )
   }
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-y-auto overflow-x-hidden bg-muted/40">
-      <div className="border-b bg-background/80 backdrop-blur-sm">
-        <div className="mx-auto w-full max-w-screen-xl px-4 py-4 sm:px-6 sm:py-6 md:px-8">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 sm:size-10">
-              <PaletteIcon className="size-4 text-primary sm:size-5" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold tracking-tight sm:text-xl md:text-2xl">
-                Widget Customization
-              </h1>
-              <p className="hidden text-sm text-muted-foreground sm:block">
-                Customize how your chat widget looks and behaves for your customers
-              </p>
+    <div className="relative flex h-full min-h-0 flex-col overflow-x-hidden overflow-y-auto bg-transparent">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.14),transparent_34%)]" />
+      <div className="surface-frosted sticky top-0 z-10 mx-3 mt-3 rounded-[28px] sm:mx-4 md:mx-6">
+        <div className="mx-auto w-full max-w-screen-xl px-4 py-5 sm:px-6 sm:py-6 md:px-8">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-start gap-3">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,color-mix(in_srgb,var(--primary)_92%,white_8%),color-mix(in_srgb,var(--primary)_58%,#0f172a_42%))] text-white shadow-[0_20px_40px_-24px_color-mix(in_srgb,var(--primary)_68%,transparent)] sm:size-12">
+                <PaletteIcon className="size-5 sm:size-[1.35rem]" />
+              </div>
+              <div className="space-y-1">
+                <p className="section-kicker">Visual System</p>
+                <h1 className="text-xl font-semibold tracking-tight sm:text-2xl md:text-[2rem]">
+                  Widget customization
+                </h1>
+                <p className="max-w-2xl text-sm text-muted-foreground sm:text-[0.95rem]">
+                  Shape the first impression: brand tone, motion, launcher,
+                  gradients, and voice entry points all in one polished flow.
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-screen-xl px-4 py-4 pb-24 sm:px-6 sm:py-6 sm:pb-16 md:px-8 md:py-8 md:pb-12">
+      <div className="relative mx-auto w-full max-w-screen-xl px-4 py-5 pb-24 sm:px-6 sm:py-6 sm:pb-16 md:px-8 md:py-8 md:pb-12">
         <CustomizationForm
           key={`${customizationState.publishedVersion}`}
           draftData={customizationState.draft}

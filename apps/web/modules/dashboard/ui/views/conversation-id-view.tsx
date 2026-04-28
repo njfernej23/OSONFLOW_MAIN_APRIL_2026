@@ -431,8 +431,8 @@ export const ConversationIdView = ({
       : `Assigned: ${conversation.assignedToName ?? "Operator"}`
 
   return (
-    <div className="flex h-full flex-col bg-muted/40">
-      <header className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b bg-background/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <div className="flex h-full flex-col bg-transparent">
+      <header className="surface-frosted sticky top-3 z-10 mx-3 mt-3 flex items-center justify-between gap-2 rounded-[28px] px-3 py-2.5">
         {/* Back button on mobile */}
         {isMobile && (
           <Button
@@ -542,7 +542,10 @@ export const ConversationIdView = ({
       </header>
 
       <Sheet open={isContactPanelOpen} onOpenChange={setIsContactPanelOpen}>
-        <SheetContent side="right" className="w-[min(90vw,360px)] p-0">
+        <SheetContent
+          side="right"
+          className="w-[min(90vw,360px)] border-l-0 bg-transparent p-3 [&>button]:top-5 [&>button]:right-5"
+        >
           <SheetHeader className="sr-only">
             <SheetTitle>Contact details</SheetTitle>
           </SheetHeader>
@@ -550,8 +553,8 @@ export const ConversationIdView = ({
         </SheetContent>
       </Sheet>
 
-      <AIConversation className="max-h-[calc(100vh-180px)] px-2 pt-2 pb-1">
-        <AIConversationContent>
+      <AIConversation className="min-h-0 flex-1 px-3 pt-3 pb-3">
+        <AIConversationContent className="surface-panel rounded-[30px] border-0 px-3 py-3 shadow-none">
           <InfiniteScrollTrigger
             canLoadMore={canLoadMore}
             isLoadingMore={isLoadingMore}
@@ -564,7 +567,7 @@ export const ConversationIdView = ({
               from={message.role === "user" ? "assistant" : "user"}
               key={message.id}
             >
-              <AIMessageContent>
+              <AIMessageContent className="shadow-[0_14px_34px_-22px_rgba(15,23,42,0.35)]">
                 <AIResponse>{message.content}</AIResponse>
               </AIMessageContent>
               {message.role === "user" && (
@@ -578,10 +581,10 @@ export const ConversationIdView = ({
         </AIConversationContent>
         <AIConversationScrollButton />
       </AIConversation>
-      <div className="border-t bg-background/95 p-2 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="mx-3 mb-3">
         <Form {...form}>
           <AIInput
-            className="shadow-sm ring-1 ring-border transition-shadow duration-200 focus-within:ring-primary/30"
+            className="surface-frosted rounded-[28px] border-0 shadow-none transition-shadow duration-200 focus-within:ring-2 focus-within:ring-primary/20"
             onSubmit={form.handleSubmit(onSubmit)}
           >
             <FormField
@@ -661,7 +664,7 @@ export const ConversationIdView = ({
             />
 
             {isSlashMode && (
-              <div className="border-t bg-gradient-to-b from-muted/40 to-background p-2.5">
+              <div className="border-t border-border/70 bg-gradient-to-b from-muted/40 to-background p-2.5">
                 <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
                   <p className="text-[11px] text-muted-foreground">
                     Saved replies
@@ -695,7 +698,7 @@ export const ConversationIdView = ({
                       <button
                         aria-selected={index === activeSlashIndex}
                         className={cn(
-                          "w-full rounded-md border px-2.5 py-2 text-left transition-colors",
+                          "w-full rounded-xl border px-2.5 py-2 text-left transition-colors",
                           index === activeSlashIndex
                             ? "border-primary/30 bg-primary/5"
                             : "border-transparent hover:border-border hover:bg-background"
@@ -925,22 +928,22 @@ export const ConversationIdView = ({
 
 export const ConversationIdViewLoading = () => {
   return (
-    <div className="flex h-full flex-col bg-muted">
-      <header className="flex items-center justify-between border-b bg-background p-2.5">
+    <div className="flex h-full flex-col bg-transparent">
+      <header className="surface-frosted mx-3 mt-3 flex items-center justify-between rounded-[28px] p-2.5">
         <Button disabled size="sm" variant="ghost">
           <MoreHorizontalIcon />
         </Button>
         <Skeleton className="h-8 w-24 rounded-md" />
       </header>
-      <AIConversation className="max-h-[calc(100vh-180px)]">
-        <AIConversationContent>
+      <AIConversation className="min-h-0 flex-1 px-3 pt-3 pb-3">
+        <AIConversationContent className="surface-panel rounded-[30px] border-0 px-3 py-3 shadow-none">
           {Array.from({ length: 6 }, (_, index) => {
             // Alternate between assistant (left, with avatar) and user (right, no avatar)
             const isAssistant = index % 2 === 0
             const widths = ["w-48", "w-64", "w-56", "w-72", "w-60", "w-52"]
             return (
               <AIMessage from={isAssistant ? "assistant" : "user"} key={index}>
-                <AIMessageContent>
+                <AIMessageContent className="shadow-[0_14px_34px_-22px_rgba(15,23,42,0.2)]">
                   <div className="space-y-2">
                     <Skeleton className={cn("h-4", widths[index])} />
                     {index % 3 === 0 && <Skeleton className="h-4 w-40" />}
@@ -955,7 +958,7 @@ export const ConversationIdViewLoading = () => {
         </AIConversationContent>
       </AIConversation>
 
-      <div className="p-2">
+      <div className="mx-3 mb-3">
         <AIInput>
           <AIInputTextarea
             disabled

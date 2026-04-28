@@ -1,13 +1,17 @@
-import { Geist, Geist_Mono } from "next/font/google"
+import { IBM_Plex_Mono, Plus_Jakarta_Sans } from "next/font/google"
 
 import "@workspace/ui/styles/globals.css"
 import { Providers } from "@/components/theme-provider"
-import { cn } from "@workspace/ui/lib/utils";
+import { cn } from "@workspace/ui/lib/utils"
 
-const geist = Geist({ subsets: ['latin'], variable: '--font-sans' })
-
-const fontMono = Geist_Mono({
+const fontSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
+  variable: "--font-sans",
+})
+
+const fontMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-mono",
 })
 
@@ -20,7 +24,12 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("h-full overflow-hidden antialiased", fontMono.variable, "font-sans", geist.variable)}
+      className={cn(
+        "h-full overflow-hidden antialiased",
+        fontMono.variable,
+        "font-sans",
+        fontSans.variable
+      )}
     >
       <body className="h-full overflow-hidden" suppressHydrationWarning>
         <Providers>

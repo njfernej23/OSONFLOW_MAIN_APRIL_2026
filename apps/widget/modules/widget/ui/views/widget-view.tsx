@@ -1,31 +1,33 @@
 "use client"
-import { useAtomValue } from "jotai";
-import { screenAtom, widgetSettingsAtom } from "@/modules/widget/atoms/widget-atoms"
-import { WidgetAuthScreen } from "@/modules/widget/ui/screens/widget-auth-screen";
-import { JSX } from "react/jsx-dev-runtime";
-import { WidgetErrorScreen } from "@/modules/widget/ui/screens/widget-error-screen";
-import { WidgetLoadingScreen } from "../screens/widget-loading-screen";
-import { WidgetSelectionScreen } from "../screens/widget-selection-screen";
-import { WidgetChatScreen } from "../screens/widget-chat-screen";
-import { WidgetInboxScreen } from "../screens/widget-inbox-screen";
-import { WidgetVoiceScreen } from "../screens/widget-voice-screen";
-import { WidgetContactScreen } from "../screens/widget-contact-screen";
+import { useAtomValue } from "jotai"
+import {
+  screenAtom,
+  widgetSettingsAtom,
+} from "@/modules/widget/atoms/widget-atoms"
+import { WidgetAuthScreen } from "@/modules/widget/ui/screens/widget-auth-screen"
+import { JSX } from "react/jsx-dev-runtime"
+import { WidgetErrorScreen } from "@/modules/widget/ui/screens/widget-error-screen"
+import { WidgetLoadingScreen } from "../screens/widget-loading-screen"
+import { WidgetSelectionScreen } from "../screens/widget-selection-screen"
+import { WidgetChatScreen } from "../screens/widget-chat-screen"
+import { WidgetInboxScreen } from "../screens/widget-inbox-screen"
+import { WidgetVoiceScreen } from "../screens/widget-voice-screen"
+import { WidgetContactScreen } from "../screens/widget-contact-screen"
 import {
   getContrastingTextColor,
   mergeWidgetTheme,
-} from "@workspace/ui/lib/widget-customization";
-import { CSSProperties } from "react";
-
+} from "@workspace/ui/lib/widget-customization"
+import { CSSProperties } from "react"
 
 interface Props {
-  organizationId: string | null;
+  organizationId: string | null
 }
 
 export const WidgetView = ({ organizationId }: Props) => {
-  const screen = useAtomValue(screenAtom);
-  const widgetSettings = useAtomValue(widgetSettingsAtom);
-  const theme = mergeWidgetTheme(widgetSettings?.theme);
-  const primaryForeground = getContrastingTextColor(theme.primaryColor);
+  const screen = useAtomValue(screenAtom)
+  const widgetSettings = useAtomValue(widgetSettingsAtom)
+  const theme = mergeWidgetTheme(widgetSettings?.theme)
+  const primaryForeground = getContrastingTextColor(theme.primaryColor)
   const widgetStyles = {
     "--widget-header-start": theme.headerGradientStart,
     "--widget-header-end": theme.headerGradientEnd,
@@ -40,7 +42,7 @@ export const WidgetView = ({ organizationId }: Props) => {
     ),
     "--primary": theme.primaryColor,
     "--primary-foreground": primaryForeground,
-  } as CSSProperties;
+  } as CSSProperties
 
   const screenComponents = {
     loading: <WidgetLoadingScreen organizationId={organizationId} />,
@@ -53,18 +55,22 @@ export const WidgetView = ({ organizationId }: Props) => {
     contact: <WidgetContactScreen />,
   }
 
-
-
-
   return (
     <main
-      className="flex h-full max-h-svh min-h-0 w-full min-w-0 flex-col overflow-hidden border bg-muted"
+      className="surface-widget relative flex h-full max-h-svh min-h-0 w-full min-w-0 flex-col overflow-hidden border-0 bg-transparent"
       style={{
         ...widgetStyles,
         borderRadius: `${theme.borderRadius}px`,
       }}
     >
-      {screenComponents[screen]}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--primary)_16%,transparent),transparent_34%)]" />
+        <div className="animate-ambient absolute -top-14 right-[-2.5rem] h-40 w-40 rounded-full bg-[color-mix(in_srgb,var(--primary)_12%,white)] blur-3xl" />
+        <div className="animate-float absolute -bottom-12 left-[-3rem] h-36 w-36 rounded-full bg-[color-mix(in_srgb,var(--widget-header-end)_16%,white)] blur-3xl" />
+      </div>
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+        {screenComponents[screen]}
+      </div>
     </main>
-  );
-};
+  )
+}

@@ -86,17 +86,19 @@ export const WidgetSelectionScreen = () => {
           {theme.logoUrl ? (
             <img
               alt="Assistant logo"
-              className="mb-2 h-8 w-8 rounded-md bg-white/90 object-cover p-1"
+              className="mb-3 h-10 w-10 rounded-2xl bg-white/90 object-cover p-1 shadow-sm"
               src={theme.logoUrl}
             />
           ) : null}
-          <p className="text-3xl">Hi there 👋</p>
-          <p className="text-lg">Talk to {theme.assistantName}</p>
+          <p className="text-3xl tracking-tight">Hi there</p>
+          <p className="max-w-[18rem] text-base font-medium text-white/82">
+            Choose how you want to talk to {theme.assistantName}.
+          </p>
         </div>
       </WidgetHeader>
       <div className="flex flex-1 flex-col gap-y-4 overflow-y-auto p-4">
         <Button
-          className="h-16 w-full justify-between"
+          className="surface-panel h-[4.5rem] w-full justify-between border-0 bg-background/72 px-4 shadow-none"
           variant="outline"
           onClick={handleNewConversation}
           disabled={isPending}
@@ -110,7 +112,7 @@ export const WidgetSelectionScreen = () => {
 
         {hasOpenAIRealtimeVoice && (
           <Button
-            className="h-16 w-full justify-between border-primary/20 bg-primary/5 hover:bg-primary/10"
+            className="h-[4.5rem] w-full justify-between border-primary/15 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--primary)_10%,white),transparent)] px-4"
             variant="outline"
             onClick={() => handleVoiceClick("openai")}
             disabled={isPending}
@@ -125,7 +127,7 @@ export const WidgetSelectionScreen = () => {
 
         {hasGeminiLiveVoice && (
           <Button
-            className="h-16 w-full justify-between border-cyan-500/20 bg-cyan-500/5 hover:bg-cyan-500/10"
+            className="h-[4.5rem] w-full justify-between border-cyan-500/20 bg-cyan-500/10 px-4"
             variant="outline"
             onClick={() => handleVoiceClick("gemini")}
             disabled={isPending}
@@ -140,7 +142,7 @@ export const WidgetSelectionScreen = () => {
 
         {hasVapiSecrets && widgetSettings?.vapiSettings?.assistantId && (
           <Button
-            className="h-16 w-full justify-between"
+            className="surface-panel h-[4.5rem] w-full justify-between border-0 bg-background/72 px-4 shadow-none"
             variant="outline"
             onClick={() => handleVoiceClick("vapi")}
             disabled={isPending}
@@ -155,7 +157,7 @@ export const WidgetSelectionScreen = () => {
 
         {hasVapiSecrets && widgetSettings?.vapiSettings?.phoneNumber && (
           <Button
-            className="h-16 w-full justify-between"
+            className="surface-panel h-[4.5rem] w-full justify-between border-0 bg-background/72 px-4 shadow-none"
             variant="outline"
             onClick={() => setScreen("contact")}
             disabled={isPending}

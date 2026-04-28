@@ -49,7 +49,9 @@ const SESSION_FILTER_OPTIONS: Array<{
 const highlightMatch = (value: string | undefined, query: string) => {
   if (!value) {
     return (
-      <span className="text-sidebar-foreground/55 italic">No transcript yet</span>
+      <span className="text-sidebar-foreground/55 italic">
+        No transcript yet
+      </span>
     )
   }
 
@@ -218,8 +220,8 @@ export const AIConversationsPanel = () => {
   }, [])
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col bg-sidebar text-sidebar-foreground">
-      <div className="shrink-0 border-b border-sidebar-border bg-sidebar px-3 pt-4 pb-3 sm:px-4 sm:pt-5 sm:pb-4">
+    <div className="surface-sidebar flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[30px] text-sidebar-foreground">
+      <div className="shrink-0 border-b border-sidebar-border/70 bg-sidebar/72 px-3 pt-4 pb-3 backdrop-blur-xl sm:px-4 sm:pt-5 sm:pb-4">
         <div className="flex items-center justify-between gap-2 sm:gap-3">
           <div className="min-w-0">
             <h2 className="truncate text-[15px] font-semibold text-sidebar-foreground sm:text-[16px]">
@@ -230,7 +232,8 @@ export const AIConversationsPanel = () => {
             </p>
           </div>
 
-          {conversations.results.length > 0 && (normalizedSearchQuery || hasActiveFilters) ? (
+          {conversations.results.length > 0 &&
+          (normalizedSearchQuery || hasActiveFilters) ? (
             <Badge
               className="h-6 shrink-0 rounded-full border-sidebar-border bg-sidebar-accent px-2.5 text-[11px] font-medium text-sidebar-foreground/72"
               variant="outline"
@@ -244,7 +247,7 @@ export const AIConversationsPanel = () => {
           <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-sidebar-foreground/55" />
           <Input
             aria-label="Search AI voicechats"
-            className="h-9 rounded-xl border border-sidebar-border/60 bg-sidebar-accent/75 pr-14 pl-9 text-[13px] text-sidebar-foreground placeholder:text-sidebar-foreground/45 shadow-none transition-all focus-visible:border-sidebar-ring focus-visible:bg-sidebar focus-visible:ring-0 sm:h-10 sm:text-sm"
+            className="h-9 rounded-xl border border-sidebar-border/60 bg-sidebar-accent/75 pr-14 pl-9 text-[13px] text-sidebar-foreground shadow-none transition-all placeholder:text-sidebar-foreground/45 focus-visible:border-sidebar-ring focus-visible:bg-sidebar focus-visible:ring-0 sm:h-10 sm:text-sm"
             onChange={(event) => setSearchQuery(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Escape" && searchQuery) {
@@ -295,7 +298,7 @@ export const AIConversationsPanel = () => {
                   onClick={() => setProviderFilter(option.value)}
                   type="button"
                   className={cn(
-                    "rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors",
+                    "rounded-xl px-2.5 py-1.5 text-[11px] font-medium transition-colors",
                     isActive
                       ? "bg-sidebar-primary text-sidebar-primary-foreground"
                       : "bg-sidebar-accent/80 text-sidebar-foreground/72 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
@@ -319,7 +322,7 @@ export const AIConversationsPanel = () => {
                   onClick={() => setSessionFilter(option.value)}
                   type="button"
                   className={cn(
-                    "rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors",
+                    "rounded-xl px-2.5 py-1.5 text-[11px] font-medium transition-colors",
                     isActive
                       ? "bg-sidebar-primary text-sidebar-primary-foreground"
                       : "bg-sidebar-accent/80 text-sidebar-foreground/72 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
@@ -337,7 +340,7 @@ export const AIConversationsPanel = () => {
         <SkeletonAIConversations />
       ) : (
         <ScrollArea className="min-h-0 flex-1">
-          <div className="p-2 sm:p-3">
+          <div className="p-2.5 sm:p-3">
             {!conversations.results.length && !normalizedSearchQuery ? (
               <div className="mx-auto mt-10 flex max-w-[220px] flex-col items-center gap-3 text-center">
                 <div className="flex size-12 items-center justify-center rounded-2xl bg-sidebar-accent/70">
@@ -415,10 +418,10 @@ export const AIConversationsPanel = () => {
                           <Link
                             key={conversation._id}
                             className={cn(
-                              "block rounded-2xl border border-transparent px-2.5 py-2.5 transition-colors sm:px-3 sm:py-3",
+                              "block rounded-2xl border border-transparent px-2.5 py-2.5 transition-all duration-200 hover:-translate-y-0.5 sm:px-3 sm:py-3",
                               isActive
-                                ? "border-sidebar-border bg-sidebar-accent/90"
-                                : "hover:border-sidebar-border/70 hover:bg-sidebar-accent/55"
+                                ? "border-sidebar-border/80 bg-sidebar-accent/90 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.45)]"
+                                : "hover:border-sidebar-border/70 hover:bg-sidebar-accent/55 hover:shadow-sm"
                             )}
                             href={`/ai-conversations/${conversation._id}`}
                           >
@@ -484,7 +487,9 @@ export const AIConversationsPanel = () => {
                                           : "text-emerald-500"
                                       )}
                                     />
-                                    <span>{conversation.endedAt ? "Ended" : "Live"}</span>
+                                    <span>
+                                      {conversation.endedAt ? "Ended" : "Live"}
+                                    </span>
                                   </div>
                                   <Badge
                                     className={cn(

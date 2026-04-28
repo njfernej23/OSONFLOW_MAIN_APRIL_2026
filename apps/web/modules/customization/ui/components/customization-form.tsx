@@ -372,13 +372,13 @@ export const CustomizationForm = ({
   return (
     <Form {...form}>
       <form
-        className="space-y-6 xl:relative xl:pr-[384px]"
+        className="space-y-6 xl:grid xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start xl:gap-6 xl:space-y-0"
         onSubmit={form.handleSubmit(onSaveDraft)}
       >
-        <div className="min-w-0 space-y-5">
+        <div className="animate-enter min-w-0 space-y-5">
           {/* Release Workflow */}
-          <Card className="overflow-hidden border-border/60 shadow-sm">
-            <CardHeader className="border-b bg-muted/30 pb-4">
+          <Card className="surface-elevated overflow-hidden border-0 shadow-none">
+            <CardHeader className="border-b border-border/60 bg-muted/20 pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex size-8 items-center justify-center rounded-lg border border-border/60 bg-background shadow-sm">
                   <ClockIcon className="size-4 text-muted-foreground" />
@@ -545,8 +545,8 @@ export const CustomizationForm = ({
           </Card>
 
           {/* Widget Configuration */}
-          <Card className="overflow-hidden border-border/60 shadow-sm">
-            <CardHeader className="border-b bg-muted/30 pb-4">
+          <Card className="surface-elevated overflow-hidden border-0 shadow-none">
+            <CardHeader className="border-b border-border/60 bg-muted/20 pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex size-8 items-center justify-center rounded-lg border border-border/60 bg-background shadow-sm">
                   <SettingsIcon className="size-4 text-muted-foreground" />
@@ -568,30 +568,30 @@ export const CustomizationForm = ({
                 value={activeTab}
                 onValueChange={setActiveTab}
               >
-                <TabsList className="h-auto w-full justify-start gap-0.5 overflow-x-auto rounded-xl bg-muted/50 p-1">
+                <TabsList className="surface-panel h-auto w-full justify-start gap-1 overflow-x-auto rounded-2xl border-0 p-1">
                   <TabsTrigger
-                    className="flex shrink-0 items-center gap-2 rounded-lg px-3.5 py-2 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                    className="flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-sm text-muted-foreground transition-all duration-300 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
                     value="chat"
                   >
                     <MessageSquareTextIcon className="size-3.5" />
                     Chat
                   </TabsTrigger>
                   <TabsTrigger
-                    className="flex shrink-0 items-center gap-2 rounded-lg px-3.5 py-2 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                    className="flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-sm text-muted-foreground transition-all duration-300 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
                     value="brand"
                   >
                     <PaletteIcon className="size-3.5" />
                     Brand Kit
                   </TabsTrigger>
                   <TabsTrigger
-                    className="flex shrink-0 items-center gap-2 rounded-lg px-3.5 py-2 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                    className="flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-sm text-muted-foreground transition-all duration-300 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
                     value="appearance"
                   >
                     <SparklesIcon className="size-3.5" />
                     Appearance
                   </TabsTrigger>
                   <TabsTrigger
-                    className="flex shrink-0 items-center gap-2 rounded-lg px-3.5 py-2 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                    className="flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-sm text-muted-foreground transition-all duration-300 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
                     value="voice"
                   >
                     <MicIcon className="size-3.5" />
@@ -769,7 +769,7 @@ export const CustomizationForm = ({
 
           {/* Action bar */}
           <div className="sticky bottom-0 z-10 sm:bottom-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-background/95 px-4 py-3 shadow-lg backdrop-blur-sm sm:rounded-xl sm:border">
+            <div className="surface-frosted flex flex-wrap items-center justify-between gap-3 rounded-2xl border-0 px-4 py-3 sm:px-5">
               <div className="flex items-center gap-3">
                 {autoSaveStatus === "saving" ? (
                   <Loader2Icon className="size-3 animate-spin text-muted-foreground" />
@@ -830,7 +830,7 @@ export const CustomizationForm = ({
                   className={cn(
                     "w-full gap-1.5 transition-all duration-300 sm:w-auto",
                     isDraftDifferentFromPublished
-                      ? "shadow-lg ring-2 shadow-primary/40 ring-primary/30"
+                      ? "shadow-[0_20px_40px_-24px_color-mix(in_srgb,var(--primary)_80%,transparent)] ring-2 ring-primary/25"
                       : ""
                   )}
                   disabled={isBusy}
@@ -850,8 +850,8 @@ export const CustomizationForm = ({
         </div>
 
         {/* Live Preview */}
-        <div className="hidden xl:absolute xl:top-0 xl:right-0 xl:block xl:w-[360px]">
-          <div className="xl:sticky xl:top-6">
+        <div className="hidden xl:block">
+          <div className="xl:animate-pop xl:sticky xl:top-6">
             <WidgetLivePreview
               appearance={previewAppearance}
               greetMessage={watchedValues.greetMessage}

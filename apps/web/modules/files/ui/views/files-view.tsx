@@ -112,7 +112,7 @@ function getStatusLabel(status: PublicFile["status"]) {
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
+    <div className="surface-frosted mx-auto flex max-w-md flex-col items-center justify-center gap-4 rounded-[30px] px-8 py-16 text-center">
       <div className="flex size-16 items-center justify-center rounded-2xl bg-muted">
         <BookOpenIcon className="size-8 text-muted-foreground" />
       </div>
@@ -141,7 +141,7 @@ function EmptySearch({
   onClear: () => void
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+    <div className="surface-frosted mx-auto flex max-w-md flex-col items-center justify-center gap-3 rounded-[30px] px-8 py-14 text-center">
       <SearchIcon className="size-8 text-muted-foreground/50" />
       <div className="space-y-1">
         <p className="font-medium">No results for &ldquo;{query}&rdquo;</p>
@@ -171,7 +171,7 @@ function StatCard({
   sub?: string
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3">
+    <div className="surface-panel flex items-center gap-3 rounded-2xl border-0 px-4 py-3">
       <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
         <Icon className="size-4 text-muted-foreground" />
       </div>
@@ -199,7 +199,7 @@ function FileCard({
   const StatusIcon = getStatusIcon(file.status)
 
   return (
-    <div className="group relative flex flex-col gap-3 rounded-xl border bg-card p-4 transition-shadow hover:shadow-md">
+    <div className="surface-panel group relative flex flex-col gap-3 rounded-2xl border-0 p-4 transition-shadow hover:shadow-md">
       {/* header row */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
@@ -521,12 +521,13 @@ export const FilesView = () => {
       </Dialog>
 
       {/* ── page ── */}
-      <div className="flex min-h-screen flex-col bg-muted/40">
+      <div className="flex min-h-screen flex-col bg-transparent">
         {/* page header */}
-        <div className="border-b bg-background px-4 py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-screen-lg">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="surface-hero flex flex-col gap-4 rounded-[30px] px-6 py-7 sm:flex-row sm:items-center sm:justify-between sm:px-8">
               <div>
+                <p className="section-kicker">Knowledge</p>
                 <h1 className="text-2xl font-semibold tracking-tight">
                   Knowledge Base
                 </h1>
@@ -566,8 +567,8 @@ export const FilesView = () => {
         </div>
 
         {/* toolbar */}
-        <div className="border-b bg-background px-4 py-3 sm:px-6 lg:px-8">
-          <div className="mx-auto flex max-w-screen-lg flex-wrap items-center gap-3">
+        <div className="px-4 py-3 sm:px-6 lg:px-8">
+          <div className="surface-frosted mx-auto flex max-w-screen-lg flex-wrap items-center gap-3 rounded-[26px] px-4 py-3">
             {/* search */}
             <div className="relative flex-1">
               <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
