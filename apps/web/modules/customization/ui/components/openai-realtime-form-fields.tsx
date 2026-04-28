@@ -51,6 +51,100 @@ const geminiVoices = [
   "Callirrhoe",
 ]
 
+type ModelOption = {
+  value: string
+  label: string
+}
+
+const openAIRealtimeModels: ModelOption[] = [
+  {
+    value: "gpt-realtime-1.5",
+    label: "gpt-realtime-1.5",
+  },
+  {
+    value: "gpt-realtime",
+    label: "gpt-realtime",
+  },
+  {
+    value: "gpt-realtime-2025-08-28",
+    label: "gpt-realtime-2025-08-28",
+  },
+  {
+    value: "gpt-realtime-mini",
+    label: "gpt-realtime-mini (deprecated)",
+  },
+  {
+    value: "gpt-realtime-mini-2025-12-15",
+    label: "gpt-realtime-mini-2025-12-15",
+  },
+  {
+    value: "gpt-realtime-mini-2025-10-06",
+    label: "gpt-realtime-mini-2025-10-06 (deprecated)",
+  },
+  {
+    value: "gpt-4o-realtime-preview",
+    label: "gpt-4o-realtime-preview (legacy preview)",
+  },
+  {
+    value: "gpt-4o-realtime-preview-2025-06-03",
+    label: "gpt-4o-realtime-preview-2025-06-03",
+  },
+  {
+    value: "gpt-4o-realtime-preview-2024-12-17",
+    label: "gpt-4o-realtime-preview-2024-12-17",
+  },
+  {
+    value: "gpt-4o-realtime-preview-2024-10-01",
+    label: "gpt-4o-realtime-preview-2024-10-01",
+  },
+  {
+    value: "gpt-4o-mini-realtime-preview",
+    label: "gpt-4o-mini-realtime-preview (legacy preview)",
+  },
+  {
+    value: "gpt-4o-mini-realtime-preview-2024-12-17",
+    label: "gpt-4o-mini-realtime-preview-2024-12-17",
+  },
+]
+
+const geminiLiveModels: ModelOption[] = [
+  {
+    value: "gemini-3.1-flash-live-preview",
+    label: "gemini-3.1-flash-live-preview",
+  },
+  {
+    value: "gemini-2.5-flash-native-audio-preview-12-2025",
+    label: "gemini-2.5-flash-native-audio-preview-12-2025",
+  },
+  {
+    value: "gemini-2.5-flash-native-audio-preview-09-2025",
+    label: "gemini-2.5-flash-native-audio-preview-09-2025",
+  },
+]
+
+const getSelectableModelOptions = (
+  options: ModelOption[],
+  currentValue?: string
+) => {
+  const trimmedValue = currentValue?.trim()
+
+  if (!trimmedValue) {
+    return options
+  }
+
+  if (options.some((option) => option.value === trimmedValue)) {
+    return options
+  }
+
+  return [
+    {
+      value: trimmedValue,
+      label: `${trimmedValue} (saved custom model)`,
+    },
+    ...options,
+  ]
+}
+
 interface OpenAIRealtimeFormFieldsProps {
   form: UseFormReturn<FormSchema>
 }
@@ -265,11 +359,29 @@ export const OpenAIRealtimeFormFields = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Realtime model</FormLabel>
-                <FormControl>
-                  <Input {...field} placeholder="gpt-realtime" />
-                </FormControl>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a realtime model" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {getSelectableModelOptions(
+                      openAIRealtimeModels,
+                      field.value
+                    ).map((model) => (
+                      <SelectItem key={model.value} value={model.value}>
+                        {model.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormDescription className="text-xs">
-                  Default: gpt-realtime.
+                  Choose from the documented OpenAI Realtime model aliases and
+                  snapshots.
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -357,14 +469,27 @@ export const OpenAIRealtimeFormFields = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Live model</FormLabel>
-                <FormControl>
-                  <Input
-                    {...field}
-                    placeholder="gemini-2.5-flash-native-audio-preview-12-2025"
-                  />
-                </FormControl>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a live model" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {getSelectableModelOptions(geminiLiveModels, field.value).map(
+                      (model) => (
+                        <SelectItem key={model.value} value={model.value}>
+                          {model.label}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
                 <FormDescription className="text-xs">
-                  Default: Gemini 2.5 Flash Native Audio.
+                  Choose from the current documented Gemini Live model options.
                 </FormDescription>
                 <FormMessage />
               </FormItem>

@@ -107,6 +107,8 @@ export const useGeminiLive = () => {
   const inputSourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
   const silenceGainRef = useRef<GainNode | null>(null)
   const playbackTimeRef = useRef(0)
+  const playbackGenerationRef = useRef(0)
+  const activeOutputSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set())
   const transcriptRef = useRef<TranscriptMessage[]>([])
   const draftTranscriptRef = useRef({
     user: { index: -1, text: "" },
@@ -226,12 +228,36 @@ export const useGeminiLive = () => {
     syncTranscript([])
   }
 
-  const playPcmAudio = async (base64Data: string, mimeType?: string) => {
+  const stopPlayback = () => {
+    playbackGenerationRef.current += 1
+    playbackTimeRef.current = outputContextRef.current?.currentTime ?? 0
+
+    for (const source of activeOutputSourcesRef.current) {
+      try {
+        source.stop()
+      } catch {
+        // Source may have already ended.
+      }
+      source.disconnect()
+    }
+
+    activeOutputSourcesRef.current.clear()
+  }
+
+  const playPcmAudio = async (
+    base64Data: string,
+    mimeType?: string,
+    generation = playbackGenerationRef.current
+  ) => {
     const outputContext = outputContextRef.current ?? new AudioContext()
     outputContextRef.current = outputContext
 
     if (outputContext.state === "suspended") {
       await outputContext.resume()
+    }
+
+    if (generation !== playbackGenerationRef.current) {
+      return
     }
 
     const sampleRate = parseSampleRate(mimeType)
@@ -245,7 +271,19 @@ export const useGeminiLive = () => {
     const source = outputContext.createBufferSource()
     source.buffer = audioBuffer
     source.connect(outputContext.destination)
+    activeOutputSourcesRef.current.add(source)
+    source.onended = () => {
+      activeOutputSourcesRef.current.delete(source)
+      source.disconnect()
+    }
     const startAt = Math.max(outputContext.currentTime, playbackTimeRef.current)
+
+    if (generation !== playbackGenerationRef.current) {
+      activeOutputSourcesRef.current.delete(source)
+      source.disconnect()
+      return
+    }
+
     source.start(startAt)
     playbackTimeRef.current = startAt + audioBuffer.duration
   }
@@ -383,7 +421,7 @@ export const useGeminiLive = () => {
     const serverContent = message.serverContent
 
     if (serverContent?.interrupted) {
-      playbackTimeRef.current = outputContextRef.current?.currentTime ?? 0
+      stopPlayback()
       setIsSpeaking(false)
       assistantTextBufferRef.current = ""
       finalizeTranscriptDraft("assistant", { persist: false })
@@ -504,6 +542,7 @@ export const useGeminiLive = () => {
 
     sessionRef.current = null
     stopInputCapture()
+    stopPlayback()
     void outputContextRef.current?.close()
     outputContextRef.current = null
     playbackTimeRef.current = 0

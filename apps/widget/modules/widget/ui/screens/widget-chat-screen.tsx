@@ -21,7 +21,6 @@ import { api } from "@workspace/backend/_generated/api"
 import {
   AIConversation,
   AIConversationContent,
-  AIConversationScrollButton,
 } from "@workspace/ui/components/ai/conversation"
 import {
   AIInput,
@@ -44,12 +43,37 @@ import {
 import { useInfiniteScroll } from "@workspace/ui/hooks/use-infitnite-scroll"
 import { InfiniteScrollTrigger } from "@workspace/ui/components/infinite-scroll-trigger"
 import { DicebearAvatar } from "@workspace/ui/components/dicebear-avatar"
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { mergeWidgetTheme } from "@workspace/ui/lib/widget-customization"
 
 const formSchema = z.object({
   message: z.string().min(1, "Message is required"),
 })
+
+const AssistantLoadingBubble = ({ logoUrl }: { logoUrl?: string }) => {
+  return (
+    <AIMessage from="assistant">
+      <AIMessageContent className="border-white/60 bg-[var(--widget-bot-bubble)] text-[var(--widget-bot-bubble-foreground)] shadow-[0_12px_32px_rgba(15,23,42,0.08)] backdrop-blur-sm">
+        <div
+          aria-label="Assistant is preparing a response"
+          className="flex items-center gap-1.5"
+          role="status"
+        >
+          <span className="sr-only">Assistant is preparing a response</span>
+          {[0, 1, 2].map((dot) => (
+            <span
+              aria-hidden="true"
+              className="size-2 rounded-full bg-current/65 animate-bounce"
+              key={dot}
+              style={{ animationDelay: `${dot * 0.15}s` }}
+            />
+          ))}
+        </div>
+      </AIMessageContent>
+      <DicebearAvatar imageUrl={logoUrl || "/logo.svg"} seed="assistant" size={32} />
+    </AIMessage>
+  )
+}
 
 export const WidgetChatScreen = () => {
   const setScreen = useSetAtom(screenAtom)
@@ -101,6 +125,22 @@ export const WidgetChatScreen = () => {
       : "skip",
     { initialNumItems: 10 }
   )
+  const uiMessages = useMemo(
+    () => toUIMessages(messages.results ?? []),
+    [messages.results]
+  )
+  const assistantMessageCount = useMemo(
+    () => uiMessages.filter((message) => message.role === "assistant").length,
+    [uiMessages]
+  )
+  const lastMessage = uiMessages.at(-1)
+  const [pendingAssistantMessageCount, setPendingAssistantMessageCount] =
+    useState<number | null>(null)
+  const isAwaitingResponse =
+    conversation?.status !== "resolved" &&
+    pendingAssistantMessageCount !== null &&
+    assistantMessageCount < pendingAssistantMessageCount &&
+    lastMessage?.role === "user"
 
   const { topElementRef, handleLoadMore, canLoadMore, isLoadingMore } =
     useInfiniteScroll({
@@ -125,12 +165,29 @@ export const WidgetChatScreen = () => {
       return
     }
 
+    const prompt = values.message.trim()
+
+    if (!prompt) {
+      return
+    }
+
     form.reset()
-    await createMessage({
-      threadId: conversation.threadId,
-      prompt: values.message,
-      contactSessionId,
-    })
+    setPendingAssistantMessageCount(assistantMessageCount + 1)
+
+    try {
+      await createMessage({
+        threadId: conversation.threadId,
+        prompt,
+        contactSessionId,
+      })
+    } catch {
+      setPendingAssistantMessageCount(null)
+      form.setValue("message", prompt, {
+        shouldValidate: true,
+        shouldDirty: true,
+        shouldTouch: true,
+      })
+    }
   }
 
   useEffect(() => {
@@ -176,7 +233,7 @@ export const WidgetChatScreen = () => {
             canLoadMore={canLoadMore}
             isLoadingMore={isLoadingMore}
           />
-          {toUIMessages(messages.results ?? [])?.map((message) => {
+          {uiMessages.map((message) => {
             return (
               <AIMessage
                 from={message.role === "user" ? "user" : "assistant"}
@@ -196,9 +253,10 @@ export const WidgetChatScreen = () => {
               </AIMessage>
             )
           })}
+          {isAwaitingResponse && <AssistantLoadingBubble logoUrl={theme.logoUrl} />}
         </AIConversationContent>
       </AIConversation>
-      {toUIMessages(messages.results ?? [])?.length === 1 && (
+      {uiMessages.length === 1 && (
         <AISuggestions className="flex w-full flex-col items-end p-2">
           {suggestions.map((suggestion) => {
             if (!suggestion) {
@@ -257,7 +315,7 @@ export const WidgetChatScreen = () => {
               disabled={
                 conversation?.status === "resolved" || !form.formState.isValid
               }
-              status="ready"
+              status={isAwaitingResponse ? "submitted" : "ready"}
               type="submit"
             />
           </AIInputToolbar>
