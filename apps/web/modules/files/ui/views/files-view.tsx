@@ -535,7 +535,10 @@ export const FilesView = () => {
                   Manage documents and websites powering your AI assistant.
                 </p>
               </div>
-              <Button onClick={() => setUploadDialogOpen(true)}>
+              <Button
+                className="hidden sm:inline-flex"
+                onClick={() => setUploadDialogOpen(true)}
+              >
                 <PlusIcon className="size-4" />
                 Add Source
               </Button>
