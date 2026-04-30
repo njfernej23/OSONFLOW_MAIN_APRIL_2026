@@ -3,12 +3,14 @@ import { chatBubbleIcon, closeIcon, questionIcon, sparklesIcon } from './icons';
 
 type WidgetPosition = 'bottom-right' | 'bottom-left';
 type WidgetLauncherIcon = 'chat' | 'sparkles' | 'question';
+type WidgetAnimation = 'slide-up' | 'scale' | 'fade' | 'pop';
 
 type WidgetAppearancePayload = {
   launcherColor?: string;
   launcherLabel?: string;
   launcherIcon?: WidgetLauncherIcon;
   launcherIconUrl?: string;
+  animation?: WidgetAnimation;
   showPoweredBy?: boolean;
 };
 
@@ -17,17 +19,58 @@ type WidgetAppearancePayload = {
   let container: HTMLDivElement | null = null;
   let button: HTMLButtonElement | null = null;
   let isOpen = false;
+  let hideTimer: number | null = null;
 
   const launcherAppearance: Required<
     Pick<
       WidgetAppearancePayload,
-      'launcherColor' | 'launcherLabel' | 'launcherIcon' | 'launcherIconUrl'
+      | 'launcherColor'
+      | 'launcherLabel'
+      | 'launcherIcon'
+      | 'launcherIconUrl'
+      | 'animation'
     >
   > = {
     launcherColor: '#3b82f6',
     launcherLabel: 'Chat with us',
     launcherIcon: 'chat',
     launcherIconUrl: '',
+    animation: 'slide-up',
+  };
+
+  const widgetAnimations: Record<
+    WidgetAnimation,
+    {
+      closedTransform: string;
+      openTransform: string;
+      duration: number;
+      easing: string;
+    }
+  > = {
+    'slide-up': {
+      closedTransform: 'translate3d(0, 18px, 0) scale(0.98)',
+      openTransform: 'translate3d(0, 0, 0) scale(1)',
+      duration: 260,
+      easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+    },
+    scale: {
+      closedTransform: 'translate3d(0, 8px, 0) scale(0.92)',
+      openTransform: 'translate3d(0, 0, 0) scale(1)',
+      duration: 240,
+      easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+    },
+    fade: {
+      closedTransform: 'translate3d(0, 0, 0) scale(1)',
+      openTransform: 'translate3d(0, 0, 0) scale(1)',
+      duration: 200,
+      easing: 'ease',
+    },
+    pop: {
+      closedTransform: 'translate3d(0, 20px, 0) scale(0.86)',
+      openTransform: 'translate3d(0, 0, 0) scale(1)',
+      duration: 320,
+      easing: 'cubic-bezier(0.18, 1.35, 0.32, 1)',
+    },
   };
   
   // Get configuration from script tag
@@ -51,6 +94,19 @@ type WidgetAppearancePayload = {
     }
 
     return 'chat';
+  };
+
+  const parseWidgetAnimation = (animation: unknown): WidgetAnimation => {
+    if (
+      animation === 'slide-up' ||
+      animation === 'scale' ||
+      animation === 'fade' ||
+      animation === 'pop'
+    ) {
+      return animation;
+    }
+
+    return 'slide-up';
   };
 
   const normalizeHexColor = (value: string): string | null => {
@@ -156,6 +212,11 @@ type WidgetAppearancePayload = {
       launcherAppearance.launcherIconUrl = appearance.launcherIconUrl.trim();
     }
 
+    if (typeof appearance.animation === 'string') {
+      launcherAppearance.animation = parseWidgetAnimation(appearance.animation);
+      applyContainerAnimationState(isOpen ? 'open' : 'closed');
+    }
+
     applyLauncherAppearance();
   };
   
@@ -164,6 +225,7 @@ type WidgetAppearancePayload = {
   if (currentScript) {
     organizationId = currentScript.getAttribute('data-organization-id');
     position = (currentScript.getAttribute('data-position') as WidgetPosition) || EMBED_CONFIG.DEFAULT_POSITION;
+    launcherAppearance.animation = parseWidgetAnimation(currentScript.getAttribute('data-animation'));
   } else {
     // Fallback: find script tag by src
     const scripts = document.querySelectorAll('script[src*="embed"]');
@@ -174,6 +236,7 @@ type WidgetAppearancePayload = {
     if (embedScript) {
       organizationId = embedScript.getAttribute('data-organization-id');
       position = (embedScript.getAttribute('data-position') as WidgetPosition) || EMBED_CONFIG.DEFAULT_POSITION;
+      launcherAppearance.animation = parseWidgetAnimation(embedScript.getAttribute('data-animation'));
     }
   }
   
@@ -246,8 +309,12 @@ type WidgetAppearancePayload = {
       box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
       display: none;
       opacity: 0;
-      transform: translateY(10px);
-      transition: all 0.3s ease;
+      transform: ${widgetAnimations[launcherAppearance.animation].closedTransform};
+      transform-origin: ${position === 'bottom-right' ? 'bottom right' : 'bottom left'};
+      transition:
+        opacity ${widgetAnimations[launcherAppearance.animation].duration}ms ${widgetAnimations[launcherAppearance.animation].easing},
+        transform ${widgetAnimations[launcherAppearance.animation].duration}ms ${widgetAnimations[launcherAppearance.animation].easing};
+      will-change: opacity, transform;
     `;
     
     // Create iframe
@@ -303,31 +370,53 @@ type WidgetAppearancePayload = {
       show();
     }
   }
+
+  function applyContainerAnimationState(state: 'open' | 'closed') {
+    if (!container) {
+      return;
+    }
+
+    const animation = widgetAnimations[launcherAppearance.animation];
+    container.style.transition = `opacity ${animation.duration}ms ${animation.easing}, transform ${animation.duration}ms ${animation.easing}`;
+    container.style.opacity = state === 'open' ? '1' : '0';
+    container.style.transform =
+      state === 'open' ? animation.openTransform : animation.closedTransform;
+  }
   
   function show() {
     if (container && button) {
+      if (hideTimer !== null) {
+        window.clearTimeout(hideTimer);
+        hideTimer = null;
+      }
+
       isOpen = true;
       container.style.display = 'block';
+      applyContainerAnimationState('closed');
       // Trigger animation
-      setTimeout(() => {
-        if (container) {
-          container.style.opacity = '1';
-          container.style.transform = 'translateY(0)';
-        }
-      }, 10);
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => applyContainerAnimationState('open'));
+      });
       applyLauncherAppearance();
     }
   }
   
   function hide() {
     if (container && button) {
+      if (hideTimer !== null) {
+        window.clearTimeout(hideTimer);
+        hideTimer = null;
+      }
+
       isOpen = false;
-      container.style.opacity = '0';
-      container.style.transform = 'translateY(10px)';
+      applyContainerAnimationState('closed');
       // Hide after animation
-      setTimeout(() => {
-        if (container) container.style.display = 'none';
-      }, 300);
+      hideTimer = window.setTimeout(() => {
+        if (container && !isOpen) {
+          container.style.display = 'none';
+        }
+        hideTimer = null;
+      }, widgetAnimations[launcherAppearance.animation].duration);
       applyLauncherAppearance();
     }
   }
@@ -343,11 +432,19 @@ type WidgetAppearancePayload = {
       button.remove();
       button = null;
     }
+    if (hideTimer !== null) {
+      window.clearTimeout(hideTimer);
+      hideTimer = null;
+    }
     isOpen = false;
   }
   
   // Function to reinitialize with new config
-  function reinit(newConfig: { organizationId?: string; position?: WidgetPosition }) {
+  function reinit(newConfig: {
+    organizationId?: string;
+    position?: WidgetPosition;
+    animation?: WidgetAnimation;
+  }) {
     // Destroy existing widget
     destroy();
     
@@ -357,6 +454,9 @@ type WidgetAppearancePayload = {
     }
     if (newConfig.position) {
       position = newConfig.position;
+    }
+    if (newConfig.animation) {
+      launcherAppearance.animation = parseWidgetAnimation(newConfig.animation);
     }
     
     // Reinitialize

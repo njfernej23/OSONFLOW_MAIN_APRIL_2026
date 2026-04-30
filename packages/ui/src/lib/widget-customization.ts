@@ -1,4 +1,5 @@
 export type WidgetLauncherIcon = "chat" | "sparkles" | "question";
+export type WidgetAnimation = "slide-up" | "scale" | "fade" | "pop";
 
 export type WidgetThemeSettings = {
   primaryColor: string;
@@ -16,6 +17,7 @@ export type WidgetAppearanceSettings = {
   launcherLabel: string;
   launcherIcon: WidgetLauncherIcon;
   launcherIconUrl: string;
+  animation: WidgetAnimation;
   poweredByText: string;
   showPoweredBy: boolean;
 };
@@ -36,6 +38,7 @@ export const DEFAULT_WIDGET_APPEARANCE: WidgetAppearanceSettings = {
   launcherLabel: "Chat with us",
   launcherIcon: "chat",
   launcherIconUrl: "",
+  animation: "slide-up",
   poweredByText: "Osonflow",
   showPoweredBy: true,
 };

@@ -1,7 +1,10 @@
-import { type ChangeEvent, useRef } from "react"
+import { type ChangeEvent, type ReactNode, useRef } from "react"
 import { UseFormReturn } from "react-hook-form"
 import {
+  ArrowUpIcon,
   CircleHelpIcon,
+  EyeIcon,
+  Maximize2Icon,
   MessageSquareTextIcon,
   SparklesIcon,
   UploadIcon,
@@ -20,6 +23,7 @@ import {
 import { Input } from "@workspace/ui/components/input"
 import { Switch } from "@workspace/ui/components/switch"
 import { toast } from "sonner"
+import type { WidgetAnimation } from "@workspace/ui/lib/widget-customization"
 import { FormSchema } from "../../types"
 import { ColorFormField } from "./color-form-field"
 import { IMAGE_UPLOAD_ACCEPT, readImageAsDataUrl } from "./image-upload-utils"
@@ -43,6 +47,33 @@ const launcherIcons = [
     value: "question",
     label: "Question",
     icon: <CircleHelpIcon className="size-5" />,
+  },
+]
+
+const animationOptions: Array<{
+  value: WidgetAnimation
+  label: string
+  icon: ReactNode
+}> = [
+  {
+    value: "slide-up",
+    label: "Slide",
+    icon: <ArrowUpIcon className="size-5" />,
+  },
+  {
+    value: "scale",
+    label: "Scale",
+    icon: <Maximize2Icon className="size-5" />,
+  },
+  {
+    value: "fade",
+    label: "Fade",
+    icon: <EyeIcon className="size-5" />,
+  },
+  {
+    value: "pop",
+    label: "Pop",
+    icon: <SparklesIcon className="size-5" />,
   },
 ]
 
@@ -197,6 +228,43 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
             <FormControl>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {launcherIcons.map((option) => (
+                  <button
+                    className={cn(
+                      "flex flex-col items-center gap-2 rounded-xl border p-4 text-xs font-medium transition-all",
+                      "hover:border-primary/50 hover:bg-primary/5",
+                      field.value === option.value
+                        ? "border-primary bg-primary/10 text-primary shadow-sm"
+                        : "border-border bg-muted/10 text-muted-foreground"
+                    )}
+                    key={option.value}
+                    onClick={() => field.onChange(option.value)}
+                    type="button"
+                  >
+                    {option.icon}
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="appearance.animation"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel className="text-xs font-medium">
+              Open & Close Animation
+            </FormLabel>
+            <FormDescription className="mb-3 text-xs">
+              Motion used when the embedded widget opens and closes
+            </FormDescription>
+            <FormControl>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {animationOptions.map((option) => (
                   <button
                     className={cn(
                       "flex flex-col items-center gap-2 rounded-xl border p-4 text-xs font-medium transition-all",

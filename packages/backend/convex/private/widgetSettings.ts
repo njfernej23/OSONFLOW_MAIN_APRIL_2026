@@ -18,6 +18,7 @@ const DEFAULT_APPEARANCE = {
     launcherLabel: "Chat with us",
     launcherIcon: "chat" as const,
     launcherIconUrl: "",
+    animation: "slide-up" as const,
     poweredByText: "Osonflow",
     showPoweredBy: true,
 };
@@ -63,6 +64,14 @@ const appearanceValidator = v.object({
         v.union(v.literal("chat"), v.literal("sparkles"), v.literal("question"))
     ),
     launcherIconUrl: v.optional(v.string()),
+    animation: v.optional(
+        v.union(
+            v.literal("slide-up"),
+            v.literal("scale"),
+            v.literal("fade"),
+            v.literal("pop")
+        )
+    ),
     poweredByText: v.optional(v.string()),
     showPoweredBy: v.optional(v.boolean()),
 });
@@ -94,6 +103,7 @@ type WidgetAppearance = {
     launcherLabel?: string;
     launcherIcon?: "chat" | "sparkles" | "question";
     launcherIconUrl?: string;
+    animation?: "slide-up" | "scale" | "fade" | "pop";
     poweredByText?: string;
     showPoweredBy?: boolean;
 };
@@ -198,6 +208,8 @@ const mergeAppearance = (
         incoming?.launcherIconUrl ??
         base?.launcherIconUrl ??
         DEFAULT_APPEARANCE.launcherIconUrl,
+    animation:
+        incoming?.animation ?? base?.animation ?? DEFAULT_APPEARANCE.animation,
     poweredByText:
         incoming?.poweredByText ??
         base?.poweredByText ??

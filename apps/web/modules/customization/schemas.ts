@@ -65,6 +65,7 @@ export const widgetSettingsSchema = z.object({
             .max(40, "Launcher label must be at most 40 characters"),
         launcherIcon: z.enum(["chat", "sparkles", "question"]),
         launcherIconUrl: imageUrlField,
+        animation: z.enum(["slide-up", "scale", "fade", "pop"]),
         poweredByText: z
             .string()
             .trim()

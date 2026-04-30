@@ -90,6 +90,15 @@
           <option value="bottom-left">Bottom Left</option>
         </select>
       </div>
+      <div class="form-group">
+        <label for="animation">Animation:</label>
+        <select id="animation">
+          <option value="slide-up">Slide</option>
+          <option value="scale">Scale</option>
+          <option value="fade">Fade</option>
+          <option value="pop">Pop</option>
+        </select>
+      </div>
     </div>
     
     <div class="controls">
@@ -113,7 +122,8 @@
     window.initWidget = function() {
       const config = {
         organizationId: document.getElementById('orgId').value || EMBED_CONFIG.DEFAULT_ORG_ID,
-        position: document.getElementById('position').value
+        position: document.getElementById('position').value,
+        animation: document.getElementById('animation').value
       };
       
       if (window.EchoWidget) {
