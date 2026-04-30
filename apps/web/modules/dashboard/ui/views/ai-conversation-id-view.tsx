@@ -125,234 +125,250 @@ export const AIConversationIdView = ({
   )
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
-      <header className="surface-frosted mx-3 mt-3 shrink-0 rounded-[30px] px-3 py-3 sm:px-4 sm:py-4 lg:px-6">
-        <div className="flex items-start gap-2.5 sm:gap-3 lg:gap-4">
-          {isMobile ? (
-            <Button
-              className="mt-0.5 -ml-2"
-              onClick={() => router.push("/ai-conversations")}
-              size="icon"
-              variant="ghost"
+    <div className="flex h-full min-h-0 flex-1 flex-col gap-3 overflow-hidden bg-transparent p-3">
+      <header className="surface-frosted shrink-0 rounded-[22px] px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            {isMobile ? (
+              <Button
+                className="-ml-2 shrink-0"
+                onClick={() => router.push("/ai-conversations")}
+                size="icon"
+                variant="ghost"
+              >
+                <ArrowLeftIcon className="size-4" />
+                <span className="sr-only">Back to AI voicechats</span>
+              </Button>
+            ) : null}
+
+            <DicebearAvatar
+              seed={conversation.contactSession?._id ?? conversation._id}
+              size={isMobile ? 40 : 46}
+              className="shrink-0"
+            />
+
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                AI Voicechat
+              </p>
+              <h1 className="mt-1 truncate text-[18px] font-semibold text-foreground sm:text-[20px]">
+                {conversation.contactSession?.name ?? "Unknown visitor"}
+              </h1>
+              {conversation.contactSession?.email ? (
+                <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
+                  {conversation.contactSession.email}
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5 lg:justify-end">
+            <Badge
+              className={cn(
+                "h-6 rounded-md border px-2 text-[11px] font-medium",
+                providerBadgeClassName
+              )}
+              variant="outline"
             >
-              <ArrowLeftIcon className="size-4" />
-              <span className="sr-only">Back to AI voicechats</span>
-            </Button>
-          ) : null}
-
-          <DicebearAvatar
-            seed={conversation.contactSession?._id ?? conversation._id}
-            size={isMobile ? 40 : 44}
-            className="shrink-0"
-          />
-
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-col gap-2 sm:gap-2.5 lg:flex-row lg:items-start lg:justify-between lg:gap-3">
-              <div className="min-w-0">
-                <h1 className="truncate text-[17px] font-semibold text-foreground sm:text-[19px] lg:text-[20px]">
-                  {conversation.contactSession?.name ?? "Unknown visitor"}
-                </h1>
-                {conversation.contactSession?.email ? (
-                  <p className="mt-0.5 truncate text-[12px] text-muted-foreground sm:text-[13px] lg:text-sm">
-                    {conversation.contactSession.email}
-                  </p>
-                ) : null}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Badge
-                  className={cn(
-                    "h-6 rounded-md border px-2 text-[11px] font-medium",
-                    providerBadgeClassName
-                  )}
-                  variant="outline"
-                >
-                  {providerLabel}
-                </Badge>
-                <Badge
-                  className={cn(
-                    "h-6 rounded-md border px-2 text-[11px] font-medium",
-                    conversation.endedAt
-                      ? "border-muted-foreground/20 bg-muted/50 text-muted-foreground"
-                      : "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                  )}
-                  variant="outline"
-                >
-                  <CircleIcon
-                    className={cn(
-                      "mr-1 size-1.5 fill-current",
-                      conversation.endedAt
-                        ? "text-muted-foreground/50"
-                        : "text-emerald-500"
-                    )}
-                  />
-                  {conversation.endedAt ? "Ended" : "Live"}
-                </Badge>
-                <Badge
-                  className={cn(
-                    "h-6 rounded-md border px-2 text-[11px] font-medium",
-                    statusBadgeClassName
-                  )}
-                  variant="outline"
-                >
-                  {statusLabel}
-                </Badge>
-              </div>
-            </div>
-
-            <div className="mt-2.5 grid gap-x-3 gap-y-1.5 text-[11px] text-muted-foreground sm:mt-3 sm:grid-cols-2 sm:gap-x-4 sm:text-[12px]">
-              <div className="inline-flex items-center gap-1.5">
-                <Clock3Icon className="size-3.5 shrink-0" />
-                <span className="truncate">
-                  Started {formatTimestamp(conversation._creationTime)}
-                </span>
-              </div>
-              <div className="inline-flex items-center gap-1.5">
-                <Clock3Icon className="size-3.5 shrink-0" />
-                <span className="truncate">
-                  Last activity {formatTimestamp(conversation.lastActivityAt)}
-                </span>
-              </div>
-              {conversation.contactSession?.metadata?.timezone ? (
-                <div className="inline-flex items-center gap-1.5">
-                  <GlobeIcon className="size-3.5 shrink-0" />
-                  <span className="truncate">
-                    {conversation.contactSession.metadata.timezone}
-                  </span>
-                </div>
-              ) : null}
-              {currentPage ? (
-                <div className="inline-flex items-center gap-1.5">
-                  <GlobeIcon className="size-3.5 shrink-0" />
-                  <span className="truncate">{currentPage}</span>
-                </div>
-              ) : null}
-            </div>
-
+              {providerLabel}
+            </Badge>
+            <Badge
+              className={cn(
+                "h-6 rounded-md border px-2 text-[11px] font-medium",
+                conversation.endedAt
+                  ? "border-muted-foreground/20 bg-muted/50 text-muted-foreground"
+                  : "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+              )}
+              variant="outline"
+            >
+              <CircleIcon
+                className={cn(
+                  "mr-1 size-1.5 fill-current",
+                  conversation.endedAt
+                    ? "text-muted-foreground/50"
+                    : "text-emerald-500"
+                )}
+              />
+              {conversation.endedAt ? "Ended" : "Live"}
+            </Badge>
+            <Badge
+              className={cn(
+                "h-6 rounded-md border px-2 text-[11px] font-medium",
+                statusBadgeClassName
+              )}
+              variant="outline"
+            >
+              {statusLabel}
+            </Badge>
             {conversation.linkedConversationId ? (
-              <div className="mt-2.5 sm:mt-3">
-                <Button
-                  className="h-7 rounded-lg px-3 text-[11px]"
-                  onClick={() =>
-                    router.push(
-                      `/conversations/${conversation.linkedConversationId}`
-                    )
-                  }
-                  size="sm"
-                  variant="outline"
-                >
-                  <MessageSquareTextIcon className="size-3.5" />
-                  View human handoff
-                </Button>
-              </div>
+              <Button
+                className="h-7 rounded-lg px-2.5 text-[11px]"
+                onClick={() =>
+                  router.push(
+                    `/conversations/${conversation.linkedConversationId}`
+                  )
+                }
+                size="sm"
+                variant="outline"
+              >
+                <MessageSquareTextIcon className="size-3.5" />
+                Handoff
+              </Button>
             ) : null}
           </div>
         </div>
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-xl border border-border/65 bg-background/58 px-3 py-2">
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
+              <Clock3Icon className="size-3.5" />
+              Started
+            </div>
+            <p className="mt-1 truncate text-[12px] font-medium text-foreground">
+              {formatTimestamp(conversation._creationTime)}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border/65 bg-background/58 px-3 py-2">
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
+              <Clock3Icon className="size-3.5" />
+              Last activity
+            </div>
+            <p className="mt-1 truncate text-[12px] font-medium text-foreground">
+              {formatTimestamp(conversation.lastActivityAt)}
+            </p>
+          </div>
+          {conversation.contactSession?.metadata?.timezone ? (
+            <div className="rounded-xl border border-border/65 bg-background/58 px-3 py-2">
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
+                <GlobeIcon className="size-3.5" />
+                Timezone
+              </div>
+              <p className="mt-1 truncate text-[12px] font-medium text-foreground">
+                {conversation.contactSession.metadata.timezone}
+              </p>
+            </div>
+          ) : null}
+          {currentPage ? (
+            <div className="rounded-xl border border-border/65 bg-background/58 px-3 py-2">
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
+                <GlobeIcon className="size-3.5" />
+                Page
+              </div>
+              <p className="mt-1 truncate text-[12px] font-medium text-foreground">
+                {currentPage}
+              </p>
+            </div>
+          ) : null}
+        </div>
       </header>
 
-      <div className="mx-3 mt-3 rounded-[26px] border border-border/70 bg-background/72 px-3 py-2.5 shadow-sm sm:px-4 sm:py-3 lg:px-6">
-        <div className="flex items-center justify-between gap-3">
+      <section className="surface-panel flex min-h-0 flex-1 flex-col overflow-hidden rounded-[22px] shadow-sm">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-background/62 px-4 py-3 lg:px-5">
           <div>
-            <p className="text-[13px] font-medium text-foreground sm:text-sm">
-              Transcript
-            </p>
-            <p className="mt-0.5 text-[10px] text-muted-foreground sm:text-[11px]">
+            <p className="text-sm font-semibold text-foreground">Transcript</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
               {orderedMessages.length} message
               {orderedMessages.length === 1 ? "" : "s"}
             </p>
           </div>
-        </div>
-      </div>
-
-      <AIConversation className="min-h-0 flex-1 px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-5">
-        <AIConversationContent className="surface-panel rounded-[32px] border-0 px-4 py-4 shadow-none sm:px-5 sm:py-5">
-          <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
-            {transcriptItems.length > 0 ? (
-              transcriptItems.map(({ dayLabel, message }) => (
-                <div key={message._id}>
-                  {dayLabel ? (
-                    <div className="mb-3 flex justify-center sm:mb-4">
-                      <span className="rounded-full bg-background/90 px-2.5 py-1 text-[10px] font-medium text-muted-foreground ring-1 ring-border sm:px-3 sm:text-[11px]">
-                        {dayLabel}
-                      </span>
-                    </div>
-                  ) : null}
-
-                  <AIMessage
-                    from={message.role === "assistant" ? "assistant" : "user"}
-                  >
-                    <div className="flex max-w-xl flex-col gap-1.5">
-                      <div
-                        className={cn(
-                          "inline-flex items-center gap-1.5 text-[10px] font-medium sm:text-[11px]",
-                          message.role === "assistant"
-                            ? "justify-start text-muted-foreground"
-                            : "justify-end text-muted-foreground"
-                        )}
-                      >
-                        {message.role === "assistant" ? (
-                          <>
-                            <BotIcon className="size-3 sm:size-3.5" />
-                            <span>Assistant</span>
-                          </>
-                        ) : (
-                          <>
-                            <UserRoundIcon className="size-3 sm:size-3.5" />
-                            <span>Visitor</span>
-                          </>
-                        )}
-                        <span className="text-muted-foreground/60">·</span>
-                        <span className="text-muted-foreground/60">
-                          {formatTranscriptTime(message._creationTime)}
-                        </span>
-                      </div>
-
-                      <AIMessageContent
-                        className={cn(
-                          "rounded-2xl border px-3 py-2 text-[12px] leading-relaxed shadow-sm sm:px-4 sm:py-2.5 sm:text-[13px]",
-                          message.role === "assistant"
-                            ? "border-border/70 bg-background text-foreground shadow-[0_14px_34px_-24px_rgba(15,23,42,0.24)]"
-                            : "border-transparent bg-foreground text-background shadow-[0_18px_36px_-24px_rgba(15,23,42,0.38)]"
-                        )}
-                      >
-                        <AIResponse>{message.text}</AIResponse>
-                      </AIMessageContent>
-                    </div>
-                  </AIMessage>
-                </div>
-              ))
-            ) : (
-              <div className="flex min-h-[240px] flex-col items-center justify-center gap-2.5 rounded-3xl border border-dashed bg-background/85 p-4 text-center sm:min-h-[280px] sm:gap-3 sm:p-6">
-                <div className="flex size-10 items-center justify-center rounded-2xl bg-muted/50 sm:size-11">
-                  <SparklesIcon className="size-4 text-muted-foreground sm:size-5" />
-                </div>
-                <div>
-                  <p className="text-[13px] font-medium text-foreground sm:text-sm">
-                    No transcript messages yet
-                  </p>
-                  <p className="mt-1 text-[11px] text-muted-foreground sm:text-[12px]">
-                    This session was created before transcript lines were
-                    stored.
-                  </p>
-                </div>
-              </div>
-            )}
+          <div className="hidden rounded-full border border-border/70 bg-muted/45 px-2.5 py-1 text-[11px] font-medium text-muted-foreground sm:block">
+            Read only
           </div>
-        </AIConversationContent>
-        <AIConversationScrollButton />
-      </AIConversation>
+        </div>
+
+        <AIConversation className="min-h-0 flex-1 px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
+          <AIConversationContent className="px-0 py-0">
+            <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 sm:gap-4">
+              {transcriptItems.length > 0 ? (
+                transcriptItems.map(({ dayLabel, message }) => (
+                  <div key={message._id}>
+                    {dayLabel ? (
+                      <div className="mb-3 flex items-center gap-3 sm:mb-4">
+                        <div className="h-px flex-1 bg-border/70" />
+                        <span className="rounded-full bg-background px-2.5 py-1 text-[10px] font-medium text-muted-foreground ring-1 ring-border sm:px-3 sm:text-[11px]">
+                          {dayLabel}
+                        </span>
+                        <div className="h-px flex-1 bg-border/70" />
+                      </div>
+                    ) : null}
+
+                    <AIMessage
+                      from={message.role === "assistant" ? "assistant" : "user"}
+                    >
+                      <div className="flex max-w-2xl flex-col gap-1.5">
+                        <div
+                          className={cn(
+                            "inline-flex items-center gap-1.5 text-[10px] font-medium sm:text-[11px]",
+                            message.role === "assistant"
+                              ? "justify-start text-muted-foreground"
+                              : "justify-end text-muted-foreground"
+                          )}
+                        >
+                          {message.role === "assistant" ? (
+                            <>
+                              <BotIcon className="size-3 sm:size-3.5" />
+                              <span>Assistant</span>
+                            </>
+                          ) : (
+                            <>
+                              <UserRoundIcon className="size-3 sm:size-3.5" />
+                              <span>Visitor</span>
+                            </>
+                          )}
+                          <span className="text-muted-foreground/60">·</span>
+                          <span className="text-muted-foreground/60">
+                            {formatTranscriptTime(message._creationTime)}
+                          </span>
+                        </div>
+
+                        <AIMessageContent
+                          className={cn(
+                            "rounded-2xl border px-3 py-2 text-[12px] leading-relaxed shadow-sm sm:px-4 sm:py-2.5 sm:text-[13px]",
+                            message.role === "assistant"
+                              ? "border-border/70 bg-background text-foreground shadow-[0_14px_34px_-24px_rgba(15,23,42,0.24)]"
+                              : "border-transparent bg-primary text-primary-foreground shadow-[0_18px_36px_-24px_rgba(15,23,42,0.38)]"
+                          )}
+                        >
+                          <AIResponse>{message.text}</AIResponse>
+                        </AIMessageContent>
+                      </div>
+                    </AIMessage>
+                  </div>
+                ))
+              ) : (
+                <div className="flex min-h-[260px] flex-col items-center justify-center gap-2.5 rounded-2xl border border-dashed bg-background/65 p-4 text-center sm:min-h-[320px] sm:gap-3 sm:p-6">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-muted/50 sm:size-11">
+                    <SparklesIcon className="size-4 text-muted-foreground sm:size-5" />
+                  </div>
+                  <div>
+                    <p className="text-[13px] font-medium text-foreground sm:text-sm">
+                      No transcript messages yet
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground sm:text-[12px]">
+                      This session was created before transcript lines were
+                      stored.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </AIConversationContent>
+          <AIConversationScrollButton />
+        </AIConversation>
+      </section>
     </div>
   )
 }
 
 const AIConversationIdSkeleton = () => {
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-transparent">
-      <div className="surface-frosted mx-3 mt-3 rounded-[30px] px-3 py-3 sm:px-4 sm:py-4 lg:px-6">
-        <div className="flex items-start gap-2.5 sm:gap-3 lg:gap-4">
+    <div className="flex h-full min-h-0 flex-1 flex-col gap-3 overflow-hidden bg-transparent p-3">
+      <div className="surface-frosted rounded-[22px] px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
+        <div className="flex items-start gap-3">
           <Skeleton className="size-10 shrink-0 rounded-full sm:size-11 lg:size-11" />
-          <div className="min-w-0 flex-1 space-y-2.5 sm:space-y-3">
+          <div className="min-w-0 flex-1 space-y-3">
             <div>
+              <Skeleton className="h-3 w-24" />
               <Skeleton className="h-5 w-36 sm:h-6 sm:w-44" />
               <Skeleton className="mt-1.5 h-3.5 w-44 sm:mt-2 sm:h-4 sm:w-56" />
             </div>
@@ -361,21 +377,22 @@ const AIConversationIdSkeleton = () => {
               <Skeleton className="h-6 w-16 rounded-md sm:w-20" />
               <Skeleton className="h-6 w-20 rounded-md sm:w-28" />
             </div>
-            <div className="grid gap-2 sm:grid-cols-2 sm:gap-3">
-              <Skeleton className="h-3.5 w-36 sm:h-4 sm:w-40" />
-              <Skeleton className="h-3.5 w-40 sm:h-4 sm:w-48" />
-              <Skeleton className="h-3.5 w-28 sm:h-4 sm:w-32" />
-            </div>
           </div>
+        </div>
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton className="h-[58px] rounded-xl" key={index} />
+          ))}
         </div>
       </div>
 
-      <div className="mx-3 mt-3 rounded-[26px] border border-border/70 bg-background/72 px-3 py-2.5 shadow-sm sm:px-4 sm:py-3 lg:px-6">
-        <Skeleton className="h-9 w-full rounded-xl sm:h-10" />
-      </div>
-
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-3 py-3 sm:gap-4 sm:px-4 sm:py-4 lg:px-6 lg:py-5">
-        <div className="surface-panel mx-auto flex w-full max-w-3xl flex-col gap-3 rounded-[32px] px-4 py-4 shadow-none sm:gap-4 sm:px-5 sm:py-5">
+      <div className="surface-panel flex min-h-0 flex-1 flex-col overflow-hidden rounded-[22px] shadow-sm">
+        <div className="border-b border-border/70 bg-background/62 px-4 py-3 lg:px-5">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="mt-1.5 h-3 w-16" />
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-3 py-3 sm:gap-4 sm:px-4 sm:py-4 lg:px-5">
           {Array.from({ length: 6 }).map((_, index) => (
             <div
               key={index}

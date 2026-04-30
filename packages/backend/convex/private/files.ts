@@ -6,6 +6,8 @@ import rag from "../system/ai/rag";
 import { Id } from "../_generated/dataModel"
 import { paginationOptsValidator } from "convex/server";
 import { internal } from "../_generated/api";
+import { generateText } from "ai";
+import { openai } from "@ai-sdk/openai";
 
 function guessMimeType(filename: string, bytes: ArrayBuffer): string {
     return (
@@ -20,6 +22,26 @@ const MAX_SCRAPED_HTML_LENGTH = 1_500_000;
 const MAX_SCRAPED_TEXT_LENGTH = 120_000;
 const MAX_VIEWER_TEXT_LENGTH = 200_000;
 const SCRAPER_USER_AGENT = "OsonflowKnowledgeBaseBot/1.0";
+
+const KNOWLEDGE_TEST_PROMPT = `
+You are a knowledge base QA evaluator for a SaaS support AI.
+
+Answer the user's test question using only the provided knowledge base context.
+Return only valid JSON with this shape:
+{
+  "answer": "string",
+  "supportLevel": "strong" | "partial" | "weak" | "none",
+  "reason": "short explanation of why the support level was chosen"
+}
+
+Rules:
+- If the context directly answers the question, use supportLevel "strong".
+- If the context answers only part of it, use "partial".
+- If the context is related but not enough to answer reliably, use "weak".
+- If the answer is not in the context, use "none" and say the knowledge base does not contain enough information.
+- Do not invent policies, prices, steps, dates, links, or product details.
+- Keep the answer concise and practical.
+`;
 
 function normalizeAndValidateWebsiteUrl(rawUrl: string): string {
     const normalized = rawUrl.trim();
@@ -89,6 +111,71 @@ function extractWebsiteTextFromHtml(html: string): {
         description: (descriptionMatch?.[1] || ogDescriptionMatch?.[1])?.trim(),
         bodyText,
     };
+}
+
+function safeJsonParse(value: string): Record<string, unknown> | null {
+    try {
+        return JSON.parse(value);
+    } catch {
+        const match = value.match(/\{[\s\S]*\}/);
+
+        if (!match) {
+            return null;
+        }
+
+        try {
+            return JSON.parse(match[0]);
+        } catch {
+            return null;
+        }
+    }
+}
+
+function normalizeConfidenceScore(score: unknown): number {
+    if (typeof score !== "number" || Number.isNaN(score)) {
+        return 0;
+    }
+
+    if (score <= 1) {
+        return Math.round(Math.max(0, Math.min(score, 1)) * 100);
+    }
+
+    return Math.round(Math.max(0, Math.min(score, 100)));
+}
+
+function buildEntryScoreMap(
+    results: Array<{ entryId: EntryId; score: number }>,
+): Map<EntryId, number> {
+    const scores = new Map<EntryId, number>();
+
+    for (const result of results) {
+        const score = normalizeConfidenceScore(result.score);
+        const existing = scores.get(result.entryId) ?? 0;
+        scores.set(result.entryId, Math.max(existing, score));
+    }
+
+    return scores;
+}
+
+function confidenceFromSupportLevel(
+    supportLevel: string,
+    sourceScores: number[],
+): number {
+    const sourceStrength = sourceScores.length
+        ? Math.round(sourceScores.reduce((total, score) => total + score, 0) / sourceScores.length)
+        : 0;
+    const supportBase = {
+        strong: 86,
+        partial: 62,
+        weak: 34,
+        none: 0,
+    }[supportLevel] ?? 25;
+
+    if (supportLevel === "none") {
+        return 0;
+    }
+
+    return Math.max(1, Math.min(99, Math.round(supportBase * 0.72 + sourceStrength * 0.28)));
 }
 
 async function scrapeWebsite(url: string): Promise<{
@@ -566,6 +653,126 @@ export const getViewerContent = action({
             code: "NOT_FOUND",
             message: "No preview content available for this entry",
         });
+    },
+});
+
+export const testKnowledgeBase = action({
+    args: {
+        question: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+
+        if (identity === null) {
+            throw new ConvexError({
+                code: "UNAUTHORIZED",
+                message: "Identity not found",
+            });
+        }
+
+        const orgId = identity.orgId as string;
+
+        if (!orgId) {
+            throw new ConvexError({
+                code: "UNAUTHORIZED",
+                message: "Organization not found",
+            });
+        }
+
+        const question = args.question.trim();
+
+        if (!question) {
+            throw new ConvexError({
+                code: "BAD_REQUEST",
+                message: "Question is required",
+            });
+        }
+
+        const namespace = await rag.getNamespace(ctx, {
+            namespace: orgId,
+        });
+
+        if (!namespace) {
+            return {
+                answer: "No indexed knowledge sources are available yet.",
+                confidence: 0,
+                supportLevel: "none" as const,
+                reason: "The organization has no knowledge base namespace yet.",
+                sources: [],
+            };
+        }
+
+        const searchResult = await rag.search(ctx, {
+            namespace: orgId,
+            query: question,
+            limit: 6,
+        });
+
+        const entryScores = buildEntryScoreMap(searchResult.results);
+        const sources = searchResult.entries.map((entry) => {
+            const metadata = entry.metadata as EntryMetadata | undefined;
+
+            return {
+                title: entry.title || metadata?.filename || entry.key || "Untitled source",
+                filename: metadata?.filename,
+                category: metadata?.category ?? undefined,
+                sourceUrl: metadata?.sourceUrl,
+                score: entryScores.get(entry.entryId) ?? 0,
+            };
+        });
+
+        if (!searchResult.entries.length || !searchResult.text.trim()) {
+            return {
+                answer:
+                    "I couldn't find enough information in the knowledge base to answer that question.",
+                confidence: 0,
+                supportLevel: "none" as const,
+                reason: "No relevant source chunks matched the test question.",
+                sources,
+            };
+        }
+
+        const response = await generateText({
+            model: openai.chat("gpt-4o-mini"),
+            messages: [
+                {
+                    role: "system",
+                    content: KNOWLEDGE_TEST_PROMPT,
+                },
+                {
+                    role: "user",
+                    content: `Question: ${question}\n\nKnowledge base context:\n${searchResult.text}`,
+                },
+            ],
+        });
+
+        const parsed = safeJsonParse(response.text);
+        const supportLevel =
+            parsed?.supportLevel === "strong" ||
+                parsed?.supportLevel === "partial" ||
+                parsed?.supportLevel === "weak" ||
+                parsed?.supportLevel === "none"
+                ? parsed.supportLevel
+                : "weak";
+        const answer =
+            typeof parsed?.answer === "string" && parsed.answer.trim()
+                ? parsed.answer.trim()
+                : response.text.trim();
+        const reason =
+            typeof parsed?.reason === "string" && parsed.reason.trim()
+                ? parsed.reason.trim()
+                : "The answer was evaluated against retrieved source chunks.";
+
+        return {
+            answer,
+            confidence: confidenceFromSupportLevel(
+                supportLevel,
+                sources.map((source) => source.score),
+            ),
+            supportLevel,
+            reason,
+            sources,
+        };
     },
 });
 

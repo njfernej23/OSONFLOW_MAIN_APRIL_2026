@@ -26,30 +26,50 @@ export const CustomizationView = () => {
   }
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-x-hidden overflow-y-auto bg-transparent">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.14),transparent_34%)]" />
-      <div className="sticky top-0 z-10 border-b border-border/60 bg-background/78 backdrop-blur-xl">
-        <div className="mx-auto w-full max-w-screen-xl px-4 py-4 sm:px-6 sm:py-5 md:px-8">
-          <div className="max-w-3xl">
-            <div className="flex items-start gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,color-mix(in_srgb,var(--primary)_92%,white_8%),color-mix(in_srgb,var(--primary)_58%,#0f172a_42%))] text-white shadow-[0_20px_40px_-24px_color-mix(in_srgb,var(--primary)_68%,transparent)] sm:size-11">
-                <PaletteIcon className="size-5" />
+      <div className="mx-auto w-full max-w-[1540px] px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
+        <div className="surface-frosted mb-4 rounded-[22px] px-4 py-4 sm:px-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background shadow-sm">
+                <PaletteIcon className="size-4 text-muted-foreground" />
               </div>
-              <div className="space-y-1">
-                <p className="section-kicker">Visual System</p>
-                <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                  Visual system
+                </p>
+                <h1 className="mt-1 text-xl font-semibold tracking-tight">
                   Widget customization
                 </h1>
-                <p className="max-w-2xl text-sm text-muted-foreground sm:text-[0.95rem]">
-                  Shape the first impression: brand tone, motion, launcher,
-                  gradients, and voice entry points all in one polished flow.
+                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                  Manage the chat widget, launcher, voice settings, and publish
+                  workflow from a cleaner control surface.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-border/70 bg-background/60">
+              <div className="border-r border-border/70 px-3 py-2 text-center">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase">
+                  Published
+                </p>
+                <p className="mt-0.5 text-sm font-semibold tabular-nums">
+                  v{customizationState.publishedVersion}
+                </p>
+              </div>
+              <div className="px-3 py-2 text-center">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase">
+                  Draft
+                </p>
+                <p className="mt-0.5 text-sm font-semibold">
+                  {customizationState.isDraftDifferentFromPublished
+                    ? "Pending"
+                    : "Synced"}
                 </p>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="relative mx-auto w-full max-w-screen-xl px-4 py-5 pb-24 sm:px-6 sm:py-6 sm:pb-16 md:px-8 md:py-8 md:pb-12">
         <CustomizationForm
           key={`${customizationState.publishedVersion}`}
           draftData={customizationState.draft}

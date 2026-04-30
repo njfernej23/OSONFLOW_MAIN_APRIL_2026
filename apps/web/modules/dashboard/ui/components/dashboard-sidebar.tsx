@@ -4,8 +4,10 @@ import { OrganizationSwitcher, UserButton } from "@clerk/nextjs"
 
 import {
   BotIcon,
+  BrainIcon,
   CreditCardIcon,
   InboxIcon,
+  LineChartIcon,
   LayoutDashboardIcon,
   LibraryBigIcon,
   PaletteIcon,
@@ -43,6 +45,16 @@ const customerSupportItems = [
     title: "AI Voicechats",
     url: "/ai-conversations",
     icon: BotIcon,
+  },
+  {
+    title: "Analytics",
+    url: "/analytics",
+    icon: LineChartIcon,
+  },
+  {
+    title: "Customer Memory",
+    url: "/customer-memory",
+    icon: BrainIcon,
   },
 
   {

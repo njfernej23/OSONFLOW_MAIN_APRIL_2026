@@ -104,6 +104,14 @@ export const create = action({
       timestamp: now,
     })
 
+    await ctx.scheduler.runAfter(
+      0,
+      (internal as any).system.intelligence.analyzeChatConversation,
+      {
+        conversationId: conversation._id,
+      }
+    )
+
     await ctx.runMutation(
       (internal as any).system.integrationWebhooks.dispatchEvent,
       {

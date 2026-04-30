@@ -16,7 +16,14 @@ import {
   AccordionTrigger,
 } from "@workspace/ui/components/accordion"
 import Link from "next/link"
-import { GlobeIcon, MailIcon, MonitorIcon, ClockIcon } from "lucide-react"
+import {
+  BrainIcon,
+  ClockIcon,
+  GlobeIcon,
+  MailIcon,
+  MonitorIcon,
+} from "lucide-react"
+import { Badge } from "@workspace/ui/components/badge"
 
 type InfoItem = {
   label: string
@@ -38,6 +45,10 @@ export const ContactPanel = () => {
   const contactSession = useQuery(
     api.private.contactSessions.getOneByConversationId,
     conversationId ? { conversationId } : "skip"
+  )
+  const customerMemory = useQuery(
+    api.private.customerMemories.getByEmail,
+    contactSession?.email ? { email: contactSession.email } : "skip"
   )
 
   const parseUserAgent = useMemo(() => {
@@ -218,6 +229,25 @@ export const ContactPanel = () => {
             </AccordionItem>
           ))}
         </Accordion>
+      )}
+
+      {customerMemory && (
+        <div className="border-t border-border/70 px-4 py-4">
+          <div className="flex items-center gap-2 text-[12px] font-medium text-foreground">
+            <BrainIcon className="size-3.5 text-muted-foreground" />
+            <span>Customer Memory</span>
+          </div>
+          <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+            {customerMemory.summary}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {customerMemory.recentIntents.slice(0, 3).map((intent) => (
+              <Badge key={intent} variant="secondary" className="text-[10px]">
+                {intent.replaceAll("_", " ")}
+              </Badge>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   )

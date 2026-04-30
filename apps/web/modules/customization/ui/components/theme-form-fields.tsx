@@ -10,7 +10,6 @@ import {
   FormMessage,
 } from "@workspace/ui/components/form"
 import { Input } from "@workspace/ui/components/input"
-import { Slider } from "@workspace/ui/components/slider"
 import { Button } from "@workspace/ui/components/button"
 import { toast } from "sonner"
 import { FormSchema } from "../../types"
@@ -61,9 +60,7 @@ export const ThemeFormFields = ({ form }: ThemeFormFieldsProps) => {
       toast.success("Logo image uploaded")
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to upload this image"
+        error instanceof Error ? error.message : "Unable to upload this image"
       toast.error(message)
     }
   }
@@ -216,56 +213,6 @@ export const ThemeFormFields = ({ form }: ThemeFormFieldsProps) => {
           />
         </div>
       </div>
-
-      <div className="border-t" />
-
-      {/* Border radius */}
-      <FormField
-        control={form.control}
-        name="theme.borderRadius"
-        render={({ field }) => {
-          const radiusValue = typeof field.value === "number" ? field.value : 16
-
-          return (
-            <FormItem>
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <FormLabel className="text-sm font-medium">
-                    Corner Radius
-                  </FormLabel>
-                  <FormDescription className="text-xs">
-                    Controls how rounded the widget appears
-                  </FormDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div
-                    className="size-8 border-2 border-foreground/20 bg-muted"
-                    style={{ borderRadius: `${radiusValue}px` }}
-                  />
-                  <span className="w-12 text-right font-mono text-sm font-medium">
-                    {radiusValue}px
-                  </span>
-                </div>
-              </div>
-              <FormControl>
-                <Slider
-                  className="py-1"
-                  max={32}
-                  min={0}
-                  onValueChange={(value) => field.onChange(value[0] ?? 0)}
-                  step={1}
-                  value={[radiusValue]}
-                />
-              </FormControl>
-              <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
-                <span>Sharp (0px)</span>
-                <span>Rounded (32px)</span>
-              </div>
-              <FormMessage />
-            </FormItem>
-          )
-        }}
-      />
     </div>
   )
 }

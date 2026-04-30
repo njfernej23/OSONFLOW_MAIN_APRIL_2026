@@ -132,7 +132,12 @@ export const create = mutation({
         identity.name?.trim() ??
         `Operator ${identity.subject.slice(0, 8)}`,
       assignedAt: conversation.assignedAt ?? now,
+      escalatedAt:
+        conversation.status === "unresolved"
+          ? (conversation.escalatedAt ?? now)
+          : conversation.escalatedAt,
       operatorLastReadAt: now,
+      firstHumanResponseAt: conversation.firstHumanResponseAt ?? now,
       lastOperatorMessageAt: now,
       unreadForContactCount: (conversation.unreadForContactCount ?? 0) + 1,
       unreadForOperatorCount: 0,
@@ -149,6 +154,14 @@ export const create = mutation({
           prompt: args.prompt,
           operator: identity.familyName,
         },
+      }
+    )
+
+    await ctx.scheduler.runAfter(
+      0,
+      (internal as any).system.intelligence.analyzeChatConversation,
+      {
+        conversationId: args.conversationId,
       }
     )
   },

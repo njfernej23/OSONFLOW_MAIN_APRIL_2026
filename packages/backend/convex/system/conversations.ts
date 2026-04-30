@@ -21,7 +21,10 @@ export const escalate = internalMutation({
 
     const previousStatus = conversation.status
 
-    await ctx.db.patch(conversation._id, { status: "escalated" })
+    await ctx.db.patch(conversation._id, {
+      status: "escalated",
+      escalatedAt: conversation.escalatedAt ?? Date.now(),
+    })
 
     if (previousStatus !== "escalated") {
       await ctx.runMutation(
@@ -61,7 +64,11 @@ export const resolve = internalMutation({
 
     const previousStatus = conversation.status
 
-    await ctx.db.patch(conversation._id, { status: "resolved" })
+    await ctx.db.patch(conversation._id, {
+      status: "resolved",
+      resolvedAt: conversation.resolvedAt ?? Date.now(),
+      resolutionSource: "ai",
+    })
 
     if (previousStatus !== "resolved") {
       await ctx.runMutation(
@@ -145,6 +152,7 @@ export const touchCustomerMessage = internalMutation({
 
     await ctx.db.patch(args.conversationId, {
       lastCustomerMessageAt: timestamp,
+      firstCustomerMessageAt: conversation.firstCustomerMessageAt ?? timestamp,
       contactLastReadAt: timestamp,
       unreadForContactCount: 0,
       unreadForOperatorCount: (conversation.unreadForOperatorCount ?? 0) + 1,

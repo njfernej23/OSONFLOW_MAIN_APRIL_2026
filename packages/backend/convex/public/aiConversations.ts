@@ -126,6 +126,7 @@ const ensureEscalatedConversation = async (
     lastOperatorMessageAt: null,
     unreadForContactCount: 0,
     unreadForOperatorCount: 0,
+    escalatedAt: Date.now(),
   })
 
   await ctx.runMutation(
@@ -219,6 +220,14 @@ export const appendMessage = mutation({
       lastMessageRole: args.role,
     })
 
+    await ctx.scheduler.runAfter(
+      0,
+      (internal as any).system.intelligence.analyzeVoiceConversation,
+      {
+        conversationId: args.conversationId,
+      }
+    )
+
     return messageId
   },
 })
@@ -256,6 +265,7 @@ export const escalateToHuman = mutation({
       linkedConversationId: linkedConversation.conversationId,
       lastActivityAt: now,
       endedAt: conversation.endedAt ?? now,
+      escalatedAt: conversation.escalatedAt ?? now,
       lastMessagePreview:
         conversation.lastMessagePreview ??
         "Escalated to a human operator from realtime voice.",
@@ -280,6 +290,14 @@ export const escalateToHuman = mutation({
         }
       )
     }
+
+    await ctx.scheduler.runAfter(
+      0,
+      (internal as any).system.intelligence.analyzeVoiceConversation,
+      {
+        conversationId: args.conversationId,
+      }
+    )
 
     return {
       conversationId: linkedConversation.conversationId,
@@ -308,9 +326,19 @@ export const resolve = mutation({
       status: "resolved",
       lastActivityAt: now,
       endedAt: conversation.endedAt ?? now,
+      resolvedAt: conversation.resolvedAt ?? now,
+      resolutionSource: "voice_ai",
       lastMessagePreview:
         conversation.lastMessagePreview ?? "Conversation resolved.",
     })
+
+    await ctx.scheduler.runAfter(
+      0,
+      (internal as any).system.intelligence.analyzeVoiceConversation,
+      {
+        conversationId: args.conversationId,
+      }
+    )
 
     return {
       previousStatus,
@@ -336,5 +364,13 @@ export const finish = mutation({
       lastActivityAt: now,
       endedAt: conversation.endedAt ?? now,
     })
+
+    await ctx.scheduler.runAfter(
+      0,
+      (internal as any).system.intelligence.analyzeVoiceConversation,
+      {
+        conversationId: args.conversationId,
+      }
+    )
   },
 })

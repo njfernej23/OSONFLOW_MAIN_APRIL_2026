@@ -34,6 +34,26 @@ const aiVoiceConversationRoleValidator = v.union(
   v.literal("assistant")
 )
 
+const supportChannelValidator = v.union(v.literal("chat"), v.literal("voice"))
+
+const supportSentimentValidator = v.union(
+  v.literal("positive"),
+  v.literal("neutral"),
+  v.literal("negative")
+)
+
+const supportUrgencyValidator = v.union(
+  v.literal("low"),
+  v.literal("medium"),
+  v.literal("high")
+)
+
+const resolutionSourceValidator = v.union(
+  v.literal("ai"),
+  v.literal("human"),
+  v.literal("voice_ai")
+)
+
 const themeValidator = v.object({
   primaryColor: v.optional(v.string()),
   headerGradientStart: v.optional(v.string()),
@@ -190,6 +210,11 @@ export default defineSchema({
     lastOperatorMessageAt: v.optional(v.union(v.number(), v.null())),
     unreadForContactCount: v.optional(v.number()),
     unreadForOperatorCount: v.optional(v.number()),
+    firstCustomerMessageAt: v.optional(v.union(v.number(), v.null())),
+    firstHumanResponseAt: v.optional(v.union(v.number(), v.null())),
+    escalatedAt: v.optional(v.union(v.number(), v.null())),
+    resolvedAt: v.optional(v.union(v.number(), v.null())),
+    resolutionSource: v.optional(v.union(resolutionSourceValidator, v.null())),
   })
     .index("by_organization_id", ["organizationId"])
     .index("by_contact_session_id", ["contactSessionId"])
@@ -261,6 +286,9 @@ export default defineSchema({
     endedAt: v.optional(v.number()),
     lastMessagePreview: v.optional(v.string()),
     lastMessageRole: v.optional(aiVoiceConversationRoleValidator),
+    escalatedAt: v.optional(v.union(v.number(), v.null())),
+    resolvedAt: v.optional(v.union(v.number(), v.null())),
+    resolutionSource: v.optional(v.union(resolutionSourceValidator, v.null())),
   })
     .index("by_organization_id", ["organizationId"])
     .index("by_contact_session_id", ["contactSessionId"])
@@ -274,6 +302,75 @@ export default defineSchema({
     role: aiVoiceConversationRoleValidator,
     text: v.string(),
   }).index("by_conversation_id", ["conversationId"]),
+
+  conversationInsights: defineTable({
+    organizationId: v.string(),
+    channel: supportChannelValidator,
+    conversationId: v.optional(v.id("conversations")),
+    aiVoiceConversationId: v.optional(v.id("aiVoiceConversations")),
+    contactSessionId: v.id("contactSessions"),
+    status: v.union(
+      v.literal("unresolved"),
+      v.literal("escalated"),
+      v.literal("resolved")
+    ),
+    intent: v.string(),
+    sentiment: supportSentimentValidator,
+    urgency: supportUrgencyValidator,
+    language: v.optional(v.string()),
+    summary: v.string(),
+    isUnanswered: v.boolean(),
+    unansweredQuestion: v.optional(v.string()),
+    wasEscalated: v.boolean(),
+    wasResolved: v.boolean(),
+    resolutionSource: v.optional(resolutionSourceValidator),
+    firstHumanResponseMs: v.optional(v.number()),
+    humanSavedMinutes: v.number(),
+    lastAnalyzedAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_organization_id_and_updated_at", [
+      "organizationId",
+      "updatedAt",
+    ])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_ai_voice_conversation_id", ["aiVoiceConversationId"]),
+
+  customerMemories: defineTable({
+    organizationId: v.string(),
+    email: v.string(),
+    name: v.optional(v.string()),
+    summary: v.string(),
+    preferredLanguage: v.optional(v.string()),
+    recentIntents: v.array(v.string()),
+    notableFacts: v.array(v.string()),
+    issueHistory: v.array(
+      v.object({
+        channel: supportChannelValidator,
+        intent: v.string(),
+        status: v.union(
+          v.literal("unresolved"),
+          v.literal("escalated"),
+          v.literal("resolved")
+        ),
+        summary: v.string(),
+        at: v.number(),
+      })
+    ),
+    totalConversations: v.number(),
+    totalEscalations: v.number(),
+    totalResolved: v.number(),
+    lastSeenAt: v.number(),
+    lastContactSessionId: v.optional(v.id("contactSessions")),
+    updatedAt: v.number(),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_organization_id_and_email", ["organizationId", "email"])
+    .index("by_organization_id_and_last_seen_at", [
+      "organizationId",
+      "lastSeenAt",
+    ]),
 
   users: defineTable({
     name: v.string(),

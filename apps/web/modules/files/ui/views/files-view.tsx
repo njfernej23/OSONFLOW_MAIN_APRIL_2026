@@ -37,6 +37,7 @@ import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
 import { Input } from "@workspace/ui/components/input"
 import { Skeleton } from "@workspace/ui/components/skeleton"
+import { Textarea } from "@workspace/ui/components/textarea"
 import {
   AlertCircleIcon,
   BookOpenIcon,
@@ -54,6 +55,8 @@ import {
   MoreHorizontalIcon,
   PlusIcon,
   SearchIcon,
+  SendIcon,
+  SparklesIcon,
   TrashIcon,
   XIcon,
 } from "lucide-react"
@@ -73,6 +76,20 @@ type ViewerPayload =
     }
 
 type ViewMode = "list" | "grid"
+
+type KnowledgeTestResult = {
+  answer: string
+  confidence: number
+  supportLevel: "strong" | "partial" | "weak" | "none"
+  reason: string
+  sources: {
+    title: string
+    filename?: string
+    category?: string
+    sourceUrl?: string
+    score: number
+  }[]
+}
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -181,6 +198,162 @@ function StatCard({
         {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
       </div>
     </div>
+  )
+}
+
+function getSupportBadgeClass(supportLevel: KnowledgeTestResult["supportLevel"]) {
+  if (supportLevel === "strong") {
+    return "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+  }
+
+  if (supportLevel === "partial") {
+    return "border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300"
+  }
+
+  if (supportLevel === "weak") {
+    return "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+  }
+
+  return "border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-300"
+}
+
+function getConfidenceBarClass(confidence: number) {
+  if (confidence >= 80) return "bg-emerald-500"
+  if (confidence >= 55) return "bg-sky-500"
+  if (confidence >= 30) return "bg-amber-500"
+  return "bg-rose-500"
+}
+
+function KnowledgeTestConsole({
+  onTest,
+  result,
+  isTesting,
+  disabled,
+}: {
+  onTest: (question: string) => Promise<void>
+  result: KnowledgeTestResult | null
+  isTesting: boolean
+  disabled: boolean
+}) {
+  const [question, setQuestion] = useState("")
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    await onTest(question)
+  }
+
+  return (
+    <section className="mt-5 rounded-[28px] border border-border/70 bg-background/82 p-4 shadow-sm sm:p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <SparklesIcon className="size-4 text-primary" />
+            <span>Test knowledge accuracy</span>
+          </div>
+          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            Ask a question your widget should answer. The result is grounded in
+            indexed sources and scored by support strength.
+          </p>
+        </div>
+        {result && (
+          <div className="shrink-0 rounded-2xl border border-border/70 bg-muted/35 px-4 py-3">
+            <div className="flex items-center justify-between gap-5">
+              <span className="text-xs text-muted-foreground">Confidence</span>
+              <span className="text-lg font-semibold text-foreground">
+                {result.confidence}%
+              </span>
+            </div>
+            <div className="mt-2 h-2 w-40 overflow-hidden rounded-full bg-muted">
+              <div
+                className={cn(
+                  "h-full rounded-full",
+                  getConfidenceBarClass(result.confidence)
+                )}
+                style={{ width: `${result.confidence}%` }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <form className="mt-4 grid gap-3" onSubmit={handleSubmit}>
+        <Textarea
+          className="min-h-20 resize-none"
+          disabled={disabled || isTesting}
+          onChange={(event) => setQuestion(event.target.value)}
+          placeholder="Ask something like: What is our refund policy?"
+          value={question}
+        />
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            {disabled
+              ? "Add and index a source before testing."
+              : "Confidence is an evidence score, not a guaranteed truth score."}
+          </p>
+          <Button
+            disabled={disabled || isTesting || !question.trim()}
+            type="submit"
+          >
+            {isTesting ? (
+              <Loader2Icon className="size-4 animate-spin" />
+            ) : (
+              <SendIcon className="size-4" />
+            )}
+            Test
+          </Button>
+        </div>
+      </form>
+
+      {result && (
+        <div className="mt-5 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className={getSupportBadgeClass(result.supportLevel)} variant="outline">
+                {result.supportLevel} support
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                {result.reason}
+              </span>
+            </div>
+            <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+              {result.answer}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+            <p className="text-xs font-medium text-muted-foreground">
+              Source matches
+            </p>
+            <div className="mt-3 space-y-2">
+              {result.sources.length ? (
+                result.sources.slice(0, 5).map((source, index) => (
+                  <div
+                    className="rounded-xl border border-border/60 bg-background/70 px-3 py-2"
+                    key={`${source.title}-${index}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="line-clamp-2 text-xs font-medium text-foreground">
+                        {source.title}
+                      </p>
+                      <Badge variant="secondary">{source.score}%</Badge>
+                    </div>
+                    {(source.category || source.sourceUrl) && (
+                      <p className="mt-1 truncate text-[11px] text-muted-foreground">
+                        {source.category || source.sourceUrl}
+                      </p>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No matching source chunks were found.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -348,6 +521,9 @@ export const FilesView = () => {
   const getViewerContent = useAction(
     (api as any).private.files.getViewerContent
   ) as (args: { entryId: string }) => Promise<ViewerPayload>
+  const testKnowledgeBase = useAction(
+    (api as any).private.files.testKnowledgeBase
+  ) as (args: { question: string }) => Promise<KnowledgeTestResult>
 
   const files = usePaginatedQuery(
     api.private.files.list,
@@ -378,6 +554,8 @@ export const FilesView = () => {
   const [viewMode, setViewMode] = useState<ViewMode>("list")
   const [searchQuery, setSearchQuery] = useState("")
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const [testResult, setTestResult] = useState<KnowledgeTestResult | null>(null)
+  const [isTestingKnowledge, setIsTestingKnowledge] = useState(false)
 
   // ── derived data ────────────────────────────────────────────────────────
   const allFiles = files.results
@@ -434,6 +612,24 @@ export const FilesView = () => {
   }
 
   const handleFileDeleted = () => setSelectedFile(null)
+
+  const handleKnowledgeTest = async (question: string) => {
+    const trimmedQuestion = question.trim()
+
+    if (!trimmedQuestion) {
+      return
+    }
+
+    setIsTestingKnowledge(true)
+    try {
+      const result = await testKnowledgeBase({ question: trimmedQuestion })
+      setTestResult(result)
+    } catch {
+      toast.error("Unable to test the knowledge base")
+    } finally {
+      setIsTestingKnowledge(false)
+    }
+  }
 
   const closeViewer = (open: boolean) => {
     setViewerOpen(open)
@@ -521,7 +717,7 @@ export const FilesView = () => {
       </Dialog>
 
       {/* ── page ── */}
-      <div className="flex min-h-screen flex-col bg-transparent">
+      <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-transparent">
         {/* page header */}
         <div className="px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-screen-lg">
@@ -565,6 +761,15 @@ export const FilesView = () => {
                   sub="scraped URLs"
                 />
               </div>
+            )}
+
+            {!isLoadingFirstPage && allFiles.length > 0 && (
+              <KnowledgeTestConsole
+                disabled={stats.ready === 0}
+                isTesting={isTestingKnowledge}
+                onTest={handleKnowledgeTest}
+                result={testResult}
+              />
             )}
           </div>
         </div>

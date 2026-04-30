@@ -59,6 +59,16 @@ export const updateStatus = mutation({
 
     await ctx.db.patch(args.conversationId, {
       status: args.status,
+      escalatedAt:
+        args.status === "escalated"
+          ? (conversation.escalatedAt ?? Date.now())
+          : conversation.escalatedAt,
+      resolvedAt:
+        args.status === "resolved"
+          ? (conversation.resolvedAt ?? Date.now())
+          : conversation.resolvedAt,
+      resolutionSource:
+        args.status === "resolved" ? "human" : conversation.resolutionSource,
     })
 
     if (previousStatus !== args.status) {
@@ -77,6 +87,14 @@ export const updateStatus = mutation({
         }
       )
     }
+
+    await ctx.scheduler.runAfter(
+      0,
+      (internal as any).system.intelligence.analyzeChatConversation,
+      {
+        conversationId: args.conversationId,
+      }
+    )
   },
 })
 

@@ -352,23 +352,20 @@ export const OpenAIRealtimeFormFields = ({
           )}
         />
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
           <FormField
             control={form.control}
             name="openaiRealtimeSettings.model"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="min-w-0">
                 <FormLabel>Realtime model</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value}
-                >
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full min-w-0 overflow-hidden">
                       <SelectValue placeholder="Select a realtime model" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
+                  <SelectContent className="max-w-[min(560px,calc(100vw-2rem))]">
                     {getSelectableModelOptions(
                       openAIRealtimeModels,
                       field.value
@@ -392,11 +389,11 @@ export const OpenAIRealtimeFormFields = ({
             control={form.control}
             name="openaiRealtimeSettings.voice"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="min-w-0">
                 <FormLabel>Voice</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full min-w-0 overflow-hidden">
                       <SelectValue placeholder="Select a voice" />
                     </SelectTrigger>
                   </FormControl>
@@ -462,30 +459,28 @@ export const OpenAIRealtimeFormFields = ({
           )}
         />
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
           <FormField
             control={form.control}
             name="geminiLiveSettings.model"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="min-w-0">
                 <FormLabel>Live model</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value}
-                >
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full min-w-0 overflow-hidden">
                       <SelectValue placeholder="Select a live model" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
-                    {getSelectableModelOptions(geminiLiveModels, field.value).map(
-                      (model) => (
-                        <SelectItem key={model.value} value={model.value}>
-                          {model.label}
-                        </SelectItem>
-                      )
-                    )}
+                  <SelectContent className="max-w-[min(560px,calc(100vw-2rem))]">
+                    {getSelectableModelOptions(
+                      geminiLiveModels,
+                      field.value
+                    ).map((model) => (
+                      <SelectItem key={model.value} value={model.value}>
+                        {model.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormDescription className="text-xs">
@@ -500,11 +495,11 @@ export const OpenAIRealtimeFormFields = ({
             control={form.control}
             name="geminiLiveSettings.voice"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="min-w-0">
                 <FormLabel>Voice</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full min-w-0 overflow-hidden">
                       <SelectValue placeholder="Select a voice" />
                     </SelectTrigger>
                   </FormControl>
