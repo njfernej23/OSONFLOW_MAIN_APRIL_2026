@@ -23,6 +23,7 @@ import type * as private_messages from "../private/messages.js";
 import type * as private_plugins from "../private/plugins.js";
 import type * as private_savedReplies from "../private/savedReplies.js";
 import type * as private_secrets from "../private/secrets.js";
+import type * as private_telegram from "../private/telegram.js";
 import type * as private_vapi from "../private/vapi.js";
 import type * as private_widgetSettings from "../private/widgetSettings.js";
 import type * as public_aiConversations from "../public/aiConversations.js";
@@ -46,6 +47,7 @@ import type * as system_intelligence from "../system/intelligence.js";
 import type * as system_plugins from "../system/plugins.js";
 import type * as system_secrets from "../system/secrets.js";
 import type * as system_subscriptions from "../system/subscriptions.js";
+import type * as system_telegram from "../system/telegram.js";
 import type * as users from "../users.js";
 
 import type {
@@ -78,6 +80,7 @@ declare const fullApi: ApiFromModules<{
   "private/plugins": typeof private_plugins;
   "private/savedReplies": typeof private_savedReplies;
   "private/secrets": typeof private_secrets;
+  "private/telegram": typeof private_telegram;
   "private/vapi": typeof private_vapi;
   "private/widgetSettings": typeof private_widgetSettings;
   "public/aiConversations": typeof public_aiConversations;
@@ -101,6 +104,7 @@ declare const fullApi: ApiFromModules<{
   "system/plugins": typeof system_plugins;
   "system/secrets": typeof system_secrets;
   "system/subscriptions": typeof system_subscriptions;
+  "system/telegram": typeof system_telegram;
   users: typeof users;
 }>;
 declare const fullApiWithMounts: typeof fullApi;

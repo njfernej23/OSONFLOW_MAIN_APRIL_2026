@@ -199,6 +199,69 @@ export default defineSchema({
   })
     .index("by_organization_id", ["organizationId"])
     .index("by_webhook_id", ["webhookId"]),
+  telegramIntegrations: defineTable({
+    organizationId: v.string(),
+    botToken: v.string(),
+    botId: v.number(),
+    botUsername: v.optional(v.string()),
+    botFirstName: v.optional(v.string()),
+    forumChatId: v.optional(v.string()),
+    webhookSecret: v.string(),
+    webhookUrl: v.optional(v.string()),
+    isEnabled: v.boolean(),
+    status: v.union(
+      v.literal("connected"),
+      v.literal("needs_webhook_url"),
+      v.literal("error")
+    ),
+    setupError: v.optional(v.string()),
+    lastWebhookAt: v.optional(v.number()),
+    createdBy: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_webhook_secret", ["webhookSecret"]),
+  telegramConversationTopics: defineTable({
+    organizationId: v.string(),
+    integrationId: v.id("telegramIntegrations"),
+    conversationId: v.id("conversations"),
+    threadId: v.string(),
+    forumChatId: v.string(),
+    messageThreadId: v.optional(v.number()),
+    topicName: v.string(),
+    topicLink: v.optional(v.string()),
+    status: v.optional(
+      v.union(v.literal("creating"), v.literal("ready"), v.literal("error"))
+    ),
+    setupError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_integration_id_and_thread", [
+      "integrationId",
+      "forumChatId",
+      "messageThreadId",
+    ]),
+  telegramContacts: defineTable({
+    organizationId: v.string(),
+    integrationId: v.id("telegramIntegrations"),
+    chatId: v.string(),
+    userId: v.optional(v.string()),
+    username: v.optional(v.string()),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    contactSessionId: v.id("contactSessions"),
+    activeConversationId: v.optional(v.id("conversations")),
+    lastMessageAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_integration_id_and_chat_id", ["integrationId", "chatId"])
+    .index("by_contact_session_id", ["contactSessionId"]),
   conversations: defineTable({
     threadId: v.string(),
     organizationId: v.string(),
@@ -265,6 +328,9 @@ export default defineSchema({
         languages: v.optional(v.string()),
         platform: v.optional(v.string()),
         vendor: v.optional(v.string()),
+        telegramUserId: v.optional(v.string()),
+        telegramUsername: v.optional(v.string()),
+        telegramLanguageCode: v.optional(v.string()),
         screenResolution: v.optional(v.string()),
         viewportSize: v.optional(v.string()),
         timezone: v.optional(v.string()),
@@ -338,10 +404,7 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_organization_id", ["organizationId"])
-    .index("by_organization_id_and_updated_at", [
-      "organizationId",
-      "updatedAt",
-    ])
+    .index("by_organization_id_and_updated_at", ["organizationId", "updatedAt"])
     .index("by_conversation_id", ["conversationId"])
     .index("by_ai_voice_conversation_id", ["aiVoiceConversationId"]),
 

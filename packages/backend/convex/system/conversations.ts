@@ -137,6 +137,7 @@ export const touchCustomerMessage = internalMutation({
   args: {
     conversationId: v.id("conversations"),
     timestamp: v.optional(v.number()),
+    incrementOperatorUnread: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const conversation = await ctx.db.get(args.conversationId)
@@ -149,13 +150,63 @@ export const touchCustomerMessage = internalMutation({
     }
 
     const timestamp = args.timestamp ?? Date.now()
+    const incrementOperatorUnread = args.incrementOperatorUnread ?? true
 
     await ctx.db.patch(args.conversationId, {
       lastCustomerMessageAt: timestamp,
       firstCustomerMessageAt: conversation.firstCustomerMessageAt ?? timestamp,
       contactLastReadAt: timestamp,
       unreadForContactCount: 0,
-      unreadForOperatorCount: (conversation.unreadForOperatorCount ?? 0) + 1,
+      operatorLastReadAt: incrementOperatorUnread
+        ? conversation.operatorLastReadAt
+        : timestamp,
+      unreadForOperatorCount: incrementOperatorUnread
+        ? (conversation.unreadForOperatorCount ?? 0) + 1
+        : 0,
+    })
+  },
+})
+
+export const touchOperatorMessage = internalMutation({
+  args: {
+    conversationId: v.id("conversations"),
+    timestamp: v.optional(v.number()),
+    operatorId: v.optional(v.string()),
+    operatorName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const conversation = await ctx.db.get(args.conversationId)
+
+    if (!conversation) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "Conversation not found",
+      })
+    }
+
+    const timestamp = args.timestamp ?? Date.now()
+    const operatorName =
+      args.operatorName?.trim() ||
+      conversation.assignedToName ||
+      "Telegram operator"
+
+    await ctx.db.patch(args.conversationId, {
+      status:
+        conversation.status === "unresolved"
+          ? "escalated"
+          : conversation.status,
+      assignedToId: conversation.assignedToId ?? args.operatorId ?? null,
+      assignedToName: conversation.assignedToName ?? operatorName,
+      assignedAt: conversation.assignedAt ?? timestamp,
+      escalatedAt:
+        conversation.status === "unresolved"
+          ? (conversation.escalatedAt ?? timestamp)
+          : conversation.escalatedAt,
+      operatorLastReadAt: timestamp,
+      firstHumanResponseAt: conversation.firstHumanResponseAt ?? timestamp,
+      lastOperatorMessageAt: timestamp,
+      unreadForContactCount: (conversation.unreadForContactCount ?? 0) + 1,
+      unreadForOperatorCount: 0,
     })
   },
 })

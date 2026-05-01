@@ -159,6 +159,26 @@ export const create = mutation({
 
     await ctx.scheduler.runAfter(
       0,
+      (internal as any).system.telegram.sendConversationMessage,
+      {
+        conversationId: args.conversationId,
+        text: args.prompt,
+      }
+    )
+
+    await ctx.scheduler.runAfter(
+      0,
+      (internal as any).system.telegram.mirrorConversationTopicMessage,
+      {
+        conversationId: args.conversationId,
+        text: args.prompt,
+        role: "operator",
+        actorName: identity.name?.trim() ?? identity.familyName,
+      }
+    )
+
+    await ctx.scheduler.runAfter(
+      0,
       (internal as any).system.intelligence.analyzeChatConversation,
       {
         conversationId: args.conversationId,

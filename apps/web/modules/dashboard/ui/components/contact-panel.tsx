@@ -86,27 +86,42 @@ export const ContactPanel = () => {
       return []
     }
 
+    const isTelegramSession = contactSession.metadata.platform === "Telegram"
+
     return [
       {
         id: "device-info",
         icon: MonitorIcon,
         title: "Device",
-        items: [
-          {
-            label: "Browser",
-            value:
-              userAgentInfo.browser +
-              (userAgentInfo.browserVersion
-                ? ` ${userAgentInfo.browserVersion}`
-                : ""),
-          },
-          {
-            label: "OS",
-            value:
-              userAgentInfo.os +
-              (userAgentInfo.osVersion ? ` ${userAgentInfo.osVersion}` : ""),
-          },
-        ],
+        items: isTelegramSession
+          ? [
+              {
+                label: "Platform",
+                value: contactSession.metadata.platform || "Telegram",
+              },
+              {
+                label: "Vendor",
+                value: contactSession.metadata.vendor || "Telegram",
+              },
+            ]
+          : [
+              {
+                label: "Browser",
+                value:
+                  userAgentInfo.browser +
+                  (userAgentInfo.browserVersion
+                    ? ` ${userAgentInfo.browserVersion}`
+                    : ""),
+              },
+              {
+                label: "OS",
+                value:
+                  userAgentInfo.os +
+                  (userAgentInfo.osVersion
+                    ? ` ${userAgentInfo.osVersion}`
+                    : ""),
+              },
+            ],
       },
       {
         id: "location-language",
@@ -123,7 +138,10 @@ export const ContactPanel = () => {
           },
           {
             label: "Language",
-            value: contactSession.metadata.language || "Unknown",
+            value:
+              contactSession.metadata.language ||
+              contactSession.metadata.telegramLanguageCode ||
+              "Unknown",
           },
         ],
       },
@@ -140,6 +158,20 @@ export const ContactPanel = () => {
             label: "Resolution",
             value: contactSession.metadata.screenResolution || "Unknown",
           },
+          ...(isTelegramSession
+            ? [
+                {
+                  label: "Telegram ID",
+                  value: contactSession.metadata.telegramUserId || "Unknown",
+                },
+                {
+                  label: "Username",
+                  value: contactSession.metadata.telegramUsername
+                    ? `@${contactSession.metadata.telegramUsername}`
+                    : "Unknown",
+                },
+              ]
+            : []),
         ],
       },
     ]

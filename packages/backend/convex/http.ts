@@ -57,6 +57,41 @@ http.route({
     }),
 });
 
+http.route({
+    pathPrefix: "/telegram/webhook/",
+    method: "POST",
+    handler: httpAction(async (ctx, request) => {
+        const url = new URL(request.url);
+        const pathParts = url.pathname.split("/").filter(Boolean);
+        const webhookSecret = pathParts[pathParts.length - 1];
+
+        if (!webhookSecret) {
+            return new Response("Missing Telegram webhook secret", { status: 400 });
+        }
+
+        let update: unknown;
+
+        try {
+            update = await request.json();
+        } catch {
+            return new Response("Invalid JSON", { status: 400 });
+        }
+
+        const result = (await ctx.runMutation((internal as any).system.telegram.receiveWebhook, {
+            webhookSecret,
+            headerSecret:
+                request.headers.get("x-telegram-bot-api-secret-token") || undefined,
+            update,
+        })) as { queued: boolean; reason?: string };
+
+        if (!result.queued && result.reason === "invalid_secret") {
+            return new Response("Invalid Telegram secret", { status: 403 });
+        }
+
+        return new Response("ok", { status: 200 });
+    }),
+});
+
 async function validateRequest(req: Request): Promise<WebhookEvent | null> {
     const payloadString = await req.text();
     const svixHeaders = {

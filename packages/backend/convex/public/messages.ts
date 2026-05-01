@@ -9,6 +9,53 @@ import { saveMessage } from "@convex-dev/agent"
 import { search } from "../system/ai/tools/search"
 import { SUPPORT_AGENT_PROMPT } from "../system/ai/constants"
 
+const extractAgentMessageText = (message: any) => {
+  const content = message?.text ?? message?.message?.content
+
+  if (typeof content === "string") {
+    return content.trim()
+  }
+
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => {
+        if (typeof part === "string") {
+          return part
+        }
+
+        if (typeof part?.text === "string") {
+          return part.text
+        }
+
+        return ""
+      })
+      .filter(Boolean)
+      .join("\n")
+      .trim()
+  }
+
+  return ""
+}
+
+const getLatestAssistantMessage = async (ctx: any, threadId: string) => {
+  const messages = await supportAgent.listMessages(ctx, {
+    threadId,
+    paginationOpts: { numItems: 20, cursor: null },
+  })
+  const message = messages.page.find(
+    (item: any) => item?.message?.role === "assistant"
+  )
+
+  if (!message) {
+    return null
+  }
+
+  return {
+    id: String(message._id ?? message.id ?? message.order ?? ""),
+    text: extractAgentMessageText(message),
+  }
+}
+
 export const create = action({
   args: {
     prompt: v.string(),
@@ -78,8 +125,14 @@ export const create = action({
     const systemPrompt =
       widgetSettings?.systemPrompt?.trim() || SUPPORT_AGENT_PROMPT
 
+    let assistantReplyText: string | null = null
+
     if (shouldTriggerAgent) {
-      await supportAgent.generateText(
+      const previousAssistantMessage = await getLatestAssistantMessage(
+        ctx,
+        args.threadId
+      )
+      const result = await supportAgent.generateText(
         ctx,
         { threadId: args.threadId },
         {
@@ -92,6 +145,16 @@ export const create = action({
           },
         }
       )
+      const latestAssistantMessage = await getLatestAssistantMessage(
+        ctx,
+        args.threadId
+      )
+      assistantReplyText =
+        result.text?.trim() ||
+        (latestAssistantMessage &&
+        latestAssistantMessage.id !== previousAssistantMessage?.id
+          ? latestAssistantMessage.text
+          : null)
     } else {
       await saveMessage(ctx, components.agent, {
         threadId: args.threadId,
@@ -103,6 +166,28 @@ export const create = action({
       conversationId: conversation._id,
       timestamp: now,
     })
+
+    await ctx.scheduler.runAfter(
+      0,
+      (internal as any).system.telegram.mirrorConversationTopicMessage,
+      {
+        conversationId: conversation._id,
+        text: args.prompt,
+        role: "customer",
+      }
+    )
+
+    if (assistantReplyText) {
+      await ctx.scheduler.runAfter(
+        100,
+        (internal as any).system.telegram.mirrorConversationTopicMessage,
+        {
+          conversationId: conversation._id,
+          text: assistantReplyText,
+          role: "assistant",
+        }
+      )
+    }
 
     await ctx.scheduler.runAfter(
       0,

@@ -1,7 +1,7 @@
 "use client"
 
 import { useOrganization } from "@clerk/nextjs"
-import { useMutation, useQuery } from "convex/react"
+import { useAction, useMutation, useQuery } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -30,6 +30,7 @@ import { ScrollArea } from "@workspace/ui/components/scroll-area"
 import { Switch } from "@workspace/ui/components/switch"
 import {
   ActivityIcon,
+  BotIcon,
   CheckCircle2Icon,
   ChevronDownIcon,
   CopyIcon,
@@ -37,6 +38,7 @@ import {
   Loader2Icon,
   PlugZapIcon,
   RefreshCwIcon,
+  SendIcon,
   Trash2Icon,
   WebhookIcon,
   XCircleIcon,
@@ -101,6 +103,22 @@ type WebhookDelivery = {
 type WebhookDashboard = {
   webhooks: WebhookDestination[]
   deliveries: WebhookDelivery[]
+}
+
+type TelegramDashboard = {
+  integration: null | {
+    _id: string
+    _creationTime: number
+    botUsername?: string
+    botFirstName?: string
+    forumChatId?: string
+    webhookUrl?: string
+    isEnabled: boolean
+    status: "connected" | "needs_webhook_url" | "error"
+    setupError?: string
+    lastWebhookAt?: number
+    updatedAt: number
+  }
 }
 
 const webhookEventTypeById = WEBHOOK_EVENT_TYPES.reduce(
@@ -279,7 +297,7 @@ const EmptyDeliveriesState = () => (
   </div>
 )
 
-type ActiveSection = "widget" | "webhooks"
+type ActiveSection = "widget" | "telegram" | "webhooks"
 
 export const IntegrationsView = () => {
   const { organization } = useOrganization()
@@ -315,6 +333,13 @@ export const IntegrationsView = () => {
   const [expandedWebhookId, setExpandedWebhookId] = useState<string | null>(
     null
   )
+  const [telegramChannelBotToken, setTelegramChannelBotToken] = useState("")
+  const [telegramForumChatId, setTelegramForumChatId] = useState("")
+  const [telegramWebhookBaseUrl, setTelegramWebhookBaseUrl] = useState(
+    process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? ""
+  )
+  const [isConnectingTelegram, setIsConnectingTelegram] = useState(false)
+  const [isDisconnectingTelegram, setIsDisconnectingTelegram] = useState(false)
 
   const normalizedScriptUrl = useMemo(
     () => normalizeScriptUrl(scriptUrl),
@@ -348,6 +373,27 @@ export const IntegrationsView = () => {
     (api as any).private.integrationWebhooks.getDashboard,
     {}
   ) as WebhookDashboard | undefined
+  const telegramDashboard = useQuery(
+    (api as any).private.telegram.getDashboard,
+    {}
+  ) as TelegramDashboard | undefined
+
+  const connectTelegram = useAction(
+    (api as any).private.telegram.connect
+  ) as (args: {
+    botToken: string
+    webhookBaseUrl?: string
+    forumChatId?: string
+  }) => Promise<{
+    integrationId: string
+    botUsername?: string
+    status: "connected" | "needs_webhook_url"
+    webhookUrl?: string
+  }>
+
+  const disconnectTelegram = useAction(
+    (api as any).private.telegram.disconnect
+  ) as () => Promise<{ removed: boolean }>
 
   const createWebhook = useMutation(
     (api as any).private.integrationWebhooks.createWebhook
@@ -506,6 +552,49 @@ export const IntegrationsView = () => {
     }
   }
 
+  const handleConnectTelegram = async () => {
+    if (!telegramChannelBotToken.trim()) {
+      toast.error("Telegram bot token is required")
+      return
+    }
+
+    setIsConnectingTelegram(true)
+    try {
+      const result = await connectTelegram({
+        botToken: telegramChannelBotToken.trim(),
+        webhookBaseUrl: telegramWebhookBaseUrl.trim() || undefined,
+        forumChatId: telegramForumChatId.trim() || undefined,
+      })
+      setTelegramChannelBotToken("")
+      setTelegramForumChatId("")
+      if (result.status === "connected") {
+        toast.success(
+          result.botUsername
+            ? `Connected @${result.botUsername}`
+            : "Telegram bot connected"
+        )
+      } else {
+        toast.info("Bot saved. Add a webhook base URL to receive messages.")
+      }
+    } catch {
+      toast.error("Failed to connect Telegram bot")
+    } finally {
+      setIsConnectingTelegram(false)
+    }
+  }
+
+  const handleDisconnectTelegram = async () => {
+    setIsDisconnectingTelegram(true)
+    try {
+      await disconnectTelegram()
+      toast.success("Telegram bot disconnected")
+    } catch {
+      toast.error("Failed to disconnect Telegram bot")
+    } finally {
+      setIsDisconnectingTelegram(false)
+    }
+  }
+
   const handleToggleWebhookEvent = (eventType: WebhookEventType) => {
     setSelectedWebhookEvents((prev) =>
       prev.includes(eventType)
@@ -602,6 +691,8 @@ export const IntegrationsView = () => {
 
   const webhookDestinations = webhookDashboard?.webhooks ?? []
   const deliveryLogs = webhookDashboard?.deliveries ?? []
+  const telegramIntegration = telegramDashboard?.integration ?? null
+
   const hasOverflowingDeliveryHistory =
     deliveryLogs.length > DELIVERY_HISTORY_VISIBLE_COUNT
   const successCount = deliveryLogs.filter((d) => d.status === "success").length
@@ -626,6 +717,12 @@ export const IntegrationsView = () => {
       id: "widget",
       label: "Widget Setup",
       icon: <PlugZapIcon className="size-4" />,
+    },
+    {
+      id: "telegram",
+      label: "Telegram Bot",
+      icon: <SendIcon className="size-4" />,
+      count: telegramIntegration ? 1 : undefined,
     },
     {
       id: "webhooks",
@@ -696,7 +793,7 @@ export const IntegrationsView = () => {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-1 rounded-2xl border border-border/70 bg-background/58 p-1 sm:inline-grid sm:grid-cols-2">
+          <div className="mt-4 grid gap-1 rounded-2xl border border-border/70 bg-background/58 p-1 sm:inline-grid sm:grid-cols-3">
             {NAV_ITEMS.map((item) => (
               <button
                 key={item.id}
@@ -952,6 +1049,258 @@ export const IntegrationsView = () => {
                     </li>
                   ))}
                 </ol>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* ─── TELEGRAM BOT ─── */}
+        {activeSection === "telegram" && (
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,430px)_minmax(0,1fr)]">
+            <section className="surface-sidebar min-w-0 rounded-[22px] p-3">
+              <div className="px-1 py-1">
+                <p className="text-[10px] font-semibold tracking-[0.12em] text-sidebar-foreground/46 uppercase">
+                  Channel
+                </p>
+                <h2 className="mt-1 text-base font-semibold text-sidebar-foreground">
+                  Connect Telegram
+                </h2>
+                <p className="mt-1 text-xs leading-relaxed text-sidebar-foreground/58">
+                  Add your BotFather token and route Telegram chats into the
+                  Osonflow inbox.
+                </p>
+              </div>
+
+              <div className="mt-3 space-y-4 rounded-2xl border border-sidebar-border/70 bg-sidebar/58 p-3">
+                <div className="flex items-center gap-3 rounded-xl border border-sidebar-border/70 bg-sidebar-accent/45 p-3">
+                  <ProviderIcon provider="telegram" size={30} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-sidebar-foreground">
+                      Telegram bot channel
+                    </p>
+                    <p className="text-xs text-sidebar-foreground/58">
+                      Customer messages become support conversations.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="telegram-channel-token"
+                    className="text-xs text-sidebar-foreground/58"
+                  >
+                    Bot Token
+                  </Label>
+                  <Input
+                    className="bg-sidebar-accent/70 font-mono text-xs"
+                    id="telegram-channel-token"
+                    onChange={(e) => setTelegramChannelBotToken(e.target.value)}
+                    placeholder="123456789:AA..."
+                    type="password"
+                    value={telegramChannelBotToken}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="telegram-webhook-base-url"
+                    className="text-xs text-sidebar-foreground/58"
+                  >
+                    Convex Site URL
+                  </Label>
+                  <Input
+                    className="bg-sidebar-accent/70 font-mono text-xs"
+                    id="telegram-webhook-base-url"
+                    onChange={(e) => setTelegramWebhookBaseUrl(e.target.value)}
+                    placeholder="https://your-deployment.convex.site"
+                    value={telegramWebhookBaseUrl}
+                  />
+                  <p className="text-xs text-sidebar-foreground/58">
+                    Used to register the Telegram webhook endpoint.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="telegram-forum-chat-id"
+                    className="text-xs text-sidebar-foreground/58"
+                  >
+                    Topic Group Chat ID
+                  </Label>
+                  <Input
+                    className="bg-sidebar-accent/70 font-mono text-xs"
+                    id="telegram-forum-chat-id"
+                    onChange={(e) => setTelegramForumChatId(e.target.value)}
+                    placeholder="-1001234567890"
+                    value={telegramForumChatId}
+                  />
+                  <p className="text-xs text-sidebar-foreground/58">
+                    Supergroup with Topics enabled. New widget chats create a
+                    topic here.
+                  </p>
+                </div>
+
+                <Button
+                  className="w-full gap-2"
+                  disabled={isConnectingTelegram}
+                  onClick={handleConnectTelegram}
+                  type="button"
+                >
+                  {isConnectingTelegram ? (
+                    <>
+                      <Loader2Icon className="size-4 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <SendIcon className="size-4" />
+                      Connect Telegram Bot
+                    </>
+                  )}
+                </Button>
+              </div>
+            </section>
+
+            <section className="surface-panel min-w-0 overflow-hidden rounded-[22px] shadow-sm">
+              <div className="flex items-center justify-between border-b border-border/70 bg-background/62 px-4 py-4 sm:px-5">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background shadow-sm">
+                    <BotIcon className="size-4 text-muted-foreground" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                      Telegram
+                    </p>
+                    <h2 className="mt-1 text-base font-semibold">
+                      Channel status
+                    </h2>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      One bot per organization for now.
+                    </p>
+                  </div>
+                </div>
+                <Badge
+                  variant={telegramIntegration ? "default" : "outline"}
+                  className="shrink-0 text-xs"
+                >
+                  {telegramIntegration ? "Configured" : "Not connected"}
+                </Badge>
+              </div>
+
+              <div className="p-4 sm:p-5">
+                {!telegramIntegration ? (
+                  <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed py-14 text-center">
+                    <ProviderIcon provider="telegram" size={46} />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        No Telegram bot connected
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground/60">
+                        Connect a bot to receive Telegram chats in Osonflow.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="rounded-lg border bg-background/60 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <ProviderIcon provider="telegram" size={34} />
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold">
+                              {telegramIntegration.botUsername
+                                ? `@${telegramIntegration.botUsername}`
+                                : telegramIntegration.botFirstName ||
+                                  "Telegram bot"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Updated{" "}
+                              {formatTimeAgo(telegramIntegration.updatedAt)}
+                            </p>
+                          </div>
+                        </div>
+                        <span
+                          className={cn(
+                            "rounded-full px-2 py-1 text-xs font-medium",
+                            telegramIntegration.status === "connected"
+                              ? "bg-green-500/10 text-green-600 dark:text-green-400"
+                              : telegramIntegration.status === "error"
+                                ? "bg-red-500/10 text-red-600 dark:text-red-400"
+                                : "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                          )}
+                        >
+                          {telegramIntegration.status === "connected"
+                            ? "Live"
+                            : telegramIntegration.status === "error"
+                              ? "Setup error"
+                              : "Needs webhook URL"}
+                        </span>
+                      </div>
+
+                      {telegramIntegration.webhookUrl && (
+                        <p className="mt-4 font-mono text-xs break-all text-muted-foreground">
+                          {telegramIntegration.webhookUrl}
+                        </p>
+                      )}
+
+                      {telegramIntegration.forumChatId && (
+                        <p className="mt-3 font-mono text-xs break-all text-muted-foreground">
+                          Topic group: {telegramIntegration.forumChatId}
+                        </p>
+                      )}
+
+                      {telegramIntegration.setupError && (
+                        <p className="mt-3 rounded-md border border-red-500/20 bg-red-500/5 p-2 text-xs text-red-600 dark:text-red-400">
+                          {telegramIntegration.setupError}
+                        </p>
+                      )}
+
+                      {telegramIntegration.lastWebhookAt && (
+                        <p className="mt-3 text-xs text-muted-foreground">
+                          Last inbound message{" "}
+                          {formatTimeAgo(telegramIntegration.lastWebhookAt)}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="rounded-lg border bg-muted/15 p-4">
+                      <p className="text-sm font-medium">
+                        What happens after connection
+                      </p>
+                      <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-3">
+                        <div className="rounded-md border bg-background/60 p-3">
+                          Widget chat starts
+                        </div>
+                        <div className="rounded-md border bg-background/60 p-3">
+                          Telegram topic is created
+                        </div>
+                        <div className="rounded-md border bg-background/60 p-3">
+                          Topic replies reach the widget
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button
+                      className="gap-2"
+                      disabled={isDisconnectingTelegram}
+                      onClick={handleDisconnectTelegram}
+                      type="button"
+                      variant="destructive"
+                    >
+                      {isDisconnectingTelegram ? (
+                        <>
+                          <Loader2Icon className="size-4 animate-spin" />
+                          Disconnecting...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2Icon className="size-4" />
+                          Disconnect Telegram
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
               </div>
             </section>
           </div>

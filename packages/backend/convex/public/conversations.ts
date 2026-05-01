@@ -253,6 +253,14 @@ export const create = mutation({
       }
     )
 
+    await ctx.scheduler.runAfter(
+      0,
+      (internal as any).system.telegram.ensureConversationTopic,
+      {
+        conversationId,
+      }
+    )
+
     return conversationId
   },
 })
