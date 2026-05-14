@@ -9,6 +9,7 @@ import { saveMessage } from "@convex-dev/agent"
 import { search } from "../system/ai/tools/search"
 import { SUPPORT_AGENT_PROMPT } from "../system/ai/constants"
 import {
+  OPENAI_CHAT_MODEL,
   getOpenAIChatModelFromSecretValue,
   getOpenAIKeyFromSecretValue,
 } from "../lib/openai"
@@ -250,6 +251,8 @@ export const create = action({
 
     const systemPrompt =
       widgetSettings?.systemPrompt?.trim() || SUPPORT_AGENT_PROMPT
+    const chatModel =
+      widgetSettings?.chatSettings?.model?.trim() || OPENAI_CHAT_MODEL
 
     let assistantReplyText: string | null = null
 
@@ -262,7 +265,10 @@ export const create = action({
         ctx,
         { threadId: args.threadId },
         {
-          model: getOpenAIChatModelFromSecretValue(openAISecretValue),
+          model: getOpenAIChatModelFromSecretValue(
+            openAISecretValue,
+            chatModel
+          ),
           system: systemPrompt,
           prompt: args.prompt,
           tools: {

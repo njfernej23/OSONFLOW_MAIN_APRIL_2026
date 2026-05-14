@@ -1,11 +1,14 @@
 import { createTool } from "@convex-dev/agent";
 import { generateText } from "ai";
 import z from "zod";
-import { internal } from "../../../_generated/api";
+import { api, internal } from "../../../_generated/api";
 import { supportAgent } from "../agents/supportAgent";
 import { getRagForOrganization } from "../rag";
 import { SEARCH_INTERPRETER_PROMPT } from "../constants";
-import { getOpenAIChatModelFromSecretValue } from "../../../lib/openai";
+import {
+    OPENAI_CHAT_MODEL,
+    getOpenAIChatModelFromSecretValue,
+} from "../../../lib/openai";
 
 export const search = createTool({
     description: "Search the knowledge base for relevant information to help answer user questions",
@@ -33,6 +36,12 @@ export const search = createTool({
             (internal as any).system.plugins.getByOrganizationIdAndService,
             { organizationId: orgId, service: "openai_realtime" },
         );
+        const widgetSettings: any = await ctx.runQuery(
+            api.public.widgetSettings.getByOrganizationId,
+            { organizationId: orgId },
+        );
+        const chatModel =
+            widgetSettings?.chatSettings?.model?.trim() || OPENAI_CHAT_MODEL;
         const rag = await getRagForOrganization(openAIPlugin?.secretValue);
         const searchResult = await rag.search(ctx, {
             namespace: orgId,
@@ -56,7 +65,10 @@ export const search = createTool({
                     content: `User asked: "${args.query}"\n\nSearch results: ${contextText}`,
                 },
             ],
-            model: getOpenAIChatModelFromSecretValue(openAIPlugin?.secretValue),
+            model: getOpenAIChatModelFromSecretValue(
+                openAIPlugin?.secretValue,
+                chatModel,
+            ),
         });
 
 

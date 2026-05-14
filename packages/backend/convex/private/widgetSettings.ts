@@ -64,6 +64,10 @@ const vapiSettingsValidator = v.object({
   phoneNumber: v.optional(v.string()),
 })
 
+const chatSettingsValidator = v.object({
+  model: v.optional(v.string()),
+})
+
 const openaiRealtimeSettingsValidator = v.object({
   enabled: v.optional(v.boolean()),
   model: v.optional(v.string()),
@@ -134,6 +138,7 @@ const widgetSettingsArgsValidator = {
   helpTopics: helpTopicsValidator,
   homeCards: homeCardsValidator,
   vapiSettings: vapiSettingsValidator,
+  chatSettings: v.optional(chatSettingsValidator),
   openaiRealtimeSettings: v.optional(openaiRealtimeSettingsValidator),
   geminiLiveSettings: v.optional(geminiLiveSettingsValidator),
   theme: v.optional(themeValidator),
@@ -204,6 +209,9 @@ type HomeCard = {
 type WidgetSettingsSnapshot = {
   greetMessage: string
   systemPrompt?: string
+  chatSettings?: {
+    model?: string
+  }
   defaultSuggestions: {
     suggestion1?: string
     suggestion2?: string
@@ -316,6 +324,9 @@ const createDefaultWidgetSettings = (): WidgetSettingsSnapshot => ({
   vapiSettings: {
     assistantId: "",
     phoneNumber: "",
+  },
+  chatSettings: {
+    model: "gpt-4o-mini",
   },
   openaiRealtimeSettings: {
     enabled: false,
@@ -536,6 +547,12 @@ const normalizeSnapshot = (
         fallback.vapiSettings.phoneNumber ??
         "",
     },
+    chatSettings: {
+      model:
+        snapshot.chatSettings?.model ??
+        fallback.chatSettings?.model ??
+        "gpt-4o-mini",
+    },
     openaiRealtimeSettings: {
       enabled:
         snapshot.openaiRealtimeSettings?.enabled ??
@@ -588,6 +605,7 @@ const getPublishedSnapshot = (
       helpTopics: widgetSettings.helpTopics ?? fallback.helpTopics,
       homeCards: widgetSettings.homeCards ?? fallback.homeCards,
       vapiSettings: widgetSettings.vapiSettings ?? fallback.vapiSettings,
+      chatSettings: widgetSettings.chatSettings ?? fallback.chatSettings,
       openaiRealtimeSettings:
         widgetSettings.openaiRealtimeSettings ??
         fallback.openaiRealtimeSettings,
@@ -657,6 +675,7 @@ const applyPublishedSnapshotPatch = (snapshot: WidgetSettingsSnapshot) => ({
   helpTopics: snapshot.helpTopics,
   homeCards: snapshot.homeCards,
   vapiSettings: snapshot.vapiSettings,
+  chatSettings: snapshot.chatSettings,
   openaiRealtimeSettings: snapshot.openaiRealtimeSettings,
   geminiLiveSettings: snapshot.geminiLiveSettings,
   theme: snapshot.theme,

@@ -57,6 +57,10 @@ const vapiSettingsValidator = v.object({
   phoneNumber: v.optional(v.string()),
 })
 
+const chatSettingsValidator = v.object({
+  model: v.optional(v.string()),
+})
+
 const openaiRealtimeSettingsValidator = v.object({
   enabled: v.optional(v.boolean()),
   model: v.optional(v.string()),
@@ -152,6 +156,7 @@ const appearanceValidator = v.object({
 const widgetSettingsSnapshotValidator = v.object({
   greetMessage: v.string(),
   systemPrompt: v.optional(v.string()),
+  chatSettings: v.optional(chatSettingsValidator),
   defaultSuggestions: defaultSuggestionsValidator,
   helpArticles: v.optional(legacyHelpArticlesValidator),
   helpTopics: v.optional(storedHelpTopicsValidator),
@@ -197,6 +202,7 @@ export default defineSchema({
     organizationId: v.string(),
     greetMessage: v.string(),
     systemPrompt: v.optional(v.string()),
+    chatSettings: v.optional(chatSettingsValidator),
     defaultSuggestions: defaultSuggestionsValidator,
     helpArticles: v.optional(legacyHelpArticlesValidator),
     helpTopics: v.optional(storedHelpTopicsValidator),

@@ -94,6 +94,9 @@ type WidgetSettingsSnapshot = Pick<
   | "theme"
   | "appearance"
 > & {
+  chatSettings?: {
+    model?: string
+  }
   openaiRealtimeSettings?: {
     enabled?: boolean
     model?: string
@@ -198,6 +201,88 @@ const defaultHomeCards: FormSchema["homeCards"] = [
   { type: "article", topicIndex: 1, articleIndex: 0 },
   { type: "article", topicIndex: 2, articleIndex: 0 },
 ]
+
+type ModelOption = {
+  value: string
+  label: string
+  description: string
+}
+
+const defaultChatModel = "gpt-4o-mini"
+
+const openAIChatModels: ModelOption[] = [
+  {
+    value: "gpt-5.2",
+    label: "GPT-5.2",
+    description: "Best quality for complex support answers",
+  },
+  {
+    value: "gpt-5.1",
+    label: "GPT-5.1",
+    description: "Strong reasoning and general support",
+  },
+  {
+    value: "gpt-5",
+    label: "GPT-5",
+    description: "Previous intelligent reasoning model",
+  },
+  {
+    value: "gpt-5-mini",
+    label: "GPT-5 mini",
+    description: "Balanced quality, speed, and cost",
+  },
+  {
+    value: "gpt-5-nano",
+    label: "GPT-5 nano",
+    description: "Fastest and lowest cost",
+  },
+  {
+    value: "gpt-4.1",
+    label: "GPT-4.1",
+    description: "Strong non-reasoning chat model",
+  },
+  {
+    value: "gpt-4.1-mini",
+    label: "GPT-4.1 mini",
+    description: "Fast general-purpose support chat",
+  },
+  {
+    value: "gpt-4.1-nano",
+    label: "GPT-4.1 nano",
+    description: "Fastest GPT-4.1 option",
+  },
+  {
+    value: "gpt-4o",
+    label: "GPT-4o",
+    description: "Legacy multimodal GPT-4o model",
+  },
+  {
+    value: defaultChatModel,
+    label: "GPT-4o mini",
+    description: "Current default, fast and affordable",
+  },
+]
+
+const getSelectableChatModelOptions = (currentValue?: string) => {
+  const trimmedValue = currentValue?.trim()
+
+  if (!trimmedValue) {
+    return openAIChatModels
+  }
+
+  if (openAIChatModels.some((option) => option.value === trimmedValue)) {
+    return openAIChatModels
+  }
+
+  return [
+    {
+      value: trimmedValue,
+      label: trimmedValue,
+      description: "Saved custom model",
+    },
+    ...openAIChatModels,
+  ]
+}
 
 type LegacyHelpTopic = {
   title: string
@@ -326,6 +411,9 @@ const buildFormDefaultValues = (
   return {
     greetMessage: snapshot.greetMessage || "Hi! How can I help you today?",
     systemPrompt: snapshot.systemPrompt || "",
+    chatSettings: {
+      model: snapshot.chatSettings?.model || defaultChatModel,
+    },
     defaultSuggestions: {
       suggestion1: snapshot.defaultSuggestions.suggestion1 || "",
       suggestion2: snapshot.defaultSuggestions.suggestion2 || "",
@@ -903,6 +991,9 @@ export const CustomizationForm = ({
     return {
       greetMessage: values.greetMessage,
       systemPrompt: values.systemPrompt.trim(),
+      chatSettings: {
+        model: values.chatSettings.model.trim() || defaultChatModel,
+      },
       defaultSuggestions: values.defaultSuggestions,
       helpTopics: cleanHelpTopicsForSave(values.helpTopics),
       homeCards: cleanHomeCardsForSave(values.homeCards, values.helpTopics),
@@ -1316,6 +1407,67 @@ export const CustomizationForm = ({
                         <FormMessage />
                       </FormItem>
                     )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="chatSettings.model"
+                    render={({ field }) => {
+                      const modelOptions = getSelectableChatModelOptions(
+                        field.value
+                      )
+                      const selectedModel = modelOptions.find(
+                        (model) => model.value === field.value
+                      )
+
+                      return (
+                        <FormItem>
+                          <FormLabel className="text-sm font-medium">
+                            Chat Response Model
+                          </FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="h-11 w-full bg-muted/20 px-3">
+                                <SelectValue placeholder="Select a chat model">
+                                  {selectedModel?.label}
+                                </SelectValue>
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent
+                              className="max-w-[min(560px,calc(100vw-2rem))]"
+                              position="popper"
+                            >
+                              {modelOptions.map((model) => (
+                                <SelectItem
+                                  className="items-start py-2.5 pr-9"
+                                  key={model.value}
+                                  textValue={model.label}
+                                  value={model.value}
+                                >
+                                  <span className="grid min-w-0 gap-0.5">
+                                    <span className="truncate font-medium">
+                                      {model.label}
+                                    </span>
+                                    <span className="whitespace-normal text-xs leading-snug text-muted-foreground">
+                                      {model.description}
+                                    </span>
+                                  </span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormDescription className="text-xs leading-relaxed">
+                            Used for regular widget chat replies with your saved
+                            OpenAI API key. Live voice models stay in the Voice
+                            tab.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )
+                    }}
                   />
 
                   <FormField
