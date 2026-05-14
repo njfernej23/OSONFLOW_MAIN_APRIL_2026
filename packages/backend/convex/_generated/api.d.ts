@@ -39,6 +39,7 @@ import type * as public_widgetSettings from "../public/widgetSettings.js";
 import type * as system_ai_agents_supportAgent from "../system/ai/agents/supportAgent.js";
 import type * as system_ai_constants from "../system/ai/constants.js";
 import type * as system_ai_rag from "../system/ai/rag.js";
+import type * as system_ai_replyCache from "../system/ai/replyCache.js";
 import type * as system_ai_tools_escalateConversation from "../system/ai/tools/escalateConversation.js";
 import type * as system_ai_tools_resolveConversation from "../system/ai/tools/resolveConversation.js";
 import type * as system_ai_tools_search from "../system/ai/tools/search.js";
@@ -97,6 +98,7 @@ declare const fullApi: ApiFromModules<{
   "system/ai/agents/supportAgent": typeof system_ai_agents_supportAgent;
   "system/ai/constants": typeof system_ai_constants;
   "system/ai/rag": typeof system_ai_rag;
+  "system/ai/replyCache": typeof system_ai_replyCache;
   "system/ai/tools/escalateConversation": typeof system_ai_tools_escalateConversation;
   "system/ai/tools/resolveConversation": typeof system_ai_tools_resolveConversation;
   "system/ai/tools/search": typeof system_ai_tools_search;

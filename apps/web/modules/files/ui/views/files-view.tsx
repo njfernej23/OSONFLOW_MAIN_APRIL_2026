@@ -30,7 +30,12 @@ import {
 } from "@workspace/ui/components/tooltip"
 import { useInfiniteScroll } from "@workspace/ui/hooks/use-infinite-scroll"
 import { InfiniteScrollTrigger } from "@workspace/ui/components/infinite-scroll-trigger"
-import { useAction, usePaginatedQuery } from "convex/react"
+import {
+  useAction,
+  useMutation,
+  usePaginatedQuery,
+  useQuery,
+} from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
 import type { PublicFile } from "@workspace/backend/private/files"
 import { Button } from "@workspace/ui/components/button"
@@ -201,7 +206,9 @@ function StatCard({
   )
 }
 
-function getSupportBadgeClass(supportLevel: KnowledgeTestResult["supportLevel"]) {
+function getSupportBadgeClass(
+  supportLevel: KnowledgeTestResult["supportLevel"]
+) {
   if (supportLevel === "strong") {
     return "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
   }
@@ -308,14 +315,17 @@ function KnowledgeTestConsole({
         <div className="mt-5 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge className={getSupportBadgeClass(result.supportLevel)} variant="outline">
+              <Badge
+                className={getSupportBadgeClass(result.supportLevel)}
+                variant="outline"
+              >
                 {result.supportLevel} support
               </Badge>
               <span className="text-xs text-muted-foreground">
                 {result.reason}
               </span>
             </div>
-            <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+            <p className="mt-3 text-sm leading-relaxed whitespace-pre-wrap text-foreground">
               {result.answer}
             </p>
           </div>
@@ -353,6 +363,79 @@ function KnowledgeTestConsole({
           </div>
         </div>
       )}
+    </section>
+  )
+}
+
+type AIReplyCacheStats = {
+  entryCount: number
+  hitCount: number
+  semanticIndexedCount: number
+  lastUsedAt: number | null
+}
+
+function AIReplyCachePanel({
+  stats,
+  onClear,
+  isClearing,
+}: {
+  stats?: AIReplyCacheStats
+  onClear: () => Promise<void>
+  isClearing: boolean
+}) {
+  const lastUsedLabel = stats?.lastUsedAt
+    ? new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(new Date(stats.lastUsedAt))
+    : "No hits yet"
+
+  return (
+    <section className="mt-5 rounded-[28px] border border-border/70 bg-background/82 p-4 shadow-sm sm:p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <DatabaseIcon className="size-4 text-primary" />
+            <span>AI answer cache</span>
+          </div>
+          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            Reused answers are cleared automatically when knowledge sources
+            change.
+          </p>
+        </div>
+        <Button
+          disabled={isClearing || !stats?.entryCount}
+          onClick={() => void onClear()}
+          size="sm"
+          variant="outline"
+        >
+          {isClearing ? (
+            <Loader2Icon className="size-4 animate-spin" />
+          ) : (
+            <TrashIcon className="size-4" />
+          )}
+          Clear cache
+        </Button>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard
+          icon={DatabaseIcon}
+          label="Cached answers"
+          value={stats?.entryCount ?? "—"}
+        />
+        <StatCard
+          icon={SparklesIcon}
+          label="Cache hits"
+          value={stats?.hitCount ?? "—"}
+        />
+        <StatCard
+          icon={SearchIcon}
+          label="Semantic entries"
+          value={stats?.semanticIndexedCount ?? "—"}
+        />
+        <StatCard icon={Clock3Icon} label="Last used" value={lastUsedLabel} />
+      </div>
     </section>
   )
 }
@@ -524,6 +607,12 @@ export const FilesView = () => {
   const testKnowledgeBase = useAction(
     (api as any).private.files.testKnowledgeBase
   ) as (args: { question: string }) => Promise<KnowledgeTestResult>
+  const clearAIReplyCache = useMutation(
+    (api as any).private.files.clearAIReplyCache
+  ) as () => Promise<number>
+  const cacheStats = useQuery(
+    (api as any).private.files.getAIReplyCacheStats
+  ) as AIReplyCacheStats | undefined
 
   const files = usePaginatedQuery(
     api.private.files.list,
@@ -556,6 +645,7 @@ export const FilesView = () => {
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [testResult, setTestResult] = useState<KnowledgeTestResult | null>(null)
   const [isTestingKnowledge, setIsTestingKnowledge] = useState(false)
+  const [isClearingCache, setIsClearingCache] = useState(false)
 
   // ── derived data ────────────────────────────────────────────────────────
   const allFiles = files.results
@@ -628,6 +718,22 @@ export const FilesView = () => {
       toast.error("Unable to test the knowledge base")
     } finally {
       setIsTestingKnowledge(false)
+    }
+  }
+
+  const handleClearCache = async () => {
+    setIsClearingCache(true)
+    try {
+      const deletedCount = await clearAIReplyCache()
+      toast.success(
+        deletedCount > 0
+          ? `Cleared ${deletedCount} cached AI answers.`
+          : "AI answer cache is already empty."
+      )
+    } catch {
+      toast.error("Unable to clear AI answer cache")
+    } finally {
+      setIsClearingCache(false)
     }
   }
 
@@ -769,6 +875,14 @@ export const FilesView = () => {
                 isTesting={isTestingKnowledge}
                 onTest={handleKnowledgeTest}
                 result={testResult}
+              />
+            )}
+
+            {!isLoadingFirstPage && allFiles.length > 0 && (
+              <AIReplyCachePanel
+                isClearing={isClearingCache}
+                onClear={handleClearCache}
+                stats={cacheStats}
               />
             )}
           </div>

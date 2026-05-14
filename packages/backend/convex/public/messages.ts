@@ -14,6 +14,13 @@ import {
   getOpenAIKeyFromSecretValue,
 } from "../lib/openai"
 import { enforceRateLimit } from "../lib/rateLimits"
+import { getRagForOrganization } from "../system/ai/rag"
+import {
+  AI_REPLY_CACHE_SEMANTIC_THRESHOLD,
+  getReplyCacheDocumentText,
+  getReplyCacheNamespace,
+  isCacheablePrompt,
+} from "../system/ai/replyCache"
 
 const extractAgentMessageText = (message: any) => {
   const content = message?.text ?? message?.message?.content
@@ -60,6 +67,113 @@ const getLatestAssistantMessage = async (ctx: any, threadId: string) => {
     id: String(message._id ?? message.id ?? message.order ?? ""),
     text: extractAgentMessageText(message),
   }
+}
+
+const findSemanticCachedReply = async (
+  ctx: any,
+  args: {
+    organizationId: string
+    prompt: string
+    model: string
+    systemPrompt: string
+    openAISecretValue?: string | null
+  }
+) => {
+  if (!isCacheablePrompt(args.prompt)) {
+    return null
+  }
+
+  const rag = await getRagForOrganization(args.openAISecretValue)
+  const namespace = getReplyCacheNamespace(args.organizationId)
+  const existingNamespace = await rag.getNamespace(ctx, { namespace })
+
+  if (!existingNamespace) {
+    return null
+  }
+
+  const searchResult = await rag.search(ctx, {
+    namespace,
+    query: args.prompt,
+    limit: 20,
+    vectorScoreThreshold: AI_REPLY_CACHE_SEMANTIC_THRESHOLD,
+  })
+
+  const resultByEntryId = new Map(
+    searchResult.results.map((result: any) => [
+      String(result.entryId),
+      result.score ?? 0,
+    ])
+  )
+
+  const rankedEntries = [...searchResult.entries].sort(
+    (a: any, b: any) =>
+      (resultByEntryId.get(String(b.entryId)) ?? 0) -
+      (resultByEntryId.get(String(a.entryId)) ?? 0)
+  )
+
+  for (const entry of rankedEntries) {
+    const cacheKey =
+      typeof entry.metadata?.cacheKey === "string"
+        ? entry.metadata.cacheKey
+        : null
+
+    if (!cacheKey) {
+      continue
+    }
+
+    const cachedReply = await ctx.runQuery(
+      (internal as any).system.ai.replyCache.getByCacheKey,
+      {
+        organizationId: args.organizationId,
+        cacheKey,
+        model: args.model,
+        systemPrompt: args.systemPrompt,
+      }
+    )
+
+    if (cachedReply?.answer) {
+      return cachedReply
+    }
+  }
+
+  return null
+}
+
+const indexSemanticCachedReply = async (
+  ctx: any,
+  args: {
+    organizationId: string
+    prompt: string
+    cacheId: string
+    cacheKey: string
+    model: string
+    openAISecretValue?: string | null
+  }
+) => {
+  if (!isCacheablePrompt(args.prompt)) {
+    return
+  }
+
+  const rag = await getRagForOrganization(args.openAISecretValue)
+  const { entryId } = await rag.add(ctx, {
+    namespace: getReplyCacheNamespace(args.organizationId),
+    key: args.cacheKey,
+    title: args.prompt.slice(0, 80),
+    text: getReplyCacheDocumentText(args.prompt),
+    metadata: {
+      cacheKey: args.cacheKey,
+      model: args.model,
+      sourceType: "aiReplyCache",
+    },
+  })
+
+  await ctx.runMutation(
+    (internal as any).system.ai.replyCache.markSemanticIndexed,
+    {
+      cacheId: args.cacheId,
+      semanticEntryId: String(entryId),
+    }
+  )
 }
 
 const getAmountValue = (value: any): number => {
@@ -208,7 +322,8 @@ export const create = action({
     })
     await enforceRateLimit(ctx, "widgetMessageByOrg", {
       key: conversation.organizationId,
-      message: "This widget is receiving too many messages. Please try again shortly.",
+      message:
+        "This widget is receiving too many messages. Please try again shortly.",
     })
 
     // This refreshes the user's session if they are within the threshold
@@ -277,37 +392,113 @@ export const create = action({
     let assistantReplyText: string | null = null
 
     if (shouldTriggerAgent) {
-      const previousAssistantMessage = await getLatestAssistantMessage(
-        ctx,
-        args.threadId
-      )
-      const result = await supportAgent.generateText(
-        ctx,
-        { threadId: args.threadId },
+      let cachedReply = await ctx.runQuery(
+        (internal as any).system.ai.replyCache.find,
         {
-          model: getOpenAIChatModelFromSecretValue(
-            openAISecretValue,
-            chatModel
-          ),
-          system: systemPrompt,
+          organizationId: conversation.organizationId,
           prompt: args.prompt,
-          tools: {
-            escalateConversationTool: escalateConversation,
-            resolveConversationTool: resolveConversation,
-            searchTool: search,
-          },
+          model: chatModel,
+          systemPrompt,
         }
       )
-      const latestAssistantMessage = await getLatestAssistantMessage(
-        ctx,
-        args.threadId
-      )
-      assistantReplyText =
-        result.text?.trim() ||
-        (latestAssistantMessage &&
-        latestAssistantMessage.id !== previousAssistantMessage?.id
-          ? latestAssistantMessage.text
-          : null)
+
+      if (!cachedReply) {
+        cachedReply = await findSemanticCachedReply(ctx, {
+          organizationId: conversation.organizationId,
+          prompt: args.prompt,
+          model: chatModel,
+          systemPrompt,
+          openAISecretValue,
+        })
+      }
+
+      if (cachedReply?.answer) {
+        await saveMessage(ctx, components.agent, {
+          threadId: args.threadId,
+          prompt: args.prompt,
+        })
+
+        await saveMessage(ctx, components.agent, {
+          threadId: args.threadId,
+          message: {
+            role: "assistant",
+            content: cachedReply.answer,
+          },
+        })
+
+        assistantReplyText = cachedReply.answer
+
+        await ctx.runMutation((internal as any).system.ai.replyCache.markHit, {
+          cacheId: cachedReply._id,
+        })
+      } else {
+        const previousAssistantMessage = await getLatestAssistantMessage(
+          ctx,
+          args.threadId
+        )
+        const result = await supportAgent.generateText(
+          ctx,
+          { threadId: args.threadId },
+          {
+            model: getOpenAIChatModelFromSecretValue(
+              openAISecretValue,
+              chatModel
+            ),
+            system: systemPrompt,
+            prompt: args.prompt,
+            tools: {
+              escalateConversationTool: escalateConversation,
+              resolveConversationTool: resolveConversation,
+              searchTool: search,
+            },
+          }
+        )
+        const latestAssistantMessage = await getLatestAssistantMessage(
+          ctx,
+          args.threadId
+        )
+        assistantReplyText =
+          result.text?.trim() ||
+          (latestAssistantMessage &&
+          latestAssistantMessage.id !== previousAssistantMessage?.id
+            ? latestAssistantMessage.text
+            : null)
+
+        const updatedConversation = await ctx.runQuery(
+          internal.system.conversations.getByThreadId,
+          {
+            threadId: args.threadId,
+          }
+        )
+
+        if (
+          assistantReplyText &&
+          updatedConversation?.status === conversation.status
+        ) {
+          const cacheResult = await ctx.runMutation(
+            (internal as any).system.ai.replyCache.upsert,
+            {
+              organizationId: conversation.organizationId,
+              prompt: args.prompt,
+              answer: assistantReplyText,
+              model: chatModel,
+              systemPrompt,
+              sourceThreadId: args.threadId,
+            }
+          )
+
+          if (cacheResult) {
+            await indexSemanticCachedReply(ctx, {
+              organizationId: conversation.organizationId,
+              prompt: args.prompt,
+              cacheId: cacheResult.cacheId,
+              cacheKey: cacheResult.cacheKey,
+              model: chatModel,
+              openAISecretValue,
+            })
+          }
+        }
+      }
     } else {
       await saveMessage(ctx, components.agent, {
         threadId: args.threadId,

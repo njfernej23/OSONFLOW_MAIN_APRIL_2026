@@ -354,6 +354,27 @@ export default defineSchema({
       "assignedToId",
     ]),
 
+  aiReplyCache: defineTable({
+    organizationId: v.string(),
+    cacheKey: v.string(),
+    systemPromptKey: v.string(),
+    model: v.string(),
+    sourcePrompt: v.string(),
+    answer: v.string(),
+    sourceThreadId: v.optional(v.string()),
+    semanticEntryId: v.optional(v.string()),
+    semanticIndexedAt: v.optional(v.number()),
+    hitCount: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastUsedAt: v.number(),
+  })
+    .index("by_organization_id_and_cache_key", ["organizationId", "cacheKey"])
+    .index("by_organization_id_and_last_used_at", [
+      "organizationId",
+      "lastUsedAt",
+    ]),
+
   savedReplies: defineTable({
     organizationId: v.string(),
     title: v.string(),

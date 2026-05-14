@@ -338,6 +338,10 @@ export const deleteFile = mutation({
         await rag.deleteAsync(ctx, {
             entryId: args.entryId
         });
+
+        await ctx.runMutation((internal as any).system.ai.replyCache.clearForOrganization, {
+            organizationId: orgId,
+        });
     }
 })
 
@@ -424,6 +428,10 @@ export const addFile = action({
         if (!created) {
             console.debug("entry already exists, skipping upload metadata");
             await ctx.storage.delete(storageId);
+        } else {
+            await ctx.runMutation((internal as any).system.ai.replyCache.clearForOrganization, {
+                organizationId: orgId,
+            });
         }
 
         return {
@@ -518,6 +526,10 @@ export const addWebsite = action({
         if (!created) {
             console.debug("website entry already exists, skipping upload metadata");
             await ctx.storage.delete(storageId);
+        } else {
+            await ctx.runMutation((internal as any).system.ai.replyCache.clearForOrganization, {
+                organizationId: orgId,
+            });
         }
 
         return {
@@ -575,6 +587,83 @@ export const list = query({
             isDone: results.isDone,
             continueCursor: results.continueCursor,
         };
+    },
+});
+
+export const getAIReplyCacheStats = query({
+    args: {},
+    handler: async (ctx) => {
+        const identity = await ctx.auth.getUserIdentity();
+
+        if (identity === null) {
+            throw new ConvexError({
+                code: "UNAUTHORIZED",
+                message: "Identity not found",
+            });
+        }
+
+        const orgId = identity.orgId as string;
+
+        if (!orgId) {
+            throw new ConvexError({
+                code: "UNAUTHORIZED",
+                message: "Organization not found",
+            });
+        }
+
+        const entries = await ctx.db
+            .query("aiReplyCache")
+            .withIndex("by_organization_id_and_last_used_at", (q) =>
+                q.eq("organizationId", orgId)
+            )
+            .collect();
+
+        const hitCount = entries.reduce((total, entry) => total + entry.hitCount, 0);
+        const semanticIndexedCount = entries.filter(
+            (entry) => entry.semanticIndexedAt
+        ).length;
+        const lastUsedAt = entries.reduce<number | null>(
+            (latest, entry) =>
+                latest === null || entry.lastUsedAt > latest ? entry.lastUsedAt : latest,
+            null
+        );
+
+        return {
+            entryCount: entries.length,
+            hitCount,
+            semanticIndexedCount,
+            lastUsedAt,
+        };
+    },
+});
+
+export const clearAIReplyCache = mutation({
+    args: {},
+    handler: async (ctx): Promise<number> => {
+        const identity = await ctx.auth.getUserIdentity();
+
+        if (identity === null) {
+            throw new ConvexError({
+                code: "UNAUTHORIZED",
+                message: "Identity not found",
+            });
+        }
+
+        const orgId = identity.orgId as string;
+
+        if (!orgId) {
+            throw new ConvexError({
+                code: "UNAUTHORIZED",
+                message: "Organization not found",
+            });
+        }
+
+        return await ctx.runMutation(
+            (internal as any).system.ai.replyCache.clearForOrganization,
+            {
+                organizationId: orgId,
+            }
+        );
     },
 });
 
