@@ -4,6 +4,7 @@ import { api, internal } from "../_generated/api"
 import { action } from "../_generated/server"
 import { Doc } from "../_generated/dataModel"
 import { parseSecretValue } from "../lib/secrets"
+import { checkRateLimit } from "../lib/rateLimits"
 
 export const getVapiSecrets = action({
   args: { organizationId: v.string() },
@@ -71,10 +72,13 @@ const getProviderApiKey = async (
 }
 
 export const createOpenAIRealtimeSession = action({
-  args: { organizationId: v.string() },
+  args: {
+    organizationId: v.string(),
+    contactSessionId: v.id("contactSessions"),
+  },
   handler: async (
     ctx: any,
-    args: { organizationId: string }
+    args: { organizationId: string; contactSessionId: string }
   ): Promise<TokenActionResponse> => {
     const widgetSettings: any = await ctx.runQuery(
       api.public.widgetSettings.getByOrganizationId,
@@ -91,6 +95,43 @@ export const createOpenAIRealtimeSession = action({
       return {
         status: 403,
         body: { error: "OpenAI voice is disabled for this widget." },
+      }
+    }
+
+    const contactSession = await ctx.runQuery(
+      internal.system.contactSessions.getOne,
+      {
+        contactSessionId: args.contactSessionId,
+      }
+    )
+
+    if (
+      !contactSession ||
+      contactSession.expiresAt < Date.now() ||
+      contactSession.organizationId !== args.organizationId
+    ) {
+      return {
+        status: 401,
+        body: { error: "Invalid session." },
+      }
+    }
+
+    const sessionLimit = await checkRateLimit(ctx, "voiceTokenBySession", {
+      key: `${args.organizationId}:${args.contactSessionId}:token`,
+    })
+    const orgLimit = await checkRateLimit(ctx, "voiceTokenByOrg", {
+      key: args.organizationId,
+    })
+
+    if (!sessionLimit.ok || !orgLimit.ok) {
+      return {
+        status: 429,
+        body: {
+          error: "Too many voice sessions started. Please wait a moment.",
+          retryAfter: !sessionLimit.ok
+            ? sessionLimit.retryAfter
+            : orgLimit.retryAfter,
+        },
       }
     }
 
@@ -201,10 +242,13 @@ export const createOpenAIRealtimeSession = action({
 })
 
 export const createGeminiLiveToken = action({
-  args: { organizationId: v.string() },
+  args: {
+    organizationId: v.string(),
+    contactSessionId: v.id("contactSessions"),
+  },
   handler: async (
     ctx: any,
-    args: { organizationId: string }
+    args: { organizationId: string; contactSessionId: string }
   ): Promise<TokenActionResponse> => {
     try {
       const widgetSettings: any = await ctx.runQuery(
@@ -222,6 +266,43 @@ export const createGeminiLiveToken = action({
         return {
           status: 403,
           body: { error: "Gemini Live is disabled for this widget." },
+        }
+      }
+
+      const contactSession = await ctx.runQuery(
+        internal.system.contactSessions.getOne,
+        {
+          contactSessionId: args.contactSessionId,
+        }
+      )
+
+      if (
+        !contactSession ||
+        contactSession.expiresAt < Date.now() ||
+        contactSession.organizationId !== args.organizationId
+      ) {
+        return {
+          status: 401,
+          body: { error: "Invalid session." },
+        }
+      }
+
+      const sessionLimit = await checkRateLimit(ctx, "voiceTokenBySession", {
+        key: `${args.organizationId}:${args.contactSessionId}:token`,
+      })
+      const orgLimit = await checkRateLimit(ctx, "voiceTokenByOrg", {
+        key: args.organizationId,
+      })
+
+      if (!sessionLimit.ok || !orgLimit.ok) {
+        return {
+          status: 429,
+          body: {
+            error: "Too many voice sessions started. Please wait a moment.",
+            retryAfter: !sessionLimit.ok
+              ? sessionLimit.retryAfter
+              : orgLimit.retryAfter,
+          },
         }
       }
 

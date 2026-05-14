@@ -2,7 +2,7 @@
 
 import { api } from "@workspace/backend/_generated/api"
 import { Id } from "@workspace/backend/_generated/dataModel"
-import { usePaginatedQuery, useQuery } from "convex/react"
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react"
 import { format, isSameDay } from "date-fns"
 import {
   ArrowLeftIcon,
@@ -14,7 +14,7 @@ import {
   UserRoundIcon,
   CircleIcon,
 } from "lucide-react"
-import { useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -69,6 +69,9 @@ export const AIConversationIdView = ({
   const conversation = useQuery(api.private.aiConversations.getOne, {
     conversationId,
   })
+  const markConversationAsRead = useMutation(
+    api.private.aiConversations.markAsRead
+  )
 
   const messages = usePaginatedQuery(
     api.private.aiConversations.getMessages,
@@ -80,6 +83,20 @@ export const AIConversationIdView = ({
     () => [...messages.results].reverse(),
     [messages.results]
   )
+
+  useEffect(() => {
+    if (!conversationId || !conversation) {
+      return
+    }
+
+    if ((conversation.unreadForOperatorCount ?? 0) === 0) {
+      return
+    }
+
+    void markConversationAsRead({
+      conversationId,
+    })
+  }, [conversation, conversationId, markConversationAsRead])
 
   const transcriptItems = useMemo(
     () =>

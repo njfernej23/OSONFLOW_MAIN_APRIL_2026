@@ -504,6 +504,8 @@ export const AIConversationsPanel = () => {
                           AI_CONVERSATION_STATUS_LABELS[status]
                         const statusBadgeClassName =
                           AI_CONVERSATION_STATUS_BADGE_CLASSNAMES[status]
+                        const unreadCount =
+                          conversation.unreadForOperatorCount ?? 0
 
                         return (
                           <Link
@@ -600,6 +602,15 @@ export const AIConversationsPanel = () => {
                                   >
                                     {statusLabel}
                                   </Badge>
+                                  {unreadCount > 0 ? (
+                                    <Badge
+                                      className="h-5 rounded-md bg-rose-500 px-1.5 text-[10px] font-medium text-white hover:bg-rose-500"
+                                      variant="default"
+                                    >
+                                      {unreadCount > 99 ? "99+" : unreadCount}{" "}
+                                      new
+                                    </Badge>
+                                  ) : null}
                                 </div>
                               </div>
                             </div>

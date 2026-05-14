@@ -20,6 +20,34 @@ import { useInfiniteScroll } from "@workspace/ui/hooks/use-infinite-scroll"
 import { InfiniteScrollTrigger } from "@workspace/ui/components/infinite-scroll-trigger"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { Badge } from "@workspace/ui/components/badge"
+import {
+  AIResponse,
+  type AIResponseProps,
+} from "@workspace/ui/components/ai/response"
+import { cn } from "@workspace/ui/lib/utils"
+
+const inboxPreviewMarkdownComponents: NonNullable<
+  AIResponseProps["options"]
+>["components"] = {
+  p: ({ children }) => <span>{children}</span>,
+  ul: ({ children }) => <span>{children}</span>,
+  ol: ({ children }) => <span>{children}</span>,
+  li: ({ children }) => <span>{children}</span>,
+  strong: ({ children }) => <span className="font-semibold">{children}</span>,
+  em: ({ children }) => <span className="italic">{children}</span>,
+  a: ({ children }) => <span>{children}</span>,
+  code: ({ children }) => (
+    <span className="rounded bg-muted px-1 font-mono text-[0.92em]">
+      {children}
+    </span>
+  ),
+  h1: ({ children }) => <span className="font-semibold">{children}</span>,
+  h2: ({ children }) => <span className="font-semibold">{children}</span>,
+  h3: ({ children }) => <span className="font-semibold">{children}</span>,
+  h4: ({ children }) => <span className="font-semibold">{children}</span>,
+  h5: ({ children }) => <span className="font-semibold">{children}</span>,
+  h6: ({ children }) => <span className="font-semibold">{children}</span>,
+}
 
 export const WidgetInboxScreen = () => {
   const setScreen = useSetAtom(screenAtom)
@@ -118,11 +146,17 @@ export const WidgetInboxScreen = () => {
                         </p>
                       </div>
                       <div className="flex w-full items-center justify-between gap-x-2">
-                        <p
-                          className={`truncate text-sm ${isUnread ? "font-semibold text-foreground" : ""}`}
+                        <AIResponse
+                          className={cn(
+                            "h-auto min-w-0 flex-1 truncate text-sm [&_*]:inline",
+                            isUnread && "font-semibold text-foreground"
+                          )}
+                          options={{
+                            components: inboxPreviewMarkdownComponents,
+                          }}
                         >
-                          {conversation.lastMessage?.text}
-                        </p>
+                          {conversation.lastMessage?.text ?? ""}
+                        </AIResponse>
                         <ConversationStatusIcon status={conversation.status} />
                       </div>
                     </div>

@@ -4,6 +4,7 @@ import { components, internal } from "../_generated/api"
 import { Doc, Id } from "../_generated/dataModel"
 import { saveMessage } from "@convex-dev/agent"
 import { supportAgent } from "../system/ai/agents/supportAgent"
+import { enforceRateLimit } from "../lib/rateLimits"
 
 const providerValidator = v.union(
   v.literal("openai_realtime"),
@@ -164,6 +165,11 @@ export const create = mutation({
       organizationId: args.organizationId,
     })
 
+    await enforceRateLimit(ctx, "voiceTokenBySession", {
+      key: `${args.organizationId}:${args.contactSessionId}:conversation`,
+      message: "Too many voice conversations started. Please wait a moment.",
+    })
+
     await ctx.runMutation(internal.system.contactSessions.refresh, {
       contactSessionId: args.contactSessionId,
     })
@@ -176,6 +182,8 @@ export const create = mutation({
       provider: args.provider,
       status: "unresolved",
       lastActivityAt: now,
+      operatorLastReadAt: now,
+      unreadForOperatorCount: 0,
     })
   },
 })
@@ -202,6 +210,13 @@ export const appendMessage = mutation({
       contactSessionId: args.contactSessionId,
     })
 
+    if (args.role === "user") {
+      await enforceRateLimit(ctx, "voiceTranscriptBySession", {
+        key: `${conversation.organizationId}:${args.contactSessionId}`,
+        message: "Voice messages are arriving too quickly. Please wait a moment.",
+      })
+    }
+
     await ctx.runMutation(internal.system.contactSessions.refresh, {
       contactSessionId: args.contactSessionId,
     })
@@ -218,6 +233,10 @@ export const appendMessage = mutation({
       lastActivityAt: now,
       lastMessagePreview: text.slice(0, 240),
       lastMessageRole: args.role,
+      unreadForOperatorCount:
+        args.role === "user"
+          ? (conversation.unreadForOperatorCount ?? 0) + 1
+          : (conversation.unreadForOperatorCount ?? 0),
     })
 
     await ctx.scheduler.runAfter(

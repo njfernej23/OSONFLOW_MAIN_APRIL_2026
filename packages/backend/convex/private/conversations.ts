@@ -195,6 +195,47 @@ export const markAsRead = mutation({
   },
 })
 
+export const getUnreadSummary = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity()
+
+    if (identity === null) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Identity not found",
+      })
+    }
+
+    const orgId = identity.orgId as string
+
+    if (!orgId) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Organization not found",
+      })
+    }
+
+    const conversations = await ctx.db
+      .query("conversations")
+      .withIndex("by_organization_id", (q) => q.eq("organizationId", orgId))
+      .collect()
+
+    const unreadConversations = conversations.filter(
+      (conversation) => (conversation.unreadForOperatorCount ?? 0) > 0
+    )
+
+    return {
+      unreadConversationCount: unreadConversations.length,
+      unreadMessageCount: unreadConversations.reduce(
+        (total, conversation) =>
+          total + (conversation.unreadForOperatorCount ?? 0),
+        0
+      ),
+    }
+  },
+})
+
 export const updateAssignment = mutation({
   args: {
     conversationId: v.id("conversations"),

@@ -5,6 +5,7 @@ import { supportAgent } from "../system/ai/agents/supportAgent"
 import { MessageDoc, saveMessage } from "@convex-dev/agent"
 import { components, internal } from "../_generated/api"
 import { paginationOptsValidator } from "convex/server"
+import { enforceRateLimit } from "../lib/rateLimits"
 
 export const getMany = query({
   args: {
@@ -198,6 +199,18 @@ export const create = mutation({
         message: "Invalid session",
       })
     }
+
+    if (session.organizationId !== args.organizationId) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Invalid organization",
+      })
+    }
+
+    await enforceRateLimit(ctx, "widgetConversationCreateBySession", {
+      key: `${args.organizationId}:${args.contactSessionId}`,
+      message: "Too many conversations started. Please wait before starting another chat.",
+    })
 
     // This refreshes the user's session if they are within the threshold
     await ctx.runMutation(internal.system.contactSessions.refresh, {

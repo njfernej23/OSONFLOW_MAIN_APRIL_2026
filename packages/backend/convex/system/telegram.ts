@@ -13,6 +13,7 @@ import { escalateConversation } from "./ai/tools/escalateConversation"
 import { resolveConversation } from "./ai/tools/resolveConversation"
 import { search } from "./ai/tools/search"
 import { getOpenAIChatModelFromSecretValue } from "../lib/openai"
+import { checkRateLimit } from "../lib/rateLimits"
 
 type TelegramIntegration = {
   _id: any
@@ -592,6 +593,16 @@ export const handleIncomingUpdate: any = internalAction({
     }
 
     const chatIdString = String(chatId)
+    const chatLimit = await checkRateLimit(ctx, "telegramMessageByChat", {
+      key: `${integrationForUpdate.organizationId}:${chatIdString}`,
+    })
+    const orgLimit = await checkRateLimit(ctx, "telegramMessageByOrg", {
+      key: integrationForUpdate.organizationId,
+    })
+
+    if (!chatLimit.ok || !orgLimit.ok) {
+      return { handled: false, reason: "rate_limited" }
+    }
 
     const { integration, contactSessionId, conversationId, threadId, status } =
       (await ctx.runMutation(

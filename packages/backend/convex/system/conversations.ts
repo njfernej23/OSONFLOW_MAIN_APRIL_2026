@@ -211,6 +211,30 @@ export const touchOperatorMessage = internalMutation({
   },
 })
 
+export const touchAssistantMessage = internalMutation({
+  args: {
+    conversationId: v.id("conversations"),
+    timestamp: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const conversation = await ctx.db.get(args.conversationId)
+
+    if (!conversation) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "Conversation not found",
+      })
+    }
+
+    const timestamp = args.timestamp ?? Date.now()
+
+    await ctx.db.patch(args.conversationId, {
+      lastOperatorMessageAt: timestamp,
+      unreadForContactCount: (conversation.unreadForContactCount ?? 0) + 1,
+    })
+  },
+})
+
 export const getByThreadId = internalQuery({
   args: {
     threadId: v.string(),

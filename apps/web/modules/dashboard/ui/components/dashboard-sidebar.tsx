@@ -27,6 +27,7 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
@@ -34,6 +35,8 @@ import {
 
 import { cn } from "@workspace/ui/lib/utils"
 import { DashboardThemeToggle } from "./dashboard-theme-toggle"
+import { useQuery } from "convex/react"
+import { api } from "@workspace/backend/_generated/api"
 
 const customerSupportItems = [
   {
@@ -92,12 +95,30 @@ const accountsItem = [
 
 export const DashboardSidebar = () => {
   const pathname = usePathname()
+  const conversationUnreadSummary = useQuery(
+    api.private.conversations.getUnreadSummary
+  )
+  const aiVoicechatUnreadSummary = useQuery(
+    api.private.aiConversations.getUnreadSummary
+  )
 
   const isActive = (url: string) => {
     if (url === "/") {
       return pathname === "/"
     }
     return pathname.startsWith(url)
+  }
+
+  const getUnreadCount = (url: string) => {
+    if (url === "/conversations") {
+      return conversationUnreadSummary?.unreadMessageCount ?? 0
+    }
+
+    if (url === "/ai-conversations") {
+      return aiVoicechatUnreadSummary?.unreadMessageCount ?? 0
+    }
+
+    return 0
   }
 
   return (
@@ -136,7 +157,7 @@ export const DashboardSidebar = () => {
           <SidebarGroupContent>
             <SidebarMenu>
               {customerSupportItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
+                <SidebarMenuItem className="relative" key={item.title}>
                   <SidebarMenuButton
                     asChild
                     tooltip={item.title}
@@ -151,6 +172,13 @@ export const DashboardSidebar = () => {
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
+                  {getUnreadCount(item.url) > 0 ? (
+                    <SidebarMenuBadge className="bg-rose-500 text-white peer-data-active/menu-button:bg-white/20 peer-data-active/menu-button:text-sidebar-primary-foreground">
+                      {getUnreadCount(item.url) > 99
+                        ? "99+"
+                        : getUnreadCount(item.url)}
+                    </SidebarMenuBadge>
+                  ) : null}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>

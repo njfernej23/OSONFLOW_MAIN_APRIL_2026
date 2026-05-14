@@ -8,6 +8,7 @@ import { paginationOptsValidator } from "convex/server";
 import { internal } from "../_generated/api";
 import { generateText } from "ai";
 import { getOpenAIChatModelFromSecretValue } from "../lib/openai";
+import { enforceRateLimit } from "../lib/rateLimits";
 
 function guessMimeType(filename: string, bytes: ArrayBuffer): string {
     return (
@@ -380,6 +381,15 @@ export const addFile = action({
             })
         }
 
+        await enforceRateLimit(ctx, "fileUploadByUser", {
+            key: `${orgId}:${identity.subject}`,
+            message: "Too many file uploads. Please wait before uploading more files.",
+        });
+        await enforceRateLimit(ctx, "fileUploadByOrg", {
+            key: orgId,
+            message: "This organization is uploading too many files. Please try again shortly.",
+        });
+
         const { bytes, filename, category } = args;
         const mimeType = args.mimeType || guessMimeType(filename, bytes);
         const blob = new Blob([bytes], { type: mimeType });
@@ -461,6 +471,15 @@ export const addWebsite = action({
                 message: "Missing subscription"
             })
         }
+
+        await enforceRateLimit(ctx, "websiteScrapeByUser", {
+            key: `${orgId}:${identity.subject}`,
+            message: "Too many website imports. Please wait before adding more URLs.",
+        });
+        await enforceRateLimit(ctx, "websiteScrapeByOrg", {
+            key: orgId,
+            message: "This organization is importing too many websites. Please try again shortly.",
+        });
 
         const scraped = await scrapeWebsite(args.url);
         const providedTitle = args.title?.trim();
@@ -687,6 +706,15 @@ export const testKnowledgeBase = action({
                 message: "Question is required",
             });
         }
+
+        await enforceRateLimit(ctx, "knowledgeTestByUser", {
+            key: `${orgId}:${identity.subject}`,
+            message: "Too many knowledge-base tests. Please wait a moment.",
+        });
+        await enforceRateLimit(ctx, "knowledgeTestByOrg", {
+            key: orgId,
+            message: "This organization is running too many knowledge-base tests. Please try again shortly.",
+        });
 
         const openAIPlugin: any = await ctx.runQuery(
             (internal as any).system.plugins.getByOrganizationIdAndService,

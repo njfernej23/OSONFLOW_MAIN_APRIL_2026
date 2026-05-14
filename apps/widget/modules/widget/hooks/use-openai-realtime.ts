@@ -2,7 +2,10 @@ import { api } from "@workspace/backend/_generated/api"
 import { useAction } from "convex/react"
 import { useAtomValue } from "jotai"
 import { useEffect, useRef, useState } from "react"
-import { organizationIdAtom } from "../atoms/widget-atoms"
+import {
+  contactSessionIdAtomFamily,
+  organizationIdAtom,
+} from "../atoms/widget-atoms"
 import { usePersistedVoiceConversation } from "./use-persisted-voice-conversation"
 
 type TranscriptMessage = {
@@ -48,6 +51,9 @@ const parseJsonResponse = async <T>(response: Response): Promise<T> => {
 
 export const useOpenAIRealtime = () => {
   const organizationId = useAtomValue(organizationIdAtom)
+  const contactSessionId = useAtomValue(
+    contactSessionIdAtomFamily(organizationId || "")
+  )
   const searchKnowledgeBase = useAction(api.public.voiceKnowledgeBase.search)
   const {
     escalateToHumanConversation,
@@ -278,6 +284,11 @@ export const useOpenAIRealtime = () => {
       return
     }
 
+    if (!contactSessionId) {
+      setError("Please start a contact session before using voice.")
+      return
+    }
+
     setIsConnecting(true)
     setError(null)
     setTranscript([])
@@ -288,7 +299,7 @@ export const useOpenAIRealtime = () => {
       const tokenResponse = await fetch("/api/openai-realtime-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ organizationId }),
+        body: JSON.stringify({ organizationId, contactSessionId }),
       })
       const tokenData = await parseJsonResponse<TokenResponse>(tokenResponse)
 

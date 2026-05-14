@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { ConvexHttpClient } from "convex/browser"
 import { api } from "@workspace/backend/_generated/api"
+import type { Id } from "@workspace/backend/_generated/dataModel"
 
 export async function POST(request: Request) {
   const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL
@@ -14,12 +15,21 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => null)) as {
     organizationId?: string
+    contactSessionId?: string
   } | null
   const organizationId = body?.organizationId
+  const contactSessionId = body?.contactSessionId
 
   if (!organizationId) {
     return NextResponse.json(
       { error: "organizationId is required" },
+      { status: 400 }
+    )
+  }
+
+  if (!contactSessionId) {
+    return NextResponse.json(
+      { error: "contactSessionId is required" },
       { status: 400 }
     )
   }
@@ -30,6 +40,7 @@ export async function POST(request: Request) {
       api.public.secrets.createOpenAIRealtimeSession,
       {
         organizationId,
+        contactSessionId: contactSessionId as Id<"contactSessions">,
       }
     )
 

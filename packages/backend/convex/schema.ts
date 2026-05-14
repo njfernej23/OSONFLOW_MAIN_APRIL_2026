@@ -413,6 +413,8 @@ export default defineSchema({
     endedAt: v.optional(v.number()),
     lastMessagePreview: v.optional(v.string()),
     lastMessageRole: v.optional(aiVoiceConversationRoleValidator),
+    operatorLastReadAt: v.optional(v.number()),
+    unreadForOperatorCount: v.optional(v.number()),
     escalatedAt: v.optional(v.union(v.number(), v.null())),
     resolvedAt: v.optional(v.union(v.number(), v.null())),
     resolutionSource: v.optional(v.union(resolutionSourceValidator, v.null())),

@@ -13,6 +13,7 @@ import {
   getOpenAIChatModelFromSecretValue,
   getOpenAIKeyFromSecretValue,
 } from "../lib/openai"
+import { enforceRateLimit } from "../lib/rateLimits"
 
 const extractAgentMessageText = (message: any) => {
   const content = message?.text ?? message?.message?.content
@@ -184,12 +185,31 @@ export const create = action({
       })
     }
 
+    if (
+      conversation.contactSessionId !== args.contactSessionId ||
+      contactSession.organizationId !== conversation.organizationId
+    ) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Invalid session",
+      })
+    }
+
     if (conversation.status === "resolved") {
       throw new ConvexError({
         code: "BAD_REQUEST",
         message: "Conversation resolved",
       })
     }
+
+    await enforceRateLimit(ctx, "widgetMessageBySession", {
+      key: `${conversation.organizationId}:${args.contactSessionId}`,
+      message: "You are sending messages too quickly. Please wait a moment.",
+    })
+    await enforceRateLimit(ctx, "widgetMessageByOrg", {
+      key: conversation.organizationId,
+      message: "This widget is receiving too many messages. Please try again shortly.",
+    })
 
     // This refreshes the user's session if they are within the threshold
     await ctx.runMutation(internal.system.contactSessions.refresh, {
@@ -312,6 +332,15 @@ export const create = action({
       conversationId: conversation._id,
       timestamp: now,
     })
+
+    if (assistantReplyText) {
+      await ctx.runMutation(
+        internal.system.conversations.touchAssistantMessage,
+        {
+          conversationId: conversation._id,
+        }
+      )
+    }
 
     await ctx.scheduler.runAfter(
       0,

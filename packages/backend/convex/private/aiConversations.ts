@@ -1,6 +1,6 @@
 import { paginationOptsValidator } from "convex/server"
 import { ConvexError, v } from "convex/values"
-import { query, QueryCtx } from "../_generated/server"
+import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server"
 
 const getOrganizationIdentity = async (ctx: QueryCtx) => {
   const identity = await ctx.auth.getUserIdentity()
@@ -23,6 +23,83 @@ const getOrganizationIdentity = async (ctx: QueryCtx) => {
 
   return { identity, orgId }
 }
+
+const getOrganizationIdentityForMutation = async (ctx: MutationCtx) => {
+  const identity = await ctx.auth.getUserIdentity()
+
+  if (identity === null) {
+    throw new ConvexError({
+      code: "UNAUTHORIZED",
+      message: "Identity not found",
+    })
+  }
+
+  const orgId = identity.orgId as string | undefined
+
+  if (!orgId) {
+    throw new ConvexError({
+      code: "UNAUTHORIZED",
+      message: "Organization not found",
+    })
+  }
+
+  return { identity, orgId }
+}
+
+export const getUnreadSummary = query({
+  args: {},
+  handler: async (ctx) => {
+    const { orgId } = await getOrganizationIdentity(ctx)
+
+    const conversations = await ctx.db
+      .query("aiVoiceConversations")
+      .withIndex("by_organization_id", (q) => q.eq("organizationId", orgId))
+      .collect()
+
+    const unreadConversations = conversations.filter(
+      (conversation) => (conversation.unreadForOperatorCount ?? 0) > 0
+    )
+
+    return {
+      unreadConversationCount: unreadConversations.length,
+      unreadMessageCount: unreadConversations.reduce(
+        (total, conversation) =>
+          total + (conversation.unreadForOperatorCount ?? 0),
+        0
+      ),
+    }
+  },
+})
+
+export const markAsRead = mutation({
+  args: {
+    conversationId: v.id("aiVoiceConversations"),
+  },
+  handler: async (ctx, args) => {
+    const { orgId } = await getOrganizationIdentityForMutation(ctx)
+
+    const conversation = await ctx.db.get(args.conversationId)
+
+    if (!conversation) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "AI conversation not found",
+      })
+    }
+
+    if (conversation.organizationId !== orgId) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Invalid organization",
+      })
+    }
+
+    await ctx.db.patch(args.conversationId, {
+      operatorLastReadAt: Date.now(),
+      unreadForOperatorCount: 0,
+    })
+  },
+})
 
 export const getMany = query({
   args: {

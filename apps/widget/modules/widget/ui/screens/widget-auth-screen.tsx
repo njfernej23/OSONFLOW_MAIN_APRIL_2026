@@ -12,7 +12,7 @@ import {
 } from "@workspace/ui/components/form"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
-import { useMutation } from "convex/react"
+import { useAction } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
 import { Doc } from "@workspace/backend/_generated/dataModel"
 import {
@@ -24,9 +24,19 @@ import {
 import { useSetAtom, useAtomValue } from "jotai"
 import { mergeWidgetTheme } from "@workspace/ui/lib/widget-customization"
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
 const formSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email address"),
+  name: z.string().trim().min(1, "Name is required"),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(1, "Email is required")
+    .refine(
+      (email) => EMAIL_PATTERN.test(email),
+      "Enter a valid email address"
+    ),
 })
 
 const toCssImageUrl = (url: string) => url.replaceAll('"', "%22")
@@ -39,7 +49,7 @@ export const WidgetAuthScreen = () => {
   const setContactSessionsId = useSetAtom(
     contactSessionIdAtomFamily(organizationId || "")
   )
-  const createContactSession = useMutation(api.public.contactSessions.create)
+  const createContactSession = useAction(api.public.contactSessions.create)
 
   const backgroundImageUrl = theme.backgroundImageUrl.trim()
   const headerStyle: CSSProperties = {
@@ -53,6 +63,8 @@ export const WidgetAuthScreen = () => {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    mode: "onChange",
+    reValidateMode: "onChange",
     defaultValues: {
       name: "",
       email: "",
@@ -82,14 +94,21 @@ export const WidgetAuthScreen = () => {
       currentUrl: window.location.href,
     }
 
-    const contactSessionId = await createContactSession({
-      ...values,
-      organizationId,
-      metadata,
-    })
+    try {
+      const contactSessionId = await createContactSession({
+        ...values,
+        organizationId,
+        metadata,
+      })
 
-    setContactSessionsId(contactSessionId)
-    setScreen("selection")
+      setContactSessionsId(contactSessionId)
+      setScreen("selection")
+    } catch {
+      form.setError("email", {
+        type: "server",
+        message: "Enter a real email address that can receive mail",
+      })
+    }
   }
 
   return (
@@ -142,6 +161,7 @@ export const WidgetAuthScreen = () => {
         <Form {...form}>
           <form
             className="flex min-h-0 flex-1 flex-col gap-y-4 bg-background p-4"
+            noValidate
             onSubmit={form.handleSubmit(onSubmit)}
           >
             <FormField
@@ -151,6 +171,7 @@ export const WidgetAuthScreen = () => {
                 <FormItem>
                   <FormControl>
                     <Input
+                      autoComplete="name"
                       className="h-10 rounded-full bg-background text-sm"
                       placeholder="zyzz mukh"
                       type="text"
@@ -168,8 +189,13 @@ export const WidgetAuthScreen = () => {
                 <FormItem>
                   <FormControl>
                     <Input
+                      autoCapitalize="none"
+                      autoComplete="email"
+                      autoCorrect="off"
                       className="h-10 rounded-full bg-background text-sm"
+                      inputMode="email"
                       placeholder="your@email.com"
+                      spellCheck={false}
                       type="email"
                       {...field}
                     />
@@ -180,6 +206,7 @@ export const WidgetAuthScreen = () => {
             />
             <Button
               className="mt-auto h-10 rounded-full text-sm font-semibold"
+              disabled={form.formState.isSubmitting}
               type="submit"
             >
               Get Started
