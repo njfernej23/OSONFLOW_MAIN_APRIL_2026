@@ -121,7 +121,7 @@ export const WidgetFooter = () => {
           <span className={footerTabContentClassName}>
             <WidgetHomeIcon
               active={isHomeActive}
-              className={cn("size-5", isHomeActive && "text-primary")}
+              className={cn("size-6", isHomeActive && "text-primary")}
             />
             <span
               className={cn(
@@ -144,7 +144,7 @@ export const WidgetFooter = () => {
             <span className={footerTabContentClassName}>
               <WidgetHelpIcon
                 active={isHelpActive}
-                className={cn("size-5", isHelpActive && "text-primary")}
+                className={cn("size-6", isHelpActive && "text-primary")}
               />
               <span
                 className={cn(
@@ -167,7 +167,7 @@ export const WidgetFooter = () => {
           <span className={footerTabContentClassName}>
             <WidgetMessagesIcon
               active={isMessagesActive}
-              className={cn("size-5", isMessagesActive && "text-primary")}
+              className={cn("size-6", isMessagesActive && "text-primary")}
             />
             <span
               className={cn(
