@@ -101,6 +101,30 @@ export const markAsRead = mutation({
   },
 })
 
+export const markAllAsRead = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const { orgId } = await getOrganizationIdentityForMutation(ctx)
+
+    const conversations = await ctx.db
+      .query("aiVoiceConversations")
+      .withIndex("by_organization_id", (q) => q.eq("organizationId", orgId))
+      .collect()
+
+    const timestamp = Date.now()
+    await Promise.all(
+      conversations
+        .filter((conversation) => (conversation.unreadForOperatorCount ?? 0) > 0)
+        .map((conversation) =>
+          ctx.db.patch(conversation._id, {
+            operatorLastReadAt: timestamp,
+            unreadForOperatorCount: 0,
+          })
+        )
+    )
+  },
+})
+
 export const getMany = query({
   args: {
     paginationOpts: paginationOptsValidator,

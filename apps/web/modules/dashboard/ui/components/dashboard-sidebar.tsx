@@ -17,6 +17,7 @@ import Image from "next/image"
 import Link from "next/link"
 
 import { usePathname } from "next/navigation"
+import { useCallback, useEffect } from "react"
 
 import {
   Sidebar,
@@ -35,7 +36,7 @@ import {
 
 import { cn } from "@workspace/ui/lib/utils"
 import { DashboardThemeToggle } from "./dashboard-theme-toggle"
-import { useQuery } from "convex/react"
+import { useMutation, useQuery } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
 
 const customerSupportItems = [
@@ -101,6 +102,16 @@ export const DashboardSidebar = () => {
   const aiVoicechatUnreadSummary = useQuery(
     api.private.aiConversations.getUnreadSummary
   )
+  const markAllConversationsAsRead = useMutation(
+    api.private.conversations.markAllAsRead
+  )
+  const markAllAiVoicechatsAsRead = useMutation(
+    api.private.aiConversations.markAllAsRead
+  )
+  const conversationUnreadCount =
+    conversationUnreadSummary?.unreadConversationCount ?? 0
+  const aiVoicechatUnreadCount =
+    aiVoicechatUnreadSummary?.unreadConversationCount ?? 0
 
   const isActive = (url: string) => {
     if (url === "/") {
@@ -110,16 +121,50 @@ export const DashboardSidebar = () => {
   }
 
   const getUnreadCount = (url: string) => {
+    if (isActive(url)) {
+      return 0
+    }
+
     if (url === "/conversations") {
-      return conversationUnreadSummary?.unreadMessageCount ?? 0
+      return conversationUnreadCount
     }
 
     if (url === "/ai-conversations") {
-      return aiVoicechatUnreadSummary?.unreadMessageCount ?? 0
+      return aiVoicechatUnreadCount
     }
 
     return 0
   }
+
+  const clearUnreadForUrl = useCallback(
+    (url: string) => {
+      if (url === "/conversations" && conversationUnreadCount > 0) {
+        void markAllConversationsAsRead({})
+        return
+      }
+
+      if (url === "/ai-conversations" && aiVoicechatUnreadCount > 0) {
+        void markAllAiVoicechatsAsRead({})
+      }
+    },
+    [
+      aiVoicechatUnreadCount,
+      conversationUnreadCount,
+      markAllAiVoicechatsAsRead,
+      markAllConversationsAsRead,
+    ]
+  )
+
+  useEffect(() => {
+    if (pathname.startsWith("/conversations")) {
+      clearUnreadForUrl("/conversations")
+      return
+    }
+
+    if (pathname.startsWith("/ai-conversations")) {
+      clearUnreadForUrl("/ai-conversations")
+    }
+  }, [clearUnreadForUrl, pathname])
 
   return (
     <Sidebar collapsible="icon">
@@ -167,7 +212,10 @@ export const DashboardSidebar = () => {
                         "bg-sidebar-primary! text-sidebar-primary-foreground!"
                     )}
                   >
-                    <Link href={item.url}>
+                    <Link
+                      href={item.url}
+                      onClick={() => clearUnreadForUrl(item.url)}
+                    >
                       <item.icon className="size-4" />
                       <span>{item.title}</span>
                     </Link>
