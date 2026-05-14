@@ -23,12 +23,31 @@ const getOrganizationId = async (ctx: QueryCtx) => {
   return organizationId
 }
 
+const hasActiveSubscription = async (
+  ctx: QueryCtx,
+  organizationId: string
+) => {
+  const subscription = await ctx.db
+    .query("subscriptions")
+    .withIndex("by_organization_id", (q) =>
+      q.eq("organizationId", organizationId)
+    )
+    .unique()
+
+  return subscription?.status === "active"
+}
+
 export const getMany = query({
   args: {
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const organizationId = await getOrganizationId(ctx)
+
+    if (!(await hasActiveSubscription(ctx, organizationId))) {
+      return []
+    }
+
     const limit = Math.max(1, Math.min(args.limit ?? 50, 100))
 
     return await ctx.db
@@ -47,6 +66,11 @@ export const getByEmail = query({
   },
   handler: async (ctx, args) => {
     const organizationId = await getOrganizationId(ctx)
+
+    if (!(await hasActiveSubscription(ctx, organizationId))) {
+      return null
+    }
+
     const email = args.email.trim().toLowerCase()
 
     if (!email) {

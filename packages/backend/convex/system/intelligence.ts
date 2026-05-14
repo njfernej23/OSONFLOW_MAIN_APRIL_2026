@@ -241,6 +241,17 @@ const inferUrgency = (text: string): SupportUrgency => {
   return "low"
 }
 
+const hasActiveSubscription = async (ctx: any, organizationId: string) => {
+  const subscription = await ctx.runQuery(
+    internal.system.subscriptions.getByOrganizationId,
+    {
+      organizationId,
+    }
+  )
+
+  return subscription?.status === "active"
+}
+
 const createFallbackAnalysis = ({
   transcript,
   status,
@@ -587,6 +598,11 @@ export const analyzeChatConversation = internalAction({
 
     const conversation = snapshot.conversation
     const contactSession = snapshot.contactSession
+
+    if (!(await hasActiveSubscription(ctx, conversation.organizationId))) {
+      return
+    }
+
     const status = conversation.status as ConversationStatus
     const analysis = await analyzeTranscript({
       ctx,
@@ -645,6 +661,11 @@ export const analyzeVoiceConversation = internalAction({
 
     const conversation = snapshot.conversation
     const contactSession = snapshot.contactSession
+
+    if (!(await hasActiveSubscription(ctx, conversation.organizationId))) {
+      return
+    }
+
     const status = (conversation.status ?? "unresolved") as ConversationStatus
     const analysis = await analyzeTranscript({
       ctx,
