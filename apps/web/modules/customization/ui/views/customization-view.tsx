@@ -71,7 +71,6 @@ export const CustomizationView = () => {
         </div>
 
         <CustomizationForm
-          key={`${customizationState.publishedVersion}`}
           draftData={customizationState.draft}
           publishedVersion={customizationState.publishedVersion}
           publishedAt={customizationState.publishedAt}

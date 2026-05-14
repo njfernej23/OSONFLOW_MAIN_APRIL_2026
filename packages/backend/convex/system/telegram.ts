@@ -12,6 +12,7 @@ import { SUPPORT_AGENT_PROMPT } from "./ai/constants"
 import { escalateConversation } from "./ai/tools/escalateConversation"
 import { resolveConversation } from "./ai/tools/resolveConversation"
 import { search } from "./ai/tools/search"
+import { getOpenAIChatModelFromSecretValue } from "../lib/openai"
 
 type TelegramIntegration = {
   _id: any
@@ -19,7 +20,6 @@ type TelegramIntegration = {
   botToken: string
   botId?: number
   botUsername?: string
-  forumChatId?: string
   webhookSecret: string
   isEnabled: boolean
 }
@@ -34,7 +34,6 @@ type TelegramUser = {
 
 type TelegramMessage = {
   message_id?: number
-  message_thread_id?: number
   text?: string
   chat?: {
     id?: number | string
@@ -55,16 +54,6 @@ type TelegramSendMessageResponse = {
   description?: string
   result?: {
     message_id?: number
-    message_thread_id?: number
-  }
-}
-
-type TelegramCreateForumTopicResponse = {
-  ok: boolean
-  description?: string
-  result?: {
-    message_thread_id: number
-    name: string
   }
 }
 
@@ -147,47 +136,6 @@ const getLatestAssistantMessage = async (ctx: any, threadId: string) => {
   }
 }
 
-const sleep = (ms: number) =>
-  new Promise((resolve) => {
-    setTimeout(resolve, ms)
-  })
-
-const normalizeForumChatId = (chatId?: string | number | null) => {
-  const value = String(chatId ?? "").trim()
-  return value ? value : undefined
-}
-
-const createTopicLink = (forumChatId: string, messageThreadId: number) => {
-  const normalizedChatId = forumChatId.trim()
-
-  if (!normalizedChatId.startsWith("-100")) {
-    return undefined
-  }
-
-  return `https://t.me/c/${normalizedChatId.slice(4)}/${messageThreadId}`
-}
-
-const sanitizeTopicName = (name: string) =>
-  name
-    .replace(/\s+/g, " ")
-    .replace(/[^\p{L}\p{N}\p{P}\p{Zs}]/gu, "")
-    .trim()
-    .slice(0, 128)
-
-const createConversationTopicName = ({
-  name,
-  email,
-}: {
-  name?: string
-  email?: string
-}) => {
-  const displayName = name?.trim() || "Widget visitor"
-  const displayEmail = email?.trim()
-  return sanitizeTopicName(
-    displayEmail ? `${displayName} (${displayEmail})` : displayName
-  )
-}
-
 const escapeTelegramHtml = (value: string) =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
 
@@ -217,19 +165,16 @@ const toTelegramHtml = (value: string) =>
 const sendTelegramMessage = async ({
   botToken,
   chatId,
-  messageThreadId,
   text,
   parseMode = "HTML",
 }: {
   botToken: string
   chatId: string
-  messageThreadId?: number
   text: string
   parseMode?: "HTML" | null
 }) => {
   const payload = {
     chat_id: chatId,
-    message_thread_id: messageThreadId,
     text: parseMode === "HTML" ? toTelegramHtml(text) : text,
     parse_mode: parseMode ?? undefined,
     disable_web_page_preview: true,
@@ -246,7 +191,6 @@ const sendTelegramMessage = async ({
       return await sendTelegramMessage({
         botToken,
         chatId,
-        messageThreadId,
         text,
         parseMode: null,
       })
@@ -260,36 +204,6 @@ const sendTelegramMessage = async ({
 
   return body.result
 }
-
-const createForumTopic = async ({
-  botToken,
-  chatId,
-  name,
-}: {
-  botToken: string
-  chatId: string
-  name: string
-}) => {
-  const response = await fetch(telegramApiUrl(botToken, "createForumTopic"), {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      name,
-    }),
-  })
-  const body = (await response.json()) as TelegramCreateForumTopicResponse
-
-  if (!response.ok || !body.ok || !body.result?.message_thread_id) {
-    throw new ConvexError({
-      code: "BAD_REQUEST",
-      message: `Telegram createForumTopic failed: ${body.description || response.statusText}`,
-    })
-  }
-
-  return body.result
-}
-
 export const upsertIntegration = internalMutation({
   args: {
     organizationId: v.string(),
@@ -298,7 +212,6 @@ export const upsertIntegration = internalMutation({
     botId: v.number(),
     botUsername: v.optional(v.string()),
     botFirstName: v.optional(v.string()),
-    forumChatId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now()
@@ -315,8 +228,6 @@ export const upsertIntegration = internalMutation({
         botId: args.botId,
         botUsername: args.botUsername,
         botFirstName: args.botFirstName,
-        forumChatId:
-          normalizeForumChatId(args.forumChatId) ?? existing.forumChatId,
         isEnabled: true,
         status: "needs_webhook_url",
         setupError: undefined,
@@ -336,7 +247,6 @@ export const upsertIntegration = internalMutation({
       botId: args.botId,
       botUsername: args.botUsername,
       botFirstName: args.botFirstName,
-      forumChatId: normalizeForumChatId(args.forumChatId),
       webhookSecret,
       isEnabled: true,
       status: "needs_webhook_url",
@@ -647,350 +557,6 @@ export const getTelegramContactByConversationId = internalQuery({
   },
 })
 
-export const getTopicProvisioningContext = internalQuery({
-  args: {
-    conversationId: v.id("conversations"),
-  },
-  handler: async (ctx, args) => {
-    const conversation = await ctx.db.get(args.conversationId)
-
-    if (!conversation) {
-      return null
-    }
-
-    const contactSession = await ctx.db.get(conversation.contactSessionId)
-    const integration = await ctx.db
-      .query("telegramIntegrations")
-      .withIndex("by_organization_id", (q) =>
-        q.eq("organizationId", conversation.organizationId)
-      )
-      .unique()
-    const topics = await ctx.db
-      .query("telegramConversationTopics")
-      .withIndex("by_conversation_id", (q) =>
-        q.eq("conversationId", args.conversationId)
-      )
-      .take(1)
-
-    return {
-      conversation,
-      contactSession,
-      integration,
-      topic: topics[0] ?? null,
-    }
-  },
-})
-
-export const reserveConversationTopic = internalMutation({
-  args: {
-    organizationId: v.string(),
-    integrationId: v.id("telegramIntegrations"),
-    conversationId: v.id("conversations"),
-    threadId: v.string(),
-    forumChatId: v.string(),
-    topicName: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const existingTopics = await ctx.db
-      .query("telegramConversationTopics")
-      .withIndex("by_conversation_id", (q) =>
-        q.eq("conversationId", args.conversationId)
-      )
-      .take(1)
-
-    if (existingTopics[0]) {
-      return { reserved: false, topic: existingTopics[0] }
-    }
-
-    const now = Date.now()
-    const topicId = await ctx.db.insert("telegramConversationTopics", {
-      organizationId: args.organizationId,
-      integrationId: args.integrationId,
-      conversationId: args.conversationId,
-      threadId: args.threadId,
-      forumChatId: args.forumChatId,
-      topicName: args.topicName,
-      status: "creating",
-      createdAt: now,
-      updatedAt: now,
-    })
-
-    return { reserved: true, topic: await ctx.db.get(topicId) }
-  },
-})
-
-export const completeConversationTopic = internalMutation({
-  args: {
-    topicId: v.id("telegramConversationTopics"),
-    messageThreadId: v.number(),
-    topicName: v.string(),
-    topicLink: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.topicId, {
-      messageThreadId: args.messageThreadId,
-      topicName: args.topicName,
-      topicLink: args.topicLink,
-      status: "ready",
-      setupError: undefined,
-      updatedAt: Date.now(),
-    })
-
-    return await ctx.db.get(args.topicId)
-  },
-})
-
-export const failConversationTopic = internalMutation({
-  args: {
-    topicId: v.id("telegramConversationTopics"),
-    setupError: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.topicId, {
-      status: "error",
-      setupError: args.setupError,
-      updatedAt: Date.now(),
-    })
-
-    return await ctx.db.get(args.topicId)
-  },
-})
-
-export const getConversationTopicByThread = internalQuery({
-  args: {
-    integrationId: v.id("telegramIntegrations"),
-    forumChatId: v.string(),
-    messageThreadId: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const topics = await ctx.db
-      .query("telegramConversationTopics")
-      .withIndex("by_integration_id_and_thread", (q) =>
-        q
-          .eq("integrationId", args.integrationId)
-          .eq("forumChatId", args.forumChatId)
-          .eq("messageThreadId", args.messageThreadId)
-      )
-      .take(1)
-
-    const topic = topics[0] ?? null
-
-    if (!topic) {
-      return null
-    }
-
-    const conversation = await ctx.db.get(topic.conversationId)
-
-    return {
-      ...topic,
-      conversation,
-    }
-  },
-})
-
-export const ensureConversationTopic: any = internalAction({
-  args: {
-    conversationId: v.id("conversations"),
-  },
-  handler: async (ctx, args) => {
-    const context = (await ctx.runQuery(
-      (internal as any).system.telegram.getTopicProvisioningContext,
-      {
-        conversationId: args.conversationId,
-      }
-    )) as any
-
-    if (!context?.conversation || !context.contactSession) {
-      return { created: false, reason: "conversation_not_found" }
-    }
-
-    const integration = context.integration as TelegramIntegration | null
-    const forumChatId = normalizeForumChatId(integration?.forumChatId)
-
-    if (!integration?.isEnabled || !forumChatId) {
-      return { created: false, reason: "forum_not_configured" }
-    }
-
-    if (
-      context.topic &&
-      (context.topic.status === "ready" || !context.topic.status) &&
-      context.topic.messageThreadId !== undefined
-    ) {
-      return { created: false, topic: context.topic }
-    }
-
-    const topicName = createConversationTopicName({
-      name: context.contactSession.name,
-      email: context.contactSession.email,
-    })
-
-    const reservation = (await ctx.runMutation(
-      (internal as any).system.telegram.reserveConversationTopic,
-      {
-        organizationId: context.conversation.organizationId,
-        integrationId: integration._id,
-        conversationId: context.conversation._id,
-        threadId: context.conversation.threadId,
-        forumChatId,
-        topicName: topicName || "Widget visitor",
-      }
-    )) as any
-
-    if (!reservation.reserved) {
-      const topic = reservation.topic
-
-      if (
-        topic &&
-        (topic.status === "ready" || !topic.status) &&
-        topic.messageThreadId !== undefined
-      ) {
-        return { created: false, topic }
-      }
-
-      if (topic?.status === "error") {
-        return {
-          created: false,
-          reason: "topic_create_failed",
-          setupError: topic.setupError,
-        }
-      }
-
-      return { created: false, reason: "topic_creation_in_progress" }
-    }
-
-    let forumTopic: Awaited<ReturnType<typeof createForumTopic>>
-
-    try {
-      forumTopic = await createForumTopic({
-        botToken: integration.botToken,
-        chatId: forumChatId,
-        name: topicName || "Widget visitor",
-      })
-    } catch (error) {
-      await ctx.runMutation(
-        (internal as any).system.telegram.failConversationTopic,
-        {
-          topicId: reservation.topic._id,
-          setupError:
-            error instanceof Error
-              ? error.message
-              : "Telegram topic creation failed",
-        }
-      )
-
-      return { created: false, reason: "topic_create_failed" }
-    }
-
-    const topic = await ctx.runMutation(
-      (internal as any).system.telegram.completeConversationTopic,
-      {
-        topicId: reservation.topic._id,
-        messageThreadId: forumTopic.message_thread_id,
-        topicName: forumTopic.name || topicName || "Widget visitor",
-        topicLink: createTopicLink(forumChatId, forumTopic.message_thread_id),
-      }
-    )
-
-    try {
-      await sendTelegramMessage({
-        botToken: integration.botToken,
-        chatId: forumChatId,
-        messageThreadId: forumTopic.message_thread_id,
-        text: [
-          "New widget conversation",
-          `Name: ${context.contactSession.name}`,
-          `Email: ${context.contactSession.email}`,
-          `Conversation ID: ${context.conversation._id}`,
-        ].join("\n"),
-      })
-    } catch {
-      // The topic mapping is still useful even if the intro message fails.
-    }
-
-    return { created: true, topic }
-  },
-})
-
-export const mirrorConversationTopicMessage: any = internalAction({
-  args: {
-    conversationId: v.id("conversations"),
-    text: v.string(),
-    role: v.union(
-      v.literal("customer"),
-      v.literal("assistant"),
-      v.literal("operator")
-    ),
-    actorName: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const text = args.text.trim()
-
-    if (!text) {
-      return { sent: false, reason: "empty_message" }
-    }
-
-    let result = (await ctx.runAction(
-      (internal as any).system.telegram.ensureConversationTopic,
-      {
-        conversationId: args.conversationId,
-      }
-    )) as any
-
-    for (
-      let attempt = 0;
-      !result.topic &&
-      result.reason === "topic_creation_in_progress" &&
-      attempt < 6;
-      attempt += 1
-    ) {
-      await sleep(500)
-      result = (await ctx.runAction(
-        (internal as any).system.telegram.ensureConversationTopic,
-        {
-          conversationId: args.conversationId,
-        }
-      )) as any
-    }
-
-    const topic = result.topic
-
-    if (!topic) {
-      return { sent: false, reason: result.reason ?? "topic_not_found" }
-    }
-
-    if (topic.messageThreadId === undefined) {
-      return { sent: false, reason: "topic_not_ready" }
-    }
-
-    const integration = (await ctx.runQuery(
-      (internal as any).system.telegram.getIntegrationById,
-      {
-        integrationId: topic.integrationId,
-      }
-    )) as TelegramIntegration | null
-
-    if (!integration?.isEnabled) {
-      return { sent: false, reason: "integration_disabled" }
-    }
-
-    const label =
-      args.role === "customer"
-        ? "Customer"
-        : args.role === "assistant"
-          ? "AI Assistant"
-          : args.actorName?.trim() || "Operator"
-
-    await sendTelegramMessage({
-      botToken: integration.botToken,
-      chatId: topic.forumChatId,
-      messageThreadId: topic.messageThreadId,
-      text: `${label}:\n${text}`,
-    })
-
-    return { sent: true }
-  },
-})
-
 export const handleIncomingUpdate: any = internalAction({
   args: {
     integrationId: v.id("telegramIntegrations"),
@@ -1026,80 +592,6 @@ export const handleIncomingUpdate: any = internalAction({
     }
 
     const chatIdString = String(chatId)
-    const forumChatId = normalizeForumChatId(integrationForUpdate.forumChatId)
-    const messageThreadId = message?.message_thread_id
-
-    if (forumChatId && chatIdString === forumChatId) {
-      if (messageThreadId === undefined) {
-        return { handled: false, reason: "forum_message_without_topic" }
-      }
-
-      const topic = (await ctx.runQuery(
-        (internal as any).system.telegram.getConversationTopicByThread,
-        {
-          integrationId: args.integrationId,
-          forumChatId,
-          messageThreadId,
-        }
-      )) as any
-
-      if (!topic) {
-        return { handled: false, reason: "topic_not_mapped" }
-      }
-
-      if (!topic.conversation || topic.conversation.status === "resolved") {
-        return { handled: false, reason: "conversation_resolved" }
-      }
-
-      const operatorName = getDisplayName(from)
-      const now = Date.now()
-
-      await saveMessage(ctx, components.agent, {
-        threadId: topic.threadId,
-        agentName: operatorName,
-        message: {
-          role: "assistant",
-          content: text,
-        },
-      })
-
-      await ctx.runMutation(
-        (internal as any).system.conversations.touchOperatorMessage,
-        {
-          conversationId: topic.conversationId,
-          timestamp: now,
-          operatorId: from?.id === undefined ? undefined : String(from.id),
-          operatorName,
-        }
-      )
-
-      await ctx.runMutation(
-        (internal as any).system.integrationWebhooks.dispatchEvent,
-        {
-          organizationId: integrationForUpdate.organizationId,
-          eventType: "message.sent",
-          payload: {
-            conversationId: topic.conversationId,
-            threadId: topic.threadId,
-            prompt: text,
-            operator: operatorName,
-            source: "telegram_topic",
-            telegramForumChatId: forumChatId,
-            telegramMessageThreadId: messageThreadId,
-          },
-        }
-      )
-
-      await ctx.scheduler.runAfter(
-        0,
-        (internal as any).system.intelligence.analyzeChatConversation,
-        {
-          conversationId: topic.conversationId,
-        }
-      )
-
-      return { handled: true, source: "telegram_topic" }
-    }
 
     const { integration, contactSessionId, conversationId, threadId, status } =
       (await ctx.runMutation(
@@ -1142,6 +634,13 @@ export const handleIncomingUpdate: any = internalAction({
       status !== "unresolved" || subscription?.status !== "active"
 
     if (status === "unresolved" && subscription?.status === "active") {
+      const openAIPlugin = await ctx.runQuery(
+        internal.system.plugins.getByOrganizationIdAndService,
+        {
+          organizationId: integration.organizationId,
+          service: "openai_realtime",
+        }
+      )
       const previousAssistantMessage = await getLatestAssistantMessage(
         ctx,
         threadId
@@ -1150,6 +649,7 @@ export const handleIncomingUpdate: any = internalAction({
         ctx,
         { threadId },
         {
+          model: getOpenAIChatModelFromSecretValue(openAIPlugin?.secretValue),
           system: systemPrompt,
           prompt: text,
           tools: {

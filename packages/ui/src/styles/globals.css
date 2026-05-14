@@ -363,6 +363,17 @@
     box-shadow: var(--shadow-lg);
   }
 
+  .surface-widget button:not(:disabled),
+  .surface-widget [role="button"]:not([aria-disabled="true"]),
+  .surface-widget a[href] {
+    cursor: pointer;
+  }
+
+  .surface-widget button:disabled,
+  .surface-widget [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
   .surface-hero {
     background:
       radial-gradient(

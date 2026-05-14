@@ -13,6 +13,7 @@ import {
   contactSessionIdAtomFamily,
   conversationIdAtom,
   organizationIdAtom,
+  pendingInitialMessageAtom,
   screenAtom,
   widgetSettingsAtom,
 } from "../../atoms/widget-atoms"
@@ -43,7 +44,7 @@ import {
 import { useInfiniteScroll } from "@workspace/ui/hooks/use-infitnite-scroll"
 import { InfiniteScrollTrigger } from "@workspace/ui/components/infinite-scroll-trigger"
 import { DicebearAvatar } from "@workspace/ui/components/dicebear-avatar"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { mergeWidgetTheme } from "@workspace/ui/lib/widget-customization"
 
 const formSchema = z.object({
@@ -63,14 +64,18 @@ const AssistantLoadingBubble = ({ logoUrl }: { logoUrl?: string }) => {
           {[0, 1, 2].map((dot) => (
             <span
               aria-hidden="true"
-              className="size-2 rounded-full bg-current/65 animate-bounce"
+              className="size-2 animate-bounce rounded-full bg-current/65"
               key={dot}
               style={{ animationDelay: `${dot * 0.15}s` }}
             />
           ))}
         </div>
       </AIMessageContent>
-      <DicebearAvatar imageUrl={logoUrl || "/logo.svg"} seed="assistant" size={32} />
+      <DicebearAvatar
+        imageUrl={logoUrl || "/logo.svg"}
+        seed="assistant"
+        size={32}
+      />
     </AIMessage>
   )
 }
@@ -78,8 +83,10 @@ const AssistantLoadingBubble = ({ logoUrl }: { logoUrl?: string }) => {
 export const WidgetChatScreen = () => {
   const setScreen = useSetAtom(screenAtom)
   const setConversationId = useSetAtom(conversationIdAtom)
+  const setPendingInitialMessage = useSetAtom(pendingInitialMessageAtom)
   const chatReturnScreen = useAtomValue(chatReturnScreenAtom)
   const conversationId = useAtomValue(conversationIdAtom)
+  const pendingInitialMessage = useAtomValue(pendingInitialMessageAtom)
   const widgetSettings = useAtomValue(widgetSettingsAtom)
   const theme = mergeWidgetTheme(widgetSettings?.theme)
   const organizationId = useAtomValue(organizationIdAtom)
@@ -136,6 +143,7 @@ export const WidgetChatScreen = () => {
   const lastMessage = uiMessages.at(-1)
   const [pendingAssistantMessageCount, setPendingAssistantMessageCount] =
     useState<number | null>(null)
+  const submittedInitialMessageRef = useRef<string | null>(null)
   const isAwaitingResponse =
     conversation?.status !== "resolved" &&
     pendingAssistantMessageCount !== null &&
@@ -160,8 +168,47 @@ export const WidgetChatScreen = () => {
   const markConversationAsRead = useMutation(
     api.public.conversations.markAsRead
   )
+
+  useEffect(() => {
+    const prompt = pendingInitialMessage?.trim()
+    const threadId = conversation?.threadId
+    if (!prompt || !threadId || !contactSessionId) {
+      return
+    }
+
+    if (submittedInitialMessageRef.current === prompt) {
+      return
+    }
+
+    submittedInitialMessageRef.current = prompt
+    setPendingInitialMessage(null)
+    setPendingAssistantMessageCount(assistantMessageCount + 1)
+
+    void createMessage({
+      threadId,
+      prompt,
+      contactSessionId,
+    }).catch(() => {
+      setPendingAssistantMessageCount(null)
+      form.setValue("message", prompt, {
+        shouldValidate: true,
+        shouldDirty: true,
+        shouldTouch: true,
+      })
+    })
+  }, [
+    assistantMessageCount,
+    contactSessionId,
+    conversation?.threadId,
+    createMessage,
+    form,
+    pendingInitialMessage,
+    setPendingInitialMessage,
+  ])
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!conversation || !contactSessionId) {
+    const threadId = conversation?.threadId
+    if (!threadId || !contactSessionId) {
       return
     }
 
@@ -176,7 +223,7 @@ export const WidgetChatScreen = () => {
 
     try {
       await createMessage({
-        threadId: conversation.threadId,
+        threadId,
         prompt,
         contactSessionId,
       })
@@ -253,7 +300,9 @@ export const WidgetChatScreen = () => {
               </AIMessage>
             )
           })}
-          {isAwaitingResponse && <AssistantLoadingBubble logoUrl={theme.logoUrl} />}
+          {isAwaitingResponse && (
+            <AssistantLoadingBubble logoUrl={theme.logoUrl} />
+          )}
         </AIConversationContent>
       </AIConversation>
       {uiMessages.length === 1 && (

@@ -75,10 +75,10 @@ export const getOne = query({
     const session = await ctx.db.get(args.contactSessionId)
 
     if (!session || session.expiresAt < Date.now()) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Invalid session",
-      })
+      return {
+        unreadConversationCount: 0,
+        unreadMessageCount: 0,
+      }
     }
 
     const conversation = await ctx.db.get(args.conversationId)
@@ -250,14 +250,6 @@ export const create = mutation({
           contactSessionId: session._id,
           status: "unresolved",
         },
-      }
-    )
-
-    await ctx.scheduler.runAfter(
-      0,
-      (internal as any).system.telegram.ensureConversationTopic,
-      {
-        conversationId,
       }
     )
 

@@ -77,6 +77,10 @@ export const validate = mutation({
             return {valid:false, reason: "expired"};
         }
 
+        if (contactSession.organizationId !== args.organizationId) {
+            return {valid:false, reason: "organization_mismatch"};
+        }
+
         return {valid:true, contactSession};
     },
 });

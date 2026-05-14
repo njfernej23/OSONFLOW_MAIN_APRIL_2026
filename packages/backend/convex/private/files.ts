@@ -2,12 +2,12 @@ import { ConvexError, v } from "convex/values";
 import { action, mutation, query, QueryCtx } from "../_generated/server";
 import { contentHashFromArrayBuffer, Entry, EntryId, guessMimeTypeFromContents, guessMimeTypeFromExtension, vEntryId } from "@convex-dev/rag"
 import { extractTextContent } from "../lib/extractTextContent";
-import rag from "../system/ai/rag";
+import rag, { getRagForOrganization } from "../system/ai/rag";
 import { Id } from "../_generated/dataModel"
 import { paginationOptsValidator } from "convex/server";
 import { internal } from "../_generated/api";
 import { generateText } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { getOpenAIChatModelFromSecretValue } from "../lib/openai";
 
 function guessMimeType(filename: string, bytes: ArrayBuffer): string {
     return (
@@ -284,7 +284,7 @@ export const deleteFile = mutation({
     args: {
         entryId: vEntryId,
     },
-    handler: async (ctx, args) => {
+    handler: async (ctx, args): Promise<any> => {
         const identity = await ctx.auth.getUserIdentity();
 
         if (identity === null) {
@@ -688,7 +688,16 @@ export const testKnowledgeBase = action({
             });
         }
 
-        const namespace = await rag.getNamespace(ctx, {
+        const openAIPlugin: any = await ctx.runQuery(
+            (internal as any).system.plugins.getByOrganizationIdAndService,
+            {
+                organizationId: orgId,
+                service: "openai_realtime",
+            },
+        );
+        const organizationRag = await getRagForOrganization(openAIPlugin?.secretValue);
+
+        const namespace = await organizationRag.getNamespace(ctx, {
             namespace: orgId,
         });
 
@@ -702,14 +711,14 @@ export const testKnowledgeBase = action({
             };
         }
 
-        const searchResult = await rag.search(ctx, {
+        const searchResult = await organizationRag.search(ctx, {
             namespace: orgId,
             query: question,
             limit: 6,
         });
 
         const entryScores = buildEntryScoreMap(searchResult.results);
-        const sources = searchResult.entries.map((entry) => {
+        const sources = searchResult.entries.map((entry: any) => {
             const metadata = entry.metadata as EntryMetadata | undefined;
 
             return {
@@ -732,8 +741,8 @@ export const testKnowledgeBase = action({
             };
         }
 
-        const response = await generateText({
-            model: openai.chat("gpt-4o-mini"),
+        const response: any = await generateText({
+            model: getOpenAIChatModelFromSecretValue(openAIPlugin?.secretValue),
             messages: [
                 {
                     role: "system",
@@ -767,7 +776,7 @@ export const testKnowledgeBase = action({
             answer,
             confidence: confidenceFromSupportLevel(
                 supportLevel,
-                sources.map((source) => source.score),
+                sources.map((source: any) => source.score),
             ),
             supportLevel,
             reason,

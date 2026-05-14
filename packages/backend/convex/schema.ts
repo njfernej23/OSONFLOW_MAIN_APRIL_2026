@@ -7,6 +7,51 @@ const defaultSuggestionsValidator = v.object({
   suggestion3: v.optional(v.string()),
 })
 
+const helpArticleValidator = v.object({
+  title: v.string(),
+  excerpt: v.string(),
+  body: v.string(),
+})
+
+const legacyHelpArticlesValidator = v.object({
+  article1: helpArticleValidator,
+  article2: helpArticleValidator,
+  article3: helpArticleValidator,
+})
+
+const helpTopicValidator = v.object({
+  title: v.string(),
+  excerpt: v.string(),
+  articles: v.array(helpArticleValidator),
+})
+
+const legacyHelpTopicValidator = v.object({
+  title: v.string(),
+  excerpt: v.string(),
+  articles: legacyHelpArticlesValidator,
+})
+
+const legacyHelpTopicsValidator = v.object({
+  topic1: legacyHelpTopicValidator,
+  topic2: legacyHelpTopicValidator,
+  topic3: legacyHelpTopicValidator,
+})
+
+const helpTopicsValidator = v.array(helpTopicValidator)
+
+const storedHelpTopicsValidator = v.union(
+  helpTopicsValidator,
+  legacyHelpTopicsValidator
+)
+
+const homeCardValidator = v.object({
+  type: v.union(v.literal("topic"), v.literal("article")),
+  topicIndex: v.number(),
+  articleIndex: v.optional(v.number()),
+})
+
+const homeCardsValidator = v.array(homeCardValidator)
+
 const vapiSettingsValidator = v.object({
   assistantId: v.optional(v.string()),
   phoneNumber: v.optional(v.string()),
@@ -62,7 +107,26 @@ const themeValidator = v.object({
   botBubbleColor: v.optional(v.string()),
   borderRadius: v.optional(v.number()),
   logoUrl: v.optional(v.string()),
+  backgroundImageUrl: v.optional(v.string()),
   assistantName: v.optional(v.string()),
+  headerBrandMode: v.optional(
+    v.union(v.literal("none"), v.literal("image"), v.literal("text"))
+  ),
+  headerBannerImageUrl: v.optional(v.string()),
+  headerBannerText: v.optional(v.string()),
+  headerBannerTextColor: v.optional(v.string()),
+  headerBannerAccentColor: v.optional(v.string()),
+  headerBannerFont: v.optional(
+    v.union(
+      v.literal("sans"),
+      v.literal("serif"),
+      v.literal("mono"),
+      v.literal("display")
+    )
+  ),
+  headerBannerStyle: v.optional(
+    v.union(v.literal("plain"), v.literal("pill"), v.literal("gradient"))
+  ),
 })
 
 const appearanceValidator = v.object({
@@ -82,12 +146,16 @@ const appearanceValidator = v.object({
   ),
   poweredByText: v.optional(v.string()),
   showPoweredBy: v.optional(v.boolean()),
+  showHelpCenter: v.optional(v.boolean()),
 })
 
 const widgetSettingsSnapshotValidator = v.object({
   greetMessage: v.string(),
   systemPrompt: v.optional(v.string()),
   defaultSuggestions: defaultSuggestionsValidator,
+  helpArticles: v.optional(legacyHelpArticlesValidator),
+  helpTopics: v.optional(storedHelpTopicsValidator),
+  homeCards: v.optional(homeCardsValidator),
   vapiSettings: vapiSettingsValidator,
   openaiRealtimeSettings: v.optional(openaiRealtimeSettingsValidator),
   geminiLiveSettings: v.optional(geminiLiveSettingsValidator),
@@ -130,6 +198,9 @@ export default defineSchema({
     greetMessage: v.string(),
     systemPrompt: v.optional(v.string()),
     defaultSuggestions: defaultSuggestionsValidator,
+    helpArticles: v.optional(legacyHelpArticlesValidator),
+    helpTopics: v.optional(storedHelpTopicsValidator),
+    homeCards: v.optional(homeCardsValidator),
     vapiSettings: vapiSettingsValidator,
     openaiRealtimeSettings: v.optional(openaiRealtimeSettingsValidator),
     geminiLiveSettings: v.optional(geminiLiveSettingsValidator),
@@ -205,7 +276,6 @@ export default defineSchema({
     botId: v.number(),
     botUsername: v.optional(v.string()),
     botFirstName: v.optional(v.string()),
-    forumChatId: v.optional(v.string()),
     webhookSecret: v.string(),
     webhookUrl: v.optional(v.string()),
     isEnabled: v.boolean(),
@@ -222,29 +292,6 @@ export default defineSchema({
   })
     .index("by_organization_id", ["organizationId"])
     .index("by_webhook_secret", ["webhookSecret"]),
-  telegramConversationTopics: defineTable({
-    organizationId: v.string(),
-    integrationId: v.id("telegramIntegrations"),
-    conversationId: v.id("conversations"),
-    threadId: v.string(),
-    forumChatId: v.string(),
-    messageThreadId: v.optional(v.number()),
-    topicName: v.string(),
-    topicLink: v.optional(v.string()),
-    status: v.optional(
-      v.union(v.literal("creating"), v.literal("ready"), v.literal("error"))
-    ),
-    setupError: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_organization_id", ["organizationId"])
-    .index("by_conversation_id", ["conversationId"])
-    .index("by_integration_id_and_thread", [
-      "integrationId",
-      "forumChatId",
-      "messageThreadId",
-    ]),
   telegramContacts: defineTable({
     organizationId: v.string(),
     integrationId: v.id("telegramIntegrations"),
@@ -442,8 +489,4 @@ export default defineSchema({
       "organizationId",
       "lastSeenAt",
     ]),
-
-  users: defineTable({
-    name: v.string(),
-  }),
 })

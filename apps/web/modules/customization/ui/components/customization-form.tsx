@@ -1,22 +1,36 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { formatDistanceToNow } from "date-fns"
-import { useForm } from "react-hook-form"
+import {
+  useFieldArray,
+  useForm,
+  type Path,
+  type UseFormReturn,
+} from "react-hook-form"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import {
   CheckCircle2Icon,
   ChevronRightIcon,
   ClockIcon,
+  BoldIcon,
+  FileTextIcon,
+  Heading2Icon,
+  ItalicIcon,
   LinkIcon,
+  ListIcon,
+  ListOrderedIcon,
   Loader2Icon,
   MessageSquareTextIcon,
   MicIcon,
   PaletteIcon,
+  PlusIcon,
+  QuoteIcon,
   RotateCcwIcon,
   SaveIcon,
   SendIcon,
   SettingsIcon,
   SparklesIcon,
+  Trash2Icon,
 } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -38,6 +52,7 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { Separator } from "@workspace/ui/components/separator"
+import { Switch } from "@workspace/ui/components/switch"
 import {
   Tabs,
   TabsContent,
@@ -51,6 +66,10 @@ import {
   mergeWidgetAppearance,
   mergeWidgetTheme,
 } from "@workspace/ui/lib/widget-customization"
+import {
+  richTextStorageToHtml,
+  sanitizeRichTextHtml,
+} from "@workspace/ui/lib/rich-text"
 import { cn } from "@workspace/ui/lib/utils"
 import { Doc } from "@workspace/backend/_generated/dataModel"
 import { useMutation } from "convex/react"
@@ -69,6 +88,8 @@ type WidgetSettingsSnapshot = Pick<
   | "greetMessage"
   | "systemPrompt"
   | "defaultSuggestions"
+  | "helpTopics"
+  | "homeCards"
   | "vapiSettings"
   | "theme"
   | "appearance"
@@ -103,11 +124,205 @@ interface CustomizationFormProps {
   hasVapiPlugin: boolean
 }
 
+const defaultHelpTopics: FormSchema["helpTopics"] = [
+  {
+    title: "Getting started",
+    excerpt: "Setup guides and first steps for new users.",
+    articles: [
+      {
+        title: "How do I get started?",
+        excerpt:
+          "Learn the fastest way to begin and get value from the product.",
+        body: "Getting started is simple:\n\n1. Create your account and complete the first setup steps.\n2. Add your key details so the assistant can understand your needs.\n3. Open chat if you need help with a specific question.",
+      },
+      {
+        title: "What should I do first?",
+        excerpt: "A quick checklist for the first useful actions.",
+        body: "Start with the most important setup items first.\n\nConfirm your profile, review the available tools, and ask the assistant any product-specific question you have.",
+      },
+      {
+        title: "Where can I ask questions?",
+        excerpt: "Find the best place to get help in the widget.",
+        body: "Use the Help tab for written articles. Use Messages or Start AI chat when you want a conversational answer.",
+      },
+    ],
+  },
+  {
+    title: "Billing and plans",
+    excerpt: "Plan, billing, and subscription information.",
+    articles: [
+      {
+        title: "What are your pricing plans?",
+        excerpt:
+          "Review where to find plan, billing, and subscription information.",
+        body: "Pricing depends on the plan and features enabled for your organization.\n\nYou can check the current plan from your account or billing page.",
+      },
+      {
+        title: "How do I update billing?",
+        excerpt: "Learn where billing details are managed.",
+        body: "Billing details are usually managed from your account billing page.\n\nIf you cannot find it, start an AI chat and ask for billing help.",
+      },
+      {
+        title: "Can I change my plan?",
+        excerpt: "Understand the next step for upgrades or changes.",
+        body: "Plan changes depend on your organization settings.\n\nContact support or start an AI chat with the plan you want to change to.",
+      },
+    ],
+  },
+  {
+    title: "Account help",
+    excerpt: "Login, access, and profile issue guidance.",
+    articles: [
+      {
+        title: "I need help with my account",
+        excerpt:
+          "Find the best next step for login, access, or profile issues.",
+        body: "For account help, first confirm that your email address and organization are correct.\n\nIf you cannot access something, start an AI chat with the details of the issue.",
+      },
+      {
+        title: "I cannot log in",
+        excerpt: "Troubleshoot login and access problems.",
+        body: "Check that you are using the right email address and organization.\n\nIf login still fails, include the error message when you contact support.",
+      },
+      {
+        title: "How do I update my profile?",
+        excerpt: "Find where your personal account details live.",
+        body: "Profile settings are managed in your account area.\n\nIf you do not see the field you need, ask the assistant for help.",
+      },
+    ],
+  },
+]
+
+const defaultHomeCards: FormSchema["homeCards"] = [
+  { type: "article", topicIndex: 0, articleIndex: 0 },
+  { type: "article", topicIndex: 1, articleIndex: 0 },
+  { type: "article", topicIndex: 2, articleIndex: 0 },
+]
+
+type LegacyHelpTopic = {
+  title: string
+  excerpt: string
+  articles: {
+    article1: FormSchema["helpTopics"][number]["articles"][number]
+    article2: FormSchema["helpTopics"][number]["articles"][number]
+    article3: FormSchema["helpTopics"][number]["articles"][number]
+  }
+}
+
+type LegacyHelpTopics = {
+  topic1: LegacyHelpTopic
+  topic2: LegacyHelpTopic
+  topic3: LegacyHelpTopic
+}
+
+const isLegacyHelpTopics = (value: unknown): value is LegacyHelpTopics => {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    "topic1" in value &&
+    "topic2" in value &&
+    "topic3" in value
+  )
+}
+
+const normalizeHelpTopicsForForm = (
+  value: unknown
+): FormSchema["helpTopics"] => {
+  if (Array.isArray(value)) {
+    return value
+  }
+
+  if (!isLegacyHelpTopics(value)) {
+    return defaultHelpTopics
+  }
+
+  return [value.topic1, value.topic2, value.topic3].map((topic) => ({
+    title: topic.title,
+    excerpt: topic.excerpt,
+    articles: [
+      topic.articles.article1,
+      topic.articles.article2,
+      topic.articles.article3,
+    ],
+  }))
+}
+
+const normalizeHomeCardsForForm = (
+  value: unknown,
+  topics: FormSchema["helpTopics"]
+): FormSchema["homeCards"] => {
+  const fallback = topics
+    .map((topic, topicIndex) =>
+      topic.articles[0]
+        ? ({
+            type: "article" as const,
+            topicIndex,
+            articleIndex: 0,
+          } satisfies FormSchema["homeCards"][number])
+        : null
+    )
+    .filter((card): card is FormSchema["homeCards"][number] => card !== null)
+    .slice(0, 3)
+
+  if (!Array.isArray(value)) {
+    return fallback.length ? fallback : defaultHomeCards
+  }
+
+  const normalized = value
+    .map((card) => {
+      if (typeof card !== "object" || card === null) return null
+
+      const raw = card as {
+        type?: unknown
+        topicIndex?: unknown
+        articleIndex?: unknown
+      }
+      const topicIndex = Number(raw.topicIndex)
+      const articleIndex = Number(raw.articleIndex)
+
+      if (
+        !Number.isInteger(topicIndex) ||
+        topicIndex < 0 ||
+        !topics[topicIndex]
+      ) {
+        return null
+      }
+
+      const safeArticleIndex =
+        Number.isInteger(articleIndex) && articleIndex >= 0 ? articleIndex : 0
+      if (!topics[topicIndex]?.articles[safeArticleIndex]) return null
+      return {
+        type: "article" as const,
+        topicIndex,
+        articleIndex: safeArticleIndex,
+      }
+    })
+    .filter((card): card is FormSchema["homeCards"][number] => card !== null)
+
+  return normalized.length ? normalized : fallback
+}
+
+const createHelpArticle = (
+  index: number
+): FormSchema["helpTopics"][number]["articles"][number] => ({
+  title: `New article ${index}`,
+  excerpt: "Short summary for this article.",
+  body: "Write the full article here.\n\nUse **bold**, _italic_, headings, lists, links, and quotes.",
+})
+
+const createHelpTopic = (index: number): FormSchema["helpTopics"][number] => ({
+  title: `New topic ${index}`,
+  excerpt: "Short preview shown on the Home card.",
+  articles: [createHelpArticle(1)],
+})
+
 const buildFormDefaultValues = (
   snapshot: WidgetSettingsSnapshot
 ): FormSchema => {
   const defaultTheme = mergeWidgetTheme(snapshot.theme)
   const defaultAppearance = mergeWidgetAppearance(snapshot.appearance)
+  const helpTopics = normalizeHelpTopicsForForm(snapshot.helpTopics)
   return {
     greetMessage: snapshot.greetMessage || "Hi! How can I help you today?",
     systemPrompt: snapshot.systemPrompt || "",
@@ -116,6 +331,8 @@ const buildFormDefaultValues = (
       suggestion2: snapshot.defaultSuggestions.suggestion2 || "",
       suggestion3: snapshot.defaultSuggestions.suggestion3 || "",
     },
+    helpTopics,
+    homeCards: normalizeHomeCardsForForm(snapshot.homeCards, helpTopics),
     vapiSettings: {
       assistantId: snapshot.vapiSettings.assistantId || "",
       phoneNumber: snapshot.vapiSettings.phoneNumber || "",
@@ -170,7 +387,416 @@ const suggestionFieldConfig = [
   },
 ]
 
+const cleanHelpTopicsForSave = (
+  topics: FormSchema["helpTopics"]
+): FormSchema["helpTopics"] =>
+  topics.map((topic) => ({
+    title: topic.title.trim(),
+    excerpt: topic.excerpt.trim(),
+    articles: topic.articles.map((article) => ({
+      title: article.title.trim(),
+      excerpt: article.excerpt.trim(),
+      body: article.body.trim(),
+    })),
+  }))
+
+const cleanHomeCardsForSave = (
+  cards: FormSchema["homeCards"],
+  topics: FormSchema["helpTopics"]
+): FormSchema["homeCards"] => {
+  const normalized = cards.reduce<FormSchema["homeCards"]>((items, card) => {
+    const topicIndex = Math.max(0, Math.round(Number(card.topicIndex)))
+    if (!topics[topicIndex]) return items
+
+    const articleIndex = Math.max(0, Math.round(Number(card.articleIndex)))
+    if (!topics[topicIndex]?.articles[articleIndex]) return items
+    items.push({ type: "article", topicIndex, articleIndex })
+    return items
+  }, [])
+
+  return normalized.length
+    ? normalized
+    : topics.length
+      ? topics
+          .map((topic, topicIndex) =>
+            topic.articles[0]
+              ? ({
+                  type: "article" as const,
+                  topicIndex,
+                  articleIndex: 0,
+                } satisfies FormSchema["homeCards"][number])
+              : null
+          )
+          .filter(
+            (card): card is FormSchema["homeCards"][number] => card !== null
+          )
+          .slice(0, 1)
+      : []
+}
+
 type AutoSaveStatus = "idle" | "saving" | "saved"
+
+type RichTextFormat =
+  | "bold"
+  | "italic"
+  | "heading"
+  | "bullet"
+  | "numbered"
+  | "quote"
+  | "link"
+
+type RichTextFormatConfig = {
+  command: RichTextFormat
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+}
+
+const richTextFormats: RichTextFormatConfig[] = [
+  { command: "bold", label: "Bold", icon: BoldIcon },
+  { command: "italic", label: "Italic", icon: ItalicIcon },
+  { command: "heading", label: "Heading", icon: Heading2Icon },
+  { command: "bullet", label: "Bulleted list", icon: ListIcon },
+  { command: "numbered", label: "Numbered list", icon: ListOrderedIcon },
+  { command: "quote", label: "Quote", icon: QuoteIcon },
+  { command: "link", label: "Link", icon: LinkIcon },
+]
+
+type ArticleBodyFieldProps = {
+  form: UseFormReturn<FormSchema>
+  name: Path<FormSchema>
+}
+
+type RichArticleEditorProps = {
+  onBlur: () => void
+  onChange: (value: string) => void
+  value: string
+}
+
+const RichArticleEditor = ({
+  onBlur,
+  onChange,
+  value,
+}: RichArticleEditorProps) => {
+  const editorRef = useRef<HTMLDivElement | null>(null)
+  const isFocusedRef = useRef(false)
+
+  const syncEditorToField = useCallback(() => {
+    const editor = editorRef.current
+    if (!editor) return
+    onChange(sanitizeRichTextHtml(editor.innerHTML))
+  }, [onChange])
+
+  useEffect(() => {
+    const editor = editorRef.current
+    if (!editor || isFocusedRef.current) return
+
+    const nextHtml = richTextStorageToHtml(value)
+    if (sanitizeRichTextHtml(editor.innerHTML) !== nextHtml) {
+      editor.innerHTML = nextHtml
+    }
+  }, [value])
+
+  const applyFormat = (command: RichTextFormat) => {
+    const editor = editorRef.current
+    if (!editor) return
+
+    editor.focus()
+
+    if (command === "link") {
+      const href = window.prompt("Paste a link")
+      if (!href) return
+      document.execCommand("createLink", false, href)
+      syncEditorToField()
+      return
+    }
+
+    const commandMap: Record<Exclude<RichTextFormat, "link">, string> = {
+      bold: "bold",
+      italic: "italic",
+      heading: "formatBlock",
+      bullet: "insertUnorderedList",
+      numbered: "insertOrderedList",
+      quote: "formatBlock",
+    }
+
+    const valueMap: Partial<Record<Exclude<RichTextFormat, "link">, string>> = {
+      heading: "h2",
+      quote: "blockquote",
+    }
+
+    document.execCommand(commandMap[command], false, valueMap[command])
+    syncEditorToField()
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-input bg-background/70">
+      <div className="flex flex-wrap items-center gap-1 border-b border-border/70 bg-muted/30 p-1.5">
+        {richTextFormats.map((format) => {
+          const Icon = format.icon
+          return (
+            <Button
+              aria-label={format.label}
+              className="size-8 rounded-md"
+              key={format.command}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => applyFormat(format.command)}
+              size="icon"
+              title={format.label}
+              type="button"
+              variant="ghost"
+            >
+              <Icon className="size-3.5" />
+            </Button>
+          )
+        })}
+      </div>
+      <div className="relative">
+        <div
+          aria-label="Article body"
+          className="min-h-[240px] overflow-y-auto px-3 py-3 text-sm leading-relaxed outline-none empty:before:text-muted-foreground/60 empty:before:content-[attr(data-placeholder)] focus-visible:ring-3 focus-visible:ring-ring/35 [&_a]:font-medium [&_a]:break-words [&_a]:text-primary [&_a]:underline [&_blockquote]:my-3 [&_blockquote]:border-l-4 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:text-xl [&_h1]:font-bold [&_h2]:mt-4 [&_h2]:mb-2 [&_h2]:text-lg [&_h2]:font-bold [&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_li]:my-1 [&_ol]:my-3 [&_ol]:ml-5 [&_ol]:list-decimal [&_p]:my-2 [&_ul]:my-3 [&_ul]:ml-5 [&_ul]:list-disc"
+          contentEditable
+          data-placeholder="Write the full article here"
+          onBlur={() => {
+            isFocusedRef.current = false
+            syncEditorToField()
+            onBlur()
+          }}
+          onFocus={() => {
+            isFocusedRef.current = true
+          }}
+          onInput={syncEditorToField}
+          ref={editorRef}
+          role="textbox"
+          suppressContentEditableWarning
+        />
+      </div>
+    </div>
+  )
+}
+
+const ArticleBodyField = ({ form, name }: ArticleBodyFieldProps) => {
+  return (
+    <FormField
+      control={form.control}
+      name={name}
+      render={({ field }) => {
+        return (
+          <FormItem>
+            <FormLabel className="text-xs font-medium">Article Body</FormLabel>
+            <FormControl>
+              <RichArticleEditor
+                onBlur={field.onBlur}
+                onChange={field.onChange}
+                value={typeof field.value === "string" ? field.value : ""}
+              />
+            </FormControl>
+            <FormDescription className="text-xs">
+              Formatting is applied directly in the editor, the same way
+              customers will see it in the widget article.
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )
+      }}
+    />
+  )
+}
+
+type HelpTopicEditorProps = {
+  canRemoveTopic: boolean
+  form: UseFormReturn<FormSchema>
+  onRemoveTopic: () => void
+  topicIndex: number
+}
+
+const HelpTopicEditor = ({
+  canRemoveTopic,
+  form,
+  onRemoveTopic,
+  topicIndex,
+}: HelpTopicEditorProps) => {
+  const articleArray = useFieldArray({
+    control: form.control,
+    name: `helpTopics.${topicIndex}.articles` as "helpTopics.0.articles",
+  })
+
+  const topicTitleName = `helpTopics.${topicIndex}.title` as Path<FormSchema>
+  const topicExcerptName =
+    `helpTopics.${topicIndex}.excerpt` as Path<FormSchema>
+
+  return (
+    <div className="space-y-4 rounded-2xl border border-border/70 bg-muted/10 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-background text-xs font-semibold text-muted-foreground">
+            {topicIndex + 1}
+          </div>
+          <p className="text-sm font-semibold">Topic {topicIndex + 1}</p>
+          <Badge className="text-[11px]" variant="outline">
+            {articleArray.fields.length} article
+            {articleArray.fields.length === 1 ? "" : "s"}
+          </Badge>
+        </div>
+        <Button
+          className="h-8 gap-1.5 text-xs"
+          disabled={!canRemoveTopic}
+          onClick={onRemoveTopic}
+          type="button"
+          variant="outline"
+        >
+          <Trash2Icon className="size-3.5" />
+          Remove topic
+        </Button>
+      </div>
+
+      <FormField
+        control={form.control}
+        name={topicTitleName}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel className="text-xs font-medium">Topic Title</FormLabel>
+            <FormControl>
+              <Input
+                {...field}
+                className="bg-background/70"
+                placeholder="Getting started"
+                value={typeof field.value === "string" ? field.value : ""}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name={topicExcerptName}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel className="text-xs font-medium">Topic Preview</FormLabel>
+            <FormControl>
+              <Textarea
+                {...field}
+                className="resize-none bg-background/70"
+                placeholder="Short preview shown on the Home card"
+                rows={2}
+                value={typeof field.value === "string" ? field.value : ""}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <div className="space-y-3 border-t border-border/70 pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground">
+              Articles in this topic
+            </p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground/70">
+              Add as many article rows as this topic needs.
+            </p>
+          </div>
+          <Button
+            className="h-8 gap-1.5 text-xs"
+            onClick={() =>
+              articleArray.append(
+                createHelpArticle(articleArray.fields.length + 1)
+              )
+            }
+            type="button"
+            variant="outline"
+          >
+            <PlusIcon className="size-3.5" />
+            Add article
+          </Button>
+        </div>
+
+        {articleArray.fields.map((articleField, articleIndex) => {
+          const articleTitleName =
+            `helpTopics.${topicIndex}.articles.${articleIndex}.title` as Path<FormSchema>
+          const articleExcerptName =
+            `helpTopics.${topicIndex}.articles.${articleIndex}.excerpt` as Path<FormSchema>
+          const articleBodyName =
+            `helpTopics.${topicIndex}.articles.${articleIndex}.body` as Path<FormSchema>
+
+          return (
+            <div
+              className="space-y-3 rounded-xl border border-border/60 bg-background/55 p-3"
+              key={articleField.id}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-semibold">
+                  Article {articleIndex + 1}
+                </p>
+                <Button
+                  className="h-8 gap-1.5 text-xs"
+                  disabled={articleArray.fields.length <= 1}
+                  onClick={() => articleArray.remove(articleIndex)}
+                  type="button"
+                  variant="ghost"
+                >
+                  <Trash2Icon className="size-3.5" />
+                  Remove
+                </Button>
+              </div>
+
+              <FormField
+                control={form.control}
+                name={articleTitleName}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-medium">
+                      Article Title
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        className="bg-background/70"
+                        placeholder="When should I set my date?"
+                        value={
+                          typeof field.value === "string" ? field.value : ""
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name={articleExcerptName}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-medium">
+                      Article Preview
+                    </FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        className="resize-none bg-background/70"
+                        placeholder="Short summary shown in the topic article list"
+                        rows={2}
+                        value={
+                          typeof field.value === "string" ? field.value : ""
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <ArticleBodyField form={form} name={articleBodyName} />
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 export const CustomizationForm = ({
   draftData,
@@ -209,6 +835,14 @@ export const CustomizationForm = ({
     resolver: zodResolver(widgetSettingsSchema),
     defaultValues: buildFormDefaultValues(draftData),
   })
+  const helpTopicsArray = useFieldArray({
+    control: form.control,
+    name: "helpTopics",
+  })
+  const homeCardsArray = useFieldArray({
+    control: form.control,
+    name: "homeCards",
+  })
 
   const watchedValues = form.watch()
   const previewTheme = mergeWidgetTheme(watchedValues.theme)
@@ -241,6 +875,7 @@ export const CustomizationForm = ({
       ...values.theme,
       borderRadius: clampBorderRadius(Number(values.theme.borderRadius)),
       logoUrl: values.theme.logoUrl.trim(),
+      backgroundImageUrl: values.theme.backgroundImageUrl.trim(),
       assistantName: values.theme.assistantName.trim(),
     }
     const appearance: NonNullable<WidgetSettings["appearance"]> = {
@@ -269,6 +904,8 @@ export const CustomizationForm = ({
       greetMessage: values.greetMessage,
       systemPrompt: values.systemPrompt.trim(),
       defaultSuggestions: values.defaultSuggestions,
+      helpTopics: cleanHelpTopicsForSave(values.helpTopics),
+      homeCards: cleanHomeCardsForSave(values.homeCards, values.helpTopics),
       vapiSettings,
       openaiRealtimeSettings,
       geminiLiveSettings,
@@ -276,6 +913,15 @@ export const CustomizationForm = ({
       appearance,
     }
   }, [])
+
+  const markCurrentValuesAsSaved = useCallback(
+    (values: FormSchema) => {
+      form.reset(values, {
+        keepValues: true,
+      })
+    },
+    [form]
+  )
 
   // Auto-save after 2s of inactivity
   useEffect(() => {
@@ -286,8 +932,9 @@ export const CustomizationForm = ({
       if (!isValid) return
       setAutoSaveStatus("saving")
       try {
-        await saveDraftWidgetSettings(buildMutationPayload(form.getValues()))
-        form.reset(form.getValues(), { keepDirty: false })
+        const values = form.getValues()
+        await saveDraftWidgetSettings(buildMutationPayload(values))
+        markCurrentValuesAsSaved(values)
         setAutoSaveStatus("saved")
         setTimeout(() => setAutoSaveStatus("idle"), 2000)
       } catch {
@@ -303,7 +950,7 @@ export const CustomizationForm = ({
   const onSaveDraft = async (values: FormSchema) => {
     try {
       await saveDraftWidgetSettings(buildMutationPayload(values))
-      form.reset(values, { keepDirty: false })
+      markCurrentValuesAsSaved(values)
       toast.success("Draft saved")
     } catch {
       toast.error("Unable to save draft")
@@ -315,7 +962,7 @@ export const CustomizationForm = ({
     try {
       await saveDraftWidgetSettings(buildMutationPayload(values))
       const result = await publishDraftWidgetSettings({})
-      form.reset(values, { keepDirty: false })
+      markCurrentValuesAsSaved(values)
       toast.success(`Published version v${result.publishedVersion}`)
     } catch {
       toast.error("Unable to publish draft")
@@ -361,6 +1008,38 @@ export const CustomizationForm = ({
 
   const canRollback =
     rollbackCandidates.length > 0 && selectedRollbackVersion !== ""
+  const hasHelpTopics = helpTopicsArray.fields.length > 0
+
+  const addHelpTopic = () => {
+    helpTopicsArray.append(createHelpTopic(helpTopicsArray.fields.length + 1))
+  }
+
+  const removeHelpTopic = (topicIndex: number) => {
+    const nextHomeCards = (form.getValues("homeCards") ?? []).reduce<
+      FormSchema["homeCards"]
+    >((cards, card) => {
+      const currentTopicIndex = Number(card.topicIndex)
+      if (!Number.isInteger(currentTopicIndex)) return cards
+      if (currentTopicIndex === topicIndex) return cards
+
+      cards.push({
+        ...card,
+        topicIndex:
+          currentTopicIndex > topicIndex
+            ? currentTopicIndex - 1
+            : currentTopicIndex,
+      })
+      return cards
+    }, [])
+
+    homeCardsArray.replace(nextHomeCards)
+    helpTopicsArray.remove(topicIndex)
+  }
+
+  const removeAllHelpContent = () => {
+    homeCardsArray.replace([])
+    helpTopicsArray.replace([])
+  }
 
   return (
     <Form {...form}>
@@ -436,6 +1115,13 @@ export const CustomizationForm = ({
               >
                 <MessageSquareTextIcon className="size-3.5" />
                 Chat
+              </TabsTrigger>
+              <TabsTrigger
+                className="h-10 justify-start rounded-xl px-3 text-xs data-[state=active]:bg-sidebar-primary data-[state=active]:text-sidebar-primary-foreground data-[state=active]:shadow-sm"
+                value="help"
+              >
+                <FileTextIcon className="size-3.5" />
+                Help Center
               </TabsTrigger>
               <TabsTrigger
                 className="h-10 justify-start rounded-xl px-3 text-xs data-[state=active]:bg-sidebar-primary data-[state=active]:text-sidebar-primary-foreground data-[state=active]:shadow-sm"
@@ -717,6 +1403,266 @@ export const CustomizationForm = ({
                       ))}
                     </div>
                   </div>
+                </TabsContent>
+
+                <TabsContent
+                  className="mt-0 animate-in space-y-5 duration-200 fade-in-0 slide-in-from-right-2"
+                  value="help"
+                >
+                  <div>
+                    <h3 className="text-sm font-medium">
+                      Help Topics and Articles
+                    </h3>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Choose which help cards appear on Home, then manage the
+                      full topic and article library below.
+                    </p>
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="appearance.showHelpCenter"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between gap-4 rounded-2xl border border-border/70 bg-muted/10 px-4 py-3.5">
+                        <div className="flex min-w-0 flex-col gap-1">
+                          <FormLabel className="text-sm font-semibold">
+                            Show Help Center in widget
+                          </FormLabel>
+                          <FormDescription className="text-xs">
+                            Hide the Help button, search entry, and help cards
+                            without deleting topics or articles.
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="space-y-3 rounded-2xl border border-border/70 bg-muted/10 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold">Home cards</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Pick the topics or direct articles shown on the widget
+                          Home screen.
+                        </p>
+                      </div>
+                      <Button
+                        className="h-8 gap-1.5 text-xs"
+                        disabled={!hasHelpTopics}
+                        onClick={() =>
+                          homeCardsArray.append({
+                            type: "article",
+                            topicIndex: 0,
+                            articleIndex: 0,
+                          })
+                        }
+                        type="button"
+                        variant="outline"
+                      >
+                        <PlusIcon className="size-3.5" />
+                        Add Home card
+                      </Button>
+                    </div>
+
+                    {hasHelpTopics ? (
+                      <div className="grid gap-3">
+                        {homeCardsArray.fields.map((homeCard, cardIndex) => {
+                          const card = watchedValues.homeCards?.[cardIndex]
+                          const topicIndex = Number(card?.topicIndex ?? 0)
+                          const topic =
+                            watchedValues.helpTopics?.[topicIndex] ??
+                            watchedValues.helpTopics?.[0]
+
+                          return (
+                            <div
+                              className="grid gap-3 rounded-xl border border-border/60 bg-background/60 p-3 md:grid-cols-[1fr_1fr_auto]"
+                              key={homeCard.id}
+                            >
+                              <FormField
+                                control={form.control}
+                                name={`homeCards.${cardIndex}.topicIndex`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-xs font-medium">
+                                      Topic
+                                    </FormLabel>
+                                    <Select
+                                      onValueChange={(value) => {
+                                        field.onChange(Number(value))
+                                        form.setValue(
+                                          `homeCards.${cardIndex}.articleIndex`,
+                                          0,
+                                          {
+                                            shouldDirty: true,
+                                            shouldValidate: true,
+                                          }
+                                        )
+                                      }}
+                                      value={String(field.value ?? 0)}
+                                    >
+                                      <FormControl>
+                                        <SelectTrigger className="bg-background/80">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        {watchedValues.helpTopics.map(
+                                          (helpTopic, helpTopicIndex) => (
+                                            <SelectItem
+                                              key={`${helpTopic.title}-${helpTopicIndex}`}
+                                              value={String(helpTopicIndex)}
+                                            >
+                                              {helpTopic.title ||
+                                                `Topic ${helpTopicIndex + 1}`}
+                                            </SelectItem>
+                                          )
+                                        )}
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name={`homeCards.${cardIndex}.articleIndex`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-xs font-medium">
+                                      Article
+                                    </FormLabel>
+                                    <Select
+                                      onValueChange={(value) =>
+                                        field.onChange(Number(value))
+                                      }
+                                      value={String(field.value ?? 0)}
+                                    >
+                                      <FormControl>
+                                        <SelectTrigger className="bg-background/80">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        {(topic?.articles ?? []).map(
+                                          (article, articleIndex) => (
+                                            <SelectItem
+                                              key={`${article.title}-${articleIndex}`}
+                                              value={String(articleIndex)}
+                                            >
+                                              {article.title ||
+                                                `Article ${articleIndex + 1}`}
+                                            </SelectItem>
+                                          )
+                                        )}
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <div className="flex items-end md:justify-end">
+                                <Button
+                                  className="h-10 gap-1.5 text-xs"
+                                  disabled={homeCardsArray.fields.length <= 1}
+                                  onClick={() =>
+                                    homeCardsArray.remove(cardIndex)
+                                  }
+                                  type="button"
+                                  variant="ghost"
+                                >
+                                  <Trash2Icon className="size-3.5" />
+                                  Remove
+                                </Button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-border/80 bg-background/50 px-4 py-5 text-center">
+                        <p className="text-sm font-medium">
+                          Help Center is removed
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Add a topic to enable Help in the widget again.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/70 bg-muted/10 p-3">
+                    <div>
+                      <p className="text-xs font-semibold">
+                        {helpTopicsArray.fields.length} topic
+                        {helpTopicsArray.fields.length === 1 ? "" : "s"}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        Add, remove, and format the full help center content.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        className="h-8 gap-1.5 text-xs"
+                        disabled={!hasHelpTopics}
+                        onClick={removeAllHelpContent}
+                        type="button"
+                        variant="ghost"
+                      >
+                        <Trash2Icon className="size-3.5" />
+                        Remove all
+                      </Button>
+                      <Button
+                        className="h-8 gap-1.5 text-xs"
+                        onClick={addHelpTopic}
+                        type="button"
+                        variant="outline"
+                      >
+                        <PlusIcon className="size-3.5" />
+                        Add topic
+                      </Button>
+                    </div>
+                  </div>
+
+                  {hasHelpTopics ? (
+                    <div className="grid gap-5">
+                      {helpTopicsArray.fields.map((topicField, topicIndex) => (
+                        <HelpTopicEditor
+                          canRemoveTopic
+                          form={form}
+                          key={topicField.id}
+                          onRemoveTopic={() => removeHelpTopic(topicIndex)}
+                          topicIndex={topicIndex}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-border/80 bg-muted/10 px-5 py-8 text-center">
+                      <p className="text-sm font-semibold">
+                        No help topics or articles
+                      </p>
+                      <p className="mx-auto mt-1 max-w-sm text-xs text-muted-foreground">
+                        The widget Help button stays disabled until you add a
+                        topic with at least one article.
+                      </p>
+                      <Button
+                        className="mt-4 h-8 gap-1.5 text-xs"
+                        onClick={addHelpTopic}
+                        type="button"
+                        variant="outline"
+                      >
+                        <PlusIcon className="size-3.5" />
+                        Add topic
+                      </Button>
+                    </div>
+                  )}
                 </TabsContent>
 
                 <TabsContent

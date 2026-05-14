@@ -5,13 +5,13 @@ import { supportAgent } from "../system/ai/agents/supportAgent"
 import { paginationOptsValidator } from "convex/server"
 import { saveMessage } from "@convex-dev/agent"
 import { generateText } from "ai"
-import { openai } from "@ai-sdk/openai"
+import { getOpenAIChatModelFromSecretValue } from "../lib/openai"
 
 export const enhanceResponse = action({
   args: {
     prompt: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<string> => {
     const identity = await ctx.auth.getUserIdentity()
 
     if (identity === null) {
@@ -44,8 +44,16 @@ export const enhanceResponse = action({
       })
     }
 
-    const response = await generateText({
-      model: openai("gpt-4o-mini"),
+    const openAIPlugin: any = await ctx.runQuery(
+      (internal as any).system.plugins.getByOrganizationIdAndService,
+      {
+        organizationId: orgId,
+        service: "openai_realtime",
+      }
+    )
+
+    const response: any = await generateText({
+      model: getOpenAIChatModelFromSecretValue(openAIPlugin?.secretValue),
       messages: [
         {
           role: "system",
@@ -163,17 +171,6 @@ export const create = mutation({
       {
         conversationId: args.conversationId,
         text: args.prompt,
-      }
-    )
-
-    await ctx.scheduler.runAfter(
-      0,
-      (internal as any).system.telegram.mirrorConversationTopicMessage,
-      {
-        conversationId: args.conversationId,
-        text: args.prompt,
-        role: "operator",
-        actorName: identity.name?.trim() ?? identity.familyName,
       }
     )
 

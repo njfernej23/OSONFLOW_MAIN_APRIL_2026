@@ -42,7 +42,7 @@ export const upsert = mutation({
   },
 })
 
-export const getVoiceProviderStatuses = query({
+export const getProviderStatuses = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity()
@@ -79,8 +79,11 @@ export const getVoiceProviderStatuses = query({
     ])
 
     return {
+      openaiConfigured: Boolean(openAIPlugin?.secretValue),
       openaiRealtimeConfigured: Boolean(openAIPlugin?.secretValue),
       geminiLiveConfigured: Boolean(geminiPlugin?.secretValue),
     }
   },
 })
+
+export const getVoiceProviderStatuses = getProviderStatuses

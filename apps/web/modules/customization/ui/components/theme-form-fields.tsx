@@ -1,6 +1,12 @@
 import { type ChangeEvent, useRef } from "react"
 import { UseFormReturn } from "react-hook-form"
-import { PaletteIcon, TypeIcon, UploadIcon, XIcon } from "lucide-react"
+import {
+  ImageIcon,
+  PaletteIcon,
+  TypeIcon,
+  UploadIcon,
+  XIcon,
+} from "lucide-react"
 import {
   FormControl,
   FormDescription,
@@ -42,6 +48,7 @@ const SectionHeader = ({
 
 export const ThemeFormFields = ({ form }: ThemeFormFieldsProps) => {
   const logoUploadInputRef = useRef<HTMLInputElement>(null)
+  const backgroundUploadInputRef = useRef<HTMLInputElement>(null)
 
   const handleLogoFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -58,6 +65,30 @@ export const ThemeFormFields = ({ form }: ThemeFormFieldsProps) => {
         shouldValidate: true,
       })
       toast.success("Logo image uploaded")
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to upload this image"
+      toast.error(message)
+    }
+  }
+
+  const handleBackgroundFileChange = async (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0]
+    event.target.value = ""
+
+    if (!file) {
+      return
+    }
+
+    try {
+      const dataUrl = await readImageAsDataUrl(file)
+      form.setValue("theme.backgroundImageUrl", dataUrl, {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
+      toast.success("Background image uploaded")
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unable to upload this image"
@@ -163,6 +194,78 @@ export const ThemeFormFields = ({ form }: ThemeFormFieldsProps) => {
             )}
           />
         </div>
+      </div>
+
+      <div className="border-t" />
+
+      <div className="space-y-4">
+        <SectionHeader
+          icon={<ImageIcon className="size-3.5 text-muted-foreground" />}
+          title="Home background"
+          description="Image shown behind the widget welcome and FAQ cards"
+        />
+        <FormField
+          control={form.control}
+          name="theme.backgroundImageUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-xs font-medium">
+                Background Image
+              </FormLabel>
+              <FormControl>
+                <div className="space-y-3">
+                  <input
+                    accept={IMAGE_UPLOAD_ACCEPT}
+                    className="hidden"
+                    onChange={handleBackgroundFileChange}
+                    ref={backgroundUploadInputRef}
+                    type="file"
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      onClick={() => backgroundUploadInputRef.current?.click()}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      <UploadIcon className="size-3.5" />
+                      Upload background
+                    </Button>
+                    {field.value ? (
+                      <Button
+                        onClick={() => {
+                          form.setValue("theme.backgroundImageUrl", "", {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          })
+                        }}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <XIcon className="size-3.5" />
+                        Remove
+                      </Button>
+                    ) : null}
+                  </div>
+                  {field.value ? (
+                    <div className="overflow-hidden rounded-xl border bg-muted/20">
+                      <img
+                        alt="Background preview"
+                        className="h-28 w-full object-cover"
+                        src={field.value}
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              </FormControl>
+              <FormDescription className="text-xs">
+                Use a wide image with enough contrast for white text.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </div>
 
       <div className="border-t" />

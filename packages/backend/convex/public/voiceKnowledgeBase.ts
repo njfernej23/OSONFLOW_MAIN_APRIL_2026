@@ -1,9 +1,10 @@
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
 import { action } from "../_generated/server";
 import { generateText } from "ai";
-import { openai } from "@ai-sdk/openai";
-import rag from "../system/ai/rag";
+import { getRagForOrganization } from "../system/ai/rag";
 import { SEARCH_INTERPRETER_PROMPT } from "../system/ai/constants";
+import { getOpenAIChatModelFromSecretValue } from "../lib/openai";
 
 // Called by the widget during a real-time voice call when the AI invokes the search_knowledge_base function.
 export const search = action({
@@ -11,7 +12,15 @@ export const search = action({
         organizationId: v.string(),
         query: v.string(),
     },
-    handler: async (ctx, args) => {
+    handler: async (ctx, args): Promise<string> => {
+        const openAIPlugin: any = await ctx.runQuery(
+            (internal as any).system.plugins.getByOrganizationIdAndService,
+            {
+                organizationId: args.organizationId,
+                service: "openai_realtime",
+            },
+        );
+        const rag = await getRagForOrganization(openAIPlugin?.secretValue);
         const searchResult = await rag.search(ctx, {
             namespace: args.organizationId,
             query: args.query,
@@ -27,7 +36,7 @@ export const search = action({
             .filter((t) => t !== null)
             .join(", ")}. Here is the context:\n\n${searchResult.text}`;
 
-        const response = await generateText({
+        const response: any = await generateText({
             messages: [
                 { role: "system", content: SEARCH_INTERPRETER_PROMPT },
                 {
@@ -35,7 +44,7 @@ export const search = action({
                     content: `User asked: "${args.query}"\n\nSearch results: ${contextText}`,
                 },
             ],
-            model: openai.chat("gpt-4o-mini"),
+            model: getOpenAIChatModelFromSecretValue(openAIPlugin?.secretValue),
         });
 
         return response.text;

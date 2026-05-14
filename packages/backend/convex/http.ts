@@ -11,6 +11,69 @@ const clerkClient = createClerkClient({
     secretKey: process.env.CLERK_SECRET_KEY || "",
 });
 
+const getBillingOrganizationId = (payload: any): string | null => {
+    const payerOrganizationId =
+        payload?.payer?.organization_id ?? payload?.payer?.organizationId;
+    const payerId = payload?.payer_id ?? payload?.payerId;
+
+    if (typeof payerOrganizationId === "string" && payerOrganizationId) {
+        return payerOrganizationId;
+    }
+
+    return typeof payerId === "string" && payerId.startsWith("org_")
+        ? payerId
+        : null;
+};
+
+const getAmountValue = (value: any): number => {
+    if (typeof value === "number") {
+        return value;
+    }
+
+    if (typeof value === "string") {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    if (value && typeof value === "object") {
+        return Math.max(
+            getAmountValue(value.amount),
+            getAmountValue(value.value),
+            getAmountValue(value.cents)
+        );
+    }
+
+    return 0;
+};
+
+const hasPaidPlanSignal = (payload: any): boolean => {
+    const planText = [
+        payload?.plan?.slug,
+        payload?.plan?.key,
+        payload?.plan?.name,
+        payload?.planId,
+        payload?.plan_id,
+    ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+    if (/\b(free|default)\b/.test(planText)) {
+        return false;
+    }
+
+    return /\b(pro|premium|paid|plus|business|team|growth)\b/.test(planText);
+};
+
+const isPaidSubscriptionItemPayload = (payload: any): boolean => {
+    return (
+        getAmountValue(payload?.amount) > 0 ||
+        getAmountValue(payload?.nextPayment?.amount ?? payload?.next_payment?.amount) > 0 ||
+        getAmountValue(payload?.lifetimePaid ?? payload?.lifetime_paid) > 0 ||
+        hasPaidPlanSignal(payload)
+    );
+};
+
 http.route({
     path: "/clerk-webhook",
     method: "POST",
@@ -45,6 +108,56 @@ http.route({
                 await ctx.runMutation(internal.system.subscriptions.upsert, {
                     organizationId,
                     status: subscriptions.status,
+                });
+
+                break;
+            }
+            case "subscriptionItem.active": {
+                const subscriptionItem = event.data as any;
+                const organizationId = getBillingOrganizationId(subscriptionItem);
+
+                if (!organizationId) {
+                    return new Response("Missing Organization ID", { status: 400 });
+                }
+
+                if (!isPaidSubscriptionItemPayload(subscriptionItem)) {
+                    break;
+                }
+
+                await clerkClient.organizations.updateOrganization(organizationId, {
+                    maxAllowedMemberships: 5,
+                });
+
+                await ctx.runMutation(internal.system.subscriptions.upsert, {
+                    organizationId,
+                    status: "active",
+                });
+
+                break;
+            }
+            case "subscriptionItem.canceled":
+            case "subscriptionItem.ended":
+            case "subscriptionItem.abandoned":
+            case "subscriptionItem.incomplete":
+            case "subscriptionItem.pastDue": {
+                const subscriptionItem = event.data as any;
+                const organizationId = getBillingOrganizationId(subscriptionItem);
+
+                if (!organizationId) {
+                    return new Response("Missing Organization ID", { status: 400 });
+                }
+
+                if (!isPaidSubscriptionItemPayload(subscriptionItem)) {
+                    break;
+                }
+
+                await clerkClient.organizations.updateOrganization(organizationId, {
+                    maxAllowedMemberships: 1,
+                });
+
+                await ctx.runMutation(internal.system.subscriptions.upsert, {
+                    organizationId,
+                    status: subscriptionItem.status ?? "inactive",
                 });
 
                 break;

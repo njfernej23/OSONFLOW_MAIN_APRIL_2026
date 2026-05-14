@@ -11,6 +11,7 @@
 import type * as constants from "../constants.js";
 import type * as http from "../http.js";
 import type * as lib_extractTextContent from "../lib/extractTextContent.js";
+import type * as lib_openai from "../lib/openai.js";
 import type * as lib_secrets from "../lib/secrets.js";
 import type * as private_aiConversations from "../private/aiConversations.js";
 import type * as private_analytics from "../private/analytics.js";
@@ -48,7 +49,6 @@ import type * as system_plugins from "../system/plugins.js";
 import type * as system_secrets from "../system/secrets.js";
 import type * as system_subscriptions from "../system/subscriptions.js";
 import type * as system_telegram from "../system/telegram.js";
-import type * as users from "../users.js";
 
 import type {
   ApiFromModules,
@@ -68,6 +68,7 @@ declare const fullApi: ApiFromModules<{
   constants: typeof constants;
   http: typeof http;
   "lib/extractTextContent": typeof lib_extractTextContent;
+  "lib/openai": typeof lib_openai;
   "lib/secrets": typeof lib_secrets;
   "private/aiConversations": typeof private_aiConversations;
   "private/analytics": typeof private_analytics;
@@ -105,7 +106,6 @@ declare const fullApi: ApiFromModules<{
   "system/secrets": typeof system_secrets;
   "system/subscriptions": typeof system_subscriptions;
   "system/telegram": typeof system_telegram;
-  users: typeof users;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
 

@@ -8,6 +8,10 @@ import { resolveConversation } from "../system/ai/tools/resolveConversation"
 import { saveMessage } from "@convex-dev/agent"
 import { search } from "../system/ai/tools/search"
 import { SUPPORT_AGENT_PROMPT } from "../system/ai/constants"
+import {
+  getOpenAIChatModelFromSecretValue,
+  getOpenAIKeyFromSecretValue,
+} from "../lib/openai"
 
 const extractAgentMessageText = (message: any) => {
   const content = message?.text ?? message?.message?.content
@@ -54,6 +58,94 @@ const getLatestAssistantMessage = async (ctx: any, threadId: string) => {
     id: String(message._id ?? message.id ?? message.order ?? ""),
     text: extractAgentMessageText(message),
   }
+}
+
+const getAmountValue = (value: any): number => {
+  if (typeof value === "number") {
+    return value
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  if (value && typeof value === "object") {
+    return Math.max(
+      getAmountValue(value.amount),
+      getAmountValue(value.value),
+      getAmountValue(value.cents)
+    )
+  }
+
+  return 0
+}
+
+const hasPaidPlanSignal = (item: any): boolean => {
+  const planText = [
+    item?.plan?.slug,
+    item?.plan?.key,
+    item?.plan?.name,
+    item?.planId,
+    item?.plan_id,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+
+  if (/\b(free|default)\b/.test(planText)) {
+    return false
+  }
+
+  return /\b(pro|premium|paid|plus|business|team|growth)\b/.test(planText)
+}
+
+const isPaidActiveSubscriptionItem = (item: any): boolean => {
+  if (item?.status !== "active") {
+    return false
+  }
+
+  return (
+    getAmountValue(item?.amount) > 0 ||
+    getAmountValue(item?.nextPayment?.amount ?? item?.next_payment?.amount) >
+      0 ||
+    getAmountValue(item?.lifetimePaid ?? item?.lifetime_paid) > 0 ||
+    hasPaidPlanSignal(item)
+  )
+}
+
+const hasPaidOrganizationSubscription = async (
+  organizationId: string
+): Promise<boolean> => {
+  const clerkSecretKey = process.env.CLERK_SECRET_KEY
+
+  if (!clerkSecretKey) {
+    return false
+  }
+
+  const response = await fetch(
+    `https://api.clerk.com/v1/organizations/${organizationId}/billing/subscription`,
+    {
+      headers: {
+        Authorization: `Bearer ${clerkSecretKey}`,
+      },
+    }
+  )
+
+  if (!response.ok) {
+    return false
+  }
+
+  const subscription = await response.json().catch(() => null)
+  const subscriptionItems =
+    subscription?.subscriptionItems ??
+    subscription?.subscription_items ??
+    subscription?.items ??
+    []
+
+  return Array.isArray(subscriptionItems)
+    ? subscriptionItems.some(isPaidActiveSubscriptionItem)
+    : false
 }
 
 export const create = action({
@@ -112,8 +204,42 @@ export const create = action({
       }
     )
 
+    let subscriptionStatus = subscription?.status ?? null
+
+    if (subscriptionStatus !== "active") {
+      const hasPaidSubscription = await hasPaidOrganizationSubscription(
+        conversation.organizationId
+      )
+
+      if (hasPaidSubscription) {
+        subscriptionStatus = "active"
+        await ctx.runMutation(internal.system.subscriptions.upsert, {
+          organizationId: conversation.organizationId,
+          status: "active",
+        })
+      }
+    }
+
+    const openAIPlugin = await ctx.runQuery(
+      internal.system.plugins.getByOrganizationIdAndService,
+      {
+        organizationId: conversation.organizationId,
+        service: "openai_realtime",
+      }
+    )
+
+    const openAISecretValue = openAIPlugin?.secretValue ?? null
+    const hasOrganizationOpenAICredentials = Boolean(
+      getOpenAIKeyFromSecretValue(openAISecretValue)
+    )
+    const hasOpenAICredentials = Boolean(
+      hasOrganizationOpenAICredentials || process.env.OPENAI_API_KEY
+    )
+
     const shouldTriggerAgent =
-      conversation.status === "unresolved" && subscription?.status === "active"
+      conversation.status === "unresolved" &&
+      subscriptionStatus === "active" &&
+      hasOpenAICredentials
 
     const widgetSettings = await ctx.runQuery(
       api.public.widgetSettings.getByOrganizationId,
@@ -136,6 +262,7 @@ export const create = action({
         ctx,
         { threadId: args.threadId },
         {
+          model: getOpenAIChatModelFromSecretValue(openAISecretValue),
           system: systemPrompt,
           prompt: args.prompt,
           tools: {
@@ -160,34 +287,25 @@ export const create = action({
         threadId: args.threadId,
         prompt: args.prompt,
       })
+
+      if (conversation.status === "unresolved" && !shouldTriggerAgent) {
+        assistantReplyText =
+          "Thanks, your message was received. A human operator will reply soon."
+
+        await saveMessage(ctx, components.agent, {
+          threadId: args.threadId,
+          message: {
+            role: "assistant",
+            content: assistantReplyText,
+          },
+        })
+      }
     }
 
     await ctx.runMutation(internal.system.conversations.touchCustomerMessage, {
       conversationId: conversation._id,
       timestamp: now,
     })
-
-    await ctx.scheduler.runAfter(
-      0,
-      (internal as any).system.telegram.mirrorConversationTopicMessage,
-      {
-        conversationId: conversation._id,
-        text: args.prompt,
-        role: "customer",
-      }
-    )
-
-    if (assistantReplyText) {
-      await ctx.scheduler.runAfter(
-        100,
-        (internal as any).system.telegram.mirrorConversationTopicMessage,
-        {
-          conversationId: conversation._id,
-          text: assistantReplyText,
-          role: "assistant",
-        }
-      )
-    }
 
     await ctx.scheduler.runAfter(
       0,

@@ -5,7 +5,6 @@ import {
   widgetSettingsAtom,
 } from "@/modules/widget/atoms/widget-atoms"
 import { WidgetAuthScreen } from "@/modules/widget/ui/screens/widget-auth-screen"
-import { JSX } from "react/jsx-dev-runtime"
 import { WidgetErrorScreen } from "@/modules/widget/ui/screens/widget-error-screen"
 import { WidgetLoadingScreen } from "../screens/widget-loading-screen"
 import { WidgetSelectionScreen } from "../screens/widget-selection-screen"
@@ -13,6 +12,9 @@ import { WidgetChatScreen } from "../screens/widget-chat-screen"
 import { WidgetInboxScreen } from "../screens/widget-inbox-screen"
 import { WidgetVoiceScreen } from "../screens/widget-voice-screen"
 import { WidgetContactScreen } from "../screens/widget-contact-screen"
+import { WidgetHelpScreen } from "../screens/widget-help-screen"
+import { WidgetArticleScreen } from "../screens/widget-article-screen"
+import { WidgetTopicScreen } from "../screens/widget-topic-screen"
 import {
   getContrastingTextColor,
   mergeWidgetTheme,
@@ -48,6 +50,9 @@ export const WidgetView = ({ organizationId }: Props) => {
     loading: <WidgetLoadingScreen organizationId={organizationId} />,
     auth: <WidgetAuthScreen />,
     selection: <WidgetSelectionScreen />,
+    help: <WidgetHelpScreen />,
+    topic: <WidgetTopicScreen />,
+    article: <WidgetArticleScreen />,
     error: <WidgetErrorScreen />,
     chat: <WidgetChatScreen />,
     voice: <WidgetVoiceScreen />,
@@ -63,11 +68,6 @@ export const WidgetView = ({ organizationId }: Props) => {
         borderRadius: `${theme.borderRadius}px`,
       }}
     >
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--primary)_16%,transparent),transparent_34%)]" />
-        <div className="animate-ambient absolute -top-14 right-[-2.5rem] h-40 w-40 rounded-full bg-[color-mix(in_srgb,var(--primary)_12%,white)] blur-3xl" />
-        <div className="animate-float absolute -bottom-12 left-[-3rem] h-36 w-36 rounded-full bg-[color-mix(in_srgb,var(--widget-header-end)_16%,white)] blur-3xl" />
-      </div>
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         {screenComponents[screen]}
       </div>

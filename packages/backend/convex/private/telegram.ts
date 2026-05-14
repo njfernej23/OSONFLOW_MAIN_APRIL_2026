@@ -18,6 +18,9 @@ type TelegramApiResponse = {
   description?: string
 }
 
+const DEFAULT_TELEGRAM_WEBHOOK_BASE_URL =
+  "https://resilient-monitor-705.eu-west-1.convex.site"
+
 const getAuthContext = async (ctx: {
   auth: { getUserIdentity: () => Promise<any> }
 }) => {
@@ -49,7 +52,10 @@ const telegramApiUrl = (botToken: string, method: string) =>
   `https://api.telegram.org/bot${botToken}/${method}`
 
 const normalizeBaseUrl = (value?: string) => {
-  const trimmed = value?.trim() || process.env.TELEGRAM_WEBHOOK_BASE_URL || ""
+  const trimmed =
+    value?.trim() ||
+    process.env.TELEGRAM_WEBHOOK_BASE_URL ||
+    DEFAULT_TELEGRAM_WEBHOOK_BASE_URL
 
   if (!trimmed) {
     return undefined
@@ -88,7 +94,6 @@ export const getDashboard = query({
         _creationTime: integration._creationTime,
         botUsername: integration.botUsername,
         botFirstName: integration.botFirstName,
-        forumChatId: integration.forumChatId,
         webhookUrl: integration.webhookUrl,
         isEnabled: integration.isEnabled,
         status: integration.status,
@@ -103,13 +108,10 @@ export const getDashboard = query({
 export const connect = action({
   args: {
     botToken: v.string(),
-    webhookBaseUrl: v.optional(v.string()),
-    forumChatId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { organizationId, actorId } = await getAuthContext(ctx)
     const botToken = args.botToken.trim()
-    const forumChatId = args.forumChatId?.trim() || undefined
 
     if (!botToken) {
       throw new ConvexError({
@@ -137,11 +139,10 @@ export const connect = action({
         botId: getMe.result.id,
         botUsername: getMe.result.username,
         botFirstName: getMe.result.first_name,
-        forumChatId,
       }
     )) as { integrationId: string; webhookSecret: string }
 
-    const webhookBaseUrl = normalizeBaseUrl(args.webhookBaseUrl)
+    const webhookBaseUrl = normalizeBaseUrl()
 
     if (!webhookBaseUrl) {
       await ctx.runMutation(

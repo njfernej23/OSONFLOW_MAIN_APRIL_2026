@@ -3,9 +3,9 @@ import { generateText } from "ai";
 import z from "zod";
 import { internal } from "../../../_generated/api";
 import { supportAgent } from "../agents/supportAgent";
-import rag from "../rag";
-import { openai } from "@ai-sdk/openai";
+import { getRagForOrganization } from "../rag";
 import { SEARCH_INTERPRETER_PROMPT } from "../constants";
+import { getOpenAIChatModelFromSecretValue } from "../../../lib/openai";
 
 export const search = createTool({
     description: "Search the knowledge base for relevant information to help answer user questions",
@@ -14,12 +14,12 @@ export const search = createTool({
             .string()
             .describe("The search query to find relevant information"),
     }),
-    handler: async (ctx, args) => {
+    handler: async (ctx, args): Promise<string> => {
         if (!ctx.threadId) {
             return "Missing thread ID";
         }
 
-        const conversation = await ctx.runQuery(
+        const conversation: any = await ctx.runQuery(
             internal.system.conversations.getByThreadId,
             { threadId: ctx.threadId },
         );
@@ -27,8 +27,13 @@ export const search = createTool({
         if (!conversation) {
             return "Conversation not found";
         }
-        const orgId = conversation.organizationId;
+        const orgId: string = conversation.organizationId;
 
+        const openAIPlugin: any = await ctx.runQuery(
+            (internal as any).system.plugins.getByOrganizationIdAndService,
+            { organizationId: orgId, service: "openai_realtime" },
+        );
+        const rag = await getRagForOrganization(openAIPlugin?.secretValue);
         const searchResult = await rag.search(ctx, {
             namespace: orgId,
             query: args.query,
@@ -40,7 +45,7 @@ export const search = createTool({
             .filter((t) => t !== null)
             .join(", ")}. Here is the context:\n\n${searchResult.text}`;
 
-        const response = await generateText({
+        const response: any = await generateText({
             messages: [
                 {
                     role: "system",
@@ -51,7 +56,7 @@ export const search = createTool({
                     content: `User asked: "${args.query}"\n\nSearch results: ${contextText}`,
                 },
             ],
-            model: openai.chat("gpt-4o-mini"),
+            model: getOpenAIChatModelFromSecretValue(openAIPlugin?.secretValue),
         });
 
 

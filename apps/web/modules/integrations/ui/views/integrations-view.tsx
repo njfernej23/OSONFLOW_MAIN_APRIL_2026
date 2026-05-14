@@ -1,6 +1,6 @@
 "use client"
 
-import { useOrganization } from "@clerk/nextjs"
+import { Show, useOrganization } from "@clerk/nextjs"
 import { useAction, useMutation, useQuery } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
 import { Badge } from "@workspace/ui/components/badge"
@@ -65,6 +65,11 @@ import {
   isValidWidgetScriptUrl,
   normalizeScriptUrl,
 } from "../../utils"
+import {
+  ApiKeysSection,
+  type ProviderStatuses,
+} from "../components/api-keys-section"
+import { PremiumFeatureOverlay } from "@/modules/billing/ui/components/premium-feature-overlay"
 
 type WebhookDestination = {
   _id: string
@@ -111,7 +116,6 @@ type TelegramDashboard = {
     _creationTime: number
     botUsername?: string
     botFirstName?: string
-    forumChatId?: string
     webhookUrl?: string
     isEnabled: boolean
     status: "connected" | "needs_webhook_url" | "error"
@@ -297,7 +301,7 @@ const EmptyDeliveriesState = () => (
   </div>
 )
 
-type ActiveSection = "widget" | "telegram" | "webhooks"
+type ActiveSection = "widget" | "apiKeys" | "telegram" | "webhooks"
 
 export const IntegrationsView = () => {
   const { organization } = useOrganization()
@@ -334,10 +338,6 @@ export const IntegrationsView = () => {
     null
   )
   const [telegramChannelBotToken, setTelegramChannelBotToken] = useState("")
-  const [telegramForumChatId, setTelegramForumChatId] = useState("")
-  const [telegramWebhookBaseUrl, setTelegramWebhookBaseUrl] = useState(
-    process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? ""
-  )
   const [isConnectingTelegram, setIsConnectingTelegram] = useState(false)
   const [isDisconnectingTelegram, setIsDisconnectingTelegram] = useState(false)
 
@@ -377,14 +377,13 @@ export const IntegrationsView = () => {
     (api as any).private.telegram.getDashboard,
     {}
   ) as TelegramDashboard | undefined
+  const providerStatuses = useQuery(api.private.secrets.getProviderStatuses) as
+    | ProviderStatuses
+    | undefined
 
   const connectTelegram = useAction(
     (api as any).private.telegram.connect
-  ) as (args: {
-    botToken: string
-    webhookBaseUrl?: string
-    forumChatId?: string
-  }) => Promise<{
+  ) as (args: { botToken: string }) => Promise<{
     integrationId: string
     botUsername?: string
     status: "connected" | "needs_webhook_url"
@@ -562,11 +561,8 @@ export const IntegrationsView = () => {
     try {
       const result = await connectTelegram({
         botToken: telegramChannelBotToken.trim(),
-        webhookBaseUrl: telegramWebhookBaseUrl.trim() || undefined,
-        forumChatId: telegramForumChatId.trim() || undefined,
       })
       setTelegramChannelBotToken("")
-      setTelegramForumChatId("")
       if (result.status === "connected") {
         toast.success(
           result.botUsername
@@ -692,6 +688,11 @@ export const IntegrationsView = () => {
   const webhookDestinations = webhookDashboard?.webhooks ?? []
   const deliveryLogs = webhookDashboard?.deliveries ?? []
   const telegramIntegration = telegramDashboard?.integration ?? null
+  const configuredApiKeyCount = [
+    providerStatuses?.openaiConfigured ??
+      providerStatuses?.openaiRealtimeConfigured,
+    providerStatuses?.geminiLiveConfigured,
+  ].filter(Boolean).length
 
   const hasOverflowingDeliveryHistory =
     deliveryLogs.length > DELIVERY_HISTORY_VISIBLE_COUNT
@@ -717,6 +718,12 @@ export const IntegrationsView = () => {
       id: "widget",
       label: "Widget Setup",
       icon: <PlugZapIcon className="size-4" />,
+    },
+    {
+      id: "apiKeys",
+      label: "API Keys",
+      icon: <KeyRoundIcon className="size-4" />,
+      count: configuredApiKeyCount,
     },
     {
       id: "telegram",
@@ -793,7 +800,7 @@ export const IntegrationsView = () => {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-1 rounded-2xl border border-border/70 bg-background/58 p-1 sm:inline-grid sm:grid-cols-3">
+          <div className="mt-4 grid gap-1 rounded-2xl border border-border/70 bg-background/58 p-1 sm:inline-grid sm:grid-cols-4">
             {NAV_ITEMS.map((item) => (
               <button
                 key={item.id}
@@ -1054,6 +1061,20 @@ export const IntegrationsView = () => {
           </div>
         )}
 
+        {/* ─── API KEYS ─── */}
+        {activeSection === "apiKeys" && (
+          <Show
+            when={{ plan: "pro" }}
+            fallback={
+              <PremiumFeatureOverlay>
+                <ApiKeysSection providerStatuses={providerStatuses} />
+              </PremiumFeatureOverlay>
+            }
+          >
+            <ApiKeysSection providerStatuses={providerStatuses} />
+          </Show>
+        )}
+
         {/* ─── TELEGRAM BOT ─── */}
         {activeSection === "telegram" && (
           <div className="grid gap-4 xl:grid-cols-[minmax(0,430px)_minmax(0,1fr)]">
@@ -1101,45 +1122,6 @@ export const IntegrationsView = () => {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="telegram-webhook-base-url"
-                    className="text-xs text-sidebar-foreground/58"
-                  >
-                    Convex Site URL
-                  </Label>
-                  <Input
-                    className="bg-sidebar-accent/70 font-mono text-xs"
-                    id="telegram-webhook-base-url"
-                    onChange={(e) => setTelegramWebhookBaseUrl(e.target.value)}
-                    placeholder="https://your-deployment.convex.site"
-                    value={telegramWebhookBaseUrl}
-                  />
-                  <p className="text-xs text-sidebar-foreground/58">
-                    Used to register the Telegram webhook endpoint.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="telegram-forum-chat-id"
-                    className="text-xs text-sidebar-foreground/58"
-                  >
-                    Topic Group Chat ID
-                  </Label>
-                  <Input
-                    className="bg-sidebar-accent/70 font-mono text-xs"
-                    id="telegram-forum-chat-id"
-                    onChange={(e) => setTelegramForumChatId(e.target.value)}
-                    placeholder="-1001234567890"
-                    value={telegramForumChatId}
-                  />
-                  <p className="text-xs text-sidebar-foreground/58">
-                    Supergroup with Topics enabled. New widget chats create a
-                    topic here.
-                  </p>
-                </div>
-
                 <Button
                   className="w-full gap-2"
                   disabled={isConnectingTelegram}
@@ -1183,7 +1165,7 @@ export const IntegrationsView = () => {
                   variant={telegramIntegration ? "default" : "outline"}
                   className="shrink-0 text-xs"
                 >
-                  {telegramIntegration ? "Configured" : "Not connected"}
+                  {telegramIntegration ? "Connected" : "Not connected"}
                 </Badge>
               </div>
 
@@ -1201,102 +1183,24 @@ export const IntegrationsView = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <div className="rounded-lg border bg-background/60 p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <ProviderIcon provider="telegram" size={34} />
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold">
-                              {telegramIntegration.botUsername
-                                ? `@${telegramIntegration.botUsername}`
-                                : telegramIntegration.botFirstName ||
-                                  "Telegram bot"}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Updated{" "}
-                              {formatTimeAgo(telegramIntegration.updatedAt)}
-                            </p>
-                          </div>
-                        </div>
-                        <span
-                          className={cn(
-                            "rounded-full px-2 py-1 text-xs font-medium",
-                            telegramIntegration.status === "connected"
-                              ? "bg-green-500/10 text-green-600 dark:text-green-400"
-                              : telegramIntegration.status === "error"
-                                ? "bg-red-500/10 text-red-600 dark:text-red-400"
-                                : "bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                          )}
-                        >
-                          {telegramIntegration.status === "connected"
-                            ? "Live"
-                            : telegramIntegration.status === "error"
-                              ? "Setup error"
-                              : "Needs webhook URL"}
-                        </span>
-                      </div>
-
-                      {telegramIntegration.webhookUrl && (
-                        <p className="mt-4 font-mono text-xs break-all text-muted-foreground">
-                          {telegramIntegration.webhookUrl}
-                        </p>
-                      )}
-
-                      {telegramIntegration.forumChatId && (
-                        <p className="mt-3 font-mono text-xs break-all text-muted-foreground">
-                          Topic group: {telegramIntegration.forumChatId}
-                        </p>
-                      )}
-
-                      {telegramIntegration.setupError && (
-                        <p className="mt-3 rounded-md border border-red-500/20 bg-red-500/5 p-2 text-xs text-red-600 dark:text-red-400">
-                          {telegramIntegration.setupError}
-                        </p>
-                      )}
-
-                      {telegramIntegration.lastWebhookAt && (
-                        <p className="mt-3 text-xs text-muted-foreground">
-                          Last inbound message{" "}
-                          {formatTimeAgo(telegramIntegration.lastWebhookAt)}
-                        </p>
-                      )}
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background/60 p-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <ProviderIcon provider="telegram" size={34} />
+                      <p className="text-sm font-semibold">Connected</p>
                     </div>
-
-                    <div className="rounded-lg border bg-muted/15 p-4">
-                      <p className="text-sm font-medium">
-                        What happens after connection
-                      </p>
-                      <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-3">
-                        <div className="rounded-md border bg-background/60 p-3">
-                          Widget chat starts
-                        </div>
-                        <div className="rounded-md border bg-background/60 p-3">
-                          Telegram topic is created
-                        </div>
-                        <div className="rounded-md border bg-background/60 p-3">
-                          Topic replies reach the widget
-                        </div>
-                      </div>
-                    </div>
-
                     <Button
-                      className="gap-2"
+                      aria-label="Disconnect Telegram"
+                      className="size-9 p-0"
                       disabled={isDisconnectingTelegram}
                       onClick={handleDisconnectTelegram}
+                      title="Disconnect Telegram"
                       type="button"
                       variant="destructive"
                     >
                       {isDisconnectingTelegram ? (
-                        <>
-                          <Loader2Icon className="size-4 animate-spin" />
-                          Disconnecting...
-                        </>
+                        <Loader2Icon className="size-4 animate-spin" />
                       ) : (
-                        <>
-                          <Trash2Icon className="size-4" />
-                          Disconnect Telegram
-                        </>
+                        <Trash2Icon className="size-4" />
                       )}
                     </Button>
                   </div>

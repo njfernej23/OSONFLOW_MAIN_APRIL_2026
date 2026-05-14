@@ -8,7 +8,7 @@ import {
 import { internal } from "../_generated/api"
 import { Id } from "../_generated/dataModel"
 import { supportAgent } from "./ai/agents/supportAgent"
-import { openai } from "@ai-sdk/openai"
+import { getOpenAIChatModelFromSecretValue } from "../lib/openai"
 
 const statusValidator = v.union(
   v.literal("unresolved"),
@@ -285,11 +285,15 @@ const createFallbackAnalysis = ({
 }
 
 const analyzeTranscript = async ({
+  ctx,
+  organizationId,
   transcript,
   status,
   channel,
   metadataLanguage,
 }: {
+  ctx: any
+  organizationId: string
   transcript: TranscriptLine[]
   status: ConversationStatus
   channel: SupportChannel
@@ -312,8 +316,15 @@ const analyzeTranscript = async ({
   }
 
   try {
+    const openAIPlugin = await ctx.runQuery(
+      internal.system.plugins.getByOrganizationIdAndService,
+      {
+        organizationId,
+        service: "openai_realtime",
+      }
+    )
     const result = await generateText({
-      model: openai("gpt-4o-mini"),
+      model: getOpenAIChatModelFromSecretValue(openAIPlugin?.secretValue),
       messages: [
         {
           role: "system",
@@ -578,6 +589,8 @@ export const analyzeChatConversation = internalAction({
     const contactSession = snapshot.contactSession
     const status = conversation.status as ConversationStatus
     const analysis = await analyzeTranscript({
+      ctx,
+      organizationId: conversation.organizationId,
       transcript: snapshot.transcript,
       status,
       channel: "chat",
@@ -634,6 +647,8 @@ export const analyzeVoiceConversation = internalAction({
     const contactSession = snapshot.contactSession
     const status = (conversation.status ?? "unresolved") as ConversationStatus
     const analysis = await analyzeTranscript({
+      ctx,
+      organizationId: conversation.organizationId,
       transcript: snapshot.transcript,
       status,
       channel: "voice",
