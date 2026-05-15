@@ -1,6 +1,8 @@
 import { ConvexError, v } from "convex/values"
 import { query, QueryCtx } from "../_generated/server"
 
+const CUSTOMER_MEMORY_EXPORT_LIMIT = 5000
+
 const getOrganizationId = async (ctx: QueryCtx) => {
   const identity = await ctx.auth.getUserIdentity()
 
@@ -23,10 +25,7 @@ const getOrganizationId = async (ctx: QueryCtx) => {
   return organizationId
 }
 
-const hasActiveSubscription = async (
-  ctx: QueryCtx,
-  organizationId: string
-) => {
+const hasActiveSubscription = async (ctx: QueryCtx, organizationId: string) => {
   const subscription = await ctx.db
     .query("subscriptions")
     .withIndex("by_organization_id", (q) =>
@@ -49,6 +48,35 @@ export const getMany = query({
     }
 
     const limit = Math.max(1, Math.min(args.limit ?? 50, 100))
+
+    return await ctx.db
+      .query("customerMemories")
+      .withIndex("by_organization_id_and_last_seen_at", (q) =>
+        q.eq("organizationId", organizationId)
+      )
+      .order("desc")
+      .take(limit)
+  },
+})
+
+export const getForExport = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const organizationId = await getOrganizationId(ctx)
+
+    if (!(await hasActiveSubscription(ctx, organizationId))) {
+      return []
+    }
+
+    const limit = Math.max(
+      1,
+      Math.min(
+        args.limit ?? CUSTOMER_MEMORY_EXPORT_LIMIT,
+        CUSTOMER_MEMORY_EXPORT_LIMIT
+      )
+    )
 
     return await ctx.db
       .query("customerMemories")

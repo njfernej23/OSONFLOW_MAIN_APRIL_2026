@@ -1,0 +1,21 @@
+:where(
+  button:not(:disabled):not([aria-disabled="true"]):not([data-disabled="true"]),
+  [role="button"]:not([aria-disabled="true"]):not([data-disabled="true"]),
+  [data-slot="button"]:not(:disabled):not([aria-disabled="true"]):not(
+      [data-disabled="true"]
+    )
+) {
+  cursor: pointer;
+}
+
+:where(
+  button:disabled,
+  button[aria-disabled="true"],
+  button[data-disabled="true"],
+  [role="button"][aria-disabled="true"],
+  [role="button"][data-disabled="true"],
+  [data-slot="button"][aria-disabled="true"],
+  [data-slot="button"][data-disabled="true"]
+) {
+  cursor: not-allowed;
+}

@@ -86,7 +86,7 @@ const footerTabButtonClassName =
   "h-16 flex-1 rounded-none text-muted-foreground transition-none hover:translate-y-0 hover:bg-transparent hover:text-muted-foreground active:translate-y-0"
 
 const footerTabContentClassName =
-  "flex min-w-24 flex-col items-center justify-center gap-1 rounded-lg px-3 py-2 transition-colors group-hover/button:bg-muted/80 group-hover/button:text-foreground"
+  "flex min-w-24 flex-col items-center justify-center gap-1 rounded-lg px-3 py-2 transition-colors group-hover/button:text-foreground"
 
 export const WidgetFooter = () => {
   const screen = useAtomValue(screenAtom)

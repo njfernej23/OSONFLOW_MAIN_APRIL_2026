@@ -1,6 +1,7 @@
 import { ClerkProvider } from "@clerk/nextjs"
 import { IBM_Plex_Mono, Lora, Plus_Jakarta_Sans } from "next/font/google"
 import "@workspace/ui/styles/globals.css"
+import "./globals.css"
 import { Providers } from "@/components/theme-provider"
 import { cn } from "@workspace/ui/lib/utils"
 import { Toaster } from "@workspace/ui/components/sonner"

@@ -1,20 +1,29 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useQuery } from "convex/react"
+import { useConvex, useQuery } from "convex/react"
 import {
   BrainIcon,
+  DownloadIcon,
   HistoryIcon,
   LanguagesIcon,
   MailIcon,
   SearchIcon,
   UserRoundIcon,
 } from "lucide-react"
+import { toast } from "sonner"
 
 import { api } from "@workspace/backend/_generated/api"
+import type { Doc } from "@workspace/backend/_generated/dataModel"
 import { Badge } from "@workspace/ui/components/badge"
+import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Skeleton } from "@workspace/ui/components/skeleton"
+
+const CUSTOMER_MEMORY_EXPORT_LIMIT = 5000
+
+type CustomerMemory = Doc<"customerMemories">
+type CsvValue = string | number | null | undefined
 
 const formatIntent = (intent: string) =>
   intent
@@ -30,8 +39,74 @@ const formatDate = (timestamp: number) =>
     minute: "2-digit",
   }).format(timestamp)
 
+const formatCsvTimestamp = (timestamp: number) =>
+  Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : ""
+
+const escapeCsvCell = (value: CsvValue) => {
+  const raw = String(value ?? "")
+  const safe = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw
+
+  return `"${safe.replaceAll('"', '""')}"`
+}
+
+const joinList = (items: string[]) => items.filter(Boolean).join("; ")
+
+const formatIssueHistoryForCsv = (memory: CustomerMemory) =>
+  memory.issueHistory
+    .map((item) =>
+      [
+        formatCsvTimestamp(item.at),
+        item.channel,
+        formatIntent(item.intent),
+        item.status,
+        item.summary,
+      ]
+        .filter(Boolean)
+        .join(" | ")
+    )
+    .join("\n")
+
+const buildCustomerMemoryCsv = (memories: CustomerMemory[]) => {
+  const rows = [
+    [
+      "Customer ID",
+      "Email",
+      "Name",
+      "Summary",
+      "Preferred Language",
+      "Recent Intents",
+      "Notable Facts",
+      "Issue History",
+      "Total Conversations",
+      "Total Resolved",
+      "Total Escalations",
+      "Last Seen At",
+      "Updated At",
+    ],
+    ...memories.map((memory) => [
+      memory._id,
+      memory.email,
+      memory.name,
+      memory.summary,
+      memory.preferredLanguage,
+      joinList(memory.recentIntents.map(formatIntent)),
+      joinList(memory.notableFacts),
+      formatIssueHistoryForCsv(memory),
+      memory.totalConversations,
+      memory.totalResolved,
+      memory.totalEscalations,
+      formatCsvTimestamp(memory.lastSeenAt),
+      formatCsvTimestamp(memory.updatedAt),
+    ]),
+  ]
+
+  return rows.map((row) => row.map(escapeCsvCell).join(",")).join("\n")
+}
+
 export const CustomerMemoryView = () => {
   const [searchQuery, setSearchQuery] = useState("")
+  const [isExporting, setIsExporting] = useState(false)
+  const convex = useConvex()
   const memories = useQuery(api.private.customerMemories.getMany, {
     limit: 75,
   })
@@ -59,6 +134,44 @@ export const CustomerMemoryView = () => {
       return haystack.includes(query)
     })
   }, [memories, searchQuery])
+
+  const handleDownloadCsv = async () => {
+    setIsExporting(true)
+
+    try {
+      const exportMemories = await convex.query(
+        api.private.customerMemories.getForExport,
+        {
+          limit: CUSTOMER_MEMORY_EXPORT_LIMIT,
+        }
+      )
+
+      if (!exportMemories.length) {
+        toast.info("No customer memory to export")
+        return
+      }
+
+      const csv = buildCustomerMemoryCsv(exportMemories)
+      const blob = new Blob(["\uFEFF", csv], {
+        type: "text/csv;charset=utf-8",
+      })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+
+      link.href = url
+      link.download = `customer-memory-${new Date().toISOString().slice(0, 10)}.csv`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+
+      toast.success(`Exported ${exportMemories.length} customer memories`)
+    } catch {
+      toast.error("Failed to export customer memory")
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   if (memories === undefined) {
     return (
@@ -90,14 +203,25 @@ export const CustomerMemoryView = () => {
               </h1>
             </div>
 
-            <div className="relative w-full max-w-md">
-              <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="pl-9"
-                placeholder="Search customers, intents, or notes"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-              />
+            <div className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row">
+              <div className="relative min-w-0 flex-1">
+                <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  placeholder="Search customers, intents, or notes"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                />
+              </div>
+              <Button
+                className="shrink-0"
+                disabled={isExporting}
+                onClick={handleDownloadCsv}
+                variant="outline"
+              >
+                <DownloadIcon data-icon="inline-start" />
+                {isExporting ? "Exporting..." : "Download CSV"}
+              </Button>
             </div>
           </div>
         </section>
@@ -203,7 +327,9 @@ export const CustomerMemoryView = () => {
                   <Badge variant="outline">
                     {memory.totalEscalations} escalated
                   </Badge>
-                  <Badge variant="ghost">Last seen {formatDate(memory.lastSeenAt)}</Badge>
+                  <Badge variant="ghost">
+                    Last seen {formatDate(memory.lastSeenAt)}
+                  </Badge>
                 </div>
               </article>
             ))}

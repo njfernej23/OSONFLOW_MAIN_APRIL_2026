@@ -49,7 +49,6 @@ import {
   CheckCircle2Icon,
   Clock3Icon,
   DatabaseIcon,
-  ExternalLinkIcon,
   EyeIcon,
   FileIcon,
   FileTextIcon,
@@ -66,7 +65,7 @@ import {
   XIcon,
 } from "lucide-react"
 import { UploadDialog } from "../components/upload-dialog"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useSyncExternalStore } from "react"
 import { DeleteFileDialog } from "../components/delete-file-dialog"
 import { toast } from "sonner"
 import { cn } from "@workspace/ui/lib/utils"
@@ -81,6 +80,10 @@ type ViewerPayload =
     }
 
 type ViewMode = "list" | "grid"
+
+const DEFAULT_VIEW_MODE: ViewMode = "list"
+const VIEW_MODE_CHANGE_EVENT = "osonflow-files-view-mode-change"
+const VIEW_MODE_STORAGE_KEY = "osonflow.files.viewMode"
 
 type KnowledgeTestResult = {
   answer: string
@@ -128,6 +131,29 @@ function getStatusLabel(status: PublicFile["status"]) {
   if (status === "ready") return "Indexed"
   if (status === "processing") return "Processing"
   return "Error"
+}
+
+function isViewMode(value: string | null): value is ViewMode {
+  return value === "list" || value === "grid"
+}
+
+function getStoredViewMode(): ViewMode {
+  if (typeof window === "undefined") {
+    return DEFAULT_VIEW_MODE
+  }
+
+  const savedViewMode = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY)
+  return isViewMode(savedViewMode) ? savedViewMode : DEFAULT_VIEW_MODE
+}
+
+function subscribeToViewModeChange(callback: () => void) {
+  window.addEventListener("storage", callback)
+  window.addEventListener(VIEW_MODE_CHANGE_EVENT, callback)
+
+  return () => {
+    window.removeEventListener("storage", callback)
+    window.removeEventListener(VIEW_MODE_CHANGE_EVENT, callback)
+  }
 }
 
 // ─── empty state ──────────────────────────────────────────────────────────────
@@ -476,14 +502,6 @@ function FileCard({
               <EyeIcon className="size-4" />
               View
             </DropdownMenuItem>
-            {file.url && (
-              <DropdownMenuItem asChild>
-                <a href={file.url} rel="noreferrer" target="_blank">
-                  <ExternalLinkIcon className="size-4" />
-                  Open original
-                </a>
-              </DropdownMenuItem>
-            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
@@ -640,7 +658,11 @@ export const FilesView = () => {
   const [viewerFile, setViewerFile] = useState<PublicFile | null>(null)
   const [viewerPayload, setViewerPayload] = useState<ViewerPayload | null>(null)
   const [isViewerLoading, setIsViewerLoading] = useState(false)
-  const [viewMode, setViewMode] = useState<ViewMode>("list")
+  const viewMode = useSyncExternalStore(
+    subscribeToViewModeChange,
+    getStoredViewMode,
+    () => DEFAULT_VIEW_MODE
+  )
   const [searchQuery, setSearchQuery] = useState("")
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [testResult, setTestResult] = useState<KnowledgeTestResult | null>(null)
@@ -684,6 +706,11 @@ export const FilesView = () => {
   const handleDeleteClick = (file: PublicFile) => {
     setSelectedFile(file)
     setDeleteDialogOpen(true)
+  }
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode)
+    window.dispatchEvent(new Event(VIEW_MODE_CHANGE_EVENT))
   }
 
   const handleViewClick = async (file: PublicFile) => {
@@ -763,8 +790,8 @@ export const FilesView = () => {
 
       {/* ── document viewer ── */}
       <Dialog onOpenChange={closeViewer} open={viewerOpen}>
-        <DialogContent className="h-[90vh] max-w-[95vw] grid-rows-[auto,minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:max-w-5xl">
-          <DialogHeader className="border-b px-6 py-4">
+        <DialogContent className="flex h-[90vh] max-w-[95vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
+          <DialogHeader className="shrink-0 border-b px-6 py-4 pr-14">
             <DialogTitle className="flex items-center gap-2 text-base">
               {viewerFile &&
                 (() => {
@@ -792,7 +819,7 @@ export const FilesView = () => {
             )}
           </DialogHeader>
 
-          <div className="h-full min-h-0 bg-muted/30">
+          <div className="min-h-0 flex-1 bg-muted/30">
             {isViewerLoading ? (
               <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
                 <Loader2Icon className="size-6 animate-spin" />
@@ -959,7 +986,7 @@ export const FilesView = () => {
                             ? "bg-primary text-primary-foreground"
                             : "text-muted-foreground hover:text-foreground"
                         )}
-                        onClick={() => setViewMode("list")}
+                        onClick={() => handleViewModeChange("list")}
                         type="button"
                       >
                         <LayoutListIcon className="size-4" />
@@ -976,7 +1003,7 @@ export const FilesView = () => {
                             ? "bg-primary text-primary-foreground"
                             : "text-muted-foreground hover:text-foreground"
                         )}
-                        onClick={() => setViewMode("grid")}
+                        onClick={() => handleViewModeChange("grid")}
                         type="button"
                       >
                         <GridIcon className="size-4" />
@@ -1150,18 +1177,6 @@ export const FilesView = () => {
                                   <EyeIcon className="size-4" />
                                   View content
                                 </DropdownMenuItem>
-                                {file.url && (
-                                  <DropdownMenuItem asChild>
-                                    <a
-                                      href={file.url}
-                                      rel="noreferrer"
-                                      target="_blank"
-                                    >
-                                      <ExternalLinkIcon className="size-4" />
-                                      Open original
-                                    </a>
-                                  </DropdownMenuItem>
-                                )}
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                   className="text-destructive focus:text-destructive"

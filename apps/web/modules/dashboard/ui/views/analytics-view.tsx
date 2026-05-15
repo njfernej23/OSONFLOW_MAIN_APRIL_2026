@@ -1,22 +1,32 @@
 "use client"
 
-import { useQuery } from "convex/react"
+import { useState } from "react"
+import { useConvex, useQuery } from "convex/react"
 import {
   AlertCircleIcon,
   BarChart3Icon,
   BotIcon,
   CheckCircle2Icon,
   Clock3Icon,
+  DownloadIcon,
   HelpCircleIcon,
   MessageSquareIcon,
   TrendingUpIcon,
   UserRoundCheckIcon,
 } from "lucide-react"
+import { toast } from "sonner"
 
 import { api } from "@workspace/backend/_generated/api"
+import type { Doc } from "@workspace/backend/_generated/dataModel"
 import { Badge } from "@workspace/ui/components/badge"
+import { Button } from "@workspace/ui/components/button"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { cn } from "@workspace/ui/lib/utils"
+
+const ANALYTICS_EXPORT_LIMIT = 5000
+
+type ConversationInsight = Doc<"conversationInsights">
+type CsvValue = string | number | boolean | null | undefined
 
 const formatDuration = (ms: number | null) => {
   if (ms === null) {
@@ -40,6 +50,44 @@ const formatIntent = (intent: string) =>
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ")
+
+const formatCsvTimestamp = (timestamp: number | null | undefined) =>
+  typeof timestamp === "number" && Number.isFinite(timestamp)
+    ? new Date(timestamp).toISOString()
+    : ""
+
+const escapeCsvCell = (value: CsvValue) => {
+  const raw = String(value ?? "")
+  const safe = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw
+
+  return `"${safe.replaceAll('"', '""')}"`
+}
+
+const stringifyCsvRows = (rows: CsvValue[][]) =>
+  rows.map((row) => row.map(escapeCsvCell).join(",")).join("\n")
+
+const insightToCsvRow = (insight: ConversationInsight) => [
+  insight._id,
+  insight.channel,
+  insight.status,
+  formatIntent(insight.intent),
+  insight.sentiment,
+  insight.urgency,
+  insight.language,
+  insight.summary,
+  insight.isUnanswered,
+  insight.unansweredQuestion,
+  insight.wasResolved,
+  insight.wasEscalated,
+  insight.resolutionSource,
+  insight.firstHumanResponseMs,
+  insight.humanSavedMinutes,
+  insight.conversationId,
+  insight.aiVoiceConversationId,
+  insight.contactSessionId,
+  formatCsvTimestamp(insight.lastAnalyzedAt),
+  formatCsvTimestamp(insight.updatedAt),
+]
 
 const MetricTile = ({
   title,
@@ -71,7 +119,12 @@ const MetricTile = ({
             {value}
           </p>
         </div>
-        <div className={cn("flex size-9 items-center justify-center rounded-xl", toneClass)}>
+        <div
+          className={cn(
+            "flex size-9 items-center justify-center rounded-xl",
+            toneClass
+          )}
+        >
           <Icon className="size-4" />
         </div>
       </div>
@@ -106,6 +159,8 @@ const CountBar = ({
 )
 
 export const AnalyticsView = () => {
+  const [isExporting, setIsExporting] = useState(false)
+  const convex = useConvex()
   const overview = useQuery(api.private.analytics.getOverview, {
     windowDays: 30,
   })
@@ -135,6 +190,111 @@ export const AnalyticsView = () => {
     ...overview.unansweredQuestions.map((question) => question.count)
   )
 
+  const handleDownloadCsv = async () => {
+    setIsExporting(true)
+
+    try {
+      const exportInsights = await convex.query(
+        api.private.analytics.getInsightsForExport,
+        {
+          windowDays: overview.windowDays,
+          limit: ANALYTICS_EXPORT_LIMIT,
+        }
+      )
+
+      const rows: CsvValue[][] = [
+        ["AI performance analytics"],
+        ["Window Days", overview.windowDays],
+        ["Exported At", new Date().toISOString()],
+        [],
+        ["Summary"],
+        ["Metric", "Value"],
+        ["Total Analyzed Conversations", overview.totalConversations],
+        ["Resolved", overview.resolved],
+        ["Escalated", overview.escalated],
+        ["Unanswered", overview.unanswered],
+        ["AI Resolution Rate", `${overview.resolutionRate}%`],
+        ["Escalation Rate", `${overview.escalationRate}%`],
+        ["Unanswered Rate", `${overview.unansweredRate}%`],
+        [
+          "Average Human Response",
+          formatDuration(overview.averageHumanResponseMs),
+        ],
+        ["Average Human Response Ms", overview.averageHumanResponseMs],
+        ["Human Time Saved Minutes", overview.humanSavedMinutes],
+        [],
+        ["Top Intents"],
+        ["Intent", "Count"],
+        ...overview.topIntents.map((intent) => [
+          formatIntent(intent.label),
+          intent.count,
+        ]),
+        [],
+        ["Most Common Unanswered Questions"],
+        ["Question", "Intent", "Count"],
+        ...overview.unansweredQuestions.map((question) => [
+          question.question,
+          formatIntent(question.intent),
+          question.count,
+        ]),
+        [],
+        ["Voice vs Chat Resolution"],
+        ["Channel", "Total", "Resolved", "Escalated", "Resolution Rate"],
+        ...overview.channelMetrics.map((metric) => [
+          metric.channel,
+          metric.total,
+          metric.resolved,
+          metric.escalated,
+          `${metric.resolutionRate}%`,
+        ]),
+        [],
+        ["Recent Intelligence Export"],
+        [
+          "Insight ID",
+          "Channel",
+          "Status",
+          "Intent",
+          "Sentiment",
+          "Urgency",
+          "Language",
+          "Summary",
+          "Is Unanswered",
+          "Unanswered Question",
+          "Was Resolved",
+          "Was Escalated",
+          "Resolution Source",
+          "First Human Response Ms",
+          "Human Saved Minutes",
+          "Conversation ID",
+          "AI Voice Conversation ID",
+          "Contact Session ID",
+          "Last Analyzed At",
+          "Updated At",
+        ],
+        ...exportInsights.map(insightToCsvRow),
+      ]
+
+      const blob = new Blob(["\uFEFF", stringifyCsvRows(rows)], {
+        type: "text/csv;charset=utf-8",
+      })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+
+      link.href = url
+      link.download = `analytics-${new Date().toISOString().slice(0, 10)}.csv`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+
+      toast.success(`Exported analytics with ${exportInsights.length} insights`)
+    } catch {
+      toast.error("Failed to export analytics")
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   return (
     <div className="h-full overflow-auto p-4 sm:p-6">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
@@ -149,9 +309,19 @@ export const AnalyticsView = () => {
                 AI performance analytics
               </h1>
             </div>
-            <Badge variant="secondary" className="w-fit">
-              {overview.totalConversations} analyzed conversations
-            </Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="secondary" className="w-fit">
+                {overview.totalConversations} analyzed conversations
+              </Badge>
+              <Button
+                disabled={isExporting}
+                onClick={handleDownloadCsv}
+                variant="outline"
+              >
+                <DownloadIcon data-icon="inline-start" />
+                {isExporting ? "Exporting..." : "Download CSV"}
+              </Button>
+            </div>
           </div>
         </section>
 
@@ -255,7 +425,8 @@ export const AnalyticsView = () => {
             </h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
               {overview.channelMetrics.map((metric) => {
-                const Icon = metric.channel === "voice" ? BotIcon : MessageSquareIcon
+                const Icon =
+                  metric.channel === "voice" ? BotIcon : MessageSquareIcon
 
                 return (
                   <div
@@ -265,15 +436,14 @@ export const AnalyticsView = () => {
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <Icon className="size-4 text-muted-foreground" />
-                        <p className="text-sm font-medium capitalize text-foreground">
+                        <p className="text-sm font-medium text-foreground capitalize">
                           {metric.channel}
                         </p>
                       </div>
                       <Badge variant="outline">{metric.resolutionRate}%</Badge>
                     </div>
                     <p className="mt-3 text-xs text-muted-foreground">
-                      {metric.resolved} resolved, {metric.escalated} escalated,
-                      {" "}
+                      {metric.resolved} resolved, {metric.escalated} escalated,{" "}
                       {metric.total} total
                     </p>
                   </div>

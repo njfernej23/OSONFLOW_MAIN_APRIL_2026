@@ -2,6 +2,8 @@ import { paginationOptsValidator } from "convex/server"
 import { ConvexError, v } from "convex/values"
 import { query, QueryCtx } from "../_generated/server"
 
+const ANALYTICS_EXPORT_LIMIT = 5000
+
 const getOrganizationId = async (ctx: QueryCtx) => {
   const identity = await ctx.auth.getUserIdentity()
 
@@ -91,7 +93,8 @@ export const getOverview = query({
       return {
         channel,
         total: channelTotal,
-        resolved: channelInsights.filter((insight) => insight.wasResolved).length,
+        resolved: channelInsights.filter((insight) => insight.wasResolved)
+          .length,
         escalated: channelInsights.filter((insight) => insight.wasEscalated)
           .length,
         resolutionRate: percentage(
@@ -101,7 +104,10 @@ export const getOverview = query({
       }
     }
 
-    const unansweredCounts = new Map<string, { count: number; intent: string }>()
+    const unansweredCounts = new Map<
+      string,
+      { count: number; intent: string }
+    >()
 
     for (const insight of unanswered) {
       const label = insight.unansweredQuestion || insight.summary
@@ -168,5 +174,31 @@ export const getInsights = query({
       )
       .order("desc")
       .paginate(args.paginationOpts)
+  },
+})
+
+export const getInsightsForExport = query({
+  args: {
+    windowDays: v.optional(v.number()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const organizationId = await getOrganizationId(ctx)
+    const windowDays = Math.max(1, Math.min(args.windowDays ?? 30, 365))
+    const cutoff = Date.now() - windowDays * 24 * 60 * 60 * 1000
+    const limit = Math.max(
+      1,
+      Math.min(args.limit ?? ANALYTICS_EXPORT_LIMIT, ANALYTICS_EXPORT_LIMIT)
+    )
+
+    const insights = await ctx.db
+      .query("conversationInsights")
+      .withIndex("by_organization_id_and_updated_at", (q) =>
+        q.eq("organizationId", organizationId)
+      )
+      .order("desc")
+      .take(limit)
+
+    return insights.filter((insight) => insight.updatedAt >= cutoff)
   },
 })
