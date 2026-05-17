@@ -56,20 +56,52 @@ export const updateStatus = mutation({
     }
 
     const previousStatus = conversation.status
+    const now = Date.now()
 
     await ctx.db.patch(args.conversationId, {
       status: args.status,
       escalatedAt:
         args.status === "escalated"
-          ? (conversation.escalatedAt ?? Date.now())
+          ? (conversation.escalatedAt ?? now)
           : conversation.escalatedAt,
       resolvedAt:
         args.status === "resolved"
-          ? (conversation.resolvedAt ?? Date.now())
+          ? (conversation.resolvedAt ?? now)
           : conversation.resolvedAt,
       resolutionSource:
         args.status === "resolved" ? "human" : conversation.resolutionSource,
     })
+
+    const linkedAiVoiceConversation = await ctx.db
+      .query("aiVoiceConversations")
+      .withIndex("by_organization_id", (q) => q.eq("organizationId", orgId))
+      .filter((q) =>
+        q.eq(q.field("linkedConversationId"), args.conversationId)
+      )
+      .first()
+
+    if (linkedAiVoiceConversation) {
+      await ctx.db.patch(linkedAiVoiceConversation._id, {
+        status: args.status,
+        lastActivityAt: now,
+        endedAt:
+          args.status === "resolved"
+            ? (linkedAiVoiceConversation.endedAt ?? now)
+            : linkedAiVoiceConversation.endedAt,
+        escalatedAt:
+          args.status === "escalated"
+            ? (linkedAiVoiceConversation.escalatedAt ?? now)
+            : linkedAiVoiceConversation.escalatedAt,
+        resolvedAt:
+          args.status === "resolved"
+            ? (linkedAiVoiceConversation.resolvedAt ?? now)
+            : linkedAiVoiceConversation.resolvedAt,
+        resolutionSource:
+          args.status === "resolved"
+            ? "human"
+            : linkedAiVoiceConversation.resolutionSource,
+      })
+    }
 
     if (previousStatus !== args.status) {
       await ctx.runMutation(
@@ -95,6 +127,19 @@ export const updateStatus = mutation({
         conversationId: args.conversationId,
       }
     )
+
+    if (
+      linkedAiVoiceConversation &&
+      (linkedAiVoiceConversation.status ?? "unresolved") !== args.status
+    ) {
+      await ctx.scheduler.runAfter(
+        0,
+        (internal as any).system.intelligence.analyzeVoiceConversation,
+        {
+          conversationId: linkedAiVoiceConversation._id,
+        }
+      )
+    }
   },
 })
 

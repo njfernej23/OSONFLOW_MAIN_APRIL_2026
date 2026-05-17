@@ -1,6 +1,7 @@
 import { paginationOptsValidator } from "convex/server"
 import { ConvexError, v } from "convex/values"
 import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server"
+import { Doc } from "../_generated/dataModel"
 
 const getOrganizationIdentity = async (ctx: QueryCtx) => {
   const identity = await ctx.auth.getUserIdentity()
@@ -44,6 +45,31 @@ const getOrganizationIdentityForMutation = async (ctx: MutationCtx) => {
   }
 
   return { identity, orgId }
+}
+
+const withLinkedHandoffStatus = async (
+  ctx: QueryCtx,
+  conversation: Doc<"aiVoiceConversations">,
+  orgId: string
+) => {
+  if (!conversation.linkedConversationId) {
+    return conversation
+  }
+
+  const linkedConversation = await ctx.db.get(conversation.linkedConversationId)
+
+  if (!linkedConversation || linkedConversation.organizationId !== orgId) {
+    return conversation
+  }
+
+  return {
+    ...conversation,
+    status: linkedConversation.status,
+    escalatedAt: linkedConversation.escalatedAt ?? conversation.escalatedAt,
+    resolvedAt: linkedConversation.resolvedAt ?? conversation.resolvedAt,
+    resolutionSource:
+      linkedConversation.resolutionSource ?? conversation.resolutionSource,
+  }
 }
 
 export const getUnreadSummary = query({
@@ -142,10 +168,15 @@ export const getMany = query({
 
     const page = await Promise.all(
       conversations.page.map(async (conversation) => {
+        const syncedConversation = await withLinkedHandoffStatus(
+          ctx,
+          conversation,
+          orgId
+        )
         const contactSession = await ctx.db.get(conversation.contactSessionId)
 
         return {
-          ...conversation,
+          ...syncedConversation,
           contactSession,
         }
       })
@@ -181,10 +212,15 @@ export const getOne = query({
       })
     }
 
+    const syncedConversation = await withLinkedHandoffStatus(
+      ctx,
+      conversation,
+      orgId
+    )
     const contactSession = await ctx.db.get(conversation.contactSessionId)
 
     return {
-      ...conversation,
+      ...syncedConversation,
       contactSession,
     }
   },
