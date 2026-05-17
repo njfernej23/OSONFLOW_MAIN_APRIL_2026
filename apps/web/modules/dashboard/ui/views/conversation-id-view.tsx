@@ -51,6 +51,7 @@ import { Form, FormField } from "@workspace/ui/components/form"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { ConversationStatusButton } from "../components/conversation-status-button"
+import { useConversationContactDocked } from "../hooks/use-conversation-contact-docked"
 import { useEffect, useMemo, useState } from "react"
 import { cn } from "@workspace/ui/lib/utils"
 import { Skeleton } from "@workspace/ui/components/skeleton"
@@ -120,6 +121,7 @@ export const ConversationIdView = ({
 }) => {
   const { userId } = useAuth()
   const isMobile = useIsMobile()
+  const isContactDocked = useConversationContactDocked()
   const router = useRouter()
 
   const conversation = useQuery(api.private.conversations.getOne, {
@@ -445,6 +447,7 @@ export const ConversationIdView = ({
   }
 
   const isAssignedToMe = !!userId && conversation.assignedToId === userId
+  const canOpenContactPanel = !isContactDocked
   const assignmentLabel = !conversation.assignedToId
     ? "Unassigned"
     : isAssignedToMe
@@ -453,7 +456,7 @@ export const ConversationIdView = ({
 
   return (
     <div className="flex h-full flex-col bg-transparent">
-      <header className="surface-frosted sticky top-3 z-10 mx-3 mt-3 flex items-center justify-between gap-2 rounded-[28px] px-3 py-2.5">
+      <header className="surface-frosted sticky top-2 z-10 mx-1.5 mt-2 flex items-center justify-between gap-2 rounded-[28px] px-3 py-2.5">
         {/* Back button on mobile */}
         {isMobile && (
           <Button
@@ -467,12 +470,13 @@ export const ConversationIdView = ({
         )}
         {/* Contact identity */}
         <button
-          aria-label={isMobile ? "Open contact details" : undefined}
+          aria-label={canOpenContactPanel ? "Open contact details" : undefined}
           className={cn(
             "flex min-w-0 flex-1 appearance-none items-center gap-2.5 border-0 bg-transparent p-0 text-left",
-            isMobile && "rounded-lg transition-colors active:bg-muted/70"
+            canOpenContactPanel &&
+              "rounded-lg transition-colors hover:text-foreground active:bg-muted/70"
           )}
-          disabled={!isMobile}
+          disabled={!canOpenContactPanel}
           onClick={() => setIsContactPanelOpen(true)}
           type="button"
         >
@@ -493,7 +497,7 @@ export const ConversationIdView = ({
 
         {/* Actions */}
         <div className="flex shrink-0 items-center gap-1.5">
-          {isMobile && (
+          {canOpenContactPanel && (
             <Button
               variant="ghost"
               size="sm"
@@ -574,7 +578,7 @@ export const ConversationIdView = ({
         </SheetContent>
       </Sheet>
 
-      <AIConversation className="min-h-0 flex-1 px-3 pt-3 pb-3">
+      <AIConversation className="min-h-0 flex-1 px-1.5 pt-2 pb-2">
         <ScrollToLatestOnSignal signal={operatorScrollSignal} />
         <AIConversationContent className="surface-panel rounded-[30px] border-0 px-3 py-3 shadow-none">
           <InfiniteScrollTrigger
@@ -603,7 +607,7 @@ export const ConversationIdView = ({
         </AIConversationContent>
         <AIConversationScrollButton />
       </AIConversation>
-      <div className="mx-3 mb-3">
+      <div className="mx-1.5 mb-2">
         <Form {...form}>
           <AIInput
             className="surface-frosted rounded-[28px] border-0 shadow-none transition-shadow duration-200 focus-within:ring-2 focus-within:ring-primary/20"

@@ -40,25 +40,26 @@ export const ConversationsLayout = ({
 
   return (
     <ResizablePanelGroup
-      className="h-full min-h-0 flex-1 gap-3 px-3 pt-3 pb-3"
+      className="h-full min-h-0 flex-1 gap-1.5 px-2 py-2"
       orientation="horizontal"
     >
       <ResizablePanel
         id="conversations-sidebar"
-        defaultSize={320}
-        minSize={260}
-        maxSize={520}
+        defaultSize={304}
+        minSize={280}
+        maxSize={420}
+        groupResizeBehavior="preserve-pixel-size"
         className="flex min-w-0 flex-col"
       >
         <ConversationsPanel />
       </ResizablePanel>
       <ResizableHandle
         withHandle
-        className="w-0 bg-transparent [&>div]:h-12 [&>div]:w-4 [&>div]:rounded-full [&>div]:border-border/70 [&>div]:bg-background/92 [&>div]:shadow-sm"
+        className="w-0 bg-transparent [&>div]:h-10 [&>div]:w-3.5 [&>div]:rounded-full [&>div]:border-border/70 [&>div]:bg-background/92 [&>div]:shadow-sm"
       />
       <ResizablePanel
         id="conversations-content"
-        defaultSize={900}
+        defaultSize="100%"
         minSize={420}
         className="flex min-h-0 min-w-0 flex-col"
       >
