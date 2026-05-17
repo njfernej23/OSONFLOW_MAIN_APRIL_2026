@@ -8,6 +8,10 @@
   cursor: pointer;
 }
 
+button[data-sidebar="rail"] {
+  cursor: col-resize;
+}
+
 :where(
   button:disabled,
   button[aria-disabled="true"],
