@@ -50,6 +50,32 @@ const extractAgentMessageText = (message: any) => {
   return ""
 }
 
+const getAgentMessageRole = (message: any): string => {
+  const role = message?.message?.role ?? message?.role
+
+  return typeof role === "string" ? role : "assistant"
+}
+
+const getAgentMessageCreatedAt = (message: any): number | null => {
+  const createdAt = message?._creationTime ?? message?.createdAt
+
+  return typeof createdAt === "number" ? createdAt : null
+}
+
+const getAgentMessageOrder = (message: any): number | null => {
+  const order = message?.order
+
+  return typeof order === "number" ? order : null
+}
+
+const getAgentMessageId = (message: any, fallbackIndex: number): string => {
+  const id = message?._id ?? message?.id ?? message?.order
+
+  return typeof id === "string" || typeof id === "number"
+    ? String(id)
+    : `message-${fallbackIndex}`
+}
+
 const getLatestAssistantMessage = async (ctx: any, threadId: string) => {
   const messages = await supportAgent.listMessages(ctx, {
     threadId,
@@ -578,5 +604,91 @@ export const getMany = query({
     })
 
     return paginated
+  },
+})
+
+export const getConversationExport = query({
+  args: {
+    conversationId: v.id("conversations"),
+    contactSessionId: v.id("contactSessions"),
+  },
+  handler: async (ctx, args) => {
+    const contactSession = await ctx.db.get(args.contactSessionId)
+    if (!contactSession || contactSession.expiresAt < Date.now()) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Invalid session",
+      })
+    }
+
+    const conversation = await ctx.db.get(args.conversationId)
+    if (!conversation) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "Conversation not found",
+      })
+    }
+
+    if (conversation.contactSessionId !== contactSession._id) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Invalid conversation",
+      })
+    }
+
+    const pageSize = 100
+    const maxMessages = 1000
+    let cursor: string | null = null
+    let isDone = false
+    const messages: any[] = []
+
+    while (!isDone && messages.length < maxMessages) {
+      const page = await supportAgent.listMessages(ctx, {
+        threadId: conversation.threadId,
+        paginationOpts: { numItems: pageSize, cursor },
+      })
+
+      messages.push(...page.page)
+      isDone = page.isDone
+      cursor = page.continueCursor
+
+      if (!cursor) {
+        break
+      }
+    }
+
+    const exportMessages = messages.slice(0, maxMessages)
+    const normalizedMessages = exportMessages
+      .map((message, index) => ({
+        id: getAgentMessageId(message, index),
+        role: getAgentMessageRole(message),
+        text: extractAgentMessageText(message),
+        createdAt: getAgentMessageCreatedAt(message),
+        order: getAgentMessageOrder(message),
+        fetchedIndex: index,
+      }))
+      .filter((message) => message.text.length > 0)
+      .sort((a, b) => {
+        if (a.order !== null && b.order !== null) {
+          return a.order - b.order
+        }
+
+        if (a.createdAt !== null && b.createdAt !== null) {
+          return a.createdAt - b.createdAt
+        }
+
+        return b.fetchedIndex - a.fetchedIndex
+      })
+      .map(
+        ({ fetchedIndex: _fetchedIndex, order: _order, ...message }) => message
+      )
+
+    return {
+      conversationId: conversation._id,
+      status: conversation.status,
+      exportedAt: Date.now(),
+      truncated: !isDone || messages.length > maxMessages,
+      messages: normalizedMessages,
+    }
   },
 })

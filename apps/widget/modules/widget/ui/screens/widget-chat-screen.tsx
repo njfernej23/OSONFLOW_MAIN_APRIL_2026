@@ -7,7 +7,7 @@ import { useThreadMessages, toUIMessages } from "@convex-dev/agent/react"
 import { WidgetHeader } from "@/modules/widget/ui/components/widget-header"
 import { Button } from "@workspace/ui/components/button"
 import { useAtomValue, useSetAtom } from "jotai"
-import { ArrowLeftIcon, MenuIcon } from "lucide-react"
+import { ArrowLeftIcon, DownloadIcon } from "lucide-react"
 import {
   chatReturnScreenAtom,
   contactSessionIdAtomFamily,
@@ -50,6 +50,73 @@ import { mergeWidgetTheme } from "@workspace/ui/lib/widget-customization"
 const formSchema = z.object({
   message: z.string().min(1, "Message is required"),
 })
+
+type ChatHistoryMessage = {
+  id: string
+  role: string
+  text: string
+  createdAt: number | null
+}
+
+type ChatHistoryExport = {
+  conversationId: string
+  exportedAt: number
+  truncated: boolean
+  messages: ChatHistoryMessage[]
+}
+
+const formatChatHistoryTimestamp = (timestamp: number | null) => {
+  if (!timestamp) {
+    return "Unknown time"
+  }
+
+  return new Date(timestamp).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  })
+}
+
+const getChatHistoryRoleLabel = (role: string, assistantName: string) => {
+  if (role === "user") {
+    return "You"
+  }
+
+  if (role === "assistant") {
+    return assistantName || "Assistant"
+  }
+
+  return role.charAt(0).toUpperCase() + role.slice(1)
+}
+
+const buildChatHistoryText = ({
+  assistantName,
+  exportData,
+}: {
+  assistantName: string
+  exportData: ChatHistoryExport
+}) => {
+  const headerLines = [
+    "Chat history",
+    `Assistant: ${assistantName || "Assistant"}`,
+    `Conversation ID: ${exportData.conversationId}`,
+    `Exported: ${formatChatHistoryTimestamp(exportData.exportedAt)}`,
+    exportData.truncated
+      ? "Note: This export includes the newest 1,000 messages."
+      : null,
+    "",
+  ].filter((line): line is string => line !== null)
+
+  const messageLines = exportData.messages.flatMap((message) => [
+    `[${formatChatHistoryTimestamp(message.createdAt)}] ${getChatHistoryRoleLabel(
+      message.role,
+      assistantName
+    )}:`,
+    message.text,
+    "",
+  ])
+
+  return `${[...headerLines, ...messageLines].join("\n").trimEnd()}\n`
+}
 
 const AssistantLoadingBubble = ({ logoUrl }: { logoUrl?: string }) => {
   return (
@@ -120,6 +187,15 @@ export const WidgetChatScreen = () => {
         }
       : "skip"
   )
+  const chatHistoryExport = useQuery(
+    api.public.messages.getConversationExport,
+    conversationId && contactSessionId
+      ? {
+          conversationId,
+          contactSessionId,
+        }
+      : "skip"
+  ) as ChatHistoryExport | undefined
 
   const messages = useThreadMessages(
     api.public.messages.getMany,
@@ -237,6 +313,35 @@ export const WidgetChatScreen = () => {
     }
   }
 
+  const onDownloadChatHistory = () => {
+    if (!chatHistoryExport || chatHistoryExport.messages.length === 0) {
+      return
+    }
+
+    const fileContent = buildChatHistoryText({
+      assistantName: theme.assistantName,
+      exportData: chatHistoryExport,
+    })
+    const blob = new Blob([fileContent], {
+      type: "text/plain;charset=utf-8",
+    })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    const safeConversationId = chatHistoryExport.conversationId.replace(
+      /[^a-zA-Z0-9_-]/g,
+      ""
+    )
+
+    link.href = url
+    link.download = `chat-history-${safeConversationId}-${new Date()
+      .toISOString()
+      .slice(0, 10)}.txt`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 0)
+  }
+
   useEffect(() => {
     if (!conversationId || !contactSessionId || !conversation) {
       return
@@ -268,8 +373,17 @@ export const WidgetChatScreen = () => {
           ) : null}
           <p>{theme.assistantName}</p>
         </div>
-        <Button size="icon" variant="transparent">
-          <MenuIcon />
+        <Button
+          aria-label="Download chat history"
+          disabled={
+            !chatHistoryExport || chatHistoryExport.messages.length === 0
+          }
+          onClick={onDownloadChatHistory}
+          size="icon"
+          title="Download chat history"
+          variant="transparent"
+        >
+          <DownloadIcon />
         </Button>
       </WidgetHeader>
       <AIConversation>
