@@ -25,17 +25,7 @@ import {
   AI_CONVERSATION_STATUS_LABELS,
 } from "../../constants"
 
-type ProviderFilterValue = "all" | "openai_realtime" | "gemini_live"
 type SessionFilterValue = "all" | "live" | "ended"
-
-const PROVIDER_FILTER_OPTIONS: Array<{
-  label: string
-  value: ProviderFilterValue
-}> = [
-  { label: "All", value: "all" },
-  { label: "OpenAI", value: "openai_realtime" },
-  { label: "Gemini", value: "gemini_live" },
-]
 
 const SESSION_FILTER_OPTIONS: Array<{
   label: string
@@ -97,21 +87,19 @@ const formatConversationDayLabel = (timestamp: number) => {
 
 export const AIConversationsPanel = () => {
   const [searchQuery, setSearchQuery] = useState("")
-  const [providerFilter, setProviderFilter] =
-    useState<ProviderFilterValue>("all")
   const [sessionFilter, setSessionFilter] = useState<SessionFilterValue>("all")
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const pathname = usePathname()
   const router = useRouter()
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
 
   const conversations = usePaginatedQuery(
     api.private.aiConversations.getMany,
-    {},
+    { searchQuery: normalizedSearchQuery || undefined },
     { initialNumItems: 12 }
   )
 
-  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
   const summary = useMemo(() => {
     const items = conversations.results
 
@@ -122,39 +110,8 @@ export const AIConversationsPanel = () => {
     }
   }, [conversations.results])
 
-  const providerCounts = useMemo(() => {
-    const items = conversations.results
-
-    return {
-      all: items.length,
-      openai_realtime: items.filter(
-        (conversation) => conversation.provider === "openai_realtime"
-      ).length,
-      gemini_live: items.filter(
-        (conversation) => conversation.provider === "gemini_live"
-      ).length,
-    } satisfies Record<ProviderFilterValue, number>
-  }, [conversations.results])
-
-  const sessionCounts = useMemo(() => {
-    const items = conversations.results
-
-    return {
-      all: items.length,
-      live: items.filter((conversation) => !conversation.endedAt).length,
-      ended: items.filter((conversation) => conversation.endedAt).length,
-    } satisfies Record<SessionFilterValue, number>
-  }, [conversations.results])
-
   const filteredConversations = useMemo(() => {
     return conversations.results.filter((conversation) => {
-      if (
-        providerFilter !== "all" &&
-        conversation.provider !== providerFilter
-      ) {
-        return false
-      }
-
       if (sessionFilter === "live" && conversation.endedAt) {
         return false
       }
@@ -163,29 +120,9 @@ export const AIConversationsPanel = () => {
         return false
       }
 
-      if (!normalizedSearchQuery) {
-        return true
-      }
-
-      const searchableText = [
-        conversation.contactSession?.name,
-        conversation.contactSession?.email,
-        conversation.lastMessagePreview,
-        AI_CONVERSATION_PROVIDER_LABELS[conversation.provider],
-        conversation.endedAt ? "ended" : "live",
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-
-      return searchableText.includes(normalizedSearchQuery)
+      return true
     })
-  }, [
-    conversations.results,
-    normalizedSearchQuery,
-    providerFilter,
-    sessionFilter,
-  ])
+  }, [conversations.results, sessionFilter])
 
   const groupedConversations = useMemo(() => {
     const groups = new Map<string, typeof filteredConversations>()
@@ -209,7 +146,7 @@ export const AIConversationsPanel = () => {
 
   const firstMatchingConversation = filteredConversations[0]
   const hasSearchResults = filteredConversations.length > 0
-  const hasActiveFilters = providerFilter !== "all" || sessionFilter !== "all"
+  const hasActiveFilters = sessionFilter !== "all"
 
   const {
     topElementRef,
@@ -324,100 +261,26 @@ export const AIConversationsPanel = () => {
           </div>
         </div>
 
-        <div className="mt-3 rounded-2xl border border-sidebar-border/70 bg-sidebar/58 p-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-semibold tracking-[0.1em] text-sidebar-foreground/50 uppercase">
-              Provider
-            </span>
-            {hasActiveFilters || normalizedSearchQuery ? (
+        <div className="-mx-0.5 mt-3 flex gap-1 overflow-x-auto px-0.5 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {SESSION_FILTER_OPTIONS.map((option) => {
+            const isActive = sessionFilter === option.value
+
+            return (
               <button
-                className="text-[10px] font-medium text-sidebar-primary hover:text-sidebar-primary/80"
-                onClick={() => {
-                  setSearchQuery("")
-                  setProviderFilter("all")
-                  setSessionFilter("all")
-                }}
+                key={option.value}
+                onClick={() => setSessionFilter(option.value)}
                 type="button"
+                className={cn(
+                  "flex shrink-0 items-center rounded-full px-2.5 py-1 text-[11px] font-medium transition-all duration-150",
+                  isActive
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-[0_14px_28px_-20px_color-mix(in_srgb,var(--sidebar-primary)_70%,transparent)]"
+                    : "bg-sidebar-accent/82 text-sidebar-foreground/72 hover:bg-sidebar-accent/94 hover:text-sidebar-accent-foreground"
+                )}
               >
-                Reset
+                {option.label}
               </button>
-            ) : null}
-          </div>
-
-          <div className="mt-2 grid grid-cols-3 gap-1">
-            {PROVIDER_FILTER_OPTIONS.map((option) => {
-              const isActive = providerFilter === option.value
-
-              return (
-                <button
-                  key={option.value}
-                  onClick={() => setProviderFilter(option.value)}
-                  type="button"
-                  className={cn(
-                    "flex min-w-0 flex-col items-start rounded-lg border px-2.5 py-2 text-left transition-colors",
-                    isActive
-                      ? "border-sidebar-primary/30 bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                      : "border-transparent bg-sidebar-accent/70 text-sidebar-foreground/72 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  )}
-                >
-                  <span className="truncate text-[11px] font-semibold">
-                    {option.label}
-                  </span>
-                  <span
-                    className={cn(
-                      "mt-0.5 text-[10px] tabular-nums",
-                      isActive
-                        ? "text-sidebar-primary-foreground/74"
-                        : "text-sidebar-foreground/46"
-                    )}
-                  >
-                    {providerCounts[option.value]}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <span className="text-[10px] font-semibold tracking-[0.1em] text-sidebar-foreground/50 uppercase">
-              Session
-            </span>
-            <span className="text-[10px] text-sidebar-foreground/44">
-              {summary.ended} ended
-            </span>
-          </div>
-
-          <div className="mt-2 grid grid-cols-3 gap-1">
-            {SESSION_FILTER_OPTIONS.map((option) => {
-              const isActive = sessionFilter === option.value
-
-              return (
-                <button
-                  key={option.value}
-                  onClick={() => setSessionFilter(option.value)}
-                  type="button"
-                  className={cn(
-                    "flex min-w-0 items-center justify-between gap-1 rounded-lg border px-2.5 py-2 text-left text-[11px] font-semibold transition-colors",
-                    isActive
-                      ? "border-sidebar-primary/30 bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                      : "border-transparent bg-sidebar-accent/70 text-sidebar-foreground/72 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  )}
-                >
-                  <span className="truncate">{option.label}</span>
-                  <span
-                    className={cn(
-                      "text-[10px] tabular-nums",
-                      isActive
-                        ? "text-sidebar-primary-foreground/74"
-                        : "text-sidebar-foreground/46"
-                    )}
-                  >
-                    {sessionCounts[option.value]}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
+            )
+          })}
         </div>
       </div>
 
@@ -458,7 +321,6 @@ export const AIConversationsPanel = () => {
                 <Button
                   onClick={() => {
                     setSearchQuery("")
-                    setProviderFilter("all")
                     setSessionFilter("all")
                   }}
                   size="sm"
@@ -565,7 +427,8 @@ export const AIConversationsPanel = () => {
 
                                 <p className="mt-2 line-clamp-2 text-[12px] leading-relaxed text-sidebar-foreground/62">
                                   {highlightMatch(
-                                    conversation.lastMessagePreview,
+                                    conversation.searchMatchPreview ??
+                                      conversation.lastMessagePreview,
                                     normalizedSearchQuery
                                   )}
                                 </p>

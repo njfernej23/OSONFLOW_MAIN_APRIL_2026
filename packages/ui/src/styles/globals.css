@@ -253,6 +253,11 @@
     color: var(--foreground);
   }
 
+  .dark ::selection {
+    background: color-mix(in srgb, var(--primary) 52%, black);
+    color: var(--foreground);
+  }
+
   *::-webkit-scrollbar {
     width: 10px;
     height: 10px;

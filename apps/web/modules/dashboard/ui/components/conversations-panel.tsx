@@ -30,7 +30,7 @@ import {
 import { usePaginatedQuery } from "convex/react"
 import Link from "next/link"
 import { useAtomValue, useSetAtom } from "jotai/react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { assignmentFilterAtom, statusFilterAtom } from "../../atoms"
 
 type CombinedFilterValue =
@@ -114,39 +114,19 @@ export const ConversationsPanel = () => {
 
   const pathname = usePathname()
   const router = useRouter()
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
 
   const conversations = usePaginatedQuery(
     api.private.conversations.getMany,
     {
       status: statusFilter === "all" ? undefined : statusFilter,
       assignmentFilter,
+      searchQuery: normalizedSearchQuery || undefined,
     },
     { initialNumItems: 10 }
   )
 
-  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
-
-  const filteredConversations = useMemo(() => {
-    if (!normalizedSearchQuery) {
-      return conversations.results
-    }
-
-    return conversations.results.filter((conversation) => {
-      const searchableText = [
-        conversation.contactSession.name,
-        conversation.contactSession.email,
-        conversation.lastMessage?.text,
-        conversation.assignedToName,
-        conversation.assignedToId === userId ? "assigned to me" : undefined,
-        conversation.status,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-
-      return searchableText.includes(normalizedSearchQuery)
-    })
-  }, [conversations.results, normalizedSearchQuery, userId])
+  const filteredConversations = conversations.results
 
   const firstMatchingConversation = filteredConversations[0]
   const hasSearchResults = filteredConversations.length > 0
@@ -432,7 +412,8 @@ export const ConversationsPanel = () => {
                             )}
                           >
                             {highlightMatch(
-                              conversation.lastMessage?.text,
+                              conversation.searchMatchPreview ??
+                                conversation.lastMessage?.text,
                               normalizedSearchQuery
                             )}
                           </span>
