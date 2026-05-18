@@ -113,8 +113,7 @@ const createHtmlSnippet = ({
     organizationId,
     scriptUrl,
     position,
-}: IntegrationSnippetOptions) => `<!-- Echo support widget -->
-<script
+}: IntegrationSnippetOptions) => `<script
   src="${scriptUrl}"
   data-organization-id="${organizationId}"
   data-position="${position}"
