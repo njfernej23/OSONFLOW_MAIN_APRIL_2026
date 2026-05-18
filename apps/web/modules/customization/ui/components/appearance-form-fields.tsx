@@ -1,5 +1,7 @@
 import { type ChangeEvent, type ReactNode, useRef } from "react"
 import { UseFormReturn } from "react-hook-form"
+import { useMutation } from "convex/react"
+import { api } from "@workspace/backend/_generated/api"
 import {
   ArrowUpIcon,
   CircleHelpIcon,
@@ -26,7 +28,7 @@ import { toast } from "sonner"
 import type { WidgetAnimation } from "@workspace/ui/lib/widget-customization"
 import { FormSchema } from "../../types"
 import { ColorFormField } from "./color-form-field"
-import { IMAGE_UPLOAD_ACCEPT, readImageAsDataUrl } from "./image-upload-utils"
+import { IMAGE_UPLOAD_ACCEPT, uploadImageFile } from "./image-upload-utils"
 
 interface AppearanceFormFieldsProps {
   form: UseFormReturn<FormSchema>
@@ -78,6 +80,12 @@ const animationOptions: Array<{
 ]
 
 export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
+  const generateImageUploadUrl = useMutation(
+    api.private.widgetSettings.generateImageUploadUrl
+  )
+  const getUploadedImageUrl = useMutation(
+    api.private.widgetSettings.getUploadedImageUrl
+  )
   const launcherUploadInputRef = useRef<HTMLInputElement>(null)
   const hasLauncherImage = Boolean(
     form.watch("appearance.launcherIconUrl")?.trim()
@@ -94,8 +102,12 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
     }
 
     try {
-      const dataUrl = await readImageAsDataUrl(file)
-      form.setValue("appearance.launcherIconUrl", dataUrl, {
+      const imageUrl = await uploadImageFile(
+        file,
+        generateImageUploadUrl,
+        getUploadedImageUrl
+      )
+      form.setValue("appearance.launcherIconUrl", imageUrl, {
         shouldDirty: true,
         shouldValidate: true,
       })
@@ -206,7 +218,8 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
               </div>
             </FormControl>
             <FormDescription className="text-xs">
-              Upload an image from your device. Label text is hidden when an image is set.
+              Upload an image from your device, up to 5MB. Label text is hidden
+              when an image is set.
             </FormDescription>
             <FormMessage />
           </FormItem>

@@ -24,6 +24,9 @@ const includesSearchQuery = (
   normalizedQuery: string
 ) => value?.toLowerCase().includes(normalizedQuery) ?? false
 
+const shouldShowInActiveQueue = (conversation: Doc<"conversations">) =>
+  conversation.status !== "resolved"
+
 const getSearchSnippet = (
   value: string | undefined,
   normalizedQuery: string
@@ -605,6 +608,10 @@ export const getMany = query({
     )
 
     const filteredConversations = validConversations.filter((conversation) => {
+      if (!args.status && !shouldShowInActiveQueue(conversation)) {
+        return false
+      }
+
       if (assignmentFilter === "unassigned" && conversation.assignedToId) {
         return false
       }

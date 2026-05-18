@@ -36,6 +36,9 @@ import { useHelpTopics, useHomeHelpCards } from "../../hooks/use-help-articles"
 const toCssImageUrl = (url: string) => url.replaceAll('"', "%22")
 const DEFAULT_WIDGET_HEIGHT = 600
 const HELP_HOME_WIDGET_HEIGHT = 680
+const EMPTY_HOME_BACKGROUND_HEIGHT = DEFAULT_WIDGET_HEIGHT / 2
+const homeActionButtonClassName =
+  "flex min-h-14 w-full items-center justify-between rounded-[16px] border border-white/70 bg-white/72 px-4 py-3.5 text-left text-sm font-semibold shadow-[0_8px_24px_-22px_rgba(15,23,42,0.34)] transition-[background-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:bg-white/88 hover:shadow-[0_12px_28px_-24px_rgba(15,23,42,0.42)] active:translate-y-0"
 
 export const WidgetSelectionScreen = () => {
   const setScreen = useSetAtom(screenAtom)
@@ -137,11 +140,13 @@ export const WidgetSelectionScreen = () => {
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
         <div
           aria-hidden="true"
-          className={cn(
-            "pointer-events-none absolute inset-x-0 top-0",
-            hasHomeHelpCards ? "h-[320px]" : "h-[250px]"
-          )}
-          style={backgroundStyle}
+          className="pointer-events-none absolute inset-x-0 top-0"
+          style={{
+            ...backgroundStyle,
+            height: hasHomeHelpCards
+              ? 320
+              : EMPTY_HOME_BACKGROUND_HEIGHT,
+          }}
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_34%)]" />
         </div>
@@ -161,10 +166,10 @@ export const WidgetSelectionScreen = () => {
           style={scrollFadeStyle}
         >
           <section
-            className={cn(
-              "relative flex flex-col overflow-hidden px-6 pt-6 pb-8 text-white",
-              hasHomeHelpCards ? "min-h-[284px]" : "min-h-[230px]"
-            )}
+            className="relative flex flex-col overflow-hidden px-6 pt-6 pb-8 text-white"
+            style={{
+              minHeight: hasHomeHelpCards ? 284 : EMPTY_HOME_BACKGROUND_HEIGHT,
+            }}
           >
             <div className="relative flex items-start justify-between gap-3 pr-12">
               <div className="min-w-0">
@@ -225,7 +230,7 @@ export const WidgetSelectionScreen = () => {
 
             {hasHelpContent ? (
               <button
-                className="flex min-h-14 w-full items-center justify-between rounded-[16px] border border-black/5 bg-white px-4 py-3.5 text-left text-sm font-semibold text-zinc-600 shadow-[0_10px_28px_-24px_rgba(15,23,42,0.52)] transition hover:-translate-y-0.5"
+                className={cn(homeActionButtonClassName, "text-zinc-600")}
                 disabled={isPending}
                 onClick={openHelpSearch}
                 type="button"
@@ -238,7 +243,7 @@ export const WidgetSelectionScreen = () => {
             ) : null}
 
             <button
-              className="flex min-h-14 w-full items-center justify-between rounded-[16px] border border-black/5 bg-white px-4 py-3.5 text-left text-sm font-semibold shadow-[0_10px_28px_-24px_rgba(15,23,42,0.52)] transition hover:-translate-y-0.5"
+              className={homeActionButtonClassName}
               disabled={isPending}
               onClick={() => startConversation({ returnScreen: "selection" })}
               type="button"
@@ -303,7 +308,7 @@ const ActionCard = ({
 }) => (
   <button
     className={cn(
-      "flex min-h-14 w-full items-center justify-between rounded-[16px] border border-black/5 bg-white px-4 py-3.5 text-left text-sm font-semibold shadow-[0_10px_28px_-24px_rgba(15,23,42,0.52)] transition hover:-translate-y-0.5",
+      homeActionButtonClassName,
       disabled && "cursor-not-allowed opacity-60"
     )}
     disabled={disabled}

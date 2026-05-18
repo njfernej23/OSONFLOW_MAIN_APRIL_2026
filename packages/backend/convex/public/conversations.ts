@@ -209,7 +209,8 @@ export const create = mutation({
 
     await enforceRateLimit(ctx, "widgetConversationCreateBySession", {
       key: `${args.organizationId}:${args.contactSessionId}`,
-      message: "Too many conversations started. Please wait before starting another chat.",
+      message:
+        "Too many conversations started. Please wait before starting another chat.",
     })
 
     // This refreshes the user's session if they are within the threshold

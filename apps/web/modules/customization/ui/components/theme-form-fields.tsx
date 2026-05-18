@@ -1,5 +1,7 @@
 import { type ChangeEvent, useRef } from "react"
 import { UseFormReturn } from "react-hook-form"
+import { useMutation } from "convex/react"
+import { api } from "@workspace/backend/_generated/api"
 import {
   ImageIcon,
   PaletteIcon,
@@ -20,7 +22,7 @@ import { Button } from "@workspace/ui/components/button"
 import { toast } from "sonner"
 import { FormSchema } from "../../types"
 import { ColorFormField } from "./color-form-field"
-import { IMAGE_UPLOAD_ACCEPT, readImageAsDataUrl } from "./image-upload-utils"
+import { IMAGE_UPLOAD_ACCEPT, uploadImageFile } from "./image-upload-utils"
 
 interface ThemeFormFieldsProps {
   form: UseFormReturn<FormSchema>
@@ -47,6 +49,12 @@ const SectionHeader = ({
 )
 
 export const ThemeFormFields = ({ form }: ThemeFormFieldsProps) => {
+  const generateImageUploadUrl = useMutation(
+    api.private.widgetSettings.generateImageUploadUrl
+  )
+  const getUploadedImageUrl = useMutation(
+    api.private.widgetSettings.getUploadedImageUrl
+  )
   const logoUploadInputRef = useRef<HTMLInputElement>(null)
   const backgroundUploadInputRef = useRef<HTMLInputElement>(null)
 
@@ -59,8 +67,12 @@ export const ThemeFormFields = ({ form }: ThemeFormFieldsProps) => {
     }
 
     try {
-      const dataUrl = await readImageAsDataUrl(file)
-      form.setValue("theme.logoUrl", dataUrl, {
+      const imageUrl = await uploadImageFile(
+        file,
+        generateImageUploadUrl,
+        getUploadedImageUrl
+      )
+      form.setValue("theme.logoUrl", imageUrl, {
         shouldDirty: true,
         shouldValidate: true,
       })
@@ -83,8 +95,12 @@ export const ThemeFormFields = ({ form }: ThemeFormFieldsProps) => {
     }
 
     try {
-      const dataUrl = await readImageAsDataUrl(file)
-      form.setValue("theme.backgroundImageUrl", dataUrl, {
+      const imageUrl = await uploadImageFile(
+        file,
+        generateImageUploadUrl,
+        getUploadedImageUrl
+      )
+      form.setValue("theme.backgroundImageUrl", imageUrl, {
         shouldDirty: true,
         shouldValidate: true,
       })
@@ -187,7 +203,7 @@ export const ThemeFormFields = ({ form }: ThemeFormFieldsProps) => {
                   </div>
                 </FormControl>
                 <FormDescription className="text-xs">
-                  Upload an image from your device
+                  Upload an image from your device, up to 5MB.
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -260,7 +276,7 @@ export const ThemeFormFields = ({ form }: ThemeFormFieldsProps) => {
                 </div>
               </FormControl>
               <FormDescription className="text-xs">
-                Use a wide image with enough contrast for white text.
+                Use a wide image up to 5MB with enough contrast for white text.
               </FormDescription>
               <FormMessage />
             </FormItem>

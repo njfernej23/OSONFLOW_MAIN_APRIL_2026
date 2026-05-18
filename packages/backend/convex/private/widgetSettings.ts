@@ -25,6 +25,8 @@ const DEFAULT_APPEARANCE = {
   showHelpCenter: true,
 }
 
+const MAX_WIDGET_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
+
 const defaultSuggestionsValidator = v.object({
   suggestion1: v.optional(v.string()),
   suggestion2: v.optional(v.string()),
@@ -804,6 +806,59 @@ export const saveDraft = mutation({
   handler: async (ctx, args) => {
     const { organizationId, actorId } = await getAuthContext(ctx)
     await saveDraftForOrganization(ctx, organizationId, actorId, args)
+  },
+})
+
+export const generateImageUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await getAuthContext(ctx)
+    return await ctx.storage.generateUploadUrl()
+  },
+})
+
+export const getUploadedImageUrl = mutation({
+  args: {
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    await getAuthContext(ctx)
+
+    const metadata = await ctx.db.system.get(args.storageId)
+
+    if (!metadata) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "Uploaded image not found",
+      })
+    }
+
+    if (!metadata.contentType?.startsWith("image/")) {
+      await ctx.storage.delete(args.storageId)
+      throw new ConvexError({
+        code: "INVALID_INPUT",
+        message: "Please select an image file.",
+      })
+    }
+
+    if (metadata.size > MAX_WIDGET_IMAGE_SIZE_BYTES) {
+      await ctx.storage.delete(args.storageId)
+      throw new ConvexError({
+        code: "INVALID_INPUT",
+        message: "Image must be 5MB or smaller.",
+      })
+    }
+
+    const url = await ctx.storage.getUrl(args.storageId)
+
+    if (!url) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "Uploaded image URL is not available",
+      })
+    }
+
+    return { url }
   },
 })
 
