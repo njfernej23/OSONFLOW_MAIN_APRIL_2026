@@ -13,6 +13,14 @@ type WidgetAppearancePayload = {
   animation?: WidgetAnimation
   showPoweredBy?: boolean
 }
+
+const LAUNCHER_EDGE_OFFSET = 20
+const LAUNCHER_BUTTON_SIZE = 52
+const LAUNCHER_BUTTON_GAP = 10
+const LAUNCHER_LABEL_PADDING_X = 14
+const CONTAINER_MAX_HEIGHT_GUTTER =
+  LAUNCHER_EDGE_OFFSET * 2 + LAUNCHER_BUTTON_SIZE + LAUNCHER_BUTTON_GAP
+
 ;(function () {
   let iframe: HTMLIFrameElement | null = null
   let container: HTMLDivElement | null = null
@@ -158,7 +166,7 @@ type WidgetAppearancePayload = {
   }
 
   const getLauncherImageMarkup = (imageUrl: string): string => {
-    return `<img src="${escapeHtml(imageUrl)}" alt="Launcher" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; display: block;" />`
+    return `<img src="${escapeHtml(imageUrl)}" alt="Launcher" style="width: ${LAUNCHER_BUTTON_SIZE}px; height: ${LAUNCHER_BUTTON_SIZE}px; border-radius: 50%; object-fit: cover; display: block;" />`
   }
 
   const applyLauncherAppearance = () => {
@@ -177,8 +185,12 @@ type WidgetAppearancePayload = {
         ? getLauncherImageMarkup(launcherAppearance.launcherIconUrl)
         : getLauncherIconMarkup(launcherAppearance.launcherIcon)
 
-    button.style.width = hasVisibleLabel ? "auto" : "60px"
-    button.style.padding = hasVisibleLabel ? "0 16px" : "0"
+    button.style.width = hasVisibleLabel
+      ? "auto"
+      : `${LAUNCHER_BUTTON_SIZE}px`
+    button.style.padding = hasVisibleLabel
+      ? `0 ${LAUNCHER_LABEL_PADDING_X}px`
+      : "0"
     button.style.borderRadius = hasVisibleLabel ? "9999px" : "50%"
     button.style.justifyContent = hasVisibleLabel ? "flex-start" : "center"
     button.style.background = launcherAppearance.launcherColor
@@ -292,11 +304,15 @@ type WidgetAppearancePayload = {
     button.id = "echo-widget-button"
     button.style.cssText = `
       position: fixed;
-      ${position === "bottom-right" ? "right: 20px;" : "left: 20px;"}
-      bottom: 20px;
+      ${
+        position === "bottom-right"
+          ? `right: ${LAUNCHER_EDGE_OFFSET}px;`
+          : `left: ${LAUNCHER_EDGE_OFFSET}px;`
+      }
+      bottom: ${LAUNCHER_EDGE_OFFSET}px;
       width: auto;
-      min-width: 60px;
-      height: 60px;
+      min-width: ${LAUNCHER_BUTTON_SIZE}px;
+      height: ${LAUNCHER_BUTTON_SIZE}px;
       border-radius: 9999px;
       color: white;
       border: none;
@@ -332,12 +348,16 @@ type WidgetAppearancePayload = {
     container.id = "echo-widget-container"
     container.style.cssText = `
       position: fixed;
-      ${position === "bottom-right" ? "right: 20px;" : "left: 20px;"}
-      bottom: 90px;
+      ${
+        position === "bottom-right"
+          ? `right: ${LAUNCHER_EDGE_OFFSET}px;`
+          : `left: ${LAUNCHER_EDGE_OFFSET}px;`
+      }
+      bottom: ${LAUNCHER_EDGE_OFFSET + LAUNCHER_BUTTON_SIZE + LAUNCHER_BUTTON_GAP}px;
       width: 400px;
       height: 600px;
       max-width: calc(100vw - 40px);
-      max-height: calc(100vh - 110px);
+      max-height: calc(100vh - ${CONTAINER_MAX_HEIGHT_GUTTER}px);
       z-index: 999998;
       border-radius: 16px;
       overflow: hidden;

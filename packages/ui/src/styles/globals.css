@@ -8,68 +8,71 @@
 @source "../**/*.{ts,tsx}";
 
 :root {
-  --background: rgb(247, 249, 252);
-  --foreground: rgb(17, 24, 39);
+  --background: rgb(255, 255, 255);
+  --foreground: rgb(10, 10, 10);
   --card: rgb(255, 255, 255);
-  --card-foreground: rgb(17, 24, 39);
+  --card-foreground: rgb(10, 10, 10);
   --popover: rgb(255, 255, 255);
-  --popover-foreground: rgb(17, 24, 39);
-  --primary: rgb(28, 89, 214);
-  --primary-foreground: rgb(255, 255, 255);
-  --secondary: rgb(238, 242, 247);
-  --secondary-foreground: rgb(31, 41, 55);
-  --muted: rgb(241, 245, 249);
-  --muted-foreground: rgb(100, 116, 139);
-  --accent: rgb(227, 236, 255);
-  --accent-foreground: rgb(28, 89, 214);
-  --destructive: rgb(226, 74, 89);
+  --popover-foreground: rgb(10, 10, 10);
+  --primary: rgb(23, 23, 23);
+  --primary-foreground: rgb(250, 250, 250);
+  --secondary: rgb(245, 245, 245);
+  --secondary-foreground: rgb(23, 23, 23);
+  --muted: rgb(245, 245, 245);
+  --muted-foreground: rgb(115, 115, 115);
+  --accent: rgb(245, 245, 245);
+  --accent-foreground: rgb(23, 23, 23);
+  --destructive: rgb(231, 0, 11);
   --destructive-foreground: rgb(255, 255, 255);
-  --border: rgb(219, 226, 236);
-  --input: rgb(226, 232, 240);
-  --ring: rgb(28, 89, 214);
-  --chart-1: rgb(14, 165, 233);
-  --chart-2: rgb(28, 89, 214);
-  --chart-3: rgb(12, 166, 120);
-  --chart-4: rgb(245, 158, 11);
-  --chart-5: rgb(99, 102, 241);
-  --sidebar: rgb(243, 246, 250);
-  --sidebar-foreground: var(--foreground);
-  --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: rgb(231, 237, 245);
-  --sidebar-accent-foreground: var(--foreground);
-  --sidebar-border: var(--border);
-  --sidebar-ring: var(--ring);
-  --font-sans: Plus Jakarta Sans, sans-serif;
-  --font-serif: Lora, serif;
-  --font-mono: IBM Plex Mono, monospace;
-  --radius: 1.3rem;
-  --shadow-x: 0px;
-  --shadow-y: 12px;
-  --shadow-blur: 40px;
+  --border: rgb(229, 229, 229);
+  --input: rgb(229, 229, 229);
+  --ring: rgb(161, 161, 161);
+  --chart-1: rgb(145, 197, 255);
+  --chart-2: rgb(58, 129, 246);
+  --chart-3: rgb(37, 99, 239);
+  --chart-4: rgb(26, 78, 218);
+  --chart-5: rgb(31, 63, 173);
+  --sidebar: rgb(250, 250, 250);
+  --sidebar-foreground: rgb(10, 10, 10);
+  --sidebar-primary: rgb(23, 23, 23);
+  --sidebar-primary-foreground: rgb(250, 250, 250);
+  --sidebar-accent: rgb(245, 245, 245);
+  --sidebar-accent-foreground: rgb(23, 23, 23);
+  --sidebar-border: rgb(229, 229, 229);
+  --sidebar-ring: rgb(161, 161, 161);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  --radius: 0.625rem;
+  --shadow-x: 0;
+  --shadow-y: 1px;
+  --shadow-blur: 3px;
   --shadow-spread: 0px;
-  --shadow-opacity: 0.12;
-  --shadow-color: hsl(0 0% 0%);
-  --shadow-2xs: 0px 1px 2px 0px hsl(218 30% 18% / 0.04);
-  --shadow-xs: 0px 8px 24px -14px hsl(218 30% 18% / 0.1);
+  --shadow-opacity: 0.1;
+  --shadow-color: oklch(0 0 0);
+  --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+  --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
   --shadow-sm:
-    0px 12px 28px -18px hsl(220 43% 12% / 0.12),
-    0px 3px 10px -6px hsl(220 43% 12% / 0.08);
+    0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 1px 2px -1px hsl(0 0% 0% / 0.1);
   --shadow:
-    0px 16px 36px -22px hsl(220 43% 12% / 0.15),
-    0px 6px 16px -10px hsl(220 43% 12% / 0.08);
+    0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 1px 2px -1px hsl(0 0% 0% / 0.1);
   --shadow-md:
-    0px 24px 54px -28px hsl(220 43% 12% / 0.18),
-    0px 10px 22px -14px hsl(220 43% 12% / 0.1);
+    0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 2px 4px -1px hsl(0 0% 0% / 0.1);
   --shadow-lg:
-    0px 32px 70px -34px hsl(220 43% 12% / 0.18),
-    0px 16px 32px -18px hsl(220 43% 12% / 0.12);
+    0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 4px 6px -1px hsl(0 0% 0% / 0.1);
   --shadow-xl:
-    0px 42px 80px -38px hsl(220 43% 12% / 0.22),
-    0px 22px 42px -22px hsl(220 43% 12% / 0.14);
-  --shadow-2xl: 0px 48px 96px -46px hsl(220 43% 12% / 0.26);
-  --tracking-normal: -0.025em;
-  --spacing: 0.27rem;
+    0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 8px 10px -1px hsl(0 0% 0% / 0.1);
+  --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
   --surface-highlight: rgba(255, 255, 255, 0.85);
   --surface-shadow: rgba(15, 23, 42, 0.08);
   --motion-snappy: cubic-bezier(0.22, 1, 0.36, 1);
@@ -77,66 +80,69 @@
 }
 
 .dark {
-  --background: rgb(11, 18, 32);
-  --foreground: rgb(236, 240, 248);
-  --card: rgb(16, 24, 40);
-  --card-foreground: rgb(236, 240, 248);
-  --popover: rgb(16, 24, 40);
-  --popover-foreground: rgb(236, 240, 248);
-  --primary: rgb(95, 145, 255);
-  --primary-foreground: rgb(255, 255, 255);
-  --secondary: rgb(21, 31, 50);
-  --secondary-foreground: rgb(236, 240, 248);
-  --muted: rgb(19, 29, 48);
-  --muted-foreground: rgb(145, 158, 182);
-  --accent: rgb(19, 40, 76);
-  --accent-foreground: rgb(151, 188, 255);
-  --destructive: rgb(248, 113, 113);
-  --destructive-foreground: rgb(255, 255, 255);
-  --border: rgb(37, 51, 76);
-  --input: rgb(30, 41, 59);
-  --ring: rgb(95, 145, 255);
-  --chart-1: rgb(74, 222, 128);
-  --chart-2: rgb(95, 145, 255);
-  --chart-3: rgb(56, 189, 248);
-  --chart-4: rgb(251, 191, 36);
-  --chart-5: rgb(129, 140, 248);
-  --sidebar: rgb(8, 15, 27);
-  --sidebar-foreground: var(--foreground);
-  --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: rgb(18, 27, 44);
-  --sidebar-accent-foreground: var(--foreground);
-  --sidebar-border: var(--border);
-  --sidebar-ring: var(--ring);
-  --font-sans: Plus Jakarta Sans, sans-serif;
-  --font-serif: Lora, serif;
-  --font-mono: IBM Plex Mono, monospace;
-  --radius: 1.3rem;
-  --shadow-x: 0px;
-  --shadow-y: 20px;
-  --shadow-blur: 56px;
+  --background: rgb(10, 10, 10);
+  --foreground: rgb(250, 250, 250);
+  --card: rgb(23, 23, 23);
+  --card-foreground: rgb(250, 250, 250);
+  --popover: rgb(38, 38, 38);
+  --popover-foreground: rgb(250, 250, 250);
+  --primary: rgb(229, 229, 229);
+  --primary-foreground: rgb(23, 23, 23);
+  --secondary: rgb(38, 38, 38);
+  --secondary-foreground: rgb(250, 250, 250);
+  --muted: rgb(38, 38, 38);
+  --muted-foreground: rgb(161, 161, 161);
+  --accent: rgb(64, 64, 64);
+  --accent-foreground: rgb(250, 250, 250);
+  --destructive: rgb(255, 100, 103);
+  --destructive-foreground: rgb(250, 250, 250);
+  --border: rgb(40, 40, 40);
+  --input: rgb(52, 52, 52);
+  --ring: rgb(115, 115, 115);
+  --chart-1: rgb(145, 197, 255);
+  --chart-2: rgb(58, 129, 246);
+  --chart-3: rgb(37, 99, 239);
+  --chart-4: rgb(26, 78, 218);
+  --chart-5: rgb(31, 63, 173);
+  --sidebar: rgb(23, 23, 23);
+  --sidebar-foreground: rgb(250, 250, 250);
+  --sidebar-primary: rgb(229, 229, 229);
+  --sidebar-primary-foreground: rgb(23, 23, 23);
+  --sidebar-accent: rgb(38, 38, 38);
+  --sidebar-accent-foreground: rgb(250, 250, 250);
+  --sidebar-border: rgb(40, 40, 40);
+  --sidebar-ring: rgb(82, 82, 82);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  --radius: 0.625rem;
+  --shadow-x: 0;
+  --shadow-y: 1px;
+  --shadow-blur: 3px;
   --shadow-spread: 0px;
-  --shadow-opacity: 0.22;
-  --shadow-color: hsl(0 0% 0%);
-  --shadow-2xs: 0px 1px 2px 0px hsl(220 55% 5% / 0.18);
-  --shadow-xs: 0px 10px 24px -16px hsl(220 55% 5% / 0.3);
+  --shadow-opacity: 0.1;
+  --shadow-color: oklch(0 0 0);
+  --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+  --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
   --shadow-sm:
-    0px 16px 40px -24px hsl(220 55% 4% / 0.42),
-    0px 6px 16px -10px hsl(220 55% 4% / 0.22);
+    0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 1px 2px -1px hsl(0 0% 0% / 0.1);
   --shadow:
-    0px 20px 48px -28px hsl(220 55% 4% / 0.46),
-    0px 8px 18px -12px hsl(220 55% 4% / 0.26);
+    0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 1px 2px -1px hsl(0 0% 0% / 0.1);
   --shadow-md:
-    0px 26px 58px -30px hsl(220 55% 4% / 0.5),
-    0px 12px 26px -16px hsl(220 55% 4% / 0.28);
+    0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 2px 4px -1px hsl(0 0% 0% / 0.1);
   --shadow-lg:
-    0px 34px 72px -34px hsl(220 55% 4% / 0.52),
-    0px 18px 32px -20px hsl(220 55% 4% / 0.32);
+    0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 4px 6px -1px hsl(0 0% 0% / 0.1);
   --shadow-xl:
-    0px 44px 82px -38px hsl(220 55% 4% / 0.56),
-    0px 22px 42px -22px hsl(220 55% 4% / 0.36);
-  --shadow-2xl: 0px 52px 94px -40px hsl(220 55% 4% / 0.62);
+    0 1px 3px 0px hsl(0 0% 0% / 0.1),
+    0 8px 10px -1px hsl(0 0% 0% / 0.1);
+  --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
   --surface-highlight: rgba(255, 255, 255, 0.08);
   --surface-shadow: rgba(2, 6, 23, 0.34);
 }
@@ -217,35 +223,7 @@
   body {
     @apply bg-background text-foreground;
     letter-spacing: var(--tracking-normal);
-    background-image:
-      radial-gradient(
-        circle at top left,
-        rgba(70, 117, 255, 0.14),
-        transparent 28rem
-      ),
-      radial-gradient(
-        circle at top right,
-        rgba(34, 197, 94, 0.08),
-        transparent 26rem
-      ),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 249, 252, 1));
-    background-attachment: fixed;
     text-rendering: optimizeLegibility;
-  }
-
-  .dark body {
-    background-image:
-      radial-gradient(
-        circle at top left,
-        rgba(59, 130, 246, 0.16),
-        transparent 26rem
-      ),
-      radial-gradient(
-        circle at top right,
-        rgba(34, 211, 238, 0.1),
-        transparent 24rem
-      ),
-      linear-gradient(180deg, rgba(7, 11, 21, 0.96), rgba(11, 18, 32, 1));
   }
 
   ::selection {
@@ -299,6 +277,12 @@
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
   }
 }
 

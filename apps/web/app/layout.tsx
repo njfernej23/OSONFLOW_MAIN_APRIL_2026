@@ -1,15 +1,11 @@
 import { ClerkProvider } from "@clerk/nextjs"
-import { IBM_Plex_Mono, Lora, Plus_Jakarta_Sans } from "next/font/google"
+import { IBM_Plex_Mono, Lora } from "next/font/google"
+import localFont from "next/font/local"
 import "@workspace/ui/styles/globals.css"
 import "./globals.css"
 import { Providers } from "@/components/theme-provider"
 import { cn } from "@workspace/ui/lib/utils"
 import { Toaster } from "@workspace/ui/components/sonner"
-
-const fontSans = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  variable: "--font-sans",
-})
 
 const fontSerif = Lora({
   subsets: ["latin"],
@@ -22,6 +18,12 @@ const fontMono = IBM_Plex_Mono({
   variable: "--font-mono",
 })
 
+const fontDisplay = localFont({
+  src: "./fonts/ClashDisplay-Variable.woff2",
+  variable: "--font-display",
+  display: "swap",
+})
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,11 +31,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Encode+Sans+Semi+Expanded:wght@100;200;300;400;500;600;700;800;900&family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body
         className={cn(
           "antialiased",
+          fontDisplay.variable,
           fontMono.variable,
-          fontSans.variable,
           fontSerif.variable,
           "font-sans"
         )}

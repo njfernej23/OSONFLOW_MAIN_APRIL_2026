@@ -43,14 +43,14 @@ const customerSupportItems = [
     },
 
     {
-        title: "Knowledge Base",
+        title: "Knowledge base",
         url: "/files",
         icon: LibraryBigIcon,
     },
 ];
 const configurationItems = [
     {
-        title: "Widget Customization",
+        title: "Widget customization",
         url: "/customization",
         icon: PaletteIcon,
 
@@ -63,7 +63,7 @@ const configurationItems = [
     },
 
     {
-        title: "Vapi Voice",
+        title: "Vapi voice",
         url: "/plugins/vapi",
         icon: Mic,
     },
@@ -206,5 +206,3 @@ export const DashboardSidebar = () => {
         </Sidebar>
     );
 }
-
-

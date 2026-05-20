@@ -1,3 +1,12 @@
+:root,
+.dark {
+  --font-sans: "Google Sans", sans-serif;
+}
+
+html {
+  font-size: 17px;
+}
+
 :where(
   button:not(:disabled):not([aria-disabled="true"]):not([data-disabled="true"]),
   [role="button"]:not([aria-disabled="true"]):not([data-disabled="true"]),
@@ -22,4 +31,422 @@ button[data-sidebar="rail"] {
   [data-slot="button"][data-disabled="true"]
 ) {
   cursor: not-allowed;
+}
+
+.osonflow-nav-shell {
+  position: relative;
+  max-width: 80rem;
+  border: 1px solid rgba(16, 24, 40, 0);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0);
+  box-shadow: 0 0 0 rgba(15, 23, 42, 0);
+  transition:
+    max-width 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    backdrop-filter 0.2s ease;
+  backdrop-filter: blur(0);
+  will-change: max-width, background, box-shadow, backdrop-filter;
+}
+
+.osonflow-nav-shell.is-scrolled {
+  max-width: 66rem;
+  border-color: rgba(16, 24, 40, 0.1);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 28px 90px -58px rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(22px);
+}
+
+.osonflow-nav-shell::before {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.14),
+      rgba(16, 24, 40, 0.08) 46%,
+      rgba(255, 255, 255, 0.22)
+    ),
+    radial-gradient(circle at 50% 0%, rgba(58, 4, 255, 0.12), transparent 42%);
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.osonflow-nav-shell.is-scrolled::before {
+  opacity: 0.76;
+}
+
+.osonflow-nav-island {
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgba(16, 24, 40, 0.06);
+  border-radius: 999px;
+  background: rgba(244, 246, 248, 0.92);
+  box-shadow: 0 18px 48px -42px rgba(15, 23, 42, 0.62);
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.osonflow-nav-logo,
+.osonflow-nav-shell.is-scrolled .osonflow-nav-island {
+  border-color: rgba(16, 24, 40, 0);
+  background: rgba(255, 255, 255, 0);
+  box-shadow: 0 0 0 rgba(15, 23, 42, 0);
+}
+
+.osonflow-liquid-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.86),
+      rgba(255, 255, 255, 0.58)
+    ),
+    linear-gradient(
+      115deg,
+      rgba(58, 4, 255, 0.08),
+      transparent 42%,
+      rgba(52, 211, 153, 0.1)
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 24px 76px -56px rgba(15, 23, 42, 0.68);
+  backdrop-filter: blur(22px) saturate(1.24);
+}
+
+.osonflow-liquid-card::after,
+.osonflow-glass-window::after,
+.osonflow-widget-preview::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.34) 28%,
+    transparent 54%
+  );
+  background-size: 260% 260%;
+  content: "";
+  opacity: 0.58;
+  pointer-events: none;
+}
+
+.osonflow-liquid-card:hover::after,
+.osonflow-glass-window::after,
+.osonflow-widget-preview::after {
+  animation: osonflow-glass-sheen 7.5s ease-in-out infinite;
+}
+
+.osonflow-glass-window {
+  isolation: isolate;
+}
+
+.osonflow-widget-preview {
+  position: relative;
+  overflow: hidden;
+}
+
+.osonflow-liquid-field {
+  background:
+    linear-gradient(120deg, rgba(232, 241, 255, 0.78), transparent 32%),
+    linear-gradient(250deg, rgba(234, 248, 239, 0.68), transparent 40%),
+    linear-gradient(0deg, rgba(255, 244, 215, 0.5), transparent 48%);
+  filter: saturate(1.15);
+}
+
+.osonflow-liquid-ribbon {
+  position: absolute;
+  width: 44rem;
+  height: 13rem;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+  opacity: 0.52;
+  transform: rotate(-12deg);
+  filter: blur(0.4px);
+}
+
+.osonflow-liquid-ribbon-one {
+  top: 8%;
+  right: -18rem;
+  background: linear-gradient(
+    90deg,
+    rgba(58, 123, 255, 0.18),
+    rgba(52, 211, 153, 0.1)
+  );
+  animation: osonflow-liquid-drift 18s ease-in-out infinite;
+}
+
+.osonflow-liquid-ribbon-two {
+  bottom: 10%;
+  left: -20rem;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 202, 58, 0.16),
+    rgba(58, 4, 255, 0.1)
+  );
+  animation: osonflow-liquid-drift 22s ease-in-out infinite reverse;
+}
+
+.osonflow-liquid-ribbon-three {
+  top: 42%;
+  left: 42%;
+  height: 9rem;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.48),
+    rgba(58, 123, 255, 0.08)
+  );
+  animation: osonflow-liquid-drift 20s ease-in-out infinite;
+}
+
+.osonflow-float-card {
+  animation: osonflow-float 6s ease-in-out infinite;
+}
+
+.osonflow-active-thread {
+  animation: osonflow-thread-pulse 4.5s ease-in-out infinite;
+}
+
+.osonflow-ai-message {
+  position: relative;
+  overflow: hidden;
+}
+
+.osonflow-ai-message::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent,
+    rgba(255, 255, 255, 0.22),
+    transparent
+  );
+  content: "";
+  transform: translateX(-110%);
+  animation: osonflow-message-sweep 5.2s ease-in-out infinite;
+}
+
+.osonflow-send-button {
+  animation: osonflow-send-ready 3.8s ease-in-out infinite;
+}
+
+.osonflow-marquee-shell {
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 10%,
+    #000 90%,
+    transparent
+  );
+}
+
+.osonflow-marquee-track {
+  animation: osonflow-marquee 28s linear infinite;
+}
+
+.osonflow-marquee-shell:hover .osonflow-marquee-track {
+  animation-play-state: paused;
+}
+
+.osonflow-metric {
+  opacity: 0;
+  animation: osonflow-rise 0.75s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.osonflow-metric:nth-child(2) {
+  animation-delay: 0.08s;
+}
+
+.osonflow-metric:nth-child(3) {
+  animation-delay: 0.16s;
+}
+
+.osonflow-flow-row {
+  position: relative;
+  overflow: hidden;
+}
+
+.osonflow-flow-row::before {
+  position: absolute;
+  inset-block: 0;
+  left: -30%;
+  width: 24%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(52, 211, 153, 0.22),
+    transparent
+  );
+  content: "";
+  animation: osonflow-flow-scan 4.8s ease-in-out infinite;
+}
+
+.osonflow-reveal {
+  opacity: 1;
+  transform: none;
+}
+
+@supports (animation-timeline: view()) {
+  .osonflow-reveal {
+    opacity: 0.01;
+    transform: translateY(24px);
+    animation: osonflow-reveal both cubic-bezier(0.22, 1, 0.36, 1);
+    animation-range: entry 8% cover 24%;
+    animation-timeline: view();
+  }
+}
+
+@media (max-width: 1023px) {
+  .osonflow-nav-shell {
+    max-width: 100%;
+  }
+
+  .osonflow-nav-island {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .osonflow-liquid-ribbon,
+  .osonflow-float-card,
+  .osonflow-active-thread,
+  .osonflow-ai-message::after,
+  .osonflow-send-button,
+  .osonflow-marquee-track,
+  .osonflow-metric,
+  .osonflow-flow-row::before,
+  .osonflow-liquid-card::after,
+  .osonflow-glass-window::after,
+  .osonflow-widget-preview::after,
+  .osonflow-reveal {
+    animation: none;
+  }
+
+  .osonflow-nav-shell,
+  .osonflow-nav-shell::before,
+  .osonflow-nav-island {
+    transition: none;
+  }
+
+  .osonflow-reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes osonflow-glass-sheen {
+  0%,
+  48% {
+    background-position: 160% 0;
+  }
+
+  72%,
+  100% {
+    background-position: -120% 0;
+  }
+}
+
+@keyframes osonflow-liquid-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-12deg);
+  }
+
+  50% {
+    transform: translate3d(2rem, -1.2rem, 0) rotate(-7deg);
+  }
+}
+
+@keyframes osonflow-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes osonflow-thread-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(58, 4, 255, 0);
+  }
+
+  50% {
+    box-shadow: 0 16px 48px -36px rgba(58, 4, 255, 0.72);
+  }
+}
+
+@keyframes osonflow-message-sweep {
+  0%,
+  45% {
+    transform: translateX(-110%);
+  }
+
+  70%,
+  100% {
+    transform: translateX(110%);
+  }
+}
+
+@keyframes osonflow-send-ready {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  50% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes osonflow-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes osonflow-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes osonflow-flow-scan {
+  0%,
+  44% {
+    transform: translateX(0);
+  }
+
+  78%,
+  100% {
+    transform: translateX(560%);
+  }
+}
+
+@keyframes osonflow-reveal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

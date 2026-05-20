@@ -953,48 +953,90 @@ export const ConversationIdView = ({
 }
 
 export const ConversationIdViewLoading = () => {
+  const loadingMessages = [
+    { from: "user" as const, width: "w-[min(260px,62vw)]" },
+    { from: "assistant" as const, width: "w-[min(180px,52vw)]" },
+    { from: "user" as const, width: "w-[min(560px,72vw)]" },
+    { from: "assistant" as const, width: "w-[min(150px,48vw)]" },
+    { from: "user" as const, width: "w-[min(460px,68vw)]" },
+  ]
+
   return (
     <div className="flex h-full flex-col bg-transparent">
-      <header className="surface-frosted mx-3 mt-3 flex items-center justify-between rounded-[28px] p-2.5">
-        <Button disabled size="sm" variant="ghost">
-          <MoreHorizontalIcon />
-        </Button>
-        <Skeleton className="h-8 w-24 rounded-md" />
+      <header className="surface-frosted sticky top-2 z-10 mx-1.5 mt-2 flex items-center justify-between gap-2 rounded-[28px] px-3 py-2.5">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <Skeleton className="size-8 shrink-0 rounded-full" />
+          <div className="min-w-0 space-y-1.5">
+            <Skeleton className="h-3.5 w-36" />
+            <Skeleton className="h-2.5 w-28" />
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Skeleton className="hidden h-5 w-28 rounded-full sm:block" />
+          <Button disabled size="sm" variant="ghost" className="size-7 p-0">
+            <MoreHorizontalIcon className="size-4 opacity-40" />
+          </Button>
+          <Skeleton className="h-9 w-28 rounded-xl" />
+        </div>
       </header>
-      <AIConversation className="min-h-0 flex-1 px-3 pt-3 pb-3">
+      <AIConversation className="min-h-0 flex-1 px-1.5 pt-2 pb-2">
         <AIConversationContent className="surface-panel rounded-[30px] border-0 px-3 py-3 shadow-none">
-          {Array.from({ length: 6 }, (_, index) => {
-            // Alternate between assistant (left, with avatar) and user (right, no avatar)
-            const isAssistant = index % 2 === 0
-            const widths = ["w-48", "w-64", "w-56", "w-72", "w-60", "w-52"]
-            return (
-              <AIMessage from={isAssistant ? "assistant" : "user"} key={index}>
-                <AIMessageContent className="shadow-[0_14px_34px_-22px_rgba(15,23,42,0.2)]">
-                  <div className="space-y-2">
-                    <Skeleton className={cn("h-4", widths[index])} />
-                    {index % 3 === 0 && <Skeleton className="h-4 w-40" />}
+          <div className="pb-8 text-center text-[13px] text-muted-foreground/70">
+            No more items
+          </div>
+          <div className="space-y-5">
+            {loadingMessages.map((message, index) => {
+              const isAssistant = message.from === "assistant"
+
+              return (
+                <div
+                  className={cn(
+                    "flex w-full items-end gap-2",
+                    isAssistant ? "justify-start" : "justify-end"
+                  )}
+                  key={index}
+                >
+                  {isAssistant && (
+                    <Skeleton className="size-8 shrink-0 rounded-full" />
+                  )}
+                  <div
+                    className={cn(
+                      "rounded-xl px-4 py-3 shadow-[0_14px_34px_-22px_rgba(15,23,42,0.35)]",
+                      isAssistant
+                        ? "border border-border bg-background"
+                        : "bg-primary"
+                    )}
+                  >
+                    <Skeleton
+                      className={cn(
+                        "h-4",
+                        message.width,
+                        isAssistant
+                          ? "bg-muted"
+                          : "bg-primary-foreground/20 dark:bg-primary-foreground/18"
+                      )}
+                    />
                   </div>
-                </AIMessageContent>
-                {isAssistant && (
-                  <Skeleton className="size-8 shrink-0 rounded-full" />
-                )}
-              </AIMessage>
-            )
-          })}
+                </div>
+              )
+            })}
+          </div>
         </AIConversationContent>
       </AIConversation>
 
-      <div className="mx-3 mb-3">
-        <AIInput>
-          <AIInputTextarea
-            disabled
-            placeholder="Type your response as an operator..."
-          />
-          <AIInputToolbar>
-            <AIInputTools />
-            <AIInputSubmit disabled status="ready" />
-          </AIInputToolbar>
-        </AIInput>
+      <div className="mx-1.5 mb-2">
+        <div className="surface-frosted overflow-hidden rounded-[28px] border-0 shadow-none">
+          <div className="px-3 py-4">
+            <Skeleton className="h-3.5 w-56" />
+          </div>
+          <div className="flex items-center justify-between border-t border-border/70 p-1">
+            <div className="flex items-center gap-2 px-2">
+              <Skeleton className="h-3.5 w-20" />
+              <Skeleton className="h-3.5 w-16" />
+            </div>
+            <Skeleton className="size-9 rounded-xl" />
+          </div>
+        </div>
       </div>
     </div>
   )

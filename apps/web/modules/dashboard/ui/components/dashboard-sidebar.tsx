@@ -3,13 +3,13 @@
 import { OrganizationSwitcher, UserButton } from "@clerk/nextjs"
 
 import {
-  BotIcon,
+  BookOpen,
+  BotMessageSquare,
   BrainIcon,
+  ChartColumnBig,
   CreditCardIcon,
-  InboxIcon,
-  LineChartIcon,
   LayoutDashboardIcon,
-  LibraryBigIcon,
+  MessagesSquare,
   PaletteIcon,
 } from "lucide-react"
 
@@ -43,33 +43,33 @@ const customerSupportItems = [
   {
     title: "Conversations",
     url: "/conversations",
-    icon: InboxIcon,
+    icon: MessagesSquare,
   },
   {
-    title: "AI Voicechats",
+    title: "AI voicechats",
     url: "/ai-conversations",
-    icon: BotIcon,
+    icon: BotMessageSquare,
   },
   {
     title: "Analytics",
     url: "/analytics",
-    icon: LineChartIcon,
+    icon: ChartColumnBig,
   },
   {
-    title: "Customer Memory",
+    title: "Customer memory",
     url: "/customer-memory",
     icon: BrainIcon,
   },
 
   {
-    title: "Knowledge Base",
+    title: "Knowledge base",
     url: "/files",
-    icon: LibraryBigIcon,
+    icon: BookOpen,
   },
 ]
 const configurationItems = [
   {
-    title: "Widget Customization",
+    title: "Widget customization",
     url: "/customization",
     icon: PaletteIcon,
   },
@@ -79,7 +79,7 @@ const configurationItems = [
     icon: LayoutDashboardIcon,
   },
   {
-    title: "Vapi Voice",
+    title: "Vapi voice",
     url: "/plugins/vapi",
     icon: null, // Will use custom image
     customIcon: "/vapi.jpg",

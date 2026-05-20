@@ -14,7 +14,12 @@
   "dependencies": {
     "@clerk/nextjs": "^7.0.8",
     "@convex-dev/agent": "0.1.16",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@fortawesome/fontawesome-free": "^7.2.0",
     "@hookform/resolvers": "^3.9.1",
+    "@mui/icons-material": "^9.0.1",
+    "@mui/material": "^9.0.1",
     "@workspace/backend": "workspace:*",
     "@workspace/ui": "workspace:*",
     "ai": "4.3.19",

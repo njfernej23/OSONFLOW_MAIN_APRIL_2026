@@ -5,6 +5,7 @@ import { api } from "@workspace/backend/_generated/api"
 import { Id } from "@workspace/backend/_generated/dataModel"
 import { Button } from "@workspace/ui/components/button"
 import { DicebearAvatar } from "@workspace/ui/components/dicebear-avatar"
+import { Skeleton } from "@workspace/ui/components/skeleton"
 import { useQuery } from "convex/react"
 import { useParams } from "next/navigation"
 import { useMemo } from "react"
@@ -24,6 +25,7 @@ import {
   MonitorIcon,
 } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
+import { cn } from "@workspace/ui/lib/utils"
 
 type InfoItem = {
   label: string
@@ -177,7 +179,11 @@ export const ContactPanel = () => {
     ]
   }, [contactSession, userAgentInfo, countryInfo])
 
-  if (contactSession === undefined || contactSession === null) {
+  if (contactSession === undefined) {
+    return <ContactPanelSkeleton />
+  }
+
+  if (contactSession === null) {
     return null
   }
 
@@ -267,7 +273,7 @@ export const ContactPanel = () => {
         <div className="border-t border-border/70 px-4 py-4">
           <div className="flex items-center gap-2 text-[12px] font-medium text-foreground">
             <BrainIcon className="size-3.5 text-muted-foreground" />
-            <span>Customer Memory</span>
+            <span>Customer memory</span>
           </div>
           <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
             {customerMemory.summary}
@@ -281,6 +287,76 @@ export const ContactPanel = () => {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+export const ContactPanelSkeleton = () => {
+  return (
+    <div className="surface-panel flex h-full w-full min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded-[30px] bg-background/90 text-foreground">
+      <div className="border-b border-border/70 px-4 pt-4 pb-4">
+        <div className="flex items-start gap-3">
+          <div className="relative size-11 shrink-0">
+            <Skeleton className="size-11 rounded-full" />
+            <Skeleton className="absolute right-0 bottom-0 size-4 rounded-full border-2 border-background" />
+          </div>
+          <div className="min-w-0 flex-1 space-y-2 pt-1">
+            <Skeleton className="h-3.5 w-32" />
+            <Skeleton className="h-3 w-40" />
+            <Skeleton className="h-2.5 w-20" />
+          </div>
+        </div>
+        <Skeleton className="mt-3 h-9 w-full rounded-lg" />
+      </div>
+
+      <div className="w-full">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div className="border-b border-border/70 px-4 py-3" key={index}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Skeleton className="size-3.5 rounded" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+              <Skeleton className="size-3 rounded" />
+            </div>
+            {index === 0 && (
+              <div className="mt-4 space-y-2">
+                {Array.from({ length: 2 }).map((_, itemIndex) => (
+                  <div
+                    className="flex items-start justify-between gap-4"
+                    key={itemIndex}
+                  >
+                    <Skeleton className="h-2.5 w-14" />
+                    <Skeleton
+                      className={cn(
+                        "h-2.5",
+                        itemIndex === 0 ? "w-24" : "w-20"
+                      )}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="border-t border-border/70 px-4 py-4">
+        <div className="flex items-center gap-2">
+          <Skeleton className="size-3.5 rounded" />
+          <Skeleton className="h-3 w-28" />
+        </div>
+        <div className="mt-3 space-y-2">
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-11/12" />
+          <Skeleton className="h-3 w-3/4" />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <Skeleton className="h-6 w-12 rounded-full" />
+          <Skeleton className="h-6 w-24 rounded-full" />
+          <Skeleton className="h-6 w-20 rounded-full" />
+        </div>
+      </div>
     </div>
   )
 }

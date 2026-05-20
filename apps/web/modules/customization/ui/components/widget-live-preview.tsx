@@ -36,6 +36,8 @@ type WidgetLivePreviewProps = {
   appearance: WidgetAppearanceSettings
 }
 
+const LAUNCHER_PREVIEW_SIZE = 52
+
 const launcherIconMap: Record<WidgetLauncherIcon, ReactNode> = {
   chat: <MessageSquareTextIcon className="size-4" />,
   sparkles: <SparklesIcon className="size-4" />,
@@ -224,12 +226,18 @@ const ChatWidget = ({
         className={cn(
           "inline-flex text-xs font-medium shadow-[0_22px_44px_-26px_rgba(15,23,42,0.48)] transition-all hover:-translate-y-0.5 active:scale-95",
           hasLauncherImage
-            ? "size-[52px] items-center justify-center rounded-full p-0"
+            ? "items-center justify-center rounded-full p-0"
             : "items-center gap-2 rounded-full px-3.5 py-2"
         )}
         style={{
           backgroundColor: appearance.launcherColor,
           color: launcherTextColor,
+          ...(hasLauncherImage
+            ? {
+                height: LAUNCHER_PREVIEW_SIZE,
+                width: LAUNCHER_PREVIEW_SIZE,
+              }
+            : undefined),
         }}
         type="button"
       >
@@ -510,12 +518,18 @@ export const WidgetLivePreview = ({
               className={cn(
                 "inline-flex text-sm font-medium shadow-[0_22px_44px_-26px_rgba(15,23,42,0.48)] transition-all hover:-translate-y-0.5 active:scale-95",
                 hasLauncherImage
-                  ? "size-[56px] items-center justify-center rounded-full p-0"
+                  ? "items-center justify-center rounded-full p-0"
                   : "items-center gap-2 rounded-full px-4 py-2.5"
               )}
               style={{
                 backgroundColor: appearance.launcherColor,
                 color: launcherTextColor,
+                ...(hasLauncherImage
+                  ? {
+                      height: LAUNCHER_PREVIEW_SIZE,
+                      width: LAUNCHER_PREVIEW_SIZE,
+                    }
+                  : undefined),
               }}
               type="button"
             >

@@ -1839,7 +1839,7 @@ export const CustomizationForm = ({
                   {hasVapiPlugin ? (
                     <div className="space-y-4 rounded-2xl border border-border/70 bg-muted/10 p-4">
                       <div>
-                        <p className="text-sm font-semibold">Vapi Voice</p>
+                        <p className="text-sm font-semibold">Vapi voice</p>
                         <p className="mt-1 text-xs text-muted-foreground">
                           Keep using your existing Vapi assistant or phone
                           number alongside OpenAI voice.

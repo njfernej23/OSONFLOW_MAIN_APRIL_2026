@@ -441,19 +441,47 @@ export const ConversationsPanel = () => {
 
 export const SkeletonConversations = () => {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-auto p-2">
-      {Array.from({ length: 8 }).map((_, index) => (
+    <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto p-2.5">
+      {Array.from({ length: 6 }).map((_, index) => (
         <div
-          className="flex items-start gap-2.5 rounded-xl border border-transparent px-3 py-2.5"
+          className={cn(
+            "relative flex items-start gap-2.5 rounded-2xl border px-3 py-2.5",
+            index === 1
+              ? "border-sidebar-border/80 bg-sidebar-accent/92 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.45)]"
+              : "border-transparent"
+          )}
           key={index}
         >
-          <Skeleton className="mt-0.5 size-9 shrink-0 rounded-full" />
+          {index === 1 && (
+            <div className="absolute top-2.5 bottom-2.5 left-0 w-[3px] rounded-r-full bg-emerald-400/80" />
+          )}
+          <div className="relative mt-0.5 size-9 shrink-0">
+            <Skeleton className="size-9 rounded-full bg-sidebar-accent" />
+            <Skeleton className="absolute right-0 bottom-0 size-3.5 rounded-full border-2 border-sidebar bg-sidebar" />
+          </div>
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <Skeleton className="h-3.5 w-28" />
-              <Skeleton className="h-3 w-10 shrink-0" />
+              <Skeleton className="h-3.5 w-32 bg-sidebar-accent" />
+              <Skeleton className="h-3 w-10 shrink-0 bg-sidebar-accent" />
             </div>
-            <Skeleton className="h-3 w-4/5" />
+            <Skeleton
+              className={cn(
+                "h-3.5 rounded-full bg-sidebar-accent",
+                index % 3 === 0 ? "w-12" : "w-9"
+              )}
+            />
+            <div className="flex items-center justify-between gap-2 pt-0.5">
+              <div className="flex min-w-0 flex-1 items-center gap-1">
+                <Skeleton className="size-3 shrink-0 bg-sidebar-accent" />
+                <Skeleton
+                  className={cn(
+                    "h-3 bg-sidebar-accent",
+                    index % 2 === 0 ? "w-4/5" : "w-2/3"
+                  )}
+                />
+              </div>
+              <Skeleton className="size-4 shrink-0 rounded-full bg-sidebar-accent" />
+            </div>
           </div>
         </div>
       ))}

@@ -190,7 +190,7 @@ export const AIConversationsPanel = () => {
               Inbox
             </p>
             <h2 className="mt-1 truncate text-[16px] font-semibold text-sidebar-foreground">
-              AI Voicechats
+              AI voicechats
             </h2>
             <p className="mt-0.5 truncate text-[12px] text-sidebar-foreground/58">
               {summary.total} total, {summary.live} live

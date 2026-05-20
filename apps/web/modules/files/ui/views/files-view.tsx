@@ -858,7 +858,7 @@ export const FilesView = () => {
               <div>
                 <p className="section-kicker">Knowledge</p>
                 <h1 className="text-2xl font-semibold tracking-tight">
-                  Knowledge Base
+                  Knowledge base
                 </h1>
                 <p className="mt-0.5 text-sm text-muted-foreground">
                   Manage documents and websites powering your AI assistant.
