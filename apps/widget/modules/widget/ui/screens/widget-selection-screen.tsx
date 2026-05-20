@@ -166,7 +166,10 @@ export const WidgetSelectionScreen = () => {
           style={scrollFadeStyle}
         >
           <section
-            className="relative flex flex-col overflow-hidden px-6 pt-6 pb-8 text-white"
+            className={cn(
+              "relative flex flex-col overflow-hidden px-6 pt-6 pb-8 text-white",
+              !hasHelpContent && "justify-between"
+            )}
             style={{
               minHeight: hasHomeHelpCards ? 284 : EMPTY_HOME_BACKGROUND_HEIGHT,
             }}
@@ -187,7 +190,12 @@ export const WidgetSelectionScreen = () => {
               </div>
             </div>
 
-            <div className="relative mt-12 max-w-[16rem]">
+            <div
+              className={cn(
+                "relative max-w-[16rem]",
+                hasHelpContent ? "mt-12" : "mt-auto mb-3"
+              )}
+            >
               <p className="text-2xl font-bold tracking-tight text-white/68">
                 Hi there <span className="text-xl">👋</span>
               </p>
