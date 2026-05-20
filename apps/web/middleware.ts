@@ -23,7 +23,7 @@ export default clerkMiddleware(async (auth, req) => {
     await auth.protect()
   }
 
-  if (userId && !orgId && !isOrgFreeRoute(req)) {
+  if (userId && !orgId && !isOrgFreeRoute(req) && !isPublicRoute(req)) {
     const searchParams = new URLSearchParams({ redirectUrl: req.url })
     const orgSelection = new URL(
       `/org-selection?${searchParams.toString()}`,
