@@ -636,6 +636,20 @@ export const getConversationExport = query({
       })
     }
 
+    const widgetSettings = await ctx.db
+      .query("widgetSettings")
+      .withIndex("by_organization_id", (q: any) =>
+        q.eq("organizationId", conversation.organizationId)
+      )
+      .unique()
+
+    if (widgetSettings?.appearance?.showChatHistoryDownload === false) {
+      throw new ConvexError({
+        code: "FORBIDDEN",
+        message: "Chat history downloads are disabled",
+      })
+    }
+
     const pageSize = 100
     const maxMessages = 1000
     let cursor: string | null = null

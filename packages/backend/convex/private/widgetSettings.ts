@@ -23,6 +23,7 @@ const DEFAULT_APPEARANCE = {
   poweredByText: "Osonflow",
   showPoweredBy: true,
   showHelpCenter: true,
+  showChatHistoryDownload: true,
 }
 
 const MAX_WIDGET_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
@@ -130,6 +131,7 @@ const appearanceValidator = v.object({
   poweredByText: v.optional(v.string()),
   showPoweredBy: v.optional(v.boolean()),
   showHelpCenter: v.optional(v.boolean()),
+  showChatHistoryDownload: v.optional(v.boolean()),
 })
 
 const widgetSettingsArgsValidator = {
@@ -168,6 +170,7 @@ type WidgetAppearance = {
   poweredByText?: string
   showPoweredBy?: boolean
   showHelpCenter?: boolean
+  showChatHistoryDownload?: boolean
 }
 
 type HelpArticle = {
@@ -421,6 +424,10 @@ const mergeAppearance = (
     incoming?.showHelpCenter ??
     base?.showHelpCenter ??
     DEFAULT_APPEARANCE.showHelpCenter,
+  showChatHistoryDownload:
+    incoming?.showChatHistoryDownload ??
+    base?.showChatHistoryDownload ??
+    DEFAULT_APPEARANCE.showChatHistoryDownload,
 })
 
 const legacyArticlesToArray = (articles: HelpArticles): HelpArticle[] => [

@@ -102,5 +102,6 @@ export const widgetSettingsSchema = z.object({
       .max(40, "Powered by text must be at most 40 characters"),
     showPoweredBy: z.boolean(),
     showHelpCenter: z.boolean(),
+    showChatHistoryDownload: z.boolean(),
   }),
 })

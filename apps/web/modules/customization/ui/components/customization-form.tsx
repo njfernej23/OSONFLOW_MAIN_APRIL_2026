@@ -1451,7 +1451,7 @@ export const CustomizationForm = ({
                                     <span className="truncate font-medium">
                                       {model.label}
                                     </span>
-                                    <span className="whitespace-normal text-xs leading-snug text-muted-foreground">
+                                    <span className="text-xs leading-snug whitespace-normal text-muted-foreground">
                                       {model.description}
                                     </span>
                                   </span>
@@ -1468,6 +1468,30 @@ export const CustomizationForm = ({
                         </FormItem>
                       )
                     }}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="appearance.showChatHistoryDownload"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between gap-4 rounded-2xl border border-border/70 bg-muted/10 px-4 py-3.5">
+                        <div className="flex min-w-0 flex-col gap-1">
+                          <FormLabel className="text-sm font-semibold">
+                            Chat History Download
+                          </FormLabel>
+                          <FormDescription className="text-xs">
+                            Show the download button in widget conversations so
+                            users can save their transcript.
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
                   />
 
                   <FormField

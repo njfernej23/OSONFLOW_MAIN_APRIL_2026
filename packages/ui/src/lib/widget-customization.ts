@@ -22,6 +22,7 @@ export type WidgetAppearanceSettings = {
   poweredByText: string
   showPoweredBy: boolean
   showHelpCenter: boolean
+  showChatHistoryDownload: boolean
 }
 
 export const DEFAULT_WIDGET_THEME: WidgetThemeSettings = {
@@ -45,6 +46,7 @@ export const DEFAULT_WIDGET_APPEARANCE: WidgetAppearanceSettings = {
   poweredByText: "Osonflow",
   showPoweredBy: true,
   showHelpCenter: true,
+  showChatHistoryDownload: true,
 }
 
 export const HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3}){1,2}$/

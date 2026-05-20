@@ -151,6 +151,7 @@ const appearanceValidator = v.object({
   poweredByText: v.optional(v.string()),
   showPoweredBy: v.optional(v.boolean()),
   showHelpCenter: v.optional(v.boolean()),
+  showChatHistoryDownload: v.optional(v.boolean()),
 })
 
 const widgetSettingsSnapshotValidator = v.object({

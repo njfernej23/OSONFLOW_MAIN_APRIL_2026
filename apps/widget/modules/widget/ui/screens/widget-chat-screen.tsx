@@ -45,7 +45,10 @@ import { useInfiniteScroll } from "@workspace/ui/hooks/use-infitnite-scroll"
 import { InfiniteScrollTrigger } from "@workspace/ui/components/infinite-scroll-trigger"
 import { DicebearAvatar } from "@workspace/ui/components/dicebear-avatar"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { mergeWidgetTheme } from "@workspace/ui/lib/widget-customization"
+import {
+  mergeWidgetAppearance,
+  mergeWidgetTheme,
+} from "@workspace/ui/lib/widget-customization"
 
 const formSchema = z.object({
   message: z.string().min(1, "Message is required"),
@@ -156,6 +159,8 @@ export const WidgetChatScreen = () => {
   const pendingInitialMessage = useAtomValue(pendingInitialMessageAtom)
   const widgetSettings = useAtomValue(widgetSettingsAtom)
   const theme = mergeWidgetTheme(widgetSettings?.theme)
+  const appearance = mergeWidgetAppearance(widgetSettings?.appearance)
+  const canDownloadChatHistory = appearance.showChatHistoryDownload
   const organizationId = useAtomValue(organizationIdAtom)
   const contactSessionId = useAtomValue(
     contactSessionIdAtomFamily(organizationId || "")
@@ -189,7 +194,7 @@ export const WidgetChatScreen = () => {
   )
   const chatHistoryExport = useQuery(
     api.public.messages.getConversationExport,
-    conversationId && contactSessionId
+    canDownloadChatHistory && conversationId && contactSessionId
       ? {
           conversationId,
           contactSessionId,
@@ -314,7 +319,11 @@ export const WidgetChatScreen = () => {
   }
 
   const onDownloadChatHistory = () => {
-    if (!chatHistoryExport || chatHistoryExport.messages.length === 0) {
+    if (
+      !canDownloadChatHistory ||
+      !chatHistoryExport ||
+      chatHistoryExport.messages.length === 0
+    ) {
       return
     }
 
@@ -373,18 +382,20 @@ export const WidgetChatScreen = () => {
           ) : null}
           <p>{theme.assistantName}</p>
         </div>
-        <Button
-          aria-label="Download chat history"
-          disabled={
-            !chatHistoryExport || chatHistoryExport.messages.length === 0
-          }
-          onClick={onDownloadChatHistory}
-          size="icon"
-          title="Download chat history"
-          variant="transparent"
-        >
-          <DownloadIcon />
-        </Button>
+        {canDownloadChatHistory ? (
+          <Button
+            aria-label="Download chat history"
+            disabled={
+              !chatHistoryExport || chatHistoryExport.messages.length === 0
+            }
+            onClick={onDownloadChatHistory}
+            size="icon"
+            title="Download chat history"
+            variant="transparent"
+          >
+            <DownloadIcon />
+          </Button>
+        ) : null}
       </WidgetHeader>
       <AIConversation>
         <AIConversationContent>

@@ -2,6 +2,7 @@
 
 import {
   CircleHelpIcon,
+  DownloadIcon,
   EyeIcon,
   MessageSquareTextIcon,
   MinusIcon,
@@ -112,6 +113,11 @@ const ChatWidget = ({
             </div>
           </div>
           <div className="flex items-center gap-1">
+            {appearance.showChatHistoryDownload ? (
+              <div className="flex size-6 cursor-pointer items-center justify-center rounded-full text-white/70 hover:bg-white/10">
+                <DownloadIcon className="size-3" />
+              </div>
+            ) : null}
             <div className="flex size-6 cursor-pointer items-center justify-center rounded-full text-white/70 hover:bg-white/10">
               <MinusIcon className="size-3" />
             </div>
