@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { UserButton, useUser } from "@clerk/nextjs"
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowRightIcon } from "lucide-react"
@@ -30,6 +31,7 @@ const NavLogo = () => (
 export const LandingNav = () => {
   const [isScrolled, setIsScrolled] = useState(false)
   const isScrolledRef = useRef(false)
+  const { isLoaded, isSignedIn } = useUser()
 
   useEffect(() => {
     const updateScrolledState = () => {
@@ -84,27 +86,47 @@ export const LandingNav = () => {
           ))}
         </nav>
 
-        <div className="osonflow-nav-island flex h-10 shrink-0 items-center gap-1 px-1 sm:h-12 sm:px-1.5">
-          <Link
-            className="hidden rounded-full px-4 py-2.5 whitespace-nowrap text-[#667085] transition hover:bg-white/70 hover:text-[#101828] sm:inline-flex"
-            href="/sign-in"
-          >
-            Login
-          </Link>
-          <Link
-            className="hidden rounded-full px-4 py-2.5 whitespace-nowrap text-[#344054] transition hover:bg-white/70 hover:text-[#101828] md:inline-flex"
-            href="/sign-up"
-          >
-            Sign up
-          </Link>
-          <Link
-            className="group inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-[#3A7BFF] px-4 font-semibold whitespace-nowrap text-white shadow-[0_18px_42px_-22px_rgba(58,123,255,0.9)] transition hover:-translate-y-0.5 hover:bg-[#256DFF] sm:h-11 sm:px-5"
-            href="/sign-up"
-          >
-            Book a demo
-            <ArrowRightIcon className="hidden size-4 transition group-hover:translate-x-0.5 sm:block" />
-          </Link>
-        </div>
+        {(!isLoaded || !isSignedIn) && (
+          <div className="osonflow-nav-island flex h-10 shrink-0 items-center gap-1 px-1 sm:h-12 sm:px-1.5">
+            <Link
+              className="hidden rounded-full px-4 py-2.5 whitespace-nowrap text-[#667085] transition hover:bg-white/70 hover:text-[#101828] sm:inline-flex"
+              href="/sign-in"
+            >
+              Login
+            </Link>
+            <Link
+              className="hidden rounded-full px-4 py-2.5 whitespace-nowrap text-[#344054] transition hover:bg-white/70 hover:text-[#101828] md:inline-flex"
+              href="/sign-up"
+            >
+              Sign up
+            </Link>
+            <Link
+              className="group inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-[#3A7BFF] px-4 font-semibold whitespace-nowrap text-white shadow-[0_18px_42px_-22px_rgba(58,123,255,0.9)] transition hover:-translate-y-0.5 hover:bg-[#256DFF] sm:h-11 sm:px-5"
+              href="/sign-up"
+            >
+              Book a demo
+              <ArrowRightIcon className="hidden size-4 transition group-hover:translate-x-0.5 sm:block" />
+            </Link>
+          </div>
+        )}
+
+        {isLoaded && isSignedIn && (
+          <div className="osonflow-nav-island flex h-10 shrink-0 items-center gap-2 px-1.5 sm:h-12 sm:px-2">
+            <Link
+              className="inline-flex h-10 shrink-0 items-center rounded-full bg-[#101828] px-4 text-sm font-semibold whitespace-nowrap text-white shadow-[0_18px_42px_-24px_rgba(16,24,40,0.7)] transition hover:-translate-y-0.5 hover:bg-[#1D2939] sm:h-11 sm:px-5"
+              href="/analytics"
+            >
+              Dashboard
+            </Link>
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: "h-10 w-10 sm:h-11 sm:w-11",
+                },
+              }}
+            />
+          </div>
+        )}
       </div>
     </header>
   )

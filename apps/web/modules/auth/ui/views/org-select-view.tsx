@@ -2,8 +2,8 @@ import {OrganizationList} from "@clerk/nextjs";
 export const OrgSelectView = () => {
     return (
         <OrganizationList
-            afterCreateOrganizationUrl="/"
-            afterSelectOrganizationUrl="/"
+            afterCreateOrganizationUrl="/analytics"
+            afterSelectOrganizationUrl="/analytics"
             hidePersonal
             skipInvitationScreen
         />
