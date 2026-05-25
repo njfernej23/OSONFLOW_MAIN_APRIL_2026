@@ -8,6 +8,7 @@ import {
   BrainIcon,
   ChartColumnBig,
   CreditCardIcon,
+  GitBranchIcon,
   LayoutDashboardIcon,
   MessagesSquare,
   PaletteIcon,
@@ -77,6 +78,11 @@ const configurationItems = [
     title: "Integrations",
     url: "/integrations",
     icon: LayoutDashboardIcon,
+  },
+  {
+    title: "Workflows",
+    url: "/workflows",
+    icon: GitBranchIcon,
   },
   {
     title: "Vapi voice",

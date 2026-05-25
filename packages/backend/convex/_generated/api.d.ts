@@ -28,6 +28,7 @@ import type * as private_secrets from "../private/secrets.js";
 import type * as private_telegram from "../private/telegram.js";
 import type * as private_vapi from "../private/vapi.js";
 import type * as private_widgetSettings from "../private/widgetSettings.js";
+import type * as private_workflows from "../private/workflows.js";
 import type * as public_aiConversations from "../public/aiConversations.js";
 import type * as public_contactSessions from "../public/contactSessions.js";
 import type * as public_conversations from "../public/conversations.js";
@@ -87,6 +88,7 @@ declare const fullApi: ApiFromModules<{
   "private/telegram": typeof private_telegram;
   "private/vapi": typeof private_vapi;
   "private/widgetSettings": typeof private_widgetSettings;
+  "private/workflows": typeof private_workflows;
   "public/aiConversations": typeof public_aiConversations;
   "public/contactSessions": typeof public_contactSessions;
   "public/conversations": typeof public_conversations;
