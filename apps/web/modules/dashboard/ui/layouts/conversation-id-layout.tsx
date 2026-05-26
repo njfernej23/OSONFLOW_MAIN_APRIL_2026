@@ -32,7 +32,6 @@ export const ConversationIdLayout = ({
     >
       <ResizablePanel
         id="conversation-chat"
-        defaultSize="100%"
         minSize={560}
         className="flex min-h-0 min-w-0 flex-col"
       >

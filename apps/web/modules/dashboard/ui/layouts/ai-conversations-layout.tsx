@@ -55,7 +55,6 @@ export const AIConversationsLayout = ({
       />
       <ResizablePanel
         id="ai-conversations-content"
-        defaultSize={900}
         minSize={420}
         className="flex min-h-0 min-w-0 flex-col"
       >
