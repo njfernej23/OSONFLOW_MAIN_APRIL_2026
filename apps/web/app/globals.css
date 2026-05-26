@@ -5,6 +5,7 @@
 
 html {
   font-size: 17px;
+  scroll-behavior: smooth;
 }
 
 :where(
@@ -289,9 +290,612 @@ button[data-sidebar="rail"] {
   animation: osonflow-flow-scan 4.8s ease-in-out infinite;
 }
 
+.osonflow-motion-page {
+  overflow-x: clip;
+}
+
+.osonflow-hero-title,
+.osonflow-hero-copy,
+.osonflow-hero-actions,
+.osonflow-signal-grid,
+.osonflow-hero-note,
+.osonflow-hero-desk {
+  animation: osonflow-landing-enter 0.85s cubic-bezier(0.22, 1, 0.36, 1)
+    backwards;
+}
+
+.osonflow-hero-copy {
+  animation-delay: 0.08s;
+}
+
+.osonflow-hero-actions {
+  animation-delay: 0.16s;
+}
+
+.osonflow-signal-grid {
+  animation-delay: 0.24s;
+}
+
+.osonflow-hero-desk {
+  animation-delay: 0.12s;
+  perspective: 1200px;
+}
+
+.osonflow-hero-note {
+  animation-delay: 0.34s;
+}
+
+.osonflow-primary-cta,
+.osonflow-secondary-cta,
+.osonflow-call-button,
+.osonflow-logo-chip,
+.osonflow-loop-step,
+.osonflow-channel-route,
+.osonflow-pricing-row,
+.osonflow-launch-step {
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.22s ease,
+    background 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.osonflow-primary-cta:hover,
+.osonflow-secondary-cta:hover {
+  transform: translateY(-2px);
+}
+
+.osonflow-signal-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.osonflow-signal-item::after {
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1px;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    rgba(35, 91, 219, 0),
+    rgba(35, 91, 219, 0.72),
+    rgba(22, 161, 99, 0)
+  );
+  content: "";
+  transform: translateX(-105%);
+  animation: osonflow-signal-sweep 5.8s ease-in-out infinite;
+}
+
+.osonflow-signal-item:nth-child(2)::after {
+  animation-delay: 0.2s;
+}
+
+.osonflow-signal-item:nth-child(3)::after {
+  animation-delay: 0.4s;
+}
+
+.osonflow-signal-item:nth-child(4)::after {
+  animation-delay: 0.6s;
+}
+
+.osonflow-desk-window {
+  isolation: isolate;
+  transform-origin: center;
+  animation: osonflow-desk-float 8s ease-in-out infinite;
+}
+
+.osonflow-desk-window::before {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(
+    112deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.34) 32%,
+    transparent 56%
+  );
+  background-size: 250% 250%;
+  content: "";
+  opacity: 0.42;
+  pointer-events: none;
+  animation: osonflow-glass-sheen 8.5s ease-in-out infinite;
+}
+
+.osonflow-live-dot,
+.osonflow-online-dot {
+  animation: osonflow-live-pulse 2.4s ease-in-out infinite;
+}
+
+.osonflow-nav-item {
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.osonflow-nav-item:hover {
+  transform: translateX(2px);
+}
+
+.osonflow-queue-row {
+  position: relative;
+  transition:
+    background 0.24s ease,
+    box-shadow 0.24s ease;
+}
+
+.osonflow-queue-row.is-active {
+  animation: osonflow-row-focus 4.8s ease-in-out infinite;
+}
+
+.osonflow-queue-row.is-active::before {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 3px;
+  background: linear-gradient(#235bdb, #16a163);
+  content: "";
+}
+
+.osonflow-desk-metric {
+  animation: osonflow-count-pop 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.osonflow-desk-metric:nth-child(2) {
+  animation-delay: 0.12s;
+}
+
+.osonflow-desk-metric:nth-child(3) {
+  animation-delay: 0.24s;
+}
+
+.osonflow-metric-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.osonflow-call-button {
+  animation: osonflow-call-beacon 4.2s ease-in-out infinite;
+}
+
+.osonflow-message-in,
+.osonflow-message-out,
+.osonflow-suggestion-panel,
+.osonflow-reply-box {
+  animation: osonflow-message-enter 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.osonflow-message-out {
+  position: relative;
+  overflow: hidden;
+  animation-delay: 0.18s;
+}
+
+.osonflow-message-out::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  content: "";
+  transform: translateX(-120%);
+  animation: osonflow-message-sweep 5.6s ease-in-out infinite;
+}
+
+.osonflow-suggestion-panel {
+  animation-delay: 0.34s;
+  box-shadow: inset 0 0 0 1px rgba(22, 161, 99, 0.08);
+}
+
+.osonflow-reply-box {
+  animation-delay: 0.48s;
+}
+
+.osonflow-suggestion-panel:hover {
+  box-shadow:
+    inset 0 0 0 1px rgba(22, 161, 99, 0.16),
+    0 18px 48px -40px rgba(22, 161, 99, 0.8);
+}
+
+.osonflow-logo-chip {
+  animation: osonflow-logo-float 7s ease-in-out infinite;
+}
+
+.osonflow-logo-chip:nth-child(2n) {
+  animation-delay: 0.7s;
+}
+
+.osonflow-logo-chip:nth-child(3n) {
+  animation-delay: 1.2s;
+}
+
+.osonflow-logo-chip:hover {
+  transform: translateY(-3px);
+}
+
+.osonflow-proof-metric {
+  animation: osonflow-landing-enter 0.8s cubic-bezier(0.22, 1, 0.36, 1)
+    backwards;
+}
+
+.osonflow-proof-metric:nth-child(2) {
+  animation-delay: 0.08s;
+}
+
+.osonflow-proof-metric:nth-child(3) {
+  animation-delay: 0.16s;
+}
+
+.osonflow-evidence-frame {
+  transition:
+    transform 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.26s ease,
+    border-color 0.26s ease;
+}
+
+.osonflow-evidence-item:hover .osonflow-evidence-frame {
+  border-color: rgba(35, 91, 219, 0.28);
+  box-shadow: 0 32px 90px -64px rgba(15, 23, 42, 0.76);
+  transform: translateY(-5px);
+}
+
+.osonflow-skeleton-line {
+  position: relative;
+  display: block;
+  overflow: hidden;
+}
+
+.osonflow-skeleton-line::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent,
+    rgba(255, 255, 255, 0.42),
+    transparent
+  );
+  content: "";
+  transform: translateX(-115%);
+  animation: osonflow-skeleton-sweep 3.4s ease-in-out infinite;
+}
+
+.osonflow-voice-orb {
+  animation: osonflow-voice-orb 3.8s ease-in-out infinite;
+}
+
+.osonflow-wave-dot {
+  animation: osonflow-live-pulse 2.2s ease-in-out infinite;
+}
+
+.osonflow-wave-line {
+  transform-origin: left center;
+  animation: osonflow-wave 2.8s ease-in-out infinite;
+}
+
+.osonflow-wave-line:nth-child(2) {
+  animation-delay: 0.12s;
+}
+
+.osonflow-dashboard-screen {
+  position: relative;
+  overflow: hidden;
+}
+
+.osonflow-dashboard-screen::after {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent, rgba(146, 242, 184, 0.22), transparent),
+    linear-gradient(to bottom, transparent 58%, rgba(35, 91, 219, 0.24) 58%);
+  content: "";
+  transform: translateX(-100%);
+  animation: osonflow-dashboard-scan 4.2s ease-in-out infinite;
+}
+
+.osonflow-loop-step:hover {
+  background: rgba(255, 255, 255, 0.38);
+  transform: translateY(-4px);
+}
+
+.osonflow-analytics-stat {
+  animation: osonflow-landing-enter 0.8s cubic-bezier(0.22, 1, 0.36, 1)
+    backwards;
+}
+
+.osonflow-analytics-stat:nth-child(2) {
+  animation-delay: 0.08s;
+}
+
+.osonflow-analytics-stat:nth-child(3) {
+  animation-delay: 0.16s;
+}
+
+.osonflow-chart-bar {
+  transform-origin: bottom;
+  animation: osonflow-bar-rise 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.osonflow-chart-bar:nth-child(2) {
+  animation-delay: 0.06s;
+}
+
+.osonflow-chart-bar:nth-child(3) {
+  animation-delay: 0.12s;
+}
+
+.osonflow-chart-bar:nth-child(4) {
+  animation-delay: 0.18s;
+}
+
+.osonflow-chart-bar:nth-child(5) {
+  animation-delay: 0.24s;
+}
+
+.osonflow-chart-bar:nth-child(6) {
+  animation-delay: 0.3s;
+}
+
+.osonflow-chart-bar:nth-child(7) {
+  animation-delay: 0.36s;
+}
+
+.osonflow-chart-bar:nth-child(8) {
+  animation-delay: 0.42s;
+}
+
+.osonflow-insight-row {
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.osonflow-insight-row:hover {
+  background: #f7f8f5;
+  transform: translateX(3px);
+}
+
+.osonflow-automation-panel,
+.osonflow-channel-router,
+.osonflow-pricing-matrix,
+.osonflow-launch-console {
+  position: relative;
+  isolation: isolate;
+}
+
+.osonflow-automation-panel::after,
+.osonflow-channel-router::after,
+.osonflow-launch-console::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    115deg,
+    transparent,
+    rgba(146, 242, 184, 0.12),
+    transparent 58%
+  );
+  background-size: 260% 260%;
+  content: "";
+  opacity: 0.72;
+  animation: osonflow-panel-sheen 9s ease-in-out infinite;
+}
+
+.osonflow-automation-row {
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.osonflow-automation-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateX(4px);
+}
+
+.osonflow-channel-router::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 35%;
+  width: 1px;
+  background: linear-gradient(
+    transparent,
+    rgba(35, 91, 219, 0.35),
+    rgba(22, 161, 99, 0.26),
+    transparent
+  );
+  content: "";
+  pointer-events: none;
+  animation: osonflow-channel-scan 5.8s ease-in-out infinite;
+}
+
+.osonflow-channel-logo {
+  animation: osonflow-logo-float 6.8s ease-in-out infinite;
+}
+
+.osonflow-channel-logo:nth-child(2n) {
+  animation-delay: 0.5s;
+}
+
+.osonflow-channel-logo:nth-child(3n) {
+  animation-delay: 1s;
+}
+
+.osonflow-channel-route:hover,
+.osonflow-channel-footer-cell:hover,
+.osonflow-pricing-row:hover {
+  background: rgba(35, 91, 219, 0.045);
+}
+
+.osonflow-channel-route:hover {
+  transform: translateX(4px);
+}
+
+.osonflow-plan-head {
+  transition: background 0.22s ease;
+}
+
+.osonflow-plan-head:hover {
+  background: #eef3ff;
+}
+
+.osonflow-plan-head.bg-\[\#101828\]:hover {
+  background: #101828;
+}
+
+.osonflow-launch-tab {
+  position: relative;
+  overflow: hidden;
+}
+
+.osonflow-launch-tab::after {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #92f2b8, transparent);
+  content: "";
+  transform: translateX(-100%);
+  animation: osonflow-signal-sweep 4.8s ease-in-out infinite;
+}
+
+.osonflow-launch-step {
+  animation: osonflow-message-enter 0.8s cubic-bezier(0.22, 1, 0.36, 1)
+    backwards;
+}
+
+.osonflow-launch-step:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.osonflow-launch-step:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.osonflow-launch-step:hover {
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateX(4px);
+}
+
+.osonflow-launch-icon {
+  animation: osonflow-launch-icon 4.4s ease-in-out infinite;
+}
+
 .osonflow-reveal {
   opacity: 1;
   transform: none;
+}
+
+.osonflow-home-field {
+  background:
+    linear-gradient(to right, rgba(16, 24, 40, 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(16, 24, 40, 0.055) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(#000, transparent 92%);
+  animation: osonflow-grid-drift 28s linear infinite;
+}
+
+.osonflow-ruled {
+  background:
+    linear-gradient(to right, rgba(16, 24, 40, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(16, 24, 40, 0.045) 1px, transparent 1px);
+  background-size: 6rem 6rem;
+  opacity: 0.74;
+  animation: osonflow-grid-drift 34s linear infinite;
+}
+
+.osonflow-dark-lines {
+  background:
+    linear-gradient(115deg, rgba(120, 166, 255, 0.18), transparent 34%),
+    linear-gradient(245deg, rgba(146, 242, 184, 0.14), transparent 40%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.06) 0,
+      rgba(255, 255, 255, 0.06) 1px,
+      transparent 1px,
+      transparent 72px
+    );
+  animation: osonflow-dark-pan 18s ease-in-out infinite alternate;
+}
+
+.osonflow-desk-shadow {
+  border-radius: 14px;
+  background:
+    linear-gradient(120deg, rgba(35, 91, 219, 0.16), transparent 58%),
+    linear-gradient(245deg, rgba(22, 161, 99, 0.14), transparent 46%);
+  filter: blur(32px);
+}
+
+.osonflow-routing-line {
+  border-top: 1px solid rgba(35, 91, 219, 0.26);
+  border-right: 1px solid rgba(22, 161, 99, 0.22);
+  border-radius: 0 18px 0 0;
+}
+
+.osonflow-routing-line::after {
+  position: absolute;
+  top: -2px;
+  left: 0;
+  width: 42%;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(35, 91, 219, 0.72),
+    transparent
+  );
+  content: "";
+  animation: osonflow-route-scan 5.2s ease-in-out infinite;
+}
+
+.osonflow-workspace-grid {
+  position: relative;
+  isolation: isolate;
+}
+
+.osonflow-workspace-grid::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 44px 44px;
+  content: "";
+}
+
+.osonflow-automation-row {
+  position: relative;
+  overflow: hidden;
+}
+
+.osonflow-automation-row::before {
+  position: absolute;
+  inset-block: 0;
+  left: -28%;
+  width: 24%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(146, 242, 184, 0.18),
+    transparent
+  );
+  content: "";
+  animation: osonflow-flow-scan 5.4s ease-in-out infinite;
+}
+
+.osonflow-channel-field {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(35, 91, 219, 0.1), transparent 33%),
+    linear-gradient(to right, rgba(16, 24, 40, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(16, 24, 40, 0.05) 1px, transparent 1px),
+    #ffffff;
+  background-size:
+    auto,
+    42px 42px,
+    42px 42px,
+    auto;
 }
 
 @supports (animation-timeline: view()) {
@@ -300,6 +904,28 @@ button[data-sidebar="rail"] {
     transform: translateY(24px);
     animation: osonflow-reveal both cubic-bezier(0.22, 1, 0.36, 1);
     animation-range: entry 8% cover 24%;
+    animation-timeline: view();
+  }
+
+  .osonflow-evidence-item,
+  .osonflow-loop-step,
+  .osonflow-workspace-grid,
+  .osonflow-automation-panel,
+  .osonflow-channel-router,
+  .osonflow-pricing-matrix,
+  .osonflow-launch-console {
+    opacity: 0.01;
+    transform: translateY(24px);
+    animation: osonflow-reveal both cubic-bezier(0.22, 1, 0.36, 1);
+    animation-range: entry 8% cover 24%;
+    animation-timeline: view();
+  }
+
+  .osonflow-chart-bar {
+    animation-name: osonflow-bar-rise;
+    animation-duration: 1s;
+    animation-fill-mode: both;
+    animation-range: entry 16% cover 34%;
     animation-timeline: view();
   }
 }
@@ -323,6 +949,47 @@ button[data-sidebar="rail"] {
   .osonflow-marquee-track,
   .osonflow-metric,
   .osonflow-flow-row::before,
+  .osonflow-home-field,
+  .osonflow-ruled,
+  .osonflow-dark-lines,
+  .osonflow-hero-title,
+  .osonflow-hero-copy,
+  .osonflow-hero-actions,
+  .osonflow-signal-grid,
+  .osonflow-signal-item::after,
+  .osonflow-hero-note,
+  .osonflow-hero-desk,
+  .osonflow-desk-window,
+  .osonflow-desk-window::before,
+  .osonflow-live-dot,
+  .osonflow-online-dot,
+  .osonflow-queue-row.is-active,
+  .osonflow-desk-metric,
+  .osonflow-call-button,
+  .osonflow-message-in,
+  .osonflow-message-out,
+  .osonflow-message-out::after,
+  .osonflow-suggestion-panel,
+  .osonflow-reply-box,
+  .osonflow-logo-chip,
+  .osonflow-proof-metric,
+  .osonflow-skeleton-line::after,
+  .osonflow-voice-orb,
+  .osonflow-wave-dot,
+  .osonflow-wave-line,
+  .osonflow-dashboard-screen::after,
+  .osonflow-analytics-stat,
+  .osonflow-chart-bar,
+  .osonflow-automation-row::before,
+  .osonflow-automation-panel::after,
+  .osonflow-routing-line::after,
+  .osonflow-channel-router::before,
+  .osonflow-channel-router::after,
+  .osonflow-channel-logo,
+  .osonflow-launch-console::before,
+  .osonflow-launch-tab::after,
+  .osonflow-launch-step,
+  .osonflow-launch-icon,
   .osonflow-liquid-card::after,
   .osonflow-glass-window::after,
   .osonflow-widget-preview::after,
@@ -332,13 +999,263 @@ button[data-sidebar="rail"] {
 
   .osonflow-nav-shell,
   .osonflow-nav-shell::before,
-  .osonflow-nav-island {
+  .osonflow-nav-island,
+  .osonflow-primary-cta,
+  .osonflow-secondary-cta,
+  .osonflow-call-button,
+  .osonflow-logo-chip,
+  .osonflow-loop-step,
+  .osonflow-channel-route,
+  .osonflow-pricing-row,
+  .osonflow-launch-step,
+  .osonflow-evidence-frame,
+  .osonflow-insight-row,
+  .osonflow-automation-row,
+  .osonflow-plan-head {
     transition: none;
   }
 
-  .osonflow-reveal {
+  .osonflow-reveal,
+  .osonflow-evidence-item,
+  .osonflow-loop-step,
+  .osonflow-workspace-grid,
+  .osonflow-automation-panel,
+  .osonflow-channel-router,
+  .osonflow-pricing-matrix,
+  .osonflow-launch-console {
     opacity: 1;
     transform: none;
+  }
+}
+
+@keyframes osonflow-landing-enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+    filter: blur(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes osonflow-grid-drift {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: 112px 56px;
+  }
+}
+
+@keyframes osonflow-dark-pan {
+  from {
+    background-position:
+      0 0,
+      0 0,
+      0 0;
+  }
+
+  to {
+    background-position:
+      4rem -2rem,
+      -3rem 3rem,
+      72px 0;
+  }
+}
+
+@keyframes osonflow-signal-sweep {
+  0%,
+  38% {
+    transform: translateX(-105%);
+  }
+
+  68%,
+  100% {
+    transform: translateX(105%);
+  }
+}
+
+@keyframes osonflow-desk-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotateX(0deg);
+  }
+
+  50% {
+    transform: translate3d(0, -8px, 0) rotateX(0.6deg);
+  }
+}
+
+@keyframes osonflow-live-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(22, 161, 99, 0);
+    transform: scale(1);
+  }
+
+  50% {
+    box-shadow: 0 0 0 7px rgba(22, 161, 99, 0.16);
+    transform: scale(1.08);
+  }
+}
+
+@keyframes osonflow-row-focus {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 0 rgba(35, 91, 219, 0);
+  }
+
+  50% {
+    box-shadow: inset 0 0 0 1px rgba(35, 91, 219, 0.1);
+  }
+}
+
+@keyframes osonflow-count-pop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes osonflow-call-beacon {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(16, 24, 40, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px rgba(16, 24, 40, 0.08);
+  }
+}
+
+@keyframes osonflow-message-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes osonflow-logo-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes osonflow-skeleton-sweep {
+  0%,
+  42% {
+    transform: translateX(-115%);
+  }
+
+  72%,
+  100% {
+    transform: translateX(115%);
+  }
+}
+
+@keyframes osonflow-voice-orb {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(146, 242, 184, 0);
+    transform: scale(1);
+  }
+
+  50% {
+    box-shadow: 0 0 0 12px rgba(146, 242, 184, 0.14);
+    transform: scale(1.05);
+  }
+}
+
+@keyframes osonflow-wave {
+  0%,
+  100% {
+    opacity: 0.58;
+    transform: scaleX(0.84);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes osonflow-dashboard-scan {
+  0%,
+  42% {
+    transform: translateX(-100%);
+  }
+
+  76%,
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes osonflow-bar-rise {
+  from {
+    opacity: 0;
+    transform: scaleY(0.08);
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes osonflow-panel-sheen {
+  0%,
+  46% {
+    background-position: 160% 0;
+  }
+
+  74%,
+  100% {
+    background-position: -120% 0;
+  }
+}
+
+@keyframes osonflow-channel-scan {
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: translateY(-28%);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: translateY(28%);
+  }
+}
+
+@keyframes osonflow-launch-icon {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.04);
   }
 }
 
@@ -441,6 +1358,18 @@ button[data-sidebar="rail"] {
   78%,
   100% {
     transform: translateX(560%);
+  }
+}
+
+@keyframes osonflow-route-scan {
+  0%,
+  44% {
+    transform: translateX(0);
+  }
+
+  76%,
+  100% {
+    transform: translateX(142%);
   }
 }
 
