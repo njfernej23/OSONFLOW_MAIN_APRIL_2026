@@ -8,6 +8,7 @@ import { ArrowRightIcon } from "lucide-react"
 
 import { cn } from "@workspace/ui/lib/utils"
 
+import { LanguageSwitcher } from "@/components/i18n/language-switcher"
 import { navItems } from "./marketing-nav-data"
 
 const SCROLLED_THRESHOLD = 4
@@ -88,6 +89,7 @@ export const LandingNav = () => {
 
         {(!isLoaded || !isSignedIn) && (
           <div className="osonflow-nav-island flex h-10 shrink-0 items-center gap-1 px-1 sm:h-12 sm:px-1.5">
+            <LanguageSwitcher compact />
             <Link
               className="hidden rounded-full px-4 py-2.5 whitespace-nowrap text-[#667085] transition hover:bg-white/70 hover:text-[#101828] sm:inline-flex"
               href="/sign-in"
@@ -112,6 +114,7 @@ export const LandingNav = () => {
 
         {isLoaded && isSignedIn && (
           <div className="osonflow-nav-island flex h-10 shrink-0 items-center gap-2 px-1.5 sm:h-12 sm:px-2">
+            <LanguageSwitcher compact />
             <Link
               className="inline-flex h-10 shrink-0 items-center rounded-full bg-[#101828] px-4 text-sm font-semibold whitespace-nowrap text-white shadow-[0_18px_42px_-24px_rgba(16,24,40,0.7)] transition hover:-translate-y-0.5 hover:bg-[#1D2939] sm:h-11 sm:px-5"
               href="/analytics"

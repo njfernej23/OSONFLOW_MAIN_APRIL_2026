@@ -9,6 +9,7 @@ import { Badge } from "@workspace/ui/components/badge"
 import { useInfiniteScroll } from "@workspace/ui/hooks/use-infinite-scroll"
 import { InfiniteScrollTrigger } from "@workspace/ui/components/infinite-scroll-trigger"
 import { api } from "@workspace/backend/_generated/api"
+import { useLanguage } from "@/lib/i18n/language-provider"
 import { getCountryFlagUrl, getCountryFromTimezone } from "@/lib/country-utils"
 import { cn } from "@workspace/ui/lib/utils"
 import { usePathname, useRouter } from "next/navigation"
@@ -45,9 +46,21 @@ const FILTER_OPTIONS: {
   label: string
   value: CombinedFilterValue
   icon: React.ComponentType<{ className?: string }>
+  localizedLabel?: {
+    uz: string
+    ru: string
+  }
 }[] = [
   { label: "All", value: "all", icon: ListIcon },
-  { label: "Open", value: "unresolved", icon: ArrowRightIcon },
+  {
+    label: "Open",
+    value: "unresolved",
+    icon: ArrowRightIcon,
+    localizedLabel: {
+      uz: "Ochiq",
+      ru: "Открытые",
+    },
+  },
   { label: "Escalated", value: "escalated", icon: ArrowUpIcon },
   { label: "Resolved", value: "resolved", icon: CheckIcon },
   { label: "Mine", value: "assigned_to_me", icon: UserCheckIcon },
@@ -99,6 +112,7 @@ const formatConversationTime = (timestamp: number): string => {
 }
 
 export const ConversationsPanel = () => {
+  const { language, t } = useLanguage()
   const { userId } = useAuth()
 
   const statusFilter = useAtomValue(statusFilterAtom)
@@ -239,6 +253,11 @@ export const ConversationsPanel = () => {
           {FILTER_OPTIONS.map((option) => {
             const isActive = combinedFilterValue === option.value
             const Icon = option.icon
+            const label =
+              language === "en"
+                ? option.label
+                : (option.localizedLabel?.[language] ?? t(option.label))
+
             return (
               <button
                 key={option.value}
@@ -252,7 +271,7 @@ export const ConversationsPanel = () => {
                 )}
               >
                 <Icon className="size-3" />
-                {option.label}
+                {label}
               </button>
             )
           })}

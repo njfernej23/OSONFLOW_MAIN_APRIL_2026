@@ -8,6 +8,7 @@ import {
   BrainIcon,
   ChartColumnBig,
   CreditCardIcon,
+  GitBranchIcon,
   LayoutDashboardIcon,
   MessagesSquare,
   PaletteIcon,
@@ -35,6 +36,7 @@ import {
 } from "@workspace/ui/components/sidebar"
 
 import { cn } from "@workspace/ui/lib/utils"
+import { LanguageSwitcher } from "@/components/i18n/language-switcher"
 import { DashboardThemeToggle } from "./dashboard-theme-toggle"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
@@ -77,6 +79,11 @@ const configurationItems = [
     title: "Integrations",
     url: "/integrations",
     icon: LayoutDashboardIcon,
+  },
+  {
+    title: "Workflows",
+    url: "/workflows",
+    icon: GitBranchIcon,
   },
   {
     title: "Vapi voice",
@@ -300,6 +307,9 @@ export const DashboardSidebar = () => {
 
       <SidebarFooter>
         <SidebarMenu>
+          <SidebarMenuItem>
+            <LanguageSwitcher compact surface="sidebar" />
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <DashboardThemeToggle sidebar />
           </SidebarMenuItem>

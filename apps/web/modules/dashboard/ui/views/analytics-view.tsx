@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner"
 
 import { api } from "@workspace/backend/_generated/api"
+import { useLanguage } from "@/lib/i18n/language-provider"
 import type { Doc } from "@workspace/backend/_generated/dataModel"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -98,7 +99,7 @@ const MetricTile = ({
 }: {
   title: string
   value: string
-  caption: string
+  caption: React.ReactNode
   icon: React.ComponentType<{ className?: string }>
   tone?: "default" | "green" | "amber" | "rose" | "blue"
 }) => {
@@ -159,6 +160,7 @@ const CountBar = ({
 )
 
 export const AnalyticsView = () => {
+  const { t } = useLanguage()
   const [isExporting, setIsExporting] = useState(false)
   const convex = useConvex()
   const overview = useQuery(api.private.analytics.getOverview, {
@@ -303,7 +305,9 @@ export const AnalyticsView = () => {
             <div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <BarChart3Icon className="size-4" />
-                <span>Last {overview.windowDays} days</span>
+                <span>
+                  {t("Last")} {overview.windowDays} {t("days")}
+                </span>
               </div>
               <h1 className="mt-2 text-2xl font-semibold tracking-normal text-foreground">
                 AI performance analytics
@@ -319,7 +323,7 @@ export const AnalyticsView = () => {
                 variant="outline"
               >
                 <DownloadIcon data-icon="inline-start" />
-                {isExporting ? "Exporting..." : "Download CSV"}
+                {isExporting ? t("Exporting...") : t("Download CSV")}
               </Button>
             </div>
           </div>
@@ -329,28 +333,36 @@ export const AnalyticsView = () => {
           <MetricTile
             title="AI resolution rate"
             value={`${overview.resolutionRate}%`}
-            caption={`${overview.resolved} resolved by AI or voice AI`}
+            caption={
+              <>
+                {overview.resolved} {t("resolved by AI or voice AI")}
+              </>
+            }
             icon={CheckCircle2Icon}
             tone="green"
           />
           <MetricTile
             title="Escalation rate"
             value={`${overview.escalationRate}%`}
-            caption={`${overview.escalated} conversations needed a human`}
+            caption={
+              <>
+                {overview.escalated} {t("conversations needed a human")}
+              </>
+            }
             icon={UserRoundCheckIcon}
             tone="rose"
           />
           <MetricTile
             title="Avg. human response"
             value={formatDuration(overview.averageHumanResponseMs)}
-            caption="Measured from first customer message to first operator reply"
+            caption={t("Measured from first customer message to first operator reply")}
             icon={Clock3Icon}
             tone="amber"
           />
           <MetricTile
             title="Human time saved"
             value={`${overview.humanSavedMinutes}m`}
-            caption="Estimated support minutes handled by AI"
+            caption={t("Estimated support minutes handled by AI")}
             icon={TrendingUpIcon}
             tone="blue"
           />
@@ -443,8 +455,9 @@ export const AnalyticsView = () => {
                       <Badge variant="outline">{metric.resolutionRate}%</Badge>
                     </div>
                     <p className="mt-3 text-xs text-muted-foreground">
-                      {metric.resolved} resolved, {metric.escalated} escalated,{" "}
-                      {metric.total} total
+                      {metric.resolved} {t("resolved")},{" "}
+                      {metric.escalated} {t("escalated")}, {metric.total}{" "}
+                      {t("total")}
                     </p>
                   </div>
                 )

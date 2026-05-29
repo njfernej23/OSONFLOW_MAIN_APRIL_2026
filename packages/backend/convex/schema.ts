@@ -391,6 +391,45 @@ export default defineSchema({
       "usageCount",
     ]),
 
+  workflows: defineTable({
+    organizationId: v.string(),
+    name: v.string(),
+    description: v.optional(v.string()),
+    definition: v.object({
+      schemaVersion: v.number(),
+      id: v.optional(v.string()),
+      name: v.string(),
+      description: v.optional(v.string()),
+      nodes: v.array(v.any()),
+      edges: v.array(v.any()),
+    }),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.optional(v.string()),
+    updatedBy: v.optional(v.string()),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_organization_id_and_updated_at", [
+      "organizationId",
+      "updatedAt",
+    ]),
+
+  workflowPresence: defineTable({
+    organizationId: v.string(),
+    workflowId: v.id("workflows"),
+    userId: v.string(),
+    name: v.string(),
+    initials: v.string(),
+    imageUrl: v.optional(v.string()),
+    color: v.string(),
+    cursorX: v.optional(v.number()),
+    cursorY: v.optional(v.number()),
+    selectedNodeId: v.optional(v.string()),
+    lastSeenAt: v.number(),
+  })
+    .index("by_workflow_id", ["workflowId"])
+    .index("by_workflow_id_and_user_id", ["workflowId", "userId"]),
+
   contactSessions: defineTable({
     name: v.string(),
     email: v.string(),
