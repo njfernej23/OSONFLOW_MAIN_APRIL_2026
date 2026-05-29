@@ -101,12 +101,6 @@ type KnowledgeTestResult = {
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-function getFileIcon(type: string) {
-  if (type === "url") return GlobeIcon
-  if (["pdf"].includes(type)) return FileTextIcon
-  return FileIcon
-}
-
 function getTypeBadgeVariant(
   type: string
 ): "default" | "secondary" | "outline" {
@@ -115,10 +109,40 @@ function getTypeBadgeVariant(
   return "outline"
 }
 
-function getStatusIcon(status: PublicFile["status"]) {
-  if (status === "ready") return CheckCircle2Icon
-  if (status === "processing") return Clock3Icon
-  return AlertCircleIcon
+function SourceFileIcon({
+  type,
+  className,
+}: {
+  type: string
+  className?: string
+}) {
+  if (type === "url") {
+    return <GlobeIcon className={className} />
+  }
+
+  if (type === "pdf") {
+    return <FileTextIcon className={className} />
+  }
+
+  return <FileIcon className={className} />
+}
+
+function SourceStatusIcon({
+  status,
+  className,
+}: {
+  status: PublicFile["status"]
+  className?: string
+}) {
+  if (status === "ready") {
+    return <CheckCircle2Icon className={className} />
+  }
+
+  if (status === "processing") {
+    return <Clock3Icon className={className} />
+  }
+
+  return <AlertCircleIcon className={className} />
 }
 
 function getStatusClass(status: PublicFile["status"]) {
@@ -212,21 +236,44 @@ function StatCard({
   label,
   value,
   sub,
+  tone = "default",
 }: {
   icon: React.ElementType
   label: string
   value: string | number
   sub?: string
+  tone?: "default" | "green" | "amber" | "rose" | "blue"
 }) {
+  const toneClass = {
+    default: "bg-muted text-muted-foreground",
+    green: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    amber: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    rose: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
+    blue: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  }[tone]
+
   return (
-    <div className="surface-panel flex items-center gap-3 rounded-2xl border-0 px-4 py-3">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-        <Icon className="size-4 text-muted-foreground" />
-      </div>
+    <div className="surface-panel flex min-h-[5.75rem] items-start justify-between gap-3 rounded-xl px-4 py-3.5">
       <div className="min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm leading-tight font-semibold">{value}</p>
-        {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+        <p className="text-[11px] font-medium text-muted-foreground uppercase">
+          {label}
+        </p>
+        <p className="mt-2 text-xl leading-tight font-semibold text-foreground">
+          {value}
+        </p>
+        {sub && (
+          <p className="mt-1 text-xs leading-snug text-muted-foreground">
+            {sub}
+          </p>
+        )}
+      </div>
+      <div
+        className={cn(
+          "flex size-9 shrink-0 items-center justify-center rounded-lg",
+          toneClass
+        )}
+      >
+        <Icon className="size-4" />
       </div>
     </div>
   )
@@ -276,27 +323,36 @@ function KnowledgeTestConsole({
   }
 
   return (
-    <section className="mt-5 rounded-[28px] border border-border/70 bg-background/82 p-4 shadow-sm sm:p-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <SparklesIcon className="size-4 text-primary" />
-            <span>Test knowledge accuracy</span>
-          </div>
-          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Ask a question your widget should answer. The result is grounded in
-            indexed sources and scored by support strength.
-          </p>
-        </div>
-        {result && (
-          <div className="shrink-0 rounded-2xl border border-border/70 bg-muted/35 px-4 py-3">
-            <div className="flex items-center justify-between gap-5">
-              <span className="text-xs text-muted-foreground">Confidence</span>
-              <span className="text-lg font-semibold text-foreground">
-                {result.confidence}%
+    <section className="surface-panel rounded-xl p-4 sm:p-5">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <SparklesIcon className="size-4" />
               </span>
+              <span>Test knowledge accuracy</span>
             </div>
-            <div className="mt-2 h-2 w-40 overflow-hidden rounded-full bg-muted">
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Ask a customer question and see the answer quality before your
+              widget uses it.
+            </p>
+          </div>
+          {result && (
+            <div className="shrink-0 text-right">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase">
+                Confidence
+              </p>
+              <p className="text-2xl leading-none font-semibold text-foreground">
+                {result.confidence}%
+              </p>
+            </div>
+          )}
+        </div>
+
+        {result && (
+          <div>
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
               <div
                 className={cn(
                   "h-full rounded-full",
@@ -311,26 +367,27 @@ function KnowledgeTestConsole({
 
       <form className="mt-4 grid gap-3" onSubmit={handleSubmit}>
         <Textarea
-          className="min-h-20 resize-none"
+          className="min-h-24 resize-none"
           disabled={disabled || isTesting}
           onChange={(event) => setQuestion(event.target.value)}
           placeholder="Ask something like: What is our refund policy?"
           value={question}
         />
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs leading-relaxed text-muted-foreground">
             {disabled
               ? "Add and index a source before testing."
               : "Confidence is an evidence score, not a guaranteed truth score."}
           </p>
           <Button
             disabled={disabled || isTesting || !question.trim()}
+            size="sm"
             type="submit"
           >
             {isTesting ? (
-              <Loader2Icon className="size-4 animate-spin" />
+              <Loader2Icon className="animate-spin" data-icon="inline-start" />
             ) : (
-              <SendIcon className="size-4" />
+              <SendIcon data-icon="inline-start" />
             )}
             Test
           </Button>
@@ -338,8 +395,8 @@ function KnowledgeTestConsole({
       </form>
 
       {result && (
-        <div className="mt-5 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+        <div className="mt-5 grid gap-3">
+          <div className="rounded-xl border border-border/70 bg-muted/20 p-3.5">
             <div className="flex flex-wrap items-center gap-2">
               <Badge
                 className={getSupportBadgeClass(result.supportLevel)}
@@ -356,7 +413,7 @@ function KnowledgeTestConsole({
             </p>
           </div>
 
-          <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+          <div className="rounded-xl border border-border/70 bg-muted/20 p-3.5">
             <p className="text-xs font-medium text-muted-foreground">
               Source matches
             </p>
@@ -417,50 +474,62 @@ function AIReplyCachePanel({
     : "No hits yet"
 
   return (
-    <section className="mt-5 rounded-[28px] border border-border/70 bg-background/82 p-4 shadow-sm sm:p-5">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <DatabaseIcon className="size-4 text-primary" />
-            <span>AI answer cache</span>
+    <section className="surface-panel rounded-xl p-4 sm:p-5">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-700 dark:text-sky-300">
+                <DatabaseIcon className="size-4" />
+              </span>
+              <span>AI answer cache</span>
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Reused answers clear automatically when sources change.
+            </p>
           </div>
-          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Reused answers are cleared automatically when knowledge sources
-            change.
-          </p>
+          <Badge className="h-7 rounded-lg" variant="secondary">
+            {stats?.entryCount ?? 0} stored
+          </Badge>
         </div>
         <Button
+          className="w-full"
           disabled={isClearing || !stats?.entryCount}
           onClick={() => void onClear()}
           size="sm"
           variant="outline"
         >
           {isClearing ? (
-            <Loader2Icon className="size-4 animate-spin" />
+            <Loader2Icon className="animate-spin" data-icon="inline-start" />
           ) : (
-            <TrashIcon className="size-4" />
+            <TrashIcon data-icon="inline-start" />
           )}
           Clear cache
         </Button>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard
-          icon={DatabaseIcon}
-          label="Cached answers"
-          value={stats?.entryCount ?? "—"}
-        />
+      <div className="mt-4 grid grid-cols-2 gap-3">
         <StatCard
           icon={SparklesIcon}
           label="Cache hits"
+          tone="blue"
           value={stats?.hitCount ?? "—"}
         />
         <StatCard
           icon={SearchIcon}
-          label="Semantic entries"
+          label="Semantic"
+          tone="green"
           value={stats?.semanticIndexedCount ?? "—"}
         />
-        <StatCard icon={Clock3Icon} label="Last used" value={lastUsedLabel} />
+        <div className="col-span-2 rounded-xl border border-border/70 bg-muted/20 px-3.5 py-3">
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <Clock3Icon className="size-3.5" />
+            <span>Last cache hit</span>
+          </div>
+          <p className="mt-1 text-sm font-medium text-foreground">
+            {lastUsedLabel}
+          </p>
+        </div>
       </div>
     </section>
   )
@@ -477,24 +546,21 @@ function FileCard({
   onView: (file: PublicFile) => void
   onDelete: (file: PublicFile) => void
 }) {
-  const Icon = getFileIcon(file.type)
-  const StatusIcon = getStatusIcon(file.status)
-
   return (
-    <div className="surface-panel group relative flex flex-col gap-3 rounded-2xl border-0 p-4 transition-shadow hover:shadow-md">
+    <div className="surface-panel group relative flex min-h-[11rem] flex-col gap-3 rounded-xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-md">
       {/* header row */}
       <div className="flex items-start justify-between gap-2">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-          <Icon className="size-5 text-muted-foreground" />
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <SourceFileIcon className="size-5" type={file.type} />
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              className="size-7 shrink-0 p-0 opacity-0 transition-opacity group-hover:opacity-100"
-              size="sm"
+              className="shrink-0 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
+              size="icon-sm"
               variant="ghost"
             >
-              <MoreHorizontalIcon className="size-4" />
+              <MoreHorizontalIcon />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -530,7 +596,7 @@ function FileCard({
       </div>
 
       {/* footer row */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="mt-auto flex items-center justify-between gap-2">
         <Badge className="uppercase" variant={getTypeBadgeVariant(file.type)}>
           {file.type}
         </Badge>
@@ -543,19 +609,23 @@ function FileCard({
                   getStatusClass(file.status)
                 )}
               >
-                <StatusIcon
+                <SourceStatusIcon
                   className={cn(
                     "size-3.5",
                     file.status === "processing" && "animate-spin"
                   )}
+                  status={file.status}
                 />
-                {file.size !== "unknown" ? file.size : ""}
+                {getStatusLabel(file.status)}
               </span>
             </TooltipTrigger>
             <TooltipContent>{getStatusLabel(file.status)}</TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>
+      <p className="text-xs text-muted-foreground">
+        {file.size !== "unknown" ? file.size : "Size unavailable"}
+      </p>
     </div>
   )
 }
@@ -698,8 +768,13 @@ export const FilesView = () => {
   const stats = useMemo(() => {
     const total = allFiles.length
     const ready = allFiles.filter((f) => f.status === "ready").length
+    const processing = allFiles.filter((f) => f.status === "processing").length
+    const errors = allFiles.filter((f) => f.status === "error").length
     const websites = allFiles.filter((f) => f.type === "url").length
-    return { total, ready, websites }
+    const documents = Math.max(total - websites, 0)
+    const readiness = total > 0 ? Math.round((ready / total) * 100) : 0
+
+    return { total, ready, processing, errors, websites, documents, readiness }
   }, [allFiles])
 
   // ── handlers ────────────────────────────────────────────────────────────
@@ -793,13 +868,12 @@ export const FilesView = () => {
         <DialogContent className="flex h-[90vh] max-w-[95vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
           <DialogHeader className="shrink-0 border-b px-6 py-4 pr-14">
             <DialogTitle className="flex items-center gap-2 text-base">
-              {viewerFile &&
-                (() => {
-                  const Icon = getFileIcon(viewerFile.type)
-                  return (
-                    <Icon className="size-4 shrink-0 text-muted-foreground" />
-                  )
-                })()}
+              {viewerFile && (
+                <SourceFileIcon
+                  className="size-4 shrink-0 text-muted-foreground"
+                  type={viewerFile.type}
+                />
+              )}
               <span className="truncate">
                 {viewerFile?.name ?? "Document Viewer"}
               </span>
@@ -850,387 +924,497 @@ export const FilesView = () => {
       </Dialog>
 
       {/* ── page ── */}
-      <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-transparent">
-        {/* page header */}
-        <div className="px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-screen-lg">
-            <div className="surface-hero flex flex-col gap-4 rounded-[30px] px-6 py-7 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-              <div>
-                <p className="section-kicker">Knowledge</p>
-                <h1 className="text-2xl font-semibold tracking-tight">
-                  Knowledge base
-                </h1>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  Manage documents and websites powering your AI assistant.
-                </p>
-              </div>
-              <Button
-                className="hidden sm:inline-flex"
-                onClick={() => setUploadDialogOpen(true)}
-              >
-                <PlusIcon className="size-4" />
-                Add Source
-              </Button>
-            </div>
-
-            {/* stat cards */}
-            {!isLoadingFirstPage && allFiles.length > 0 && (
-              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                <StatCard
-                  icon={DatabaseIcon}
-                  label="Total sources"
-                  value={stats.total}
-                />
-                <StatCard
-                  icon={CheckCircle2Icon}
-                  label="Indexed"
-                  value={stats.ready}
-                  sub={`${Math.round((stats.ready / stats.total) * 100)}% ready`}
-                />
-                <StatCard
-                  icon={GlobeIcon}
-                  label="Web pages"
-                  value={stats.websites}
-                  sub="scraped URLs"
-                />
-              </div>
-            )}
-
-            {!isLoadingFirstPage && allFiles.length > 0 && (
-              <KnowledgeTestConsole
-                disabled={stats.ready === 0}
-                isTesting={isTestingKnowledge}
-                onTest={handleKnowledgeTest}
-                result={testResult}
-              />
-            )}
-
-            {!isLoadingFirstPage && allFiles.length > 0 && (
-              <AIReplyCachePanel
-                isClearing={isClearingCache}
-                onClear={handleClearCache}
-                stats={cacheStats}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* toolbar */}
-        {(isLoadingFirstPage || allFiles.length > 0) && (
-          <div className="px-4 py-3 sm:px-6 lg:px-8">
-            <div className="surface-frosted mx-auto flex max-w-screen-lg flex-wrap items-center gap-3 rounded-[26px] px-4 py-3">
-              {/* search */}
-              <div className="relative flex-1">
-                <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  className="pr-9 pl-9"
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by name, type or category…"
-                  value={searchQuery}
-                />
-                {searchQuery && (
-                  <button
-                    className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    onClick={() => setSearchQuery("")}
-                    type="button"
-                  >
-                    <XIcon className="size-4" />
-                  </button>
-                )}
-              </div>
-
-              {/* category filter chips */}
-              {categories.length > 0 && (
-                <div className="hidden items-center gap-1.5 sm:flex">
-                  <button
-                    className={cn(
-                      "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                      !activeCategory
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+      <div className="h-full overflow-y-auto p-3 sm:p-5">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
+          <section className="surface-hero overflow-hidden rounded-[22px] px-4 py-4 sm:px-5 sm:py-5">
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-stretch">
+              <div className="flex min-w-0 flex-col justify-between gap-5">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                    <span className="inline-flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <BookOpenIcon className="size-4" />
+                    </span>
+                    <span className="font-medium">Knowledge base</span>
+                    {!isLoadingFirstPage && allFiles.length > 0 && (
+                      <Badge
+                        className="h-7 rounded-lg"
+                        variant={
+                          stats.errors
+                            ? "destructive"
+                            : stats.processing
+                              ? "outline"
+                              : "secondary"
+                        }
+                      >
+                        {stats.errors
+                          ? `${stats.errors} needs review`
+                          : stats.processing
+                            ? `${stats.processing} indexing`
+                            : `${stats.readiness}% ready`}
+                      </Badge>
                     )}
-                    onClick={() => setActiveCategory(null)}
-                    type="button"
-                  >
-                    All
-                  </button>
-                  {categories.map((cat) => (
-                    <button
-                      key={cat}
-                      className={cn(
-                        "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                        activeCategory === cat
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground"
-                      )}
-                      onClick={() =>
-                        setActiveCategory(activeCategory === cat ? null : cat)
-                      }
-                      type="button"
+                  </div>
+                  <h1 className="mt-4 max-w-2xl text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                    Customer answers, indexed and ready
+                  </h1>
+                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                    Manage the documents and websites your AI assistant searches
+                    before it responds to customers.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button onClick={() => setUploadDialogOpen(true)}>
+                    <PlusIcon data-icon="inline-start" />
+                    Add Source
+                  </Button>
+                  {allFiles.length > 0 && (
+                    <Button
+                      onClick={() => {
+                        setSearchQuery("")
+                        setActiveCategory(null)
+                      }}
+                      variant="outline"
                     >
-                      {cat}
-                    </button>
-                  ))}
+                      <SearchIcon data-icon="inline-start" />
+                      Reset view
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border/70 bg-background/70 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase">
+                      Readiness
+                    </p>
+                    <p className="mt-2 text-3xl leading-none font-semibold text-foreground">
+                      {isLoadingFirstPage ? "…" : `${stats.readiness}%`}
+                    </p>
+                  </div>
+                  <div className="flex size-10 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                    <CheckCircle2Icon className="size-5" />
+                  </div>
+                </div>
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{
+                      width: isLoadingFirstPage ? "38%" : `${stats.readiness}%`,
+                    }}
+                  />
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-lg bg-muted/45 px-2 py-2">
+                    <p className="text-sm font-semibold text-foreground">
+                      {isLoadingFirstPage ? "—" : stats.ready}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">Indexed</p>
+                  </div>
+                  <div className="rounded-lg bg-muted/45 px-2 py-2">
+                    <p className="text-sm font-semibold text-foreground">
+                      {isLoadingFirstPage ? "—" : stats.processing}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Indexing
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-muted/45 px-2 py-2">
+                    <p className="text-sm font-semibold text-foreground">
+                      {isLoadingFirstPage ? "—" : stats.errors}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">Issues</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {!isLoadingFirstPage && allFiles.length > 0 && (
+            <section className="grid gap-3 min-[480px]:grid-cols-2 xl:grid-cols-4">
+              <StatCard
+                icon={DatabaseIcon}
+                label="Total sources"
+                sub={`${filtered.length} visible now`}
+                tone="blue"
+                value={stats.total}
+              />
+              <StatCard
+                icon={CheckCircle2Icon}
+                label="Indexed"
+                sub={`${stats.readiness}% ready for answers`}
+                tone="green"
+                value={stats.ready}
+              />
+              <StatCard
+                icon={GlobeIcon}
+                label="Web pages"
+                sub="Scraped URL sources"
+                tone="amber"
+                value={stats.websites}
+              />
+              <StatCard
+                icon={FileTextIcon}
+                label="Documents"
+                sub="Uploaded source files"
+                value={stats.documents}
+              />
+            </section>
+          )}
+
+          <section className="grid min-h-0 gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+            <div className="surface-panel min-w-0 overflow-hidden rounded-xl">
+              <div className="flex flex-col gap-3 border-b border-border/70 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                <div>
+                  <h2 className="text-sm font-semibold text-foreground">
+                    Sources
+                  </h2>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Search, inspect, and remove the content used by your AI.
+                  </p>
+                </div>
+                <Badge className="h-7 rounded-lg" variant="outline">
+                  {isLoadingFirstPage
+                    ? "Loading"
+                    : `${filtered.length} of ${stats.total}`}
+                </Badge>
+              </div>
+
+              {(isLoadingFirstPage || allFiles.length > 0) && (
+                <div className="border-b border-border/70 bg-muted/15 px-3 py-3 sm:px-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                    <div className="relative min-w-0 flex-1">
+                      <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        className="pr-9 pl-9"
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search by name, type or category..."
+                        value={searchQuery}
+                      />
+                      {searchQuery && (
+                        <button
+                          aria-label="Clear search"
+                          className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          onClick={() => setSearchQuery("")}
+                          type="button"
+                        >
+                          <XIcon className="size-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      {categories.length > 0 && (
+                        <div className="flex max-w-full items-center gap-1.5 overflow-x-auto pb-1">
+                          <button
+                            className={cn(
+                              "shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                              !activeCategory
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                            )}
+                            onClick={() => setActiveCategory(null)}
+                            type="button"
+                          >
+                            All
+                          </button>
+                          {categories.map((cat) => (
+                            <button
+                              key={cat}
+                              className={cn(
+                                "shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                                activeCategory === cat
+                                  ? "border-primary bg-primary text-primary-foreground"
+                                  : "border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+                              )}
+                              onClick={() =>
+                                setActiveCategory(
+                                  activeCategory === cat ? null : cat
+                                )
+                              }
+                              type="button"
+                            >
+                              {cat}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex items-center rounded-lg border border-border/80 bg-background p-0.5">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                aria-label="List view"
+                                aria-pressed={viewMode === "list"}
+                                className={cn(
+                                  "flex size-7 items-center justify-center rounded-md transition-colors",
+                                  viewMode === "list"
+                                    ? "bg-primary text-primary-foreground"
+                                    : "text-muted-foreground hover:text-foreground"
+                                )}
+                                onClick={() => handleViewModeChange("list")}
+                                type="button"
+                              >
+                                <LayoutListIcon className="size-4" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>List view</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                aria-label="Grid view"
+                                aria-pressed={viewMode === "grid"}
+                                className={cn(
+                                  "flex size-7 items-center justify-center rounded-md transition-colors",
+                                  viewMode === "grid"
+                                    ? "bg-primary text-primary-foreground"
+                                    : "text-muted-foreground hover:text-foreground"
+                                )}
+                                onClick={() => handleViewModeChange("grid")}
+                                type="button"
+                              >
+                                <GridIcon className="size-4" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Grid view</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {/* view mode toggle */}
-              <div className="flex items-center rounded-lg border bg-background p-0.5">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        className={cn(
-                          "flex size-7 items-center justify-center rounded-md transition-colors",
-                          viewMode === "list"
-                            ? "bg-primary text-primary-foreground"
-                            : "text-muted-foreground hover:text-foreground"
-                        )}
-                        onClick={() => handleViewModeChange("list")}
-                        type="button"
-                      >
-                        <LayoutListIcon className="size-4" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>List view</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        className={cn(
-                          "flex size-7 items-center justify-center rounded-md transition-colors",
-                          viewMode === "grid"
-                            ? "bg-primary text-primary-foreground"
-                            : "text-muted-foreground hover:text-foreground"
-                        )}
-                        onClick={() => handleViewModeChange("grid")}
-                        type="button"
-                      >
-                        <GridIcon className="size-4" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>Grid view</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+              <div className="p-3 sm:p-4">
+                {isLoadingFirstPage ? (
+                  viewMode === "list" ? (
+                    <div className="overflow-hidden rounded-xl border border-border/70 bg-background/80">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="px-6 py-3 font-medium">
+                              Name
+                            </TableHead>
+                            <TableHead className="px-6 py-3 font-medium">
+                              Type
+                            </TableHead>
+                            <TableHead className="px-6 py-3 font-medium">
+                              Size
+                            </TableHead>
+                            <TableHead className="px-6 py-3 font-medium">
+                              Status
+                            </TableHead>
+                            <TableHead className="px-6 py-3 font-medium" />
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          <TableSkeletonRows />
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      <GridSkeletonCards />
+                    </div>
+                  )
+                ) : allFiles.length === 0 ? (
+                  <div className="overflow-hidden rounded-xl border border-border/70 bg-background/80">
+                    <EmptyState onAdd={() => setUploadDialogOpen(true)} />
+                  </div>
+                ) : filtered.length === 0 ? (
+                  <div className="overflow-hidden rounded-xl border border-border/70 bg-background/80">
+                    <EmptySearch
+                      onClear={() => {
+                        setSearchQuery("")
+                        setActiveCategory(null)
+                      }}
+                      query={searchQuery || activeCategory || ""}
+                    />
+                  </div>
+                ) : viewMode === "list" ? (
+                  <div className="overflow-hidden rounded-xl border border-border/70 bg-background/80">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="hover:bg-transparent">
+                            <TableHead className="min-w-[18rem] px-6 py-3 font-medium">
+                              Name
+                            </TableHead>
+                            <TableHead className="px-6 py-3 font-medium">
+                              Type
+                            </TableHead>
+                            <TableHead className="px-6 py-3 font-medium">
+                              Size
+                            </TableHead>
+                            <TableHead className="px-6 py-3 font-medium">
+                              Status
+                            </TableHead>
+                            <TableHead className="w-12 px-6 py-3" />
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filtered.map((file) => (
+                            <TableRow
+                              className="group cursor-default hover:bg-muted/40"
+                              key={file.id}
+                            >
+                              <TableCell className="px-6 py-3.5">
+                                <div className="flex min-w-0 items-center gap-3">
+                                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                    <SourceFileIcon
+                                      className="size-4"
+                                      type={file.type}
+                                    />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p
+                                      className="truncate text-sm font-medium"
+                                      title={file.name}
+                                    >
+                                      {file.name}
+                                    </p>
+                                    {file.category && (
+                                      <p className="truncate text-xs text-muted-foreground">
+                                        {file.category}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="px-6 py-3.5">
+                                <Badge
+                                  className="uppercase"
+                                  variant={getTypeBadgeVariant(file.type)}
+                                >
+                                  {file.type}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="px-6 py-3.5 text-sm text-muted-foreground">
+                                {file.size !== "unknown" ? file.size : "—"}
+                              </TableCell>
+                              <TableCell className="px-6 py-3.5">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span
+                                        className={cn(
+                                          "flex w-fit items-center gap-1.5 text-xs font-medium",
+                                          getStatusClass(file.status)
+                                        )}
+                                      >
+                                        <SourceStatusIcon
+                                          className={cn(
+                                            "size-3.5",
+                                            file.status === "processing" &&
+                                              "animate-spin"
+                                          )}
+                                          status={file.status}
+                                        />
+                                        {getStatusLabel(file.status)}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {file.status === "ready"
+                                        ? "This source is indexed and available for AI search."
+                                        : file.status === "processing"
+                                          ? "Currently being processed and indexed."
+                                          : "Indexing failed. Try re-uploading."}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </TableCell>
+                              <TableCell className="px-6 py-3.5">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      className="opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
+                                      size="icon-sm"
+                                      variant="ghost"
+                                    >
+                                      <MoreHorizontalIcon />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
+                                      onClick={() => void handleViewClick(file)}
+                                    >
+                                      <EyeIcon className="size-4" />
+                                      View content
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:text-destructive"
+                                      onClick={() => handleDeleteClick(file)}
+                                    >
+                                      <TrashIcon className="size-4" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {canLoadMore && (
+                      <div className="border-t border-border/70">
+                        <InfiniteScrollTrigger
+                          canLoadMore={canLoadMore}
+                          isLoadingMore={isLoadingMore}
+                          onLoadMore={handleLoadMore}
+                          ref={topElementRef}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {filtered.map((file) => (
+                        <FileCard
+                          file={file}
+                          key={file.id}
+                          onDelete={handleDeleteClick}
+                          onView={(f) => void handleViewClick(f)}
+                        />
+                      ))}
+                    </div>
+                    {canLoadMore && (
+                      <div className="mt-4">
+                        <InfiniteScrollTrigger
+                          canLoadMore={canLoadMore}
+                          isLoadingMore={isLoadingMore}
+                          onLoadMore={handleLoadMore}
+                          ref={topElementRef}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
-          </div>
-        )}
 
-        {/* content */}
-        <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-screen-lg">
-            {/* ── loading skeleton ── */}
-            {isLoadingFirstPage ? (
-              viewMode === "list" ? (
-                <div className="overflow-hidden rounded-xl border bg-background">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="px-6 py-3 font-medium">
-                          Name
-                        </TableHead>
-                        <TableHead className="px-6 py-3 font-medium">
-                          Type
-                        </TableHead>
-                        <TableHead className="px-6 py-3 font-medium">
-                          Size
-                        </TableHead>
-                        <TableHead className="px-6 py-3 font-medium">
-                          Status
-                        </TableHead>
-                        <TableHead className="px-6 py-3 font-medium" />
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <TableSkeletonRows />
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  <GridSkeletonCards />
-                </div>
-              )
-            ) : allFiles.length === 0 ? (
-              /* ── truly empty ── */
-              <div className="overflow-hidden rounded-xl border bg-background">
-                <EmptyState onAdd={() => setUploadDialogOpen(true)} />
-              </div>
-            ) : filtered.length === 0 ? (
-              /* ── filtered empty ── */
-              <div className="overflow-hidden rounded-xl border bg-background">
-                <EmptySearch
-                  onClear={() => {
-                    setSearchQuery("")
-                    setActiveCategory(null)
-                  }}
-                  query={searchQuery || activeCategory || ""}
+            {!isLoadingFirstPage && allFiles.length > 0 && (
+              <aside className="flex min-w-0 flex-col gap-4">
+                <KnowledgeTestConsole
+                  disabled={stats.ready === 0}
+                  isTesting={isTestingKnowledge}
+                  onTest={handleKnowledgeTest}
+                  result={testResult}
                 />
-              </div>
-            ) : viewMode === "list" ? (
-              /* ── list view ── */
-              <div className="overflow-hidden rounded-xl border bg-background">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="px-6 py-3 font-medium">
-                        Name
-                      </TableHead>
-                      <TableHead className="px-6 py-3 font-medium">
-                        Type
-                      </TableHead>
-                      <TableHead className="px-6 py-3 font-medium">
-                        Size
-                      </TableHead>
-                      <TableHead className="px-6 py-3 font-medium">
-                        Status
-                      </TableHead>
-                      <TableHead className="w-12 px-6 py-3" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filtered.map((file) => {
-                      const Icon = getFileIcon(file.type)
-                      const StatusIcon = getStatusIcon(file.status)
-                      return (
-                        <TableRow
-                          className="group cursor-default hover:bg-muted/40"
-                          key={file.id}
-                        >
-                          <TableCell className="px-6 py-3.5">
-                            <div className="flex min-w-0 items-center gap-3">
-                              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-                                <Icon className="size-4 text-muted-foreground" />
-                              </div>
-                              <div className="min-w-0">
-                                <p
-                                  className="truncate text-sm font-medium"
-                                  title={file.name}
-                                >
-                                  {file.name}
-                                </p>
-                                {file.category && (
-                                  <p className="truncate text-xs text-muted-foreground">
-                                    {file.category}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="px-6 py-3.5">
-                            <Badge
-                              className="uppercase"
-                              variant={getTypeBadgeVariant(file.type)}
-                            >
-                              {file.type}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="px-6 py-3.5 text-sm text-muted-foreground">
-                            {file.size !== "unknown" ? file.size : "—"}
-                          </TableCell>
-                          <TableCell className="px-6 py-3.5">
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span
-                                    className={cn(
-                                      "flex w-fit items-center gap-1.5 text-xs font-medium",
-                                      getStatusClass(file.status)
-                                    )}
-                                  >
-                                    <StatusIcon
-                                      className={cn(
-                                        "size-3.5",
-                                        file.status === "processing" &&
-                                          "animate-spin"
-                                      )}
-                                    />
-                                    {getStatusLabel(file.status)}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  {file.status === "ready"
-                                    ? "This source is indexed and available for AI search."
-                                    : file.status === "processing"
-                                      ? "Currently being processed and indexed."
-                                      : "Indexing failed. Try re-uploading."}
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </TableCell>
-                          <TableCell className="px-6 py-3.5">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  className="size-8 p-0 opacity-0 transition-opacity group-hover:opacity-100"
-                                  size="sm"
-                                  variant="ghost"
-                                >
-                                  <MoreHorizontalIcon className="size-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() => void handleViewClick(file)}
-                                >
-                                  <EyeIcon className="size-4" />
-                                  View content
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={() => handleDeleteClick(file)}
-                                >
-                                  <TrashIcon className="size-4" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-
-                {canLoadMore && (
-                  <div className="border-t">
-                    <InfiniteScrollTrigger
-                      canLoadMore={canLoadMore}
-                      isLoadingMore={isLoadingMore}
-                      onLoadMore={handleLoadMore}
-                      ref={topElementRef}
-                    />
-                  </div>
-                )}
-              </div>
-            ) : (
-              /* ── grid view ── */
-              <>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {filtered.map((file) => (
-                    <FileCard
-                      file={file}
-                      key={file.id}
-                      onDelete={handleDeleteClick}
-                      onView={(f) => void handleViewClick(f)}
-                    />
-                  ))}
-                </div>
-                {canLoadMore && (
-                  <div className="mt-4">
-                    <InfiniteScrollTrigger
-                      canLoadMore={canLoadMore}
-                      isLoadingMore={isLoadingMore}
-                      onLoadMore={handleLoadMore}
-                      ref={topElementRef}
-                    />
-                  </div>
-                )}
-              </>
+                <AIReplyCachePanel
+                  isClearing={isClearingCache}
+                  onClear={handleClearCache}
+                  stats={cacheStats}
+                />
+              </aside>
             )}
-          </div>
+          </section>
         </div>
       </div>
     </>
