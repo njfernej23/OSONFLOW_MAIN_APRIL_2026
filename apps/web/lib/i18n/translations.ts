@@ -721,7 +721,7 @@ export const translations: Record<string, TranslationValue> = {
     ru: "Конфигурация",
   },
   "Widget customization": {
-    uz: "Vidjetni moslash",
+    uz: "Vidjetni sozlash",
     ru: "Настройка виджета",
   },
   Workflows: {
