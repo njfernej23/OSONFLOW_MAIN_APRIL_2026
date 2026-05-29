@@ -1728,7 +1728,7 @@
   gap: 12px;
 }
 
-label {
+.builder-shell label {
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -1737,9 +1737,9 @@ label {
   font-weight: 760;
 }
 
-input,
-textarea,
-select {
+.builder-shell input,
+.builder-shell textarea,
+.builder-shell select {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: var(--radius-control);
@@ -1755,20 +1755,20 @@ select {
     background 0.16s ease;
 }
 
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
+.builder-shell input:focus-visible,
+.builder-shell textarea:focus-visible,
+.builder-shell select:focus-visible {
   border-color: rgba(63, 115, 246, 0.48);
   box-shadow: 0 0 0 3px rgba(63, 115, 246, 0.12);
 }
 
-input,
-select {
+.builder-shell input,
+.builder-shell select {
   height: 36px;
   padding: 0 10px;
 }
 
-textarea {
+.builder-shell textarea {
   min-height: 96px;
   padding: 10px;
   resize: vertical;
