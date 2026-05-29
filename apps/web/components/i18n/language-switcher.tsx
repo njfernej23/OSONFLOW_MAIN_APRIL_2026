@@ -17,6 +17,12 @@ type LanguageSwitcherProps = {
   surface?: "light" | "dark" | "sidebar"
 }
 
+const LANGUAGE_ICONS: Record<Language, string> = {
+  en: "🇺🇸",
+  uz: "🇺🇿",
+  ru: "🇷🇺",
+}
+
 export function LanguageSwitcher({
   className,
   compact = false,
@@ -59,6 +65,32 @@ export function LanguageSwitcher({
     )
   }
 
+  if (compact) {
+    return (
+      <label
+        className={cn(
+          "relative inline-flex size-10 shrink-0 items-center justify-center rounded-full border text-lg transition",
+          surface === "dark" &&
+            "border-white/18 bg-white/8 text-white hover:bg-white/14",
+          surface === "light" &&
+            "border-[#101828]/12 bg-white/80 text-[#344054] hover:bg-white",
+          className
+        )}
+        title={`${t("Language")}: ${LANGUAGE_LABELS[language]}`}
+      >
+        <span aria-hidden="true">{LANGUAGE_ICONS[language]}</span>
+        <select
+          aria-label={t("Language")}
+          className="absolute inset-0 size-full cursor-pointer appearance-none opacity-0 outline-none"
+          onChange={(event) => setLanguage(event.target.value as Language)}
+          value={language}
+        >
+          {languageOptions}
+        </select>
+      </label>
+    )
+  }
+
   return (
     <label
       className={cn(
@@ -78,7 +110,7 @@ export function LanguageSwitcher({
         aria-label={t("Language")}
         className={cn(
           "min-w-0 appearance-none bg-transparent text-sm font-semibold outline-none",
-          compact ? "w-[3.2rem]" : "w-[5.8rem]",
+          "w-[5.8rem]",
           surface === "dark" && "text-white",
           surface !== "dark" && "text-inherit"
         )}

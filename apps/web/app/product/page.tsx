@@ -28,7 +28,7 @@ export default function ProductPage() {
         <HeroMockup compact />
       </PageHero>
 
-      <section className="bg-white py-24">
+      <section className="bg-[#f8f3ea] py-24 text-[#17120f]">
         <div className="mx-auto max-w-7xl px-5 sm:px-8">
           <div className="mb-12">
             <SectionHeading
@@ -40,7 +40,7 @@ export default function ProductPage() {
         </div>
       </section>
 
-      <section className="bg-[#F6F8FB] py-24">
+      <section className="bg-[#f8f3ea] py-24 text-[#17120f]">
         <div className="mx-auto grid max-w-7xl gap-12 px-5 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
           <AnalyticsPanel />
           <div className="flex flex-col gap-7">
@@ -53,7 +53,7 @@ export default function ProductPage() {
         </div>
       </section>
 
-      <section className="bg-white py-24">
+      <section className="bg-[#f8f3ea] py-24 text-[#17120f]">
         <div className="mx-auto grid max-w-7xl gap-12 px-5 sm:px-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
           <SectionHeading
             description="Osonflow keeps AI, agents, channels, and knowledge in the same loop, so every solved question makes the next one easier."

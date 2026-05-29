@@ -29,7 +29,7 @@ export default function ChannelsPage() {
 
       <ChannelStrip />
 
-      <section className="bg-white py-24">
+      <section className="bg-[#f8f3ea] py-24 text-[#17120f]">
         <div className="mx-auto max-w-7xl px-5 sm:px-8">
           <div className="mb-12">
             <SectionHeading
@@ -41,7 +41,7 @@ export default function ChannelsPage() {
         </div>
       </section>
 
-      <section className="bg-[#F6F8FB] py-24">
+      <section className="bg-[#f8f3ea] py-24 text-[#17120f]">
         <div className="mx-auto grid max-w-7xl gap-12 px-5 sm:px-8 lg:grid-cols-[0.88fr_1.12fr] lg:items-center">
           <SectionHeading
             description="Track which channels create the most demand, which deserve automation, and where voice is faster than typing."

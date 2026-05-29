@@ -72,21 +72,21 @@ export const featureCards: MarketingFeature[] = [
     description:
       "Upload files and URLs, then let the assistant respond with grounded support instead of vague guesses.",
     icon: FileTextIcon,
-    accent: "bg-[#E8F1FF] text-[#3A04FF]",
+    accent: "bg-[#e8f3ff] text-[#2563eb]",
   },
   {
     title: "One inbox for every conversation",
     description:
       "Track unresolved chats, escalations, AI sessions, and customer context without switching tools.",
     icon: MessageSquareTextIcon,
-    accent: "bg-[#EAF8EF] text-[#157A43]",
+    accent: "bg-[#e9ffe8] text-[#15803d]",
   },
   {
     title: "Voice when chat is not enough",
     description:
       "Connect realtime AI voice and phone support for customers who need a faster path to help.",
     icon: Mic2Icon,
-    accent: "bg-[#FFF4D7] text-[#9B6800]",
+    accent: "bg-[#fff3c4] text-[#8a5b00]",
   },
 ]
 
@@ -96,21 +96,21 @@ export const productHighlights: MarketingFeature[] = [
     description:
       "Every chat, voice call, AI reply, handoff, file citation, and customer note lands in one readable thread.",
     icon: PanelsTopLeftIcon,
-    accent: "bg-[#E8F1FF] text-[#3A04FF]",
+    accent: "bg-[#e8f3ff] text-[#2563eb]",
   },
   {
     title: "Customer memory that compounds",
     description:
       "Keep preferences, product context, prior issues, and support history ready before a teammate opens the inbox.",
     icon: DatabaseZapIcon,
-    accent: "bg-[#EAF8EF] text-[#157A43]",
+    accent: "bg-[#e9ffe8] text-[#15803d]",
   },
   {
     title: "Analytics your team can act on",
     description:
       "Spot unresolved intents, escalation causes, sentiment shifts, and the exact content your AI needs next.",
     icon: LineChartIcon,
-    accent: "bg-[#FFF4D7] text-[#9B6800]",
+    accent: "bg-[#fff3c4] text-[#8a5b00]",
   },
 ]
 
@@ -120,21 +120,21 @@ export const automationHighlights: MarketingFeature[] = [
     description:
       "Send billing, onboarding, technical, and renewal questions to the right AI flow or human queue.",
     icon: GitBranchIcon,
-    accent: "bg-[#E8F1FF] text-[#3A04FF]",
+    accent: "bg-[#e8f3ff] text-[#2563eb]",
   },
   {
     title: "Confidence controls",
     description:
       "Let AI answer only when confidence is high, then create a crisp handoff when the answer needs a person.",
     icon: GaugeIcon,
-    accent: "bg-[#EAF8EF] text-[#157A43]",
+    accent: "bg-[#e9ffe8] text-[#15803d]",
   },
   {
     title: "Follow-up moments",
     description:
       "Trigger reminders, nudges, and sales handoffs from conversation intent without making agents babysit queues.",
     icon: BellRingIcon,
-    accent: "bg-[#FFF4D7] text-[#9B6800]",
+    accent: "bg-[#fff3c4] text-[#8a5b00]",
   },
 ]
 
@@ -144,21 +144,21 @@ export const integrationHighlights: MarketingFeature[] = [
     description:
       "Meet customers on website chat, WhatsApp, Telegram, and the channels they already trust.",
     icon: MessageCircleMoreIcon,
-    accent: "bg-[#E8F1FF] text-[#3A04FF]",
+    accent: "bg-[#e8f3ff] text-[#2563eb]",
   },
   {
     title: "Model providers",
     description:
       "Use best-fit AI across ChatGPT, Gemini, and realtime voice without exposing that complexity to customers.",
     icon: WandSparklesIcon,
-    accent: "bg-[#EAF8EF] text-[#157A43]",
+    accent: "bg-[#e9ffe8] text-[#15803d]",
   },
   {
     title: "Voice stack",
     description:
       "Connect Vapi and voice assistants for high-urgency support where typing slows the customer down.",
     icon: RadioTowerIcon,
-    accent: "bg-[#FFF4D7] text-[#9B6800]",
+    accent: "bg-[#fff3c4] text-[#8a5b00]",
   },
 ]
 
@@ -270,7 +270,7 @@ export const Logo = ({ className }: { className?: string }) => (
       src="/logo.svg"
       width={70}
     />
-    <span className="hidden text-[1.35rem] leading-none font-semibold text-[#0A0A0A] sm:inline">
+    <span className="hidden text-[1.35rem] leading-none font-bold text-current sm:inline">
       Osonflow
     </span>
   </Link>
@@ -301,11 +301,15 @@ export const SectionHeading = ({
   className?: string
 }) => (
   <div className={cn("flex max-w-3xl flex-col gap-5", className)}>
-    <h2 className="text-5xl leading-none font-semibold text-[#101828] sm:text-6xl">
+    <p className="inline-flex w-fit items-center gap-2 rounded-full border border-[#17120f]/12 bg-white px-3 py-1.5 text-sm font-bold text-[#5b514b]">
+      <SparklesIcon className="size-4 text-[#df37a7]" />
+      Osonflow
+    </p>
+    <h2 className="text-4xl leading-[1.04] font-bold text-[#17120f] sm:text-5xl lg:text-[3.5rem]">
       {title}
     </h2>
     {description ? (
-      <p className="max-w-2xl text-lg leading-8 text-[#667085]">
+      <p className="max-w-2xl text-lg leading-8 text-[#5b514b]">
         {description}
       </p>
     ) : null}
@@ -316,24 +320,24 @@ export const FeatureGrid = ({ features }: { features: MarketingFeature[] }) => (
   <div className="grid gap-4 sm:grid-cols-3">
     {features.map((feature) => (
       <article
-        className="osonflow-reveal osonflow-liquid-card group rounded-[28px] p-5 transition duration-500 hover:-translate-y-1"
+        className="osonflow-reveal group rounded-[14px] bg-white p-6 shadow-[0_0_0_1px_rgba(23,18,15,0.08),0_20px_60px_-52px_rgba(23,18,15,0.45)] transition duration-300 hover:-translate-y-1"
         key={feature.title}
       >
         <div
           className={cn(
-            "mb-5 flex size-12 items-center justify-center rounded-2xl",
+            "mb-5 flex size-12 items-center justify-center rounded-[6px]",
             feature.accent
           )}
         >
           <feature.icon className="size-5" />
         </div>
-        <h3 className="text-xl leading-6 font-semibold text-[#101828]">
+        <h3 className="text-xl leading-6 font-bold text-[#17120f]">
           {feature.title}
         </h3>
-        <p className="mt-3 text-sm leading-6 text-[#667085]">
+        <p className="mt-3 text-sm leading-6 text-[#5b514b]">
           {feature.description}
         </p>
-        <div className="mt-5 h-px bg-gradient-to-r from-transparent via-[#101828]/12 to-transparent" />
+        <div className="mt-5 h-px bg-gradient-to-r from-transparent via-[#17120f]/12 to-transparent" />
       </article>
     ))}
   </div>
@@ -346,22 +350,22 @@ export const HeroMockup = ({ compact = false }: { compact?: boolean }) => (
       compact && "max-w-[560px]"
     )}
   >
-    <div className="absolute top-10 -left-5 hidden h-28 w-8 rounded-full bg-[#34D399] shadow-[0_24px_80px_rgba(52,211,153,0.28)] lg:block" />
-    <div className="absolute -right-4 bottom-16 hidden h-36 w-7 rounded-full bg-[#FFCA3A] shadow-[0_24px_80px_rgba(255,202,58,0.24)] lg:block" />
-    <div className="osonflow-float-card absolute -top-8 left-8 hidden rounded-2xl border border-white/70 bg-white/72 px-4 py-3 shadow-[0_22px_70px_-42px_rgba(15,23,42,0.65)] backdrop-blur-xl lg:block">
-      <div className="flex items-center gap-2 text-xs font-semibold text-[#344054]">
-        <WorkflowIcon className="size-4 text-[#3A04FF]" />
+    <div className="absolute top-10 -left-5 hidden h-28 w-8 rounded-full bg-[#b7ff5a] shadow-[0_24px_80px_rgba(183,255,90,0.18)] lg:block" />
+    <div className="absolute -right-4 bottom-16 hidden h-36 w-7 rounded-full bg-[#df37a7] shadow-[0_24px_80px_rgba(223,55,167,0.24)] lg:block" />
+    <div className="osonflow-float-card absolute -top-8 left-8 hidden rounded-[12px] border border-white/10 bg-[#111820] px-4 py-3 shadow-[0_22px_70px_-42px_rgba(0,0,0,0.75)] lg:block">
+      <div className="flex items-center gap-2 text-xs font-bold text-[#f8f3ea]">
+        <WorkflowIcon className="size-4 text-[#b7ff5a]" />
         Auto-routed to AI
       </div>
     </div>
-    <div className="osonflow-glass-window relative overflow-hidden rounded-[30px] border border-white/70 bg-white/62 shadow-[0_38px_100px_-48px_rgba(15,23,42,0.55)] backdrop-blur-2xl">
-      <div className="flex items-center justify-between border-b border-[#101828]/10 bg-white/76 px-5 py-4">
+    <div className="osonflow-glass-window relative max-h-[430px] overflow-hidden rounded-[18px] border border-white/14 bg-[#111820] shadow-[0_38px_100px_-58px_rgba(0,0,0,0.86)] sm:max-h-none">
+      <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-5 py-4">
         <div className="flex items-center gap-2">
           <span className="size-3 rounded-full bg-[#FF5F57]" />
           <span className="size-3 rounded-full bg-[#FFBD2E]" />
           <span className="size-3 rounded-full bg-[#28C840]" />
         </div>
-        <div className="flex items-center gap-2 rounded-full bg-[#F1F4F9]/90 px-3 py-1.5 text-xs font-medium text-[#667085]">
+        <div className="hidden items-center gap-2 rounded-full bg-white/8 px-3 py-1.5 text-xs font-bold text-[#8d98a8] sm:flex">
           <Clock3Icon className="size-3.5" />
           24/7 support desk
         </div>
@@ -373,12 +377,10 @@ export const HeroMockup = ({ compact = false }: { compact?: boolean }) => (
           compact ? "min-h-[380px]" : "min-h-[430px]"
         )}
       >
-        <aside className="border-b border-[#101828]/10 bg-white/74 p-4 backdrop-blur-xl md:border-r md:border-b-0">
+        <aside className="border-b border-white/10 bg-[#0c1118] p-4 md:border-r md:border-b-0">
           <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm font-semibold text-[#101828]">
-              Priority queue
-            </p>
-            <span className="rounded-full bg-[#EAF8EF] px-2.5 py-1 text-xs font-medium text-[#157A43]">
+            <p className="text-sm font-bold text-[#f8f3ea]">Priority queue</p>
+            <span className="rounded-full bg-[#b7ff5a] px-2.5 py-1 text-xs font-bold text-[#11150f]">
               18 online
             </span>
           </div>
@@ -392,18 +394,18 @@ export const HeroMockup = ({ compact = false }: { compact?: boolean }) => (
                 className={cn(
                   "rounded-2xl border p-3 transition duration-300",
                   index === 0
-                    ? "osonflow-active-thread border-[#3A04FF]/22 bg-[#F3F0FF]/88"
-                    : "border-[#101828]/8 bg-white/74 hover:bg-white"
+                    ? "osonflow-active-thread border-[#df37a7]/30 bg-[#df37a7]/10"
+                    : "border-white/10 bg-white/[0.04] hover:bg-white/[0.07]"
                 )}
                 key={name}
               >
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-[#101828]">{name}</p>
-                  <span className="text-[11px] font-medium text-[#667085]">
+                  <p className="text-sm font-bold text-[#f8f3ea]">{name}</p>
+                  <span className="text-[11px] font-bold text-[#8d98a8]">
                     {status}
                   </span>
                 </div>
-                <p className="mt-1 truncate text-xs text-[#667085]">
+                <p className="mt-1 truncate text-xs text-[#c9c0b7]">
                   {message}
                 </p>
               </div>
@@ -411,17 +413,17 @@ export const HeroMockup = ({ compact = false }: { compact?: boolean }) => (
           </div>
         </aside>
 
-        <div className="flex flex-col bg-[#FBFCFE]/70 backdrop-blur-xl">
-          <div className="border-b border-[#101828]/10 bg-white/76 px-5 py-4">
+        <div className="flex flex-col bg-[#111820]">
+          <div className="border-b border-white/10 bg-white/[0.03] px-5 py-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-[#101828]">
+                <p className="text-sm font-bold text-[#f8f3ea]">
                   Conversation with Amina
                 </p>
-                <p className="text-xs text-[#667085]">AI confidence: 94%</p>
+                <p className="text-xs text-[#8d98a8]">AI confidence: 94%</p>
               </div>
               <button
-                className="inline-flex items-center gap-2 rounded-full bg-[#101828] px-3 py-1.5 text-xs font-semibold text-white"
+                className="inline-flex items-center gap-2 rounded-[4px] bg-[#b7ff5a] px-3 py-1.5 text-xs font-bold text-[#11150f]"
                 type="button"
               >
                 <PhoneCallIcon className="size-3.5" />
@@ -431,28 +433,28 @@ export const HeroMockup = ({ compact = false }: { compact?: boolean }) => (
           </div>
 
           <div className="flex flex-1 flex-col gap-3 p-5">
-            <div className="max-w-[82%] rounded-[18px] rounded-tl-md bg-white px-4 py-3 text-sm leading-relaxed text-[#344054] shadow-[0_18px_50px_-34px_rgba(15,23,42,0.5)]">
+            <div className="max-w-[82%] rounded-[12px] bg-white/[0.08] px-4 py-3 text-sm leading-relaxed text-[#d8d0c8]">
               Hi, can I change my plan and keep the same billing cycle?
             </div>
-            <div className="osonflow-ai-message ml-auto max-w-[86%] rounded-[18px] rounded-tr-md bg-[#3A04FF] px-4 py-3 text-sm leading-relaxed text-white shadow-[0_18px_45px_-28px_rgba(58,4,255,0.8)]">
+            <div className="osonflow-ai-message ml-auto max-w-[86%] rounded-[12px] bg-[#df37a7] px-4 py-3 text-sm leading-relaxed text-white">
               Yes. Your billing cycle stays the same, and the difference is
               prorated automatically.
             </div>
-            <div className="rounded-2xl border border-[#101828]/10 bg-white/82 p-4 backdrop-blur-xl">
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#101828]">
-                <SparklesIcon className="size-4 text-[#3A04FF]" />
+            <div className="rounded-[12px] border border-[#b7ff5a]/40 bg-[#b7ff5a]/10 p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-bold text-[#b7ff5a]">
+                <SparklesIcon className="size-4" />
                 Suggested next action
               </div>
-              <p className="text-sm leading-relaxed text-[#667085]">
+              <p className="text-sm leading-relaxed text-[#d8d0c8]">
                 Offer a direct upgrade link, mention prorated billing, and flag
                 the account for follow-up if payment fails.
               </p>
             </div>
-            <div className="mt-auto flex items-center gap-2 rounded-2xl border border-[#101828]/10 bg-white/82 px-3 py-2 backdrop-blur-xl">
-              <span className="flex-1 text-sm text-[#98A2B3]">
+            <div className="mt-auto flex items-center gap-2 rounded-[8px] border border-white/12 bg-[#0c1118] px-3 py-2">
+              <span className="flex-1 text-sm text-[#8d98a8]">
                 Reply with AI assistance...
               </span>
-              <span className="osonflow-send-button flex size-9 items-center justify-center rounded-xl bg-[#34D399] text-[#06351F]">
+              <span className="osonflow-send-button flex size-9 items-center justify-center rounded-[4px] bg-[#df37a7] text-white">
                 <SendIcon className="size-4" />
               </span>
             </div>
@@ -464,14 +466,14 @@ export const HeroMockup = ({ compact = false }: { compact?: boolean }) => (
 )
 
 export const AnalyticsPanel = () => (
-  <div className="osonflow-reveal rounded-[30px] border border-white/70 bg-white/58 p-4 shadow-[0_30px_100px_-58px_rgba(15,23,42,0.58)] backdrop-blur-2xl">
-    <div className="rounded-[24px] bg-[#101828] p-5 text-white">
+  <div className="osonflow-reveal rounded-[18px] bg-[#111820] p-3 shadow-[0_30px_90px_-70px_rgba(0,0,0,0.8)]">
+    <div className="rounded-[14px] bg-[#080b0f] p-5 text-white">
       <div className="mb-7 flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-white">AI analytics</p>
           <p className="mt-1 text-xs text-white/54">Last 30 days</p>
         </div>
-        <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white/74">
+        <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold text-white/74">
           <TrendingUpIcon className="size-3.5" />
           Improving
         </div>
@@ -482,21 +484,21 @@ export const AnalyticsPanel = () => (
           ["89%", "resolved"],
           ["312h", "saved"],
         ].map(([value, label]) => (
-          <div className="rounded-2xl bg-white/8 p-4" key={label}>
-            <p className="text-3xl leading-none font-semibold">{value}</p>
-            <p className="mt-2 text-xs font-medium text-white/54">{label}</p>
+          <div className="rounded-[14px] bg-white/[0.06] p-4" key={label}>
+            <p className="text-3xl leading-none font-bold">{value}</p>
+            <p className="mt-2 text-xs font-bold text-[#8d98a8]">{label}</p>
           </div>
         ))}
       </div>
       <div className="mt-5 flex flex-col gap-2.5">
         {insightRows.map(([topic, status, time]) => (
           <div
-            className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm text-[#101828]"
+            className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-[14px] bg-[#f8f3ea] px-4 py-3 text-sm text-[#17120f]"
             key={topic}
           >
             <span className="font-semibold">{topic}</span>
-            <span className="text-[#667085]">{status}</span>
-            <span className="rounded-full bg-[#EAF8EF] px-2.5 py-1 text-xs font-semibold text-[#157A43]">
+            <span className="text-[#5b514b]">{status}</span>
+            <span className="rounded-full bg-[#b7ff5a] px-2.5 py-1 text-xs font-bold text-[#11150f]">
               {time}
             </span>
           </div>
@@ -507,21 +509,21 @@ export const AnalyticsPanel = () => (
 )
 
 export const ChannelStrip = () => (
-  <section className="border-b border-[#101828]/8 bg-white py-10">
+  <section className="border-y border-white/10 bg-[#0c1118] py-10">
     <div className="mx-auto grid max-w-7xl items-center gap-7 px-5 sm:px-8 lg:grid-cols-[0.72fr_1.28fr]">
       <div>
-        <p className="text-sm font-semibold text-[#101828]">
+        <p className="text-sm font-bold text-[#f8f3ea]">
           Connect the channels already carrying your customer questions.
         </p>
-        <p className="mt-1 text-sm text-[#667085]">
+        <p className="mt-1 text-sm text-[#8d98a8]">
           Chat, voice, knowledge, and inbox intelligence in one support layer.
         </p>
       </div>
-      <div className="osonflow-marquee-shell overflow-hidden rounded-[28px] border border-[#101828]/10 bg-[#F8FAFC]/72">
+      <div className="osonflow-marquee-shell overflow-hidden rounded-[14px] border border-white/10 bg-white/[0.04]">
         <div className="osonflow-marquee-track flex w-max gap-3 px-3 py-3">
           {[...channelLogos, ...channelLogos].map((logo, index) => (
             <div
-              className="flex h-16 w-40 shrink-0 items-center justify-center gap-2 rounded-2xl border border-white/70 bg-white/82 px-4 shadow-[0_18px_52px_-44px_rgba(15,23,42,0.65)] backdrop-blur-xl"
+              className="flex h-16 w-40 shrink-0 items-center justify-center gap-2 rounded-[10px] bg-[#f8f3ea] px-4 text-[#17120f]"
               key={`${logo.label}-${index}`}
             >
               <Image
@@ -531,9 +533,7 @@ export const ChannelStrip = () => (
                 src={logo.src}
                 width={32}
               />
-              <span className="text-sm font-semibold text-[#344054]">
-                {logo.label}
-              </span>
+              <span className="text-sm font-bold">{logo.label}</span>
             </div>
           ))}
         </div>
@@ -570,17 +570,17 @@ export const WorkflowCards = () => (
   <div className="grid gap-4">
     {workflowSteps.map((step, index) => (
       <article
-        className="osonflow-reveal grid gap-5 rounded-[28px] border border-white/70 bg-white/70 p-5 shadow-[0_20px_64px_-50px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:grid-cols-[auto_1fr]"
+        className="osonflow-reveal grid gap-5 rounded-[14px] bg-white p-6 shadow-[0_0_0_1px_rgba(23,18,15,0.08)] sm:grid-cols-[auto_1fr]"
         key={step.title}
       >
-        <div className="flex size-12 items-center justify-center rounded-2xl bg-[#3A04FF] text-lg font-semibold text-white">
+        <div className="flex size-12 items-center justify-center rounded-[8px] bg-[#111820] text-lg font-bold text-[#b7ff5a]">
           {index + 1}
         </div>
         <div>
-          <h3 className="text-2xl leading-7 font-semibold text-[#101828]">
+          <h3 className="text-2xl leading-7 font-bold text-[#17120f]">
             {step.title}
           </h3>
-          <p className="mt-2 text-base leading-7 text-[#667085]">
+          <p className="mt-2 text-base leading-7 text-[#5b514b]">
             {step.description}
           </p>
         </div>
@@ -590,8 +590,8 @@ export const WorkflowCards = () => (
 )
 
 export const AutomationFlowPanel = () => (
-  <div className="osonflow-reveal relative overflow-hidden rounded-[30px] border border-white/70 bg-[#101828] p-5 text-white shadow-[0_34px_110px_-62px_rgba(16,24,40,0.8)]">
-    <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(58,4,255,0.22),transparent_32%,rgba(52,211,153,0.12)_64%,transparent)]" />
+  <div className="osonflow-reveal relative max-h-[430px] overflow-hidden rounded-[18px] bg-[#111820] p-5 text-white shadow-[0_38px_100px_-58px_rgba(0,0,0,0.86)] sm:max-h-none">
+    <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(223,55,167,0.22),transparent_32%,rgba(183,255,90,0.11)_64%,transparent)]" />
     <div className="relative">
       <div className="mb-7 flex items-center justify-between">
         <div>
@@ -609,13 +609,13 @@ export const AutomationFlowPanel = () => (
           ["Voice request", "Vapi assistant", "In call"],
         ].map(([input, action, state]) => (
           <div
-            className="osonflow-flow-row grid gap-3 rounded-2xl bg-white/9 p-4 text-sm backdrop-blur-xl sm:grid-cols-[1fr_auto_1fr_auto]"
+            className="osonflow-flow-row grid gap-3 rounded-[14px] bg-white/[0.08] p-4 text-sm sm:grid-cols-[1fr_auto_1fr_auto]"
             key={input}
           >
             <span className="font-semibold text-white">{input}</span>
             <ChevronRightIcon className="hidden size-4 text-white/40 sm:block" />
             <span className="text-white/74">{action}</span>
-            <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#101828]">
+            <span className="rounded-full bg-[#b7ff5a] px-3 py-1 text-xs font-bold text-[#11150f]">
               {state}
             </span>
           </div>
@@ -630,10 +630,8 @@ export const PricingCards = ({ compact = false }: { compact?: boolean }) => (
     {pricingTiers.map((tier) => (
       <article
         className={cn(
-          "osonflow-reveal rounded-[30px] border p-6 shadow-[0_28px_90px_-58px_rgba(15,23,42,0.56)]",
-          tier.featured
-            ? "border-[#3A04FF]/22 bg-[#101828] text-white"
-            : "border-white/72 bg-white/72 text-[#101828] backdrop-blur-xl"
+          "osonflow-reveal rounded-[16px] p-6 shadow-[0_0_0_1px_rgba(23,18,15,0.08)]",
+          tier.featured ? "bg-[#111820] text-white" : "bg-white text-[#17120f]"
         )}
         key={tier.name}
       >
@@ -643,14 +641,14 @@ export const PricingCards = ({ compact = false }: { compact?: boolean }) => (
             <p
               className={cn(
                 "mt-3 text-sm leading-6",
-                tier.featured ? "text-white/68" : "text-[#667085]"
+                tier.featured ? "text-[#c9c0b7]" : "text-[#5b514b]"
               )}
             >
               {tier.description}
             </p>
           </div>
           {tier.featured ? (
-            <BadgeCheckIcon className="size-6 shrink-0 text-[#34D399]" />
+            <BadgeCheckIcon className="size-6 shrink-0 text-[#b7ff5a]" />
           ) : null}
         </div>
         <div className="mt-7 flex items-end gap-2">
@@ -659,7 +657,7 @@ export const PricingCards = ({ compact = false }: { compact?: boolean }) => (
             <span
               className={cn(
                 "pb-1 text-sm font-medium",
-                tier.featured ? "text-white/54" : "text-[#667085]"
+                tier.featured ? "text-[#8d98a8]" : "text-[#5b514b]"
               )}
             >
               /month
@@ -675,11 +673,11 @@ export const PricingCards = ({ compact = false }: { compact?: boolean }) => (
               <CheckIcon
                 className={cn(
                   "size-4 shrink-0",
-                  tier.featured ? "text-[#34D399]" : "text-[#157A43]"
+                  tier.featured ? "text-[#b7ff5a]" : "text-[#df37a7]"
                 )}
               />
               <span
-                className={tier.featured ? "text-white/82" : "text-[#344054]"}
+                className={tier.featured ? "text-[#ddd5cd]" : "text-[#5b514b]"}
               >
                 {feature}
               </span>
@@ -691,8 +689,8 @@ export const PricingCards = ({ compact = false }: { compact?: boolean }) => (
           className={cn(
             "mt-8 h-12 w-full rounded-full text-base font-semibold",
             tier.featured
-              ? "bg-white text-[#101828] hover:bg-white/90"
-              : "bg-[#101828] text-white hover:bg-[#1D2939]",
+              ? "bg-[#df37a7] text-white hover:bg-[#d0339c]"
+              : "bg-[#111820] text-white hover:bg-[#202b38]",
             compact && "lg:w-auto"
           )}
         >
@@ -707,10 +705,10 @@ export const SecurityStrip = () => (
   <div className="grid gap-3 sm:grid-cols-3">
     {securityItems.map(({ label, icon: Icon }) => (
       <div
-        className="rounded-2xl border border-[#101828]/10 bg-white/72 px-4 py-3 text-sm font-semibold text-[#344054] backdrop-blur-xl"
+        className="rounded-[14px] bg-white px-4 py-3 text-sm font-bold text-[#17120f] shadow-[0_0_0_1px_rgba(23,18,15,0.08)]"
         key={label}
       >
-        <Icon className="mb-2 size-4 text-[#3A04FF]" />
+        <Icon className="mb-2 size-4 text-[#df37a7]" />
         {label}
       </div>
     ))}
@@ -718,28 +716,28 @@ export const SecurityStrip = () => (
 )
 
 export const WidgetPreview = () => (
-  <div className="flex min-h-[360px] items-end bg-[#101828] p-6">
-    <div className="osonflow-widget-preview w-full rounded-[28px] bg-white/92 p-4 shadow-[0_28px_80px_-44px_rgba(0,0,0,0.7)] backdrop-blur-xl">
+  <div className="flex min-h-[360px] items-end bg-[#111820] p-6">
+    <div className="osonflow-widget-preview w-full rounded-[18px] bg-[#f8f3ea] p-4 shadow-[0_28px_80px_-44px_rgba(0,0,0,0.7)]">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="flex size-11 items-center justify-center rounded-2xl bg-[#E8F1FF] text-[#3A04FF]">
+          <span className="flex size-11 items-center justify-center rounded-[8px] bg-[#111820] text-[#b7ff5a]">
             <BotIcon className="size-5" />
           </span>
           <div>
-            <p className="font-semibold text-[#101828]">Osonflow Assistant</p>
-            <p className="text-xs text-[#667085]">Online and ready</p>
+            <p className="font-bold text-[#17120f]">Osonflow Assistant</p>
+            <p className="text-xs text-[#5b514b]">Online and ready</p>
           </div>
         </div>
-        <CircleHelpIcon className="size-5 text-[#98A2B3]" />
+        <CircleHelpIcon className="size-5 text-[#5b514b]" />
       </div>
-      <div className="rounded-2xl bg-[#F6F8FB] p-4 text-sm leading-6 text-[#475467]">
+      <div className="rounded-[12px] bg-white p-4 text-sm leading-6 text-[#5b514b] shadow-[0_0_0_1px_rgba(23,18,15,0.08)]">
         Hi! I can help with plans, billing, product questions, or connect you to
         the right person.
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2">
         {["Talk to sales", "Get support"].map((label) => (
           <button
-            className="rounded-2xl border border-[#101828]/10 bg-white px-3 py-3 text-sm font-semibold text-[#344054]"
+            className="rounded-[12px] border border-[#17120f]/10 bg-white px-3 py-3 text-sm font-bold text-[#17120f]"
             key={label}
             type="button"
           >
@@ -752,22 +750,21 @@ export const WidgetPreview = () => (
 )
 
 export const CtaSection = () => (
-  <section className="relative overflow-hidden bg-[#E8F1FF] py-20">
-    <LiquidBackdrop />
+  <section className="osonflow-command-final relative overflow-hidden py-20">
     <div className="relative mx-auto max-w-7xl px-5 sm:px-8">
-      <div className="grid overflow-hidden rounded-[34px] border border-white/76 bg-white/70 shadow-[0_40px_110px_-62px_rgba(58,4,255,0.42)] backdrop-blur-2xl lg:grid-cols-[1.05fr_0.95fr]">
+      <div className="grid overflow-hidden rounded-[18px] bg-white/40 shadow-[0_0_0_1px_rgba(23,18,15,0.08),0_28px_90px_-64px_rgba(23,18,15,0.65)] lg:grid-cols-[1.05fr_0.95fr]">
         <div className="p-8 sm:p-12">
-          <h2 className="max-w-2xl text-5xl leading-none font-semibold text-[#101828] sm:text-6xl">
+          <h2 className="max-w-2xl text-5xl leading-none font-bold text-[#17120f] sm:text-6xl">
             Make support feel present before your team logs in
           </h2>
-          <p className="mt-5 max-w-xl text-lg leading-8 text-[#667085]">
+          <p className="mt-5 max-w-xl text-lg leading-8 text-[#5b514b]">
             Launch the widget, train your assistant, and keep the human inbox
             focused on the moments that matter.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Button
               asChild
-              className="h-13 rounded-full bg-[#101828] px-6 text-base font-semibold text-white hover:bg-[#1D2939]"
+              className="h-13 rounded-[4px] bg-[#df37a7] px-6 text-base font-bold text-white hover:bg-[#d0339c]"
             >
               <Link href="/sign-up">
                 Start free
@@ -776,7 +773,7 @@ export const CtaSection = () => (
             </Button>
             <Button
               asChild
-              className="h-13 rounded-full border-[#101828]/12 bg-white px-6 text-base font-semibold text-[#101828]"
+              className="h-13 rounded-[6px] border-[#17120f]/20 bg-transparent px-6 text-base font-bold text-[#17120f]"
               variant="outline"
             >
               <Link href="/pricing">View pricing</Link>
@@ -790,19 +787,19 @@ export const CtaSection = () => (
 )
 
 export const MarketingFooter = () => (
-  <footer className="border-t border-[#101828]/8 bg-white px-5 py-10 sm:px-8">
+  <footer className="border-t border-white/10 bg-[#080b0f] px-5 py-10 text-[#f8f3ea] sm:px-8">
     <div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-center md:justify-between">
       <div>
         <Logo />
-        <p className="mt-3 max-w-md text-sm leading-6 text-[#667085]">
+        <p className="mt-3 max-w-md text-sm leading-6 text-[#8d98a8]">
           AI support, human handoff, voice, analytics, and customer memory in
           one calm operating layer.
         </p>
       </div>
-      <div className="flex flex-wrap gap-3 text-sm font-semibold text-[#344054]">
+      <div className="flex flex-wrap gap-3 text-sm font-bold text-[#c9c0b7]">
         {navItems.map((item) => (
           <Link
-            className="rounded-full px-3 py-2 hover:bg-[#F6F8FB]"
+            className="rounded-full px-3 py-2 hover:bg-white/8 hover:text-white"
             href={item.href}
             key={item.label}
           >
@@ -810,7 +807,7 @@ export const MarketingFooter = () => (
           </Link>
         ))}
         <Link
-          className="rounded-full px-3 py-2 hover:bg-[#F6F8FB]"
+          className="rounded-full px-3 py-2 hover:bg-white/8 hover:text-white"
           href="/sign-in"
         >
           Login
@@ -829,46 +826,52 @@ export const PageHero = ({
   description: string
   children?: React.ReactNode
 }) => (
-  <section className="relative overflow-hidden border-b border-[#101828]/8 bg-[#F6F8FB]">
-    <LiquidBackdrop />
-    <div className="relative mx-auto grid min-h-[520px] max-w-7xl items-center gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[0.9fr_1.1fr]">
-      <div className="max-w-3xl">
-        <h1 className="text-5xl leading-none font-semibold text-[#080A12] sm:text-6xl lg:text-7xl">
+  <section className="osonflow-command-hero relative overflow-hidden border-b border-white/10">
+    <div className="osonflow-command-grid absolute inset-0" />
+    <div className="relative mx-auto grid min-h-[560px] max-w-7xl items-center gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[0.86fr_1.14fr]">
+      <div className="w-full max-w-[21rem] min-w-0 sm:max-w-3xl">
+        <p className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/6 px-4 py-2 text-sm font-bold text-[#f8f3ea] shadow-[rgba(255,255,255,0.08)_0_0_0_1px_inset]">
+          <SparklesIcon className="size-4 text-[#b7ff5a]" />
+          Osonflow command layer
+        </p>
+        <h1 className="mt-6 text-[2.28rem] leading-[1] font-bold [text-wrap:balance] text-[#f8f3ea] sm:text-6xl lg:text-7xl">
           {title}
         </h1>
-        <p className="mt-6 max-w-2xl text-xl leading-8 text-[#475467]">
+        <p className="mt-6 max-w-2xl text-lg leading-8 [text-wrap:pretty] text-[#c9c0b7] sm:text-xl">
           {description}
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Button
             asChild
-            className="h-13 rounded-full bg-[#3A04FF] px-6 text-base font-semibold text-white shadow-[0_20px_48px_-28px_rgba(58,4,255,0.8)] hover:bg-[#2F00D6]"
+            className="h-13 rounded-[4px] bg-[#df37a7] px-6 text-base font-bold text-white shadow-[rgba(255,255,255,0.18)_0_0_0_1px_inset,rgba(0,0,0,0.12)_0_10px_26px_-18px] hover:bg-[#d0339c]"
           >
             <Link href="/sign-up">
-              Build my support widget
+              Start free
               <ArrowRightIcon data-icon="inline-end" />
             </Link>
           </Button>
           <Button
             asChild
-            className="h-13 rounded-full border-[#101828]/12 bg-white px-6 text-base font-semibold text-[#101828]"
+            className="h-13 rounded-[6px] border-[#f8f3ea]/30 bg-transparent px-6 text-base font-bold text-[#f8f3ea] hover:bg-white/8"
             variant="outline"
           >
             <Link href="/pricing">Compare plans</Link>
           </Button>
         </div>
       </div>
-      {children}
+      <div className="w-full max-w-[21rem] min-w-0 sm:max-w-none">
+        {children}
+      </div>
     </div>
   </section>
 )
 
 export const IntegrationConstellation = () => (
-  <div className="osonflow-reveal relative overflow-hidden rounded-[32px] border border-white/70 bg-white/64 p-5 shadow-[0_32px_100px_-60px_rgba(15,23,42,0.62)] backdrop-blur-2xl">
+  <div className="osonflow-reveal relative max-h-[430px] overflow-hidden rounded-[18px] bg-[#111820] p-5 shadow-[0_38px_100px_-58px_rgba(0,0,0,0.86)] sm:max-h-none">
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {channelLogos.map((logo) => (
         <div
-          className="group flex min-h-32 flex-col items-center justify-center gap-3 rounded-[24px] border border-[#101828]/10 bg-white/74 p-4 transition duration-500 hover:-translate-y-1 hover:bg-white"
+          className="group flex min-h-32 flex-col items-center justify-center gap-3 rounded-[12px] bg-[#f8f3ea] p-4 text-[#17120f] transition duration-300 hover:-translate-y-1"
           key={logo.label}
         >
           <Image
@@ -878,22 +881,20 @@ export const IntegrationConstellation = () => (
             src={logo.src}
             width={44}
           />
-          <span className="text-sm font-semibold text-[#344054]">
-            {logo.label}
-          </span>
+          <span className="text-sm font-bold">{logo.label}</span>
         </div>
       ))}
-      <div className="flex min-h-32 flex-col items-center justify-center gap-3 rounded-[24px] border border-[#101828]/10 bg-[#101828] p-4 text-white">
-        <PlugZapIcon className="size-10 text-[#34D399]" />
-        <span className="text-sm font-semibold">More via API</span>
+      <div className="flex min-h-32 flex-col items-center justify-center gap-3 rounded-[12px] bg-[#df37a7] p-4 text-white">
+        <PlugZapIcon className="size-10 text-[#b7ff5a]" />
+        <span className="text-sm font-bold">More via API</span>
       </div>
     </div>
   </div>
 )
 
 export const SupportMap = () => (
-  <div className="osonflow-reveal rounded-[32px] border border-white/70 bg-white/64 p-5 shadow-[0_32px_100px_-60px_rgba(15,23,42,0.62)] backdrop-blur-2xl">
-    <div className="rounded-[26px] bg-[#101828] p-5 text-white">
+  <div className="osonflow-reveal rounded-[18px] bg-[#111820] p-5 shadow-[0_30px_90px_-70px_rgba(0,0,0,0.8)]">
+    <div className="rounded-[14px] bg-[#080b0f] p-5 text-white">
       <div className="mb-5 flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold">Global support map</p>
@@ -901,13 +902,13 @@ export const SupportMap = () => (
             Widget traffic by channel
           </p>
         </div>
-        <Globe2Icon className="size-5 text-[#34D399]" />
+        <Globe2Icon className="size-5 text-[#b7ff5a]" />
       </div>
       <div className="grid gap-3">
         {[
-          ["Website widget", "52%", "bg-[#3A7BFF]"],
-          ["WhatsApp", "24%", "bg-[#34D399]"],
-          ["Voice", "16%", "bg-[#FFCA3A]"],
+          ["Website widget", "52%", "bg-[#df37a7]"],
+          ["WhatsApp", "24%", "bg-[#b7ff5a]"],
+          ["Voice", "16%", "bg-[#dbe7ff]"],
           ["Telegram", "8%", "bg-white"],
         ].map(([label, value, color]) => (
           <div
@@ -930,7 +931,7 @@ export const SupportMap = () => (
 )
 
 export const PageShell = ({ children }: { children: React.ReactNode }) => (
-  <main className="min-h-screen bg-white [font-family:var(--font-display)] text-[#101828]">
+  <main className="osonflow-command-page min-h-screen bg-[#080b0f] text-[#f8f3ea]">
     <LandingNav />
     {children}
     <CtaSection />
@@ -939,18 +940,18 @@ export const PageShell = ({ children }: { children: React.ReactNode }) => (
 )
 
 export const ProductSystemPanel = () => (
-  <div className="osonflow-reveal grid gap-4 rounded-[32px] border border-white/70 bg-white/64 p-5 shadow-[0_32px_100px_-60px_rgba(15,23,42,0.62)] backdrop-blur-2xl">
+  <div className="osonflow-reveal grid gap-4 rounded-[18px] bg-[#111820] p-5 shadow-[0_30px_90px_-70px_rgba(0,0,0,0.8)]">
     {productSystemItems.map(({ title, description, icon: Icon }) => (
       <div
-        className="grid gap-4 rounded-[24px] border border-[#101828]/10 bg-white/74 p-4 sm:grid-cols-[auto_1fr]"
+        className="grid gap-4 rounded-[14px] bg-[#f8f3ea] p-4 text-[#17120f] sm:grid-cols-[auto_1fr]"
         key={title}
       >
-        <div className="flex size-12 items-center justify-center rounded-2xl bg-[#E8F1FF] text-[#3A04FF]">
+        <div className="flex size-12 items-center justify-center rounded-[8px] bg-[#111820] text-[#b7ff5a]">
           <Icon className="size-5" />
         </div>
         <div>
-          <h3 className="text-xl font-semibold text-[#101828]">{title}</h3>
-          <p className="mt-1 text-sm leading-6 text-[#667085]">{description}</p>
+          <h3 className="text-xl font-bold">{title}</h3>
+          <p className="mt-1 text-sm leading-6 text-[#5b514b]">{description}</p>
         </div>
       </div>
     ))}

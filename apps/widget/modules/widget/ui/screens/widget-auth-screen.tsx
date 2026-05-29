@@ -1,4 +1,4 @@
-import { type CSSProperties } from "react"
+import { type CSSProperties, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -25,6 +25,7 @@ import { useSetAtom, useAtomValue } from "jotai"
 import { mergeWidgetTheme } from "@workspace/ui/lib/widget-customization"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+const DEFAULT_WIDGET_HEIGHT = 640
 
 const formSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
@@ -75,6 +76,20 @@ export const WidgetAuthScreen = () => {
     window.parent?.postMessage({ type: "close" }, "*")
   }
 
+  useEffect(() => {
+    if (typeof window === "undefined" || window.parent === window) return
+
+    window.parent.postMessage(
+      {
+        type: "resize",
+        payload: {
+          height: DEFAULT_WIDGET_HEIGHT,
+        },
+      },
+      "*"
+    )
+  }, [])
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!organizationId) {
       return
@@ -115,10 +130,11 @@ export const WidgetAuthScreen = () => {
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-[250px]"
+        className="pointer-events-none absolute inset-0"
         style={headerStyle}
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_34%)]" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent via-background/70 to-background" />
       </div>
       <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">
         <section className="relative flex min-h-[230px] flex-col overflow-hidden px-6 pt-6 pb-8 text-white">
@@ -160,7 +176,7 @@ export const WidgetAuthScreen = () => {
 
         <Form {...form}>
           <form
-            className="flex min-h-0 flex-1 flex-col gap-y-4 bg-background p-4"
+            className="flex min-h-0 flex-1 flex-col gap-y-4 p-4"
             noValidate
             onSubmit={form.handleSubmit(onSubmit)}
           >

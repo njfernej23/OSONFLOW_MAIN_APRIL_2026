@@ -8,6 +8,397 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "(ixtiyoriy)",
     ru: "(необязательно)",
   },
+  "/month": {
+    uz: "/oy",
+    ru: "/мес.",
+  },
+  "A support workflow that does not split AI from people.": {
+    uz: "AI va odamlarni ajratmaydigan qo'llab-quvvatlash workflowi.",
+    ru: "Workflow поддержки, который не разделяет AI и людей.",
+  },
+  "AI ready": {
+    uz: "AI tayyor",
+    ru: "AI готов",
+  },
+  "AI replies": {
+    uz: "AI javoblari",
+    ru: "AI-ответы",
+  },
+  "AI resolved": {
+    uz: "AI hal qildi",
+    ru: "Решено AI",
+  },
+  "Answers with receipts": {
+    uz: "Manbasi bor javoblar",
+    ru: "Ответы с подтверждением",
+  },
+  "answer confidence": {
+    uz: "javob ishonchi",
+    ru: "уверенность ответа",
+  },
+  "Billing question": {
+    uz: "Billing savoli",
+    ru: "Вопрос по биллингу",
+  },
+  "Chat, voice, messaging, files, and human notes stay attached to the same customer record.":
+    {
+      uz: "Chat, ovoz, messenjerlar, fayllar va inson eslatmalari bir xil mijoz yozuviga biriktirilgan holda qoladi.",
+      ru: "Чат, голос, мессенджеры, файлы и заметки людей остаются привязанными к одной записи клиента.",
+    },
+  "Create priority handoff": {
+    uz: "Ustuvor uzatish yaratish",
+    ru: "Создать приоритетную передачу",
+  },
+  "Every miss becomes signal": {
+    uz: "Har bir o'tkazib yuborilgan holat signalga aylanadi",
+    ru: "Каждый промах становится сигналом",
+  },
+  "For growing teams adding automation, customer memory, and more channels.": {
+    uz: "Avtomatlashtirish, mijoz xotirasi va ko'proq kanallar qo'shayotgan o'sayotgan jamoalar uchun.",
+    ru: "Для растущих команд, которые добавляют автоматизацию, память клиента и новые каналы.",
+  },
+  "For teams adding routing, voice, analytics, and memory.": {
+    uz: "Marshrutlash, ovoz, analitika va xotira qo'shayotgan jamoalar uchun.",
+    ru: "Для команд, добавляющих маршрутизацию, голос, аналитику и память.",
+  },
+  "For teams replacing a static chat widget with AI support.": {
+    uz: "Statik chat vidjetini AI yordamiga almashtirayotgan jamoalar uchun.",
+    ru: "Для команд, заменяющих статичный чат-виджет AI-поддержкой.",
+  },
+  "For teams replacing scattered chat widgets with one AI-ready support layer.":
+    {
+      uz: "Tarqoq chat vidjetlarini bitta AIga tayyor yordam qatlamiga almashtirayotgan jamoalar uchun.",
+      ru: "Для команд, заменяющих разрозненные чат-виджеты единым слоем поддержки, готовым к AI.",
+    },
+  "For teams with deeper integrations or compliance needs.": {
+    uz: "Chuqurroq integratsiyalar yoki compliance ehtiyojlari bor jamoalar uchun.",
+    ru: "Для команд с более глубокими интеграциями или требованиями compliance.",
+  },
+  "For teams with deeper routing, compliance, or high-volume voice requirements.":
+    {
+      uz: "Chuqurroq marshrutlash, compliance yoki katta hajmdagi ovoz talablari bor jamoalar uchun.",
+      ru: "Для команд с глубокой маршрутизацией, compliance или большими требованиями к голосовой поддержке.",
+    },
+  "From first message to better source material.": {
+    uz: "Birinchi xabardan yaxshiroq manba materialigacha.",
+    ru: "От первого сообщения к лучшим исходным материалам.",
+  },
+  "Human handoff rules": {
+    uz: "Insonga uzatish qoidalari",
+    ru: "Правила передачи человеку",
+  },
+  "Index docs, FAQs, websites, policies, and product details in minutes.": {
+    uz: "Hujjatlar, FAQ, saytlar, siyosatlar va mahsulot tafsilotlarini daqiqalarda indekslang.",
+    ru: "Индексируйте документы, FAQ, сайты, политики и детали продукта за минуты.",
+  },
+  "Intent, sentiment, account history, and confidence are scored.": {
+    uz: "Niyat, kayfiyat, akkaunt tarixi va ishonch baholanadi.",
+    ru: "Намерение, тональность, история аккаунта и уверенность получают оценку.",
+  },
+  "Judgment stays human": {
+    uz: "Baho insonda qoladi",
+    ru: "Суждение остается за человеком",
+  },
+  "Knowledge uploads": {
+    uz: "Bilim yuklash",
+    ru: "Загрузка знаний",
+  },
+  "live threads": {
+    uz: "jonli mavzular",
+    ru: "живые треды",
+  },
+  "Live call": {
+    uz: "Jonli qo'ng'iroq",
+    ru: "Живой звонок",
+  },
+  "Live chat": {
+    uz: "Jonli chat",
+    ru: "Живой чат",
+  },
+  "Live command": {
+    uz: "Jonli boshqaruv",
+    ru: "Команда онлайн",
+  },
+  "Login issue": {
+    uz: "Kirish muammosi",
+    ru: "Проблема входа",
+  },
+  "Managers see workload, AI quality, source gaps, and escalation health in the same field of view, so support improvement stops hiding inside individual threads.":
+    {
+      uz: "Menejerlar yuklama, AI sifati, manba bo'shliqlari va eskalatsiya holatini bir ko'rinishda ko'radi, shuning uchun qo'llab-quvvatlashni yaxshilash alohida mavzular ichida yashirinib qolmaydi.",
+      ru: "Менеджеры видят нагрузку, качество AI, пробелы в источниках и состояние эскалаций в одном поле зрения, поэтому улучшение поддержки не прячется в отдельных тредах.",
+    },
+  "median first reply": {
+    uz: "median birinchi javob",
+    ru: "медиана первого ответа",
+  },
+  "Missing source": {
+    uz: "Manba yetishmaydi",
+    ru: "Нет источника",
+  },
+  "Need export invoice": {
+    uz: "Hisob-fakturani eksport qilish kerak",
+    ru: "Нужен экспорт счета",
+  },
+  "Needs human": {
+    uz: "Inson kerak",
+    ru: "Нужен человек",
+  },
+  "New gaps feed the knowledge base and routing rules.": {
+    uz: "Yangi bo'shliqlar bilim bazasi va marshrutlash qoidalarini to'ldiradi.",
+    ru: "Новые пробелы пополняют базу знаний и правила маршрутизации.",
+  },
+  "Notify team channel": {
+    uz: "Jamoa kanaliga xabar berish",
+    ru: "Уведомить командный канал",
+  },
+  "One customer timeline": {
+    uz: "Bitta mijoz vaqt chizig'i",
+    ru: "Одна хронология клиента",
+  },
+  "Open source gap": {
+    uz: "Manba bo'shlig'ini ochish",
+    ru: "Открыть пробел источника",
+  },
+  "Operating model": {
+    uz: "Ishlash modeli",
+    ru: "Операционная модель",
+  },
+  "Osonflow command layer": {
+    uz: "Osonflow boshqaruv qatlami",
+    ru: "Командный слой Osonflow",
+  },
+  "Osonflow is designed around the real support loop: capture the question, find trusted context, answer when confidence is high, and hand off with history when it is not.":
+    {
+      uz: "Osonflow haqiqiy yordam sikli atrofida yaratilgan: savolni ushlash, ishonchli kontekstni topish, ishonch yuqori bo'lsa javob berish va bo'lmasa tarix bilan birga insonga uzatish.",
+      ru: "Osonflow создан вокруг реального цикла поддержки: принять вопрос, найти надежный контекст, ответить при высокой уверенности и передать с историей, если уверенности нет.",
+    },
+  "Owner: billing": {
+    uz: "Egasi: billing",
+    ru: "Владелец: биллинг",
+  },
+  "Owner: content": {
+    uz: "Egasi: kontent",
+    ru: "Владелец: контент",
+  },
+  "Owner: success": {
+    uz: "Egasi: success",
+    ru: "Владелец: success",
+  },
+  "Owner: support": {
+    uz: "Egasi: yordam",
+    ru: "Владелец: поддержка",
+  },
+  "Plan upgrade": {
+    uz: "Tarifni yangilash",
+    ru: "Апгрейд тарифа",
+  },
+  "Pricing that scales with support complexity.": {
+    uz: "Qo'llab-quvvatlash murakkabligi bilan birga kengayadigan narxlar.",
+    ru: "Цены, которые масштабируются вместе со сложностью поддержки.",
+  },
+  "Refund policy missing": {
+    uz: "Refund siyosati yetishmaydi",
+    ru: "Не хватает политики возврата",
+  },
+  "Resolve and learn": {
+    uz: "Hal qiling va o'rganing",
+    ru: "Решайте и обучайтесь",
+  },
+  "Resolve or route": {
+    uz: "Hal qilish yoki yo'naltirish",
+    ru: "Решить или направить",
+  },
+  "Review analytics, unanswered questions, sentiment, and saved support time.":
+    {
+      uz: "Analitika, javobsiz savollar, kayfiyat va tejalgan yordam vaqtini ko'rib chiqing.",
+      ru: "Просматривайте аналитику, вопросы без ответа, тональность и сэкономленное время поддержки.",
+    },
+  "risk flags": {
+    uz: "xavf belgilari",
+    ru: "флаги риска",
+  },
+  "Route intents, draft AI answers, escalate sensitive work, and keep support workflows moving with Osonflow automation.":
+    {
+      uz: "Niyatlarni yo'naltiring, AI javoblarini tayyorlang, nozik ishlarni eskalatsiya qiling va Osonflow avtomatlashtirishi bilan yordam workflowlarini harakatda ushlang.",
+      ru: "Маршрутизируйте намерения, готовьте AI-ответы, эскалируйте чувствительные задачи и поддерживайте workflow поддержки с автоматизацией Osonflow.",
+    },
+  "See the queue, the answer, and the fix in one place.": {
+    uz: "Navbat, javob va tuzatishni bir joyda ko'ring.",
+    ru: "Видьте очередь, ответ и исправление в одном месте.",
+  },
+  "Source-grounded replies": {
+    uz: "Manbalarga tayangan javoblar",
+    ru: "Ответы, основанные на источниках",
+  },
+  "Start realtime assistant": {
+    uz: "Real vaqt yordamchisini boshlash",
+    ru: "Запустить помощника реального времени",
+  },
+  "Start with the support surface you need today, then add automation, analytics, voice, and integrations as your queue grows.":
+    {
+      uz: "Bugun kerak bo'lgan qo'llab-quvvatlash yuzasidan boshlang, navbatingiz o'sgani sari avtomatlashtirish, analitika, ovoz va integratsiyalarni qo'shing.",
+      ru: "Начните с поверхности поддержки, которая нужна сегодня, затем добавляйте автоматизацию, аналитику, голос и интеграции по мере роста очереди.",
+    },
+  "Teach the assistant": {
+    uz: "Yordamchini o'rgating",
+    ru: "Обучите помощника",
+  },
+  "The assistant drafts from your uploaded policies, pages, help articles, and product context.":
+    {
+      uz: "Yordamchi siz yuklagan siyosatlar, sahifalar, yordam maqolalari va mahsulot kontekstidan javob loyihasini tayyorlaydi.",
+      ru: "Помощник готовит черновики на основе загруженных политик, страниц, статей помощи и контекста продукта.",
+    },
+  "The page is not a pile of channels. It is one routing system where every input gets understood, assigned, and improved.":
+    {
+      uz: "Sahifa kanallar uyumi emas. Bu har bir kirish tushuniladigan, biriktiriladigan va yaxshilanadigan bitta marshrutlash tizimi.",
+      ru: "Страница не является кучей каналов. Это единая система маршрутизации, где каждый входящий сигнал понимается, назначается и улучшается.",
+    },
+  "Unanswered questions surface as source gaps, workflow ideas, and customer-risk patterns.":
+    {
+      uz: "Javobsiz savollar manba bo'shliqlari, workflow g'oyalari va mijoz xavfi naqshlari sifatida ko'rinadi.",
+      ru: "Вопросы без ответа всплывают как пробелы в источниках, идеи workflow и паттерны клиентского риска.",
+    },
+  "Upgrade before renewal": {
+    uz: "Yangilanishdan oldin tarifni oshirish",
+    ru: "Апгрейд до продления",
+  },
+  "Urgent, sensitive, or low-confidence moments move to people with a clean brief.":
+    {
+      uz: "Shoshilinch, nozik yoki ishonchi past holatlar aniq brief bilan odamlarga o'tadi.",
+      ru: "Срочные, чувствительные или низкоуверенные моменты переходят людям с чистым brief.",
+    },
+  "VIP account": {
+    uz: "VIP akkaunt",
+    ru: "VIP-аккаунт",
+  },
+  "Voice escalation": {
+    uz: "Ovozli eskalatsiya",
+    ru: "Голосовая эскалация",
+  },
+  "Voice-ready support": {
+    uz: "Ovozga tayyor yordam",
+    ru: "Поддержка, готовая к голосу",
+  },
+  "Website widget, voice, and messaging apps enter one queue.": {
+    uz: "Sayt vidjeti, ovoz va messenjerlar bitta navbatga tushadi.",
+    ru: "Виджет сайта, голос и мессенджеры попадают в одну очередь.",
+  },
+  "Connect your widget, AI voice, knowledge base, and human queue into one operating layer that answers quickly and routes the moments that need judgment.":
+    {
+      uz: "Vidjet, AI ovoz, bilim bazasi va inson navbatini tez javob beradigan hamda baho talab qiladigan vaziyatlarni yo'naltiradigan bitta operatsion qatlamga ulang.",
+      ru: "Соедините виджет, AI-голос, базу знаний и очередь людей в один операционный слой, который быстро отвечает и маршрутизирует моменты, требующие суждения.",
+    },
+  Docs: {
+    uz: "Hujjatlar",
+    ru: "Документы",
+  },
+  faster: {
+    uz: "tezroq",
+    ru: "быстрее",
+  },
+  Gaps: {
+    uz: "Bo'shliqlar",
+    ru: "Пробелы",
+  },
+  gaps: {
+    uz: "bo'shliqlar",
+    ru: "пробелы",
+  },
+  Human: {
+    uz: "Inson",
+    ru: "Человек",
+  },
+  "Hi, can I change my plan and keep the same billing cycle?": {
+    uz: "Salom, tarifimni o'zgartirib, shu billing davrini saqlab qola olamanmi?",
+    ru: "Здравствуйте, могу ли я сменить тариф и сохранить тот же платежный цикл?",
+  },
+  Improve: {
+    uz: "Yaxshilash",
+    ru: "Улучшить",
+  },
+  "AI support desk for live customer work": {
+    uz: "Jonli mijoz ishlari uchun AI yordam deski",
+    ru: "AI-служба поддержки для живой работы с клиентами",
+  },
+  New: {
+    uz: "Yangi",
+    ru: "Новое",
+  },
+  "Osonflow AI support desk": {
+    uz: "Osonflow AI yordam deski",
+    ru: "AI-служба поддержки Osonflow",
+  },
+  "Payment failed": {
+    uz: "To'lov amalga oshmadi",
+    ru: "Платеж не прошел",
+  },
+  Plans: {
+    uz: "Tariflar",
+    ru: "Тарифы",
+  },
+  "Ready when your queue is": {
+    uz: "Navbatingiz tayyor bo'lganda tayyor",
+    ru: "Готово, когда готова ваша очередь",
+  },
+  "Resolution trend": {
+    uz: "Hal qilish tendensiyasi",
+    ru: "Тренд решений",
+  },
+  "AI, human, and source-gap outcomes": {
+    uz: "AI, inson va manba bo'shlig'i natijalari",
+    ru: "Итоги AI, людей и пробелов источников",
+  },
+  Action: {
+    uz: "Amal",
+    ru: "Действие",
+  },
+  Owner: {
+    uz: "Egasi",
+    ru: "Владелец",
+  },
+  Risk: {
+    uz: "Xavf",
+    ru: "Риск",
+  },
+  Routing: {
+    uz: "Marshrutlash",
+    ru: "Маршрутизация",
+  },
+  Sent: {
+    uz: "Yuborildi",
+    ru: "Отправлено",
+  },
+  "See the product": {
+    uz: "Mahsulotni ko'rish",
+    ru: "Смотреть продукт",
+  },
+  "The support stack your customers already touch, pulled into one view.": {
+    uz: "Mijozlaringiz allaqachon ishlatayotgan yordam steki bitta ko'rinishga yig'ilgan.",
+    ru: "Стек поддержки, с которым клиенты уже взаимодействуют, собран в один вид.",
+  },
+  "Yes. The cycle stays the same and the difference is prorated automatically.":
+    {
+      uz: "Ha. Davr o'zgarmaydi va farq avtomatik ravishda proporsional hisoblanadi.",
+      ru: "Да. Цикл остается прежним, а разница автоматически пересчитывается пропорционально.",
+    },
+  "Send upgrade link, mention prorated billing, and monitor the account if payment fails.":
+    {
+      uz: "Yangilash havolasini yuboring, proporsional billingni ayting va to'lov amalga oshmasa akkauntni kuzating.",
+      ru: "Отправьте ссылку на апгрейд, упомяните пропорциональный расчет и отслеживайте аккаунт при сбое платежа.",
+    },
+  Understand: {
+    uz: "Tushunish",
+    ru: "Понять",
+  },
+  "View plans": {
+    uz: "Tariflarni ko'rish",
+    ru: "Смотреть тарифы",
+  },
+  Now: {
+    uz: "Hozir",
+    ru: "Сейчас",
+  },
   "← Click to open chat": {
     uz: "← Chatni ochish uchun bosing",
     ru: "← Нажмите, чтобы открыть чат",
@@ -115,7 +506,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Tahrirni bekor qilish",
     ru: "Отменить редактирование",
   },
-  "Category": {
+  Category: {
     uz: "Kategoriya",
     ru: "Категория",
   },
@@ -200,7 +591,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Ulang:",
     ru: "Подключите",
   },
-  "Connected": {
+  Connected: {
     uz: "Ulangan",
     ru: "Подключено",
   },
@@ -272,7 +663,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Manzil URLi kerak",
     ru: "URL назначения обязателен",
   },
-  "Disconnect": {
+  Disconnect: {
     uz: "Uzish",
     ru: "Отключить",
   },
@@ -284,11 +675,11 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Vapini uzish",
     ru: "Отключить Vapi",
   },
-  "Done": {
+  Done: {
     uz: "Tayyor",
     ru: "Готово",
   },
-  "Draft": {
+  Draft: {
     uz: "Qoralama",
     ru: "Черновик",
   },
@@ -296,7 +687,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Qoralama saqlandi",
     ru: "Черновик сохранен",
   },
-  "Edit": {
+  Edit: {
     uz: "Tahrirlash",
     ru: "Редактировать",
   },
@@ -340,7 +731,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Hodisa jurnali",
     ru: "Журнал событий",
   },
-  "Events": {
+  Events: {
     uz: "Hodisalar",
     ru: "События",
   },
@@ -404,7 +795,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Fayl yuklandi va muvaffaqiyatli indekslandi.",
     ru: "Файл загружен и успешно индексирован.",
   },
-  "Filename": {
+  Filename: {
     uz: "Fayl nomi",
     ru: "Имя файла",
   },
@@ -469,7 +860,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Tashkilot IDingiz va launcher joylashuvini o'z ichiga oladi.",
     ru: "Включает ID организации и позицию launcher.",
   },
-  "Indexed": {
+  Indexed: {
     uz: "Indekslangan",
     ru: "Индексировано",
   },
@@ -531,7 +922,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Launcher alohida",
     ru: "Launcher отдельно",
   },
-  "Library": {
+  Library: {
     uz: "Kutubxona",
     ru: "Библиотека",
   },
@@ -612,7 +1003,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Eng ko'p javobsiz qolgan savollar",
     ru: "Самые частые вопросы без ответа",
   },
-  "Name": {
+  Name: {
     uz: "Nomi",
     ru: "Имя",
   },
@@ -704,7 +1095,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Hali javobsiz bilim bo'shliqlari aniqlanmadi.",
     ru: "Пробелов знаний без ответа пока не обнаружено.",
   },
-  "None": {
+  None: {
     uz: "Yo'q",
     ru: "Нет",
   },
@@ -740,7 +1131,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Tashkilot ID topilmadi",
     ru: "ID организации не найден",
   },
-  "OS": {
+  OS: {
     uz: "OS",
     ru: "ОС",
   },
@@ -756,7 +1147,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Sahifa URLi",
     ru: "URL страницы",
   },
-  "Paused": {
+  Paused: {
     uz: "Pauzada",
     ru: "Приостановлено",
   },
@@ -792,7 +1183,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Muhitingizni tanlang, keyin yaratilgan embed snippetni sozlang.",
     ru: "Выберите окружение, затем настройте сгенерированный embed-сниппет.",
   },
-  "Popular": {
+  Popular: {
     uz: "Ommabop",
     ru: "Популярное",
   },
@@ -820,11 +1211,11 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Rollbackni yoqish uchun yangilanishni chop eting.",
     ru: "Опубликуйте обновление, чтобы включить rollback.",
   },
-  "Published": {
+  Published: {
     uz: "Chop etilgan",
     ru: "Опубликовано",
   },
-  "Question": {
+  Question: {
     uz: "Savol",
     ru: "Вопрос",
   },
@@ -884,7 +1275,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Standartlarga qaytarish",
     ru: "Сбросить к значениям по умолчанию",
   },
-  "Resolution": {
+  Resolution: {
     uz: "Yechim",
     ru: "Решение",
   },
@@ -892,7 +1283,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Bilim manbalari o'zgarganda qayta ishlatilgan javoblar avtomatik tozalanadi.",
     ru: "Повторно использованные ответы автоматически очищаются при изменении источников знаний.",
   },
-  "Rollback": {
+  Rollback: {
     uz: "Rollback",
     ru: "Откат",
   },
@@ -1000,7 +1391,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Powered By footerini ko'rsatish",
     ru: "Показывать footer Powered By",
   },
-  "Shown": {
+  Shown: {
     uz: "Ko'rsatilgan",
     ru: "Показано",
   },
@@ -1008,7 +1399,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Imzolash siri — hozir saqlab qo'ying",
     ru: "Секрет подписи — сохраните сейчас",
   },
-  "Size": {
+  Size: {
     uz: "Hajm",
     ru: "Размер",
   },
@@ -1016,7 +1407,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Manba mosliklari",
     ru: "Совпадения источников",
   },
-  "Started": {
+  Started: {
     uz: "Boshlangan",
     ru: "Начато",
   },
@@ -1060,11 +1451,11 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Telegram uchun bot tokeni va chat ID kerak",
     ru: "Для Telegram нужны токен бота и ID чата",
   },
-  "Templates": {
+  Templates: {
     uz: "Shablonlar",
     ru: "Шаблоны",
   },
-  "Test": {
+  Test: {
     uz: "Sinash",
     ru: "Тест",
   },
@@ -1105,7 +1496,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Jami manbalar",
     ru: "Всего источников",
   },
-  "Transcript": {
+  Transcript: {
     uz: "Transkript",
     ru: "Транскрипт",
   },
@@ -1125,7 +1516,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Nom, email yoki xabar bo'yicha qidiring",
     ru: "Попробуйте искать по имени, email или сообщению",
   },
-  "Type": {
+  Type: {
     uz: "Turi",
     ru: "Тип",
   },
@@ -1165,15 +1556,15 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Bilim bazasini sinab bo'lmadi",
     ru: "Не удалось проверить базу знаний",
   },
-  "Unpublished": {
+  Unpublished: {
     uz: "Chop etilmagan",
     ru: "Не опубликовано",
   },
-  "Unread": {
+  Unread: {
     uz: "O'qilmagan",
     ru: "Непрочитано",
   },
-  "unread": {
+  unread: {
     uz: "o'qilmagan",
     ru: "непрочитано",
   },
@@ -1201,11 +1592,11 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Bilim bazangizni yaxshilash uchun bulardan foydalaning.",
     ru: "Используйте это для улучшения базы знаний.",
   },
-  "Used": {
+  Used: {
     uz: "Ishlatilgan",
     ru: "Использовано",
   },
-  "Username": {
+  Username: {
     uz: "Foydalanuvchi nomi",
     ru: "Имя пользователя",
   },
@@ -1225,7 +1616,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Vapi siri yaratildi",
     ru: "Секрет Vapi создан",
   },
-  "Vendor": {
+  Vendor: {
     uz: "Vendor",
     ru: "Поставщик",
   },
@@ -1469,11 +1860,11 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Blok variantlari menyusi",
     ru: "Меню параметров блока",
   },
-  "Blue": {
+  Blue: {
     uz: "Ko'k",
     ru: "Синий",
   },
-  "blue": {
+  blue: {
     uz: "ko'k",
     ru: "синий",
   },
@@ -1493,7 +1884,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Brend to'plami",
     ru: "Бренд-кит",
   },
-  "Builder": {
+  Builder: {
     uz: "Builder",
     ru: "Конструктор",
   },
@@ -1525,8 +1916,8 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Canvas navigatsiya rejimi",
     ru: "Режим навигации холста",
   },
-  "Capture": {
-    uz: "Capture",
+  Capture: {
+    uz: "Ushlash",
     ru: "Захват",
   },
   "Card description tools": {
@@ -1537,11 +1928,11 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Karta rasmi havolasi",
     ru: "Ссылка изображения карточки",
   },
-  "Carousel": {
+  Carousel: {
     uz: "Karusel",
     ru: "Карусель",
   },
-  "Choice": {
+  Choice: {
     uz: "Tanlov",
     ru: "Выбор",
   },
@@ -1557,7 +1948,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Drawerni yopish",
     ru: "Закрыть панель",
   },
-  "Component": {
+  Component: {
     uz: "Komponent",
     ru: "Компонент",
   },
@@ -1599,7 +1990,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Komponent yaratish",
     ru: "Создать компонент",
   },
-  "Crew": {
+  Crew: {
     uz: "Jamoa",
     ru: "Команда",
   },
@@ -1627,7 +2018,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Standart takliflar",
     ru: "Предложения по умолчанию",
   },
-  "Description": {
+  Description: {
     uz: "Tavsif",
     ru: "Описание",
   },
@@ -1639,7 +2030,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Rasm/GIFni shu yerga tashlang. Yoki,",
     ru: "Перетащите изображение/GIF сюда. Или,",
   },
-  "Editor": {
+  Editor: {
     uz: "Editor",
     ru: "Редактор",
   },
@@ -1687,11 +2078,11 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Qayta ishlatiladigan function toolni ishga tushiring.",
     ru: "Выполните переиспользуемый function tool.",
   },
-  "Fade": {
+  Fade: {
     uz: "Fade",
     ru: "Затухание",
   },
-  "fade": {
+  fade: {
     uz: "fade",
     ru: "затухание",
   },
@@ -1720,7 +2111,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
       uz: "Formatlash bevosita editorda qo'llanadi, mijozlar vidjet maqolasida xuddi shunday ko'radi.",
       ru: "Форматирование применяется прямо в редакторе так, как клиенты увидят его в статье виджета.",
     },
-  "Function": {
+  Function: {
     uz: "Funksiya",
     ru: "Функция",
   },
@@ -1736,11 +2127,11 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Gradient boshlanishi",
     ru: "Начало градиента",
   },
-  "Green": {
+  Green: {
     uz: "Yashil",
     ru: "Зеленый",
   },
-  "green": {
+  green: {
     uz: "yashil",
     ru: "зеленый",
   },
@@ -1752,7 +2143,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Chiqish yo'llari bor agentic playbookka uzating.",
     ru: "Передайте в agentic playbook с путями выхода.",
   },
-  "Heading": {
+  Heading: {
     uz: "Sarlavha",
     ru: "Заголовок",
   },
@@ -1832,7 +2223,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Embed vidjet ochilib-yopilganda ishlatiladigan animatsiya",
     ru: "Анимация при открытии и закрытии embed-виджета",
   },
-  "Mouse": {
+  Mouse: {
     uz: "Sichqoncha",
     ru: "Мышь",
   },
@@ -1860,11 +2251,11 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Raqamli ro'yxat",
     ru: "Нумерованный список",
   },
-  "Orange": {
+  Orange: {
     uz: "To'q sariq",
     ru: "Оранжевый",
   },
-  "orange": {
+  orange: {
     uz: "to'q sariq",
     ru: "оранжевый",
   },
@@ -1880,11 +2271,11 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Parolni tiklash",
     ru: "Сброс пароля",
   },
-  "Paste": {
+  Paste: {
     uz: "Joylash",
     ru: "Вставить",
   },
-  "Playbook": {
+  Playbook: {
     uz: "Playbook",
     ru: "Playbook",
   },
@@ -1892,11 +2283,11 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Yaroqli HEX rang kiriting (masalan, #3b82f6)",
     ru: "Введите корректный HEX-цвет (например, #3b82f6)",
   },
-  "Pop": {
+  Pop: {
     uz: "Pop",
     ru: "Pop",
   },
-  "pop": {
+  pop: {
     uz: "pop",
     ru: "pop",
   },
@@ -1920,11 +2311,11 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Ustuvor yordam",
     ru: "Приоритетная поддержка",
   },
-  "Purple": {
+  Purple: {
     uz: "Binafsha",
     ru: "Фиолетовый",
   },
-  "purple": {
+  purple: {
     uz: "binafsha",
     ru: "фиолетовый",
   },
@@ -1932,11 +2323,11 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Bilim bazasidan so'rov qiling.",
     ru: "Запросите базу знаний.",
   },
-  "Quote": {
+  Quote: {
     uz: "Iqtibos",
     ru: "Цитата",
   },
-  "Release": {
+  Release: {
     uz: "Reliz",
     ru: "Релиз",
   },
@@ -1948,11 +2339,11 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Flow ichida komponentni qayta ishlating.",
     ru: "Переиспользуйте компонент внутри flow.",
   },
-  "Rose": {
+  Rose: {
     uz: "Pushti",
     ru: "Розовый",
   },
-  "rose": {
+  rose: {
     uz: "pushti",
     ru: "розовый",
   },
@@ -2049,7 +2440,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "SLA rejalash",
     ru: "Планирование SLA",
   },
-  "Slide": {
+  Slide: {
     uz: "Slide",
     ru: "Слайд",
   },
@@ -2057,15 +2448,15 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "slide-up",
     ru: "slide-up",
   },
-  "Sparkles": {
+  Sparkles: {
     uz: "Yaltirash",
     ru: "Искры",
   },
-  "sparkles": {
+  sparkles: {
     uz: "sparkles",
     ru: "искры",
   },
-  "Strikethrough": {
+  Strikethrough: {
     uz: "Ustidan chizish",
     ru: "Зачеркнутый",
   },
@@ -2126,11 +2517,11 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
       uz: "Kamida bitta maqolali mavzu qo'shmaguningizcha vidjet Help tugmasi o'chiq qoladi.",
       ru: "Кнопка Help в виджете останется отключенной, пока вы не добавите тему хотя бы с одной статьей.",
     },
-  "Thumbnail": {
+  Thumbnail: {
     uz: "Thumbnail",
     ru: "Миниатюра",
   },
-  "Tool": {
+  Tool: {
     uz: "Tool",
     ru: "Инструмент",
   },
@@ -2142,7 +2533,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Mavzu sarlavhasi kerak",
     ru: "Название темы обязательно",
   },
-  "Trackpad": {
+  Trackpad: {
     uz: "Trackpad",
     ru: "Трекпад",
   },
@@ -2150,7 +2541,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Telefon qo'ng'irog'ini o'tkazing.",
     ru: "Переведите телефонный звонок.",
   },
-  "Underline": {
+  Underline: {
     uz: "Tagiga chizish",
     ru: "Подчеркнутый",
   },
@@ -2330,11 +2721,11 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Eksport qilinmoqda...",
     ru: "Экспорт...",
   },
-  "Last": {
+  Last: {
     uz: "Oxirgi",
     ru: "Последние",
   },
-  "days": {
+  days: {
     uz: "kun",
     ru: "дней",
   },
@@ -2354,7 +2745,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "AI bajargan taxminiy support daqiqalari",
     ru: "Оценочные минуты поддержки, обработанные AI",
   },
-  "escalated": {
+  escalated: {
     uz: "eskalatsiya qilindi",
     ru: "эскалировано",
   },

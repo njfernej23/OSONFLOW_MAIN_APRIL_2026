@@ -27,7 +27,7 @@ export default function AutomationPage() {
         <AutomationFlowPanel />
       </PageHero>
 
-      <section className="bg-white py-24">
+      <section className="bg-[#f8f3ea] py-24 text-[#17120f]">
         <div className="mx-auto max-w-7xl px-5 sm:px-8">
           <div className="mb-12">
             <SectionHeading
@@ -39,7 +39,7 @@ export default function AutomationPage() {
         </div>
       </section>
 
-      <section className="bg-[#F6F8FB] py-24">
+      <section className="bg-[#f8f3ea] py-24 text-[#17120f]">
         <div className="mx-auto grid max-w-7xl gap-12 px-5 sm:px-8 lg:grid-cols-[0.85fr_1.15fr]">
           <div className="flex flex-col gap-7">
             <SectionHeading

@@ -3,324 +3,352 @@ import Link from "next/link"
 import type { LucideIcon } from "lucide-react"
 import {
   ArrowRightIcon,
+  BellRingIcon,
   BotIcon,
   BrainCircuitIcon,
   CheckIcon,
   ChevronRightIcon,
-  CircleAlertIcon,
   DatabaseZapIcon,
   FileTextIcon,
+  GaugeIcon,
   HeadphonesIcon,
   MessageCircleMoreIcon,
-  Mic2Icon,
   PhoneCallIcon,
-  PlugZapIcon,
   RadioTowerIcon,
+  RouteIcon,
+  SearchIcon,
   SendIcon,
+  ShieldCheckIcon,
   SparklesIcon,
-  TrendingUpIcon,
   WorkflowIcon,
+  ZapIcon,
 } from "lucide-react"
 
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
 import { LandingNav } from "./landing-nav"
-import { MarketingFooter, channelLogos } from "./marketing-components"
+import { channelLogos } from "./marketing-components"
 
-const heroSignals = [
-  "Website chat",
-  "AI voice",
-  "Human handoff",
-  "Customer memory",
-]
+type IconCard = {
+  title: string
+  description: string
+  icon: LucideIcon
+  tone: string
+}
 
 const queueRows = [
   {
-    name: "Amina",
-    issue: "Plan change before renewal",
-    state: "AI drafting",
-    tone: "text-[#0B6B3A]",
+    customer: "Amina",
+    issue: "Upgrade before renewal",
+    intent: "Billing",
+    state: "AI ready",
+    tone: "bg-[#b7ff5a] text-[#11150f]",
   },
   {
-    name: "Bekzod",
+    customer: "Bekzod",
     issue: "Payment failed twice",
-    state: "Human priority",
-    tone: "text-[#BC4A10]",
+    intent: "Risk",
+    state: "Human",
+    tone: "bg-[#ffcc11] text-[#17110a]",
   },
   {
-    name: "Maya",
-    issue: "Invoice export",
-    state: "Resolved",
-    tone: "text-[#235BDB]",
+    customer: "Maya",
+    issue: "Need export invoice",
+    intent: "Docs",
+    state: "Sent",
+    tone: "bg-[#dbe7ff] text-[#102045]",
   },
 ]
 
-const loopSteps = [
+const heroMetrics = [
+  ["18", "live threads"],
+  ["42s", "median first reply"],
+  ["94%", "answer confidence"],
+]
+
+const operatingCards: IconCard[] = [
   {
-    title: "Answer instantly",
+    title: "One customer timeline",
     description:
-      "Ground the assistant in your files, help center, and policies so common questions do not wait for an agent.",
-    icon: BotIcon,
+      "Chat, voice, messaging, files, and human notes stay attached to the same customer record.",
+    icon: MessageCircleMoreIcon,
+    tone: "bg-[#e8f3ff] text-[#2563eb]",
   },
   {
-    title: "Handoff with context",
+    title: "Answers with receipts",
     description:
-      "When the question needs judgment, agents receive the customer history, priority, sentiment, and a clean next action.",
+      "The assistant drafts from your uploaded policies, pages, help articles, and product context.",
+    icon: FileTextIcon,
+    tone: "bg-[#e9ffe8] text-[#15803d]",
+  },
+  {
+    title: "Judgment stays human",
+    description:
+      "Urgent, sensitive, or low-confidence moments move to people with a clean brief.",
     icon: HeadphonesIcon,
+    tone: "bg-[#fff3c4] text-[#8a5b00]",
   },
   {
-    title: "Improve the source",
+    title: "Every miss becomes signal",
     description:
-      "Every missed answer becomes a visible gap in docs, routing, automation, or product education.",
+      "Unanswered questions surface as source gaps, workflow ideas, and customer-risk patterns.",
+    icon: BrainCircuitIcon,
+    tone: "bg-[#ffe8f6] text-[#df37a7]",
+  },
+]
+
+const routeSteps = [
+  {
+    title: "Capture",
+    description: "Website widget, voice, and messaging apps enter one queue.",
+    icon: RadioTowerIcon,
+  },
+  {
+    title: "Understand",
+    description:
+      "Intent, sentiment, account history, and confidence are scored.",
+    icon: SearchIcon,
+  },
+  {
+    title: "Resolve or route",
+    description:
+      "AI replies when it should; humans get the thread when it matters.",
+    icon: RouteIcon,
+  },
+  {
+    title: "Improve",
+    description: "New gaps feed the knowledge base and routing rules.",
     icon: DatabaseZapIcon,
   },
 ]
 
-const insightRows = [
-  ["Billing change", "Resolved by AI", "42s", "bg-[#DFF7EA] text-[#0B6B3A]"],
-  ["Payment failure", "Needs person", "2m", "bg-[#FFF0DF] text-[#BC4A10]"],
-  ["Voice support", "In call", "Live", "bg-[#E8F0FF] text-[#235BDB]"],
-  ["Refund policy", "Missing doc", "New gap", "bg-[#F1F4F8] text-[#475467]"],
-]
-
 const automationRows = [
-  {
-    from: "New billing question",
-    route: "AI answer with policy citation",
-    state: "94% confidence",
-    icon: FileTextIcon,
-  },
-  {
-    from: "Payment failure",
-    route: "Create human priority thread",
-    state: "Escalated",
-    icon: CircleAlertIcon,
-  },
-  {
-    from: "Voice request",
-    route: "Start realtime assistant",
-    state: "In call",
-    icon: PhoneCallIcon,
-  },
-]
-
-const pricingRows: Array<[string, boolean, boolean, boolean]> = [
-  ["AI website widget", true, true, true],
-  ["Knowledge base uploads", true, true, true],
-  ["Shared inbox", true, true, true],
-  ["Automation rules", false, true, true],
-  ["Voice support", false, true, true],
-  ["Custom integrations", false, false, true],
+  ["Payment failed", "Create priority handoff", "Owner: billing"],
+  ["Refund policy missing", "Open source gap", "Owner: content"],
+  ["Voice escalation", "Start realtime assistant", "Owner: support"],
+  ["VIP account", "Notify team channel", "Owner: success"],
 ]
 
 const pricingPlans = [
   {
     name: "Launch",
     price: "$29",
-    cta: "Start Launch",
-    href: "/sign-up",
+    description: "For teams replacing a static chat widget with AI support.",
+    features: ["Website widget", "Knowledge uploads", "Shared inbox"],
   },
   {
     name: "Scale",
     price: "$79",
-    cta: "Start Scale",
-    href: "/sign-up",
+    description: "For teams adding routing, voice, analytics, and memory.",
+    features: ["Everything in Launch", "Automation rules", "Voice support"],
     featured: true,
   },
   {
     name: "Custom",
     price: "Talk",
-    cta: "Book custom demo",
-    href: "/sign-up",
+    description: "For teams with deeper integrations or compliance needs.",
+    features: ["Dedicated onboarding", "Custom integrations", "SLA planning"],
   },
 ]
 
-const channelCapabilities: Array<{ label: string; icon: LucideIcon }> = [
-  { label: "Chat", icon: MessageCircleMoreIcon },
-  { label: "Models", icon: SparklesIcon },
-  { label: "Voice", icon: RadioTowerIcon },
+const trustItems = [
+  { label: "Source-grounded replies", icon: ShieldCheckIcon },
+  { label: "Human handoff rules", icon: WorkflowIcon },
+  { label: "Voice-ready support", icon: PhoneCallIcon },
 ]
 
-const channelRoutes = [
-  {
-    source: "Website widget",
-    signal: "Plans, billing, product questions",
-    route: "AI answer with source",
-    destination: "Customer resolved",
-    icon: MessageCircleMoreIcon,
-    tone: "text-[#235BDB]",
-  },
-  {
-    source: "WhatsApp + Telegram",
-    signal: "Repeat questions from existing customers",
-    route: "Same memory, same inbox",
-    destination: "Thread unified",
-    icon: RadioTowerIcon,
-    tone: "text-[#0B6B3A]",
-  },
-  {
-    source: "Voice request",
-    signal: "Urgent issue or typing is too slow",
-    route: "Realtime assistant then handoff",
-    destination: "Agent brief ready",
-    icon: PhoneCallIcon,
-    tone: "text-[#BC4A10]",
-  },
-]
-
-const launchSteps = [
-  {
-    title: "Install the widget",
-    description:
-      "Drop the script into your site and match the launcher to your brand.",
-    icon: PlugZapIcon,
-  },
-  {
-    title: "Load the answers",
-    description:
-      "Add files, help articles, product pages, policies, and pricing details.",
-    icon: FileTextIcon,
-  },
-  {
-    title: "Set the handoff rules",
-    description:
-      "Choose when AI answers, when voice starts, and when humans step in.",
-    icon: WorkflowIcon,
-  },
-]
-
-const evidenceSlots = [
-  {
-    title: "Dashboard command view",
-    description: "Queue, AI confidence, customer memory, and escalation state.",
-    imageSrc: null,
-  },
-  {
-    title: "Website widget moment",
-    description: "A branded customer-facing assistant on the live site.",
-    imageSrc: null,
-  },
-  {
-    title: "Voice handoff trace",
-    description: "Realtime voice support with transcript and next action.",
-    imageSrc: null,
-  },
-] satisfies Array<{
-  title: string
-  description: string
-  imageSrc: string | null
-}>
+const footerLinks = [
+  ["Product", "/product"],
+  ["Automation", "/automation"],
+  ["Integrations", "/channels"],
+  ["Pricing", "/pricing"],
+  ["Login", "/sign-in"],
+] satisfies Array<[string, string]>
 
 export const HomeLandingPage = () => (
-  <main className="osonflow-motion-page min-h-screen bg-white [font-family:var(--font-display)] text-[#101828]">
+  <main className="osonflow-command-page min-h-screen bg-[#080b0f] text-[#f8f3ea]">
     <LandingNav />
     <HeroSection />
     <SignalStrip />
-    <EvidenceSection />
-    <LoopSection />
-    <WorkspaceSection />
-    <AutomationSection />
-    <ChannelsSection />
+    <OperatingSection />
+    <CommandSection />
+    <RoutingSection />
     <PricingSection />
-    <HomeCta />
-    <MarketingFooter />
+    <FinalCta />
+    <HomeFooter />
   </main>
 )
 
+const PrimaryCta = ({
+  children,
+  href,
+  inverted = false,
+}: {
+  children: React.ReactNode
+  href: string
+  inverted?: boolean
+}) => (
+  <Button
+    asChild
+    className={cn(
+      "h-12 rounded-[4px] px-5 text-base font-bold shadow-[rgba(255,255,255,0.18)_0_0_0_1px_inset,rgba(0,0,0,0.12)_0_10px_26px_-18px] transition hover:-translate-y-0.5",
+      inverted
+        ? "bg-[#f8f3ea] text-[#15120f] hover:bg-white"
+        : "bg-[#df37a7] text-white hover:bg-[#d0339c]"
+    )}
+  >
+    <Link href={href}>
+      {children}
+      <ArrowRightIcon data-icon="inline-end" />
+    </Link>
+  </Button>
+)
+
+const SecondaryCta = ({
+  children,
+  href,
+}: {
+  children: React.ReactNode
+  href: string
+}) => (
+  <Button
+    asChild
+    className="h-12 rounded-[6px] border-[#f8f3ea]/30 bg-transparent px-5 text-base font-bold text-[#f8f3ea] hover:bg-white/8"
+    variant="outline"
+  >
+    <Link href={href}>
+      {children}
+      <ChevronRightIcon data-icon="inline-end" />
+    </Link>
+  </Button>
+)
+
+const Eyebrow = ({ children }: { children: React.ReactNode }) => (
+  <p className="inline-flex w-fit items-center gap-2 rounded-full border border-current/14 px-3 py-1.5 text-sm font-bold tracking-normal">
+    <SparklesIcon className="size-4 text-[#df37a7]" />
+    {children}
+  </p>
+)
+
+const SectionIntro = ({
+  eyebrow,
+  title,
+  description,
+  dark = false,
+}: {
+  eyebrow: string
+  title: string
+  description: string
+  dark?: boolean
+}) => (
+  <div className="max-w-3xl">
+    <Eyebrow>{eyebrow}</Eyebrow>
+    <h2
+      className={cn(
+        "mt-5 text-4xl leading-[1.02] font-bold tracking-normal [text-wrap:balance] sm:text-5xl lg:text-[3.75rem]",
+        dark ? "text-[#f8f3ea]" : "text-[#17120f]"
+      )}
+    >
+      {title}
+    </h2>
+    <p
+      className={cn(
+        "mt-5 text-lg leading-8 [text-wrap:pretty]",
+        dark ? "text-[#c9c0b7]" : "text-[#5b514b]"
+      )}
+    >
+      {description}
+    </p>
+  </div>
+)
+
 const HeroSection = () => (
-  <section className="osonflow-hero-motion relative overflow-hidden border-b border-[#101828]/10 bg-[#F7F8F5]">
-    <div className="osonflow-home-field absolute inset-0" />
-    <div className="relative mx-auto grid max-w-[88rem] items-start gap-8 px-5 py-8 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-10 lg:py-10">
-      <div className="max-w-3xl lg:pt-4">
-        <h1 className="osonflow-hero-title max-w-4xl text-5xl leading-[0.92] font-semibold text-[#080A12] sm:text-6xl lg:text-[4.15rem] xl:text-[4.85rem]">
-          Osonflow support desk
-        </h1>
-        <p className="osonflow-hero-copy mt-5 max-w-2xl text-xl leading-8 text-[#475467] lg:text-[1.22rem] lg:leading-8 xl:text-[1.35rem] xl:leading-9">
-          Turn chat, voice, help content, and human follow-up into one live
-          support workspace that answers quickly and escalates cleanly.
-        </p>
-        <div className="osonflow-hero-actions mt-7 flex flex-col gap-3 sm:flex-row">
-          <Button
-            asChild
-            className="osonflow-primary-cta h-13 rounded-full bg-[#101828] px-6 text-base font-semibold text-white shadow-[0_22px_54px_-30px_rgba(16,24,40,0.82)] hover:bg-[#1D2939]"
-          >
-            <Link href="/sign-up">
-              Build my support desk
-              <ArrowRightIcon data-icon="inline-end" />
-            </Link>
-          </Button>
-          <Button
-            asChild
-            className="osonflow-secondary-cta h-13 rounded-full border-[#101828]/16 bg-white/78 px-6 text-base font-semibold text-[#101828] backdrop-blur hover:bg-white"
-            variant="outline"
-          >
-            <Link href="/product">
-              See product
-              <ChevronRightIcon data-icon="inline-end" />
-            </Link>
-          </Button>
+  <section className="osonflow-command-hero relative overflow-hidden border-b border-white/10">
+    <div className="osonflow-command-grid absolute inset-0" />
+    <div className="relative mx-auto grid max-w-[82rem] gap-10 px-5 pt-12 pb-8 sm:px-8 lg:grid-cols-[0.88fr_1.12fr] lg:items-center lg:pt-14">
+      <div className="w-full max-w-[22rem] min-w-0 sm:max-w-3xl">
+        <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/12 bg-white/6 px-4 py-2 text-sm font-bold text-[#f8f3ea] shadow-[rgba(255,255,255,0.08)_0_0_0_1px_inset] backdrop-blur">
+          <BotIcon className="size-4 text-[#b7ff5a]" />
+          <span className="truncate">
+            AI support desk for live customer work
+          </span>
         </div>
-        <div className="osonflow-signal-grid mt-7 grid max-w-2xl grid-cols-2 border-y border-[#101828]/14 text-sm font-semibold text-[#344054] sm:grid-cols-4">
-          {heroSignals.map((signal, index) => (
-            <span
-              className={cn(
-                "osonflow-signal-item py-4 sm:px-4",
-                index % 2 === 1 && "pl-4",
-                index > 0 && "sm:border-l sm:border-[#101828]/14",
-                index === 1 && "border-l border-[#101828]/14 sm:border-l",
-                index === 3 && "border-l border-[#101828]/14 sm:border-l"
-              )}
-              key={signal}
+
+        <h1 className="mt-7 max-w-full text-[2.65rem] leading-[0.98] font-bold tracking-normal [text-wrap:balance] text-[#f8f3ea] sm:text-6xl lg:text-[4.8rem] xl:text-[5.15rem]">
+          Osonflow AI support desk
+        </h1>
+        <p className="mt-6 max-w-[22rem] text-lg leading-8 [text-wrap:pretty] text-[#c9c0b7] sm:max-w-2xl sm:text-xl">
+          Connect your widget, AI voice, knowledge base, and human queue into
+          one operating layer that answers quickly and routes the moments that
+          need judgment.
+        </p>
+
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <PrimaryCta href="/sign-up">Start free</PrimaryCta>
+          <SecondaryCta href="/product">See the product</SecondaryCta>
+        </div>
+
+        <div className="mt-8 grid max-w-[22rem] grid-cols-3 overflow-hidden border-y border-white/12 sm:max-w-xl">
+          {heroMetrics.map(([value, label]) => (
+            <div
+              className="border-r border-white/12 py-4 pr-3 last:border-r-0 sm:px-4 sm:first:pl-0"
+              key={label}
             >
-              {signal}
-            </span>
+              <p className="text-3xl leading-none font-bold text-[#f8f3ea]">
+                {value}
+              </p>
+              <p className="mt-2 text-xs font-bold text-[#8d8580] sm:text-sm">
+                {label}
+              </p>
+            </div>
           ))}
         </div>
       </div>
 
-      <HeroDesk />
-    </div>
-    <div className="osonflow-hero-note relative mx-auto max-w-[88rem] border-t border-[#101828]/10 px-5 py-4 sm:px-8">
-      <div className="grid gap-3 text-sm font-medium text-[#667085] md:grid-cols-[0.9fr_1.1fr]">
-        <span>For teams that want fewer support tools and better answers.</span>
-        <span className="text-[#101828]">
-          Widget, inbox, voice, analytics, automations, and integrations move as
-          one system.
-        </span>
-      </div>
+      <HeroConsole />
     </div>
   </section>
 )
 
-const HeroDesk = () => (
-  <div className="osonflow-hero-desk relative min-h-[500px] lg:min-h-[540px]">
-    <div className="osonflow-desk-shadow absolute inset-x-6 top-12 bottom-4" />
-    <div className="osonflow-routing-line absolute top-10 right-0 left-8 h-[86%]" />
-    <div className="osonflow-desk-window relative ml-auto overflow-hidden rounded-lg border border-[#101828]/14 bg-white shadow-[0_36px_100px_-60px_rgba(15,23,42,0.7)]">
-      <div className="grid min-h-[500px] lg:min-h-[540px] lg:grid-cols-[10.5rem_1fr] xl:grid-cols-[11.5rem_1fr]">
-        <aside className="hidden border-r border-[#101828]/10 bg-[#F4F6F8] p-4 lg:block">
-          <div className="flex items-center gap-2 border-b border-[#101828]/10 pb-4">
-            <span className="osonflow-live-dot size-2.5 rounded-full bg-[#16A163]" />
-            <span className="text-sm font-semibold text-[#101828]">
-              Osonflow live
-            </span>
+const HeroConsole = () => (
+  <div className="osonflow-console-wrap relative w-full max-w-[22rem] min-w-0 sm:max-w-none">
+    <div className="absolute -inset-5 rounded-[28px] bg-[radial-gradient(circle_at_30%_20%,rgba(223,55,167,0.32),transparent_34%),radial-gradient(circle_at_75%_8%,rgba(183,255,90,0.18),transparent_30%)] blur-2xl" />
+    <div className="relative max-h-40 overflow-hidden rounded-[18px] border border-white/14 bg-[#111820] shadow-[0_38px_120px_-70px_rgba(0,0,0,0.95)] sm:max-h-none">
+      <div className="flex items-center justify-between gap-4 border-b border-white/10 bg-white/[0.03] px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="size-2.5 rounded-full bg-[#ff6b6b]" />
+          <span className="size-2.5 rounded-full bg-[#ffcc11]" />
+          <span className="size-2.5 rounded-full bg-[#b7ff5a]" />
+        </div>
+        <p className="truncate text-xs font-bold text-[#8d98a8]">
+          live-support.osonflow
+        </p>
+      </div>
+
+      <div className="grid min-h-[510px] lg:grid-cols-[13rem_1fr]">
+        <aside className="hidden border-r border-white/10 bg-[#0c1118] p-4 lg:block">
+          <div className="flex items-center gap-2 text-sm font-bold text-[#f8f3ea]">
+            <span className="osonflow-status-dot size-2.5 rounded-full bg-[#b7ff5a]" />
+            Command live
           </div>
-          <div className="mt-6 space-y-4 text-sm">
-            {["Inbox", "AI chats", "Voice", "Memory", "Analytics"].map(
+          <div className="mt-7 space-y-2">
+            {["Inbox", "AI replies", "Voice", "Memory", "Gaps"].map(
               (item, index) => (
                 <div
                   className={cn(
-                    "osonflow-nav-item flex items-center justify-between border-l-2 py-1.5 pl-3",
+                    "flex items-center justify-between rounded-[8px] px-3 py-2.5 text-sm font-bold",
                     index === 0
-                      ? "border-[#235BDB] text-[#101828]"
-                      : "border-transparent text-[#667085]"
+                      ? "bg-[#f8f3ea] text-[#15120f]"
+                      : "text-[#8d98a8]"
                   )}
                   key={item}
                 >
-                  <span className="font-semibold">{item}</span>
+                  {item}
                   {index === 0 ? (
-                    <span className="text-xs text-[#235BDB]">18</span>
+                    <span className="rounded-full bg-[#df37a7] px-2 py-0.5 text-xs text-white">
+                      18
+                    </span>
                   ) : null}
                 </div>
               )
@@ -328,53 +356,58 @@ const HeroDesk = () => (
           </div>
         </aside>
 
-        <div className="grid bg-[#FBFCFD] md:grid-cols-[0.95fr_1.2fr]">
-          <section className="border-b border-[#101828]/10 bg-white md:border-r md:border-b-0">
-            <div className="border-b border-[#101828]/10 px-5 py-4">
-              <p className="text-sm font-semibold text-[#101828]">
+        <div className="grid min-w-0 md:grid-cols-[0.92fr_1.08fr]">
+          <section className="border-b border-white/10 md:border-r md:border-b-0">
+            <div className="border-b border-white/10 p-5">
+              <p className="text-base font-bold text-[#f8f3ea]">
                 Priority queue
               </p>
-              <p className="mt-1 text-xs text-[#667085]">
-                Ranked by urgency, revenue, and sentiment
+              <p className="mt-1 text-sm leading-5 text-[#8d98a8]">
+                Sorted by urgency, revenue, sentiment, and AI confidence.
               </p>
             </div>
-            <div className="divide-y divide-[#101828]/10">
+            <div className="divide-y divide-white/10">
               {queueRows.map((row, index) => (
                 <div
-                  className={cn(
-                    "osonflow-queue-row px-5 py-4",
-                    index === 0 && "is-active bg-[#EFF4FF]"
-                  )}
-                  key={row.name}
+                  className={cn("p-5", index === 0 && "bg-[#df37a7]/[0.08]")}
+                  key={row.customer}
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-[#101828]">
-                      {row.name}
-                    </p>
-                    <span className={cn("text-xs font-semibold", row.tone)}>
+                    <div>
+                      <p className="font-bold text-[#f8f3ea]">{row.customer}</p>
+                      <p className="mt-1 text-xs font-bold text-[#8d98a8]">
+                        {row.intent}
+                      </p>
+                    </div>
+                    <span
+                      className={cn(
+                        "rounded-full px-3 py-1 text-xs font-bold",
+                        row.tone
+                      )}
+                    >
                       {row.state}
                     </span>
                   </div>
-                  <p className="mt-1 truncate text-sm text-[#667085]">
+                  <p className="mt-3 truncate text-sm text-[#c9c0b7]">
                     {row.issue}
                   </p>
                 </div>
               ))}
             </div>
-            <div className="grid grid-cols-3 border-t border-[#101828]/10">
+            <div className="grid grid-cols-3 border-t border-white/10">
               {[
-                ["94%", "AI confidence"],
-                ["42s", "first reply"],
-                ["12", "doc gaps"],
+                ["312h", "saved"],
+                ["89%", "resolved"],
+                ["12", "gaps"],
               ].map(([value, label]) => (
                 <div
-                  className="osonflow-desk-metric border-r border-[#101828]/10 px-4 py-5 last:border-r-0"
+                  className="border-r border-white/10 p-4 last:border-r-0"
                   key={label}
                 >
-                  <p className="osonflow-metric-value text-2xl leading-none font-semibold text-[#101828]">
+                  <p className="text-2xl leading-none font-bold text-[#f8f3ea]">
                     {value}
                   </p>
-                  <p className="mt-2 text-[11px] leading-4 font-medium text-[#667085]">
+                  <p className="mt-2 text-xs font-bold text-[#8d98a8]">
                     {label}
                   </p>
                 </div>
@@ -383,46 +416,44 @@ const HeroDesk = () => (
           </section>
 
           <section className="flex min-h-[420px] flex-col">
-            <div className="flex items-center justify-between gap-4 border-b border-[#101828]/10 bg-white px-5 py-4">
+            <div className="flex items-center justify-between gap-4 border-b border-white/10 p-5">
               <div>
-                <p className="text-sm font-semibold text-[#101828]">
-                  Conversation with Amina
-                </p>
-                <p className="mt-1 text-xs text-[#667085]">
+                <p className="font-bold text-[#f8f3ea]">Amina Abdullaeva</p>
+                <p className="mt-1 text-sm text-[#8d98a8]">
                   Customer memory loaded
                 </p>
               </div>
               <button
-                className="osonflow-call-button inline-flex h-9 items-center gap-2 rounded-full bg-[#101828] px-3 text-xs font-semibold text-white"
+                className="inline-flex h-10 items-center gap-2 rounded-[4px] bg-[#b7ff5a] px-3 text-sm font-bold text-[#11150f]"
                 type="button"
               >
-                <PhoneCallIcon className="size-3.5" />
+                <PhoneCallIcon className="size-4" />
                 Call
               </button>
             </div>
             <div className="flex flex-1 flex-col gap-4 p-5">
-              <div className="osonflow-message-in max-w-[84%] rounded-lg rounded-tl-sm border border-[#101828]/10 bg-white px-4 py-3 text-sm leading-6 text-[#344054]">
+              <div className="max-w-[82%] rounded-[12px] bg-white/[0.08] px-4 py-3 text-sm leading-6 text-[#d8d0c8]">
                 Can I change my plan today and keep the same billing cycle?
               </div>
-              <div className="osonflow-message-out ml-auto max-w-[88%] rounded-lg rounded-tr-sm bg-[#235BDB] px-4 py-3 text-sm leading-6 text-white">
-                Yes. Your cycle stays the same, and the difference is prorated
+              <div className="ml-auto max-w-[88%] rounded-[12px] bg-[#df37a7] px-4 py-3 text-sm leading-6 text-white">
+                Yes. The cycle stays the same and the difference is prorated
                 automatically.
               </div>
-              <div className="osonflow-suggestion-panel border-l-2 border-[#16A163] bg-[#F0FBF5] px-4 py-3">
-                <div className="flex items-center gap-2 text-sm font-semibold text-[#101828]">
-                  <SparklesIcon className="size-4 text-[#16A163]" />
+              <div className="rounded-[12px] border border-[#b7ff5a]/40 bg-[#b7ff5a]/10 px-4 py-3">
+                <div className="flex items-center gap-2 text-sm font-bold text-[#b7ff5a]">
+                  <ZapIcon className="size-4" />
                   Suggested next action
                 </div>
-                <p className="mt-2 text-sm leading-6 text-[#475467]">
-                  Send upgrade link, mention prorated billing, and watch the
+                <p className="mt-2 text-sm leading-6 text-[#d8d0c8]">
+                  Send upgrade link, mention prorated billing, and monitor the
                   account if payment fails.
                 </p>
               </div>
-              <div className="osonflow-reply-box mt-auto flex items-center gap-2 border border-[#101828]/10 bg-white px-3 py-2">
-                <span className="flex-1 text-sm text-[#98A2B3]">
+              <div className="mt-auto flex items-center gap-2 rounded-[8px] border border-white/12 bg-[#0c1118] px-3 py-2">
+                <span className="flex-1 truncate text-sm text-[#8d98a8]">
                   Reply with AI assistance...
                 </span>
-                <span className="osonflow-send-button flex size-9 items-center justify-center rounded-md bg-[#16A163] text-white">
+                <span className="flex size-9 items-center justify-center rounded-[4px] bg-[#df37a7] text-white">
                   <SendIcon className="size-4" />
                 </span>
               </div>
@@ -435,19 +466,19 @@ const HeroDesk = () => (
 )
 
 const SignalStrip = () => (
-  <section className="border-b border-[#101828]/10 bg-white">
-    <div className="mx-auto grid max-w-[88rem] gap-8 px-5 py-10 sm:px-8 lg:grid-cols-[0.74fr_1.26fr] lg:items-center">
+  <section className="border-b border-white/10 bg-[#0c1118]">
+    <div className="mx-auto grid max-w-[82rem] gap-8 px-5 py-10 sm:px-8 lg:grid-cols-[0.7fr_1.3fr] lg:items-center">
       <div>
-        <p className="text-2xl leading-8 font-semibold text-[#101828]">
-          One support layer for the channels customers already use.
+        <p className="text-2xl leading-tight font-bold [text-wrap:balance] text-[#f8f3ea]">
+          The support stack your customers already touch, pulled into one view.
         </p>
       </div>
-      <div className="grid gap-6">
-        <div className="flex flex-wrap items-center gap-x-7 gap-y-4">
-          {channelLogos.map((logo) => (
+      <div className="min-w-0 overflow-hidden rounded-[14px] border border-white/10 bg-white/[0.04]">
+        <div className="osonflow-command-marquee flex w-max gap-3 px-3 py-3">
+          {[...channelLogos, ...channelLogos].map((logo, index) => (
             <div
-              className="osonflow-logo-chip inline-flex items-center gap-2.5"
-              key={logo.label}
+              className="flex h-16 w-44 shrink-0 items-center justify-center gap-3 rounded-[10px] bg-[#f8f3ea] px-4 text-[#17120f]"
+              key={`${logo.label}-${index}`}
             >
               <Image
                 alt={`${logo.label} logo`}
@@ -456,28 +487,7 @@ const SignalStrip = () => (
                 src={logo.src}
                 width={32}
               />
-              <span className="text-sm font-semibold text-[#344054]">
-                {logo.label}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div className="grid border-t border-[#101828]/10 pt-6 sm:grid-cols-3">
-          {[
-            ["72%", "fewer repeat questions"],
-            ["4.8x", "faster first response"],
-            ["24/7", "coverage across chat and voice"],
-          ].map(([value, label]) => (
-            <div
-              className="osonflow-proof-metric border-b border-[#101828]/10 py-4 sm:border-r sm:border-b-0 sm:px-6 sm:first:pl-0 sm:last:border-r-0"
-              key={label}
-            >
-              <p className="text-5xl leading-none font-semibold text-[#101828]">
-                {value}
-              </p>
-              <p className="mt-2 max-w-40 text-sm leading-5 font-medium text-[#667085]">
-                {label}
-              </p>
+              <span className="text-sm font-bold">{logo.label}</span>
             </div>
           ))}
         </div>
@@ -486,53 +496,48 @@ const SignalStrip = () => (
   </section>
 )
 
-const EvidenceSection = () => (
-  <section className="overflow-hidden bg-white py-24">
-    <div className="mx-auto max-w-[88rem] px-5 sm:px-8">
+const OperatingSection = () => (
+  <section className="bg-[#f8f3ea] py-24 text-[#17120f]">
+    <div className="mx-auto max-w-[82rem] px-5 sm:px-8">
       <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-end">
-        <div>
-          <h2 className="max-w-3xl text-5xl leading-none font-semibold text-[#101828] sm:text-6xl">
-            Show the product doing the work
-          </h2>
+        <SectionIntro
+          description="Osonflow is designed around the real support loop: capture the question, find trusted context, answer when confidence is high, and hand off with history when it is not."
+          eyebrow="Operating model"
+          title="A support workflow that does not split AI from people."
+        />
+        <div className="grid gap-3 sm:grid-cols-3">
+          {trustItems.map(({ label, icon: Icon }) => (
+            <div
+              className="rounded-[12px] bg-white px-4 py-4 shadow-[0_0_0_1px_rgba(23,18,15,0.08)]"
+              key={label}
+            >
+              <Icon className="mb-3 size-5 text-[#df37a7]" />
+              <p className="text-sm font-bold text-[#17120f]">{label}</p>
+            </div>
+          ))}
         </div>
-        <p className="max-w-2xl text-lg leading-8 text-[#667085]">
-          Customers see one story three ways: the dashboard steering work, the
-          website widget answering on-site, and voice handoff preserving
-          context.
-        </p>
       </div>
-      <div className="mt-12 grid border-y border-[#101828]/12 lg:grid-cols-3">
-        {evidenceSlots.map((slot, index) => (
+
+      <div className="mt-12 grid gap-4 lg:grid-cols-4">
+        {operatingCards.map(({ title, description, icon: Icon, tone }) => (
           <article
-            className="osonflow-evidence-item group border-b border-[#101828]/12 py-8 lg:border-r lg:border-b-0 lg:px-7 lg:first:pl-0 lg:last:border-r-0 lg:last:pr-0"
-            key={slot.title}
+            className="rounded-[14px] bg-white p-6 shadow-[0_0_0_1px_rgba(23,18,15,0.08),0_20px_60px_-52px_rgba(23,18,15,0.45)]"
+            key={title}
           >
-            <div className="osonflow-evidence-frame relative aspect-[1.28] overflow-hidden rounded-lg border border-[#101828]/12 bg-[#F7F8F5]">
-              {slot.imageSrc ? (
-                <Image
-                  alt={slot.title}
-                  className="size-full object-cover"
-                  fill
-                  sizes="(min-width: 1024px) 30vw, 100vw"
-                  src={slot.imageSrc}
-                />
-              ) : (
-                <EvidenceMockup index={index} />
+            <span
+              className={cn(
+                "flex size-12 items-center justify-center rounded-[8px]",
+                tone
               )}
-            </div>
-            <div className="mt-6 flex items-start justify-between gap-5">
-              <div>
-                <h3 className="text-2xl leading-7 font-semibold text-[#101828]">
-                  {slot.title}
-                </h3>
-                <p className="mt-3 text-base leading-7 text-[#667085]">
-                  {slot.description}
-                </p>
-              </div>
-              <span className="font-mono text-sm font-semibold text-[#98A2B3]">
-                0{index + 1}
-              </span>
-            </div>
+            >
+              <Icon className="size-5" />
+            </span>
+            <h3 className="mt-6 text-xl leading-tight font-bold text-[#17120f]">
+              {title}
+            </h3>
+            <p className="mt-3 text-sm leading-6 text-[#5b514b]">
+              {description}
+            </p>
           </article>
         ))}
       </div>
@@ -540,416 +545,150 @@ const EvidenceSection = () => (
   </section>
 )
 
-const EvidenceMockup = ({ index }: { index: number }) => {
-  if (index === 1) {
-    return (
-      <div className="absolute inset-0 bg-[#EEF3FF] p-5">
-        <div className="h-full rounded-md bg-white p-4 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.65)]">
-          <div className="osonflow-skeleton-line mb-5 h-5 w-28 rounded-full bg-[#101828]" />
-          <div className="grid h-[calc(100%-2rem)] grid-cols-[1fr_9rem] gap-4">
-            <div className="space-y-3">
-              <div className="osonflow-skeleton-line h-20 rounded-sm bg-[#DDE7FF]" />
-              <div className="osonflow-skeleton-line h-12 rounded-sm bg-[#F7F8F5]" />
-              <div className="osonflow-skeleton-line h-12 rounded-sm bg-[#F7F8F5]" />
-            </div>
-            <div className="mt-auto rounded-lg border border-[#101828]/12 bg-white p-3">
-              <div className="mb-3 flex items-center gap-2">
-                <BotIcon className="size-4 text-[#235BDB]" />
-                <span className="osonflow-skeleton-line h-2 w-16 rounded-full bg-[#101828]" />
-              </div>
-              <div className="space-y-2">
-                <div className="osonflow-skeleton-line h-10 rounded-md bg-[#F7F8F5]" />
-                <div className="osonflow-skeleton-line ml-auto h-9 w-24 rounded-md bg-[#235BDB]" />
-                <div className="osonflow-skeleton-line h-8 rounded-md border border-[#101828]/10" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
+const CommandSection = () => (
+  <section className="relative overflow-hidden bg-[#111820] py-24">
+    <div className="osonflow-command-grid absolute inset-0 opacity-50" />
+    <div className="relative mx-auto grid max-w-[82rem] gap-12 px-5 sm:px-8 lg:grid-cols-[0.72fr_1.28fr] lg:items-center">
+      <SectionIntro
+        dark
+        description="Managers see workload, AI quality, source gaps, and escalation health in the same field of view, so support improvement stops hiding inside individual threads."
+        eyebrow="Live command"
+        title="See the queue, the answer, and the fix in one place."
+      />
 
-  if (index === 2) {
-    return (
-      <div className="absolute inset-0 bg-[#101828] p-5 text-white">
-        <div className="flex h-full flex-col justify-between">
-          <div className="flex items-center justify-between border-b border-white/14 pb-4">
-            <div>
-              <div className="osonflow-skeleton-line h-3 w-28 rounded-full bg-white" />
-              <div className="osonflow-skeleton-line mt-2 h-2 w-20 rounded-full bg-white/32" />
+      <div className="overflow-hidden rounded-[18px] border border-white/12 bg-[#080b0f] shadow-[0_36px_110px_-74px_rgba(0,0,0,0.95)]">
+        <div className="grid border-b border-white/10 sm:grid-cols-4">
+          {[
+            ["1,248", "answered"],
+            ["89%", "resolved"],
+            ["4.8x", "faster"],
+            ["27", "risk flags"],
+          ].map(([value, label]) => (
+            <div
+              className="border-b border-white/10 p-5 last:border-b-0 sm:border-r sm:border-b-0 sm:last:border-r-0"
+              key={label}
+            >
+              <p className="text-4xl leading-none font-bold text-[#f8f3ea]">
+                {value}
+              </p>
+              <p className="mt-2 text-xs font-bold text-[#8d98a8]">{label}</p>
             </div>
-            <div className="osonflow-voice-orb flex size-12 items-center justify-center rounded-full bg-[#92F2B8] text-[#101828]">
-              <Mic2Icon className="size-5" />
-            </div>
-          </div>
-          <div className="space-y-4">
-            {[72, 44, 88].map((width) => (
-              <div className="flex items-center gap-3" key={width}>
-                <span className="osonflow-wave-dot size-2 rounded-full bg-[#92F2B8]" />
-                <span
-                  className="osonflow-wave-line h-3 rounded-full bg-white/72"
-                  style={{ width: `${width}%` }}
-                />
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-3 gap-2 border-t border-white/14 pt-4">
-            {["Intent", "Tone", "Next"].map((label) => (
-              <div key={label}>
-                <p className="text-[10px] font-semibold text-white/40">
-                  {label}
+          ))}
+        </div>
+        <div className="grid gap-6 p-5 lg:grid-cols-[1.08fr_0.92fr]">
+          <div className="rounded-[14px] border border-white/10 bg-white/[0.03] p-5">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div>
+                <p className="font-bold text-[#f8f3ea]">Resolution trend</p>
+                <p className="mt-1 text-sm text-[#8d98a8]">
+                  AI, human, and source-gap outcomes
                 </p>
-                <div className="osonflow-skeleton-line mt-2 h-2 rounded-full bg-white/70" />
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="absolute inset-0 bg-white">
-      <div className="grid h-full grid-cols-[7rem_1fr]">
-        <div className="border-r border-[#101828]/10 bg-[#F4F6F8] p-4">
-          <div className="h-3 w-16 rounded-full bg-[#101828]" />
-          <div className="mt-7 space-y-4">
-            {[100, 70, 82, 58].map((width) => (
-              <div
-                className="osonflow-skeleton-line h-2 rounded-full bg-[#667085]/34"
-                key={width}
-                style={{ width: `${width}%` }}
-              />
-            ))}
-          </div>
-        </div>
-        <div className="grid grid-rows-[auto_1fr]">
-          <div className="grid grid-cols-3 border-b border-[#101828]/10">
-            {["94%", "42s", "12"].map((value) => (
-              <div
-                className="border-r border-[#101828]/10 p-4 last:border-r-0"
-                key={value}
-              >
-                <p className="text-2xl font-semibold text-[#101828]">{value}</p>
-                <div className="osonflow-skeleton-line mt-2 h-2 rounded-full bg-[#CBD5E1]" />
-              </div>
-            ))}
-          </div>
-          <div className="p-4">
-            <div className="osonflow-dashboard-screen mb-4 h-28 rounded-sm bg-[#101828]" />
-            <div className="space-y-3">
-              <div className="osonflow-skeleton-line h-9 rounded-sm bg-[#EFF4FF]" />
-              <div className="osonflow-skeleton-line h-9 rounded-sm bg-[#F7F8F5]" />
-              <div className="osonflow-skeleton-line h-9 rounded-sm bg-[#F7F8F5]" />
+              <GaugeIcon className="size-5 text-[#b7ff5a]" />
             </div>
+            <div className="flex h-72 items-end gap-3 border-b border-l border-white/14 px-3 pt-5">
+              {[42, 64, 48, 78, 58, 88, 72, 96, 82].map((height, index) => (
+                <span
+                  className={cn(
+                    "block w-full rounded-t-[4px]",
+                    index % 3 === 0
+                      ? "bg-[#df37a7]"
+                      : index % 3 === 1
+                        ? "bg-[#b7ff5a]"
+                        : "bg-[#dbe7ff]"
+                  )}
+                  key={`${height}-${index}`}
+                  style={{ height: `${height}%` }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[14px] bg-[#f8f3ea] text-[#17120f]">
+            {[
+              ["Billing change", "AI resolved", "42s"],
+              ["Payment failure", "Human priority", "2m"],
+              ["Voice request", "Live call", "Now"],
+              ["Refund policy", "Missing source", "New"],
+            ].map(([topic, status, time]) => (
+              <div
+                className="grid grid-cols-[1fr_auto] gap-4 border-b border-[#17120f]/10 px-4 py-4 last:border-b-0"
+                key={topic}
+              >
+                <div>
+                  <p className="text-sm font-bold text-[#17120f]">{topic}</p>
+                  <p className="mt-1 text-xs font-bold text-[#6b625d]">
+                    {status}
+                  </p>
+                </div>
+                <span className="text-sm font-bold text-[#df37a7]">{time}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
     </div>
-  )
-}
+  </section>
+)
 
-const LoopSection = () => (
-  <section className="relative overflow-hidden bg-[#F7F8F5] py-24">
-    <div className="osonflow-ruled absolute inset-0" />
-    <div className="relative mx-auto max-w-[88rem] px-5 sm:px-8">
-      <div className="grid gap-12 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
-        <div className="max-w-xl">
-          <h2 className="text-5xl leading-none font-semibold text-[#101828] sm:text-6xl">
-            One operating loop, not five disconnected tools
-          </h2>
-          <p className="mt-6 text-lg leading-8 text-[#667085]">
-            Osonflow keeps the customer-facing assistant, the agent inbox, and
-            the improvement loop in the same mental model.
-          </p>
+const RoutingSection = () => (
+  <section className="bg-[#f8f3ea] py-24 text-[#17120f]">
+    <div className="mx-auto grid max-w-[82rem] gap-12 px-5 sm:px-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
+      <div>
+        <SectionIntro
+          description="The page is not a pile of channels. It is one routing system where every input gets understood, assigned, and improved."
+          eyebrow="Routing"
+          title="From first message to better source material."
+        />
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <PrimaryCta href="/automation">Explore automation</PrimaryCta>
         </div>
-        <div className="grid border-t border-[#101828]/12 lg:grid-cols-3 lg:border-t-0 lg:border-l">
-          {loopSteps.map(({ title, description, icon: Icon }, index) => (
-            <article
-              className="osonflow-loop-step border-b border-[#101828]/12 px-0 py-8 lg:border-r lg:border-b-0 lg:px-8 lg:last:border-r-0"
-              key={title}
-            >
-              <div className="mb-8 flex items-center justify-between">
-                <Icon className="size-8 text-[#235BDB]" />
-                <span className="font-mono text-sm font-semibold text-[#98A2B3]">
-                  0{index + 1}
-                </span>
-              </div>
-              <h3 className="text-3xl leading-8 font-semibold text-[#101828]">
-                {title}
-              </h3>
-              <p className="mt-4 text-base leading-7 text-[#667085]">
+      </div>
+
+      <div className="grid gap-4">
+        {routeSteps.map(({ title, description, icon: Icon }, index) => (
+          <article
+            className="grid gap-4 rounded-[14px] bg-white p-5 shadow-[0_0_0_1px_rgba(23,18,15,0.08)] sm:grid-cols-[auto_1fr_auto] sm:items-center"
+            key={title}
+          >
+            <span className="flex size-12 items-center justify-center rounded-[8px] bg-[#111820] text-[#b7ff5a]">
+              <Icon className="size-5" />
+            </span>
+            <div>
+              <h3 className="text-2xl font-bold text-[#17120f]">{title}</h3>
+              <p className="mt-1 text-base leading-7 text-[#5b514b]">
                 {description}
               </p>
-            </article>
-          ))}
-        </div>
+            </div>
+            <span className="font-mono text-sm font-bold text-[#b8aea6]">
+              0{index + 1}
+            </span>
+          </article>
+        ))}
       </div>
     </div>
-  </section>
-)
 
-const WorkspaceSection = () => (
-  <section className="overflow-hidden bg-white py-24">
-    <div className="mx-auto max-w-[88rem] px-5 sm:px-8">
-      <div className="mb-12 grid gap-8 lg:grid-cols-[0.86fr_1.14fr] lg:items-end">
-        <h2 className="max-w-3xl text-5xl leading-none font-semibold text-[#101828] sm:text-6xl">
-          See where support is leaking time
-        </h2>
-        <p className="max-w-2xl text-lg leading-8 text-[#667085]">
-          Analytics are attached to the real queue: unanswered questions,
-          escalation reasons, sentiment, resolution source, and customer memory
-          stay visible while the team works.
-        </p>
-      </div>
-      <div className="osonflow-workspace-grid overflow-hidden rounded-lg border border-[#101828]/12 bg-[#101828] text-white shadow-[0_38px_110px_-68px_rgba(16,24,40,0.86)]">
-        <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="border-b border-white/12 p-5 sm:p-7 lg:border-r lg:border-b-0">
-            <div className="mb-8 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-white">AI analytics</p>
-                <p className="mt-1 text-xs text-white/54">Last 30 days</p>
-              </div>
-              <div className="inline-flex items-center gap-2 text-sm font-semibold text-[#92F2B8]">
-                <TrendingUpIcon className="size-4" />
-                Improving
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              {[
-                ["1,248", "answered"],
-                ["89%", "resolved"],
-                ["312h", "saved"],
-              ].map(([value, label]) => (
-                <div
-                  className="osonflow-analytics-stat border-t border-white/16 pt-4"
-                  key={label}
-                >
-                  <p className="text-5xl leading-none font-semibold text-white">
-                    {value}
-                  </p>
-                  <p className="mt-2 text-xs font-medium text-white/54">
-                    {label}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-10 h-52">
-              <div className="flex h-full items-end gap-3 border-b border-l border-white/16 px-4 pt-4">
-                {[38, 62, 44, 78, 66, 88, 72, 96].map((height, index) => (
-                  <span
-                    className={cn(
-                      "osonflow-chart-bar block w-full rounded-t-sm",
-                      index % 3 === 0
-                        ? "bg-[#92F2B8]"
-                        : index % 3 === 1
-                          ? "bg-[#78A6FF]"
-                          : "bg-[#FFD978]"
-                    )}
-                    key={height}
-                    style={{ height: `${height}%` }}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="bg-white text-[#101828]">
-            <div className="grid grid-cols-[1fr_auto_auto] border-b border-[#101828]/10 px-5 py-4 text-xs font-semibold text-[#667085] sm:px-7">
-              <span>Topic</span>
-              <span>Status</span>
-              <span className="pl-6">Time</span>
-            </div>
-            <div className="divide-y divide-[#101828]/10">
-              {insightRows.map(([topic, status, time, tone]) => (
-                <div
-                  className="osonflow-insight-row grid grid-cols-[1fr_auto_auto] items-center gap-4 px-5 py-5 text-sm sm:px-7"
-                  key={topic}
-                >
-                  <span className="font-semibold">{topic}</span>
-                  <span
-                    className={cn("rounded-full px-3 py-1 font-semibold", tone)}
-                  >
-                    {status}
-                  </span>
-                  <span className="font-semibold text-[#667085]">{time}</span>
-                </div>
-              ))}
-            </div>
-            <div className="border-t border-[#101828]/10 bg-[#F7F8F5] px-5 py-6 sm:px-7">
-              <div className="flex items-start gap-3">
-                <BrainCircuitIcon className="mt-1 size-5 text-[#235BDB]" />
-                <p className="text-sm leading-6 text-[#475467]">
-                  The queue learns from every unresolved question, then points
-                  your team at the exact source that needs a better answer.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-)
-
-const AutomationSection = () => (
-  <section className="relative overflow-hidden bg-[#0D1118] py-24 text-white">
-    <div className="osonflow-dark-lines absolute inset-0" />
-    <div className="relative mx-auto grid max-w-[88rem] gap-12 px-5 sm:px-8 lg:grid-cols-[0.78fr_1.22fr] lg:items-center">
-      <div className="max-w-2xl">
-        <h2 className="text-5xl leading-none font-semibold text-white sm:text-6xl">
-          Automations with a human-shaped safety net
-        </h2>
-        <p className="mt-6 text-lg leading-8 text-white/66">
-          Route repetitive questions, draft answers, and surface urgent work
-          while keeping your team in control of edge cases.
-        </p>
-        <Button
-          asChild
-          className="mt-8 h-12 rounded-full bg-white px-5 text-base font-semibold text-[#101828] hover:bg-white/90"
-        >
-          <Link href="/automation">
-            Explore automation
-            <ArrowRightIcon data-icon="inline-end" />
-          </Link>
-        </Button>
-      </div>
-      <div className="osonflow-automation-panel overflow-hidden rounded-lg border border-white/14">
-        <div className="grid grid-cols-[1fr_auto_1fr_auto] border-b border-white/14 px-4 py-3 text-xs font-semibold text-white/50 sm:px-5">
+    <div className="mx-auto mt-16 max-w-[82rem] px-5 sm:px-8">
+      <div className="overflow-hidden rounded-[18px] bg-[#111820] text-[#f8f3ea] shadow-[0_30px_90px_-70px_rgba(0,0,0,0.8)]">
+        <div className="grid border-b border-white/10 px-5 py-4 text-xs font-bold text-[#8d98a8] sm:grid-cols-[1fr_1fr_1fr]">
           <span>Signal</span>
-          <span />
-          <span>Route</span>
-          <span>State</span>
+          <span className="hidden sm:block">Action</span>
+          <span className="hidden sm:block">Owner</span>
         </div>
-        <div className="divide-y divide-white/14">
-          {automationRows.map(({ from, route, state, icon: Icon }) => (
+        <div className="divide-y divide-white/10">
+          {automationRows.map(([signal, action, owner]) => (
             <div
-              className="osonflow-automation-row grid gap-4 px-4 py-5 sm:grid-cols-[1fr_auto_1fr_auto] sm:items-center sm:px-5"
-              key={from}
+              className="grid gap-3 px-5 py-5 sm:grid-cols-[1fr_1fr_1fr] sm:items-center"
+              key={signal}
             >
               <div className="flex items-center gap-3">
-                <Icon className="size-5 text-[#92F2B8]" />
-                <span className="font-semibold text-white">{from}</span>
+                <BellRingIcon className="size-5 text-[#ffcc11]" />
+                <span className="font-bold text-[#f8f3ea]">{signal}</span>
               </div>
-              <ChevronRightIcon className="hidden size-4 text-white/34 sm:block" />
-              <span className="text-white/72">{route}</span>
-              <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#101828]">
-                {state}
+              <span className="text-[#c9c0b7]">{action}</span>
+              <span className="w-fit rounded-full bg-white/8 px-3 py-1 text-xs font-bold text-[#b7ff5a]">
+                {owner}
               </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  </section>
-)
-
-const ChannelsSection = () => (
-  <section className="relative overflow-hidden bg-[#F7F8F5] py-24">
-    <div className="osonflow-ruled absolute inset-0 opacity-60" />
-    <div className="relative mx-auto grid max-w-[88rem] gap-14 px-5 sm:px-8 lg:grid-cols-[0.78fr_1.22fr] lg:items-center">
-      <div className="max-w-2xl">
-        <h2 className="text-5xl leading-none font-semibold text-[#101828] sm:text-6xl">
-          Route every customer channel into one desk
-        </h2>
-        <p className="mt-6 text-lg leading-8 text-[#667085]">
-          Osonflow keeps website chat, messaging apps, model providers, and
-          voice support moving through the same memory, queue, and handoff
-          rules.
-        </p>
-        <div className="mt-8 border-y border-[#101828]/12">
-          {channelCapabilities.map(({ label, icon: Icon }) => (
-            <div
-              className="flex items-center justify-between gap-4 border-b border-[#101828]/12 py-4 last:border-b-0"
-              key={label}
-            >
-              <div className="flex items-center gap-3">
-                <Icon className="size-5 text-[#235BDB]" />
-                <span className="text-sm font-semibold text-[#344054]">
-                  {label}
-                </span>
-              </div>
-              <span className="text-sm font-medium text-[#667085]">
-                lands in one timeline
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="osonflow-channel-router overflow-hidden rounded-lg border border-[#101828]/12 bg-white shadow-[0_32px_100px_-72px_rgba(15,23,42,0.7)]">
-        <div className="grid gap-5 border-b border-[#101828]/10 bg-[#101828] p-5 text-white sm:grid-cols-[0.72fr_1.28fr] sm:items-center">
-          <div>
-            <p className="text-sm font-semibold">Inbound signals</p>
-            <p className="mt-1 text-xs text-white/54">
-              One router for chat, messaging, voice, and API events
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {channelLogos.map((logo) => (
-              <div
-                className="osonflow-channel-logo inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2"
-                key={logo.label}
-              >
-                <Image
-                  alt={`${logo.label} logo`}
-                  className="size-6 rounded-full object-contain"
-                  height={24}
-                  src={logo.src}
-                  width={24}
-                />
-                <span className="text-xs font-semibold text-white/78">
-                  {logo.label}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="divide-y divide-[#101828]/10">
-          {channelRoutes.map(
-            ({ source, signal, route, destination, icon: Icon, tone }) => (
-              <div
-                className="osonflow-channel-route grid gap-4 px-5 py-5 md:grid-cols-[0.9fr_auto_1fr_auto] md:items-center"
-                key={source}
-              >
-                <div className="flex items-start gap-3">
-                  <Icon className={cn("mt-1 size-5", tone)} />
-                  <div>
-                    <p className="text-base font-semibold text-[#101828]">
-                      {source}
-                    </p>
-                    <p className="mt-1 text-sm leading-6 text-[#667085]">
-                      {signal}
-                    </p>
-                  </div>
-                </div>
-                <ChevronRightIcon className="hidden size-4 text-[#98A2B3] md:block" />
-                <div className="border-l border-[#101828]/10 pl-4 md:border-l-0 md:pl-0">
-                  <p className="text-sm font-semibold text-[#101828]">
-                    {route}
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-[#667085]">
-                    Memory, confidence, and routing policy attached
-                  </p>
-                </div>
-                <span className="w-fit rounded-full bg-[#F1F4F8] px-3 py-1 text-xs font-semibold text-[#344054]">
-                  {destination}
-                </span>
-              </div>
-            )
-          )}
-        </div>
-
-        <div className="grid border-t border-[#101828]/10 bg-[#F7F8F5] md:grid-cols-3">
-          {[
-            "Shared customer memory",
-            "Priority queue",
-            "Channel analytics",
-          ].map((label) => (
-            <div
-              className="osonflow-channel-footer-cell border-b border-[#101828]/10 px-5 py-4 last:border-b-0 md:border-r md:border-b-0 md:last:border-r-0"
-              key={label}
-            >
-              <p className="text-sm font-semibold text-[#101828]">{label}</p>
             </div>
           ))}
         </div>
@@ -959,99 +698,158 @@ const ChannelsSection = () => (
 )
 
 const PricingSection = () => (
-  <section className="bg-white py-24">
-    <div className="mx-auto max-w-[88rem] px-5 sm:px-8">
-      <div className="mb-12 grid gap-8 lg:grid-cols-[0.78fr_1.22fr] lg:items-end">
-        <h2 className="max-w-3xl text-5xl leading-none font-semibold text-[#101828] sm:text-6xl">
-          Plans that scale with support complexity
-        </h2>
-        <p className="max-w-2xl text-lg leading-8 text-[#667085]">
-          Start with the widget and inbox, then add automation, voice,
-          analytics, and custom integrations when your team is ready.
-        </p>
-      </div>
-      <div className="osonflow-pricing-matrix overflow-x-auto rounded-lg border border-[#101828]/12">
-        <div className="grid min-w-[720px] grid-cols-[1fr_repeat(3,minmax(8rem,0.72fr))] border-b border-[#101828]/12 bg-[#F7F8F5]">
-          <div className="px-4 py-5 text-sm font-semibold text-[#667085] sm:px-6">
-            Capability
-          </div>
-          {pricingPlans.map((plan) => (
+  <section className="bg-[#080b0f] py-24 text-[#f8f3ea]">
+    <div className="mx-auto max-w-[82rem] px-5 sm:px-8">
+      <div className="grid gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:items-end">
+        <SectionIntro
+          dark
+          description="Start with the support surface you need today, then add automation, analytics, voice, and integrations as your queue grows."
+          eyebrow="Plans"
+          title="Pricing that scales with support complexity."
+        />
+        <div className="grid gap-3 sm:grid-cols-3">
+          {heroMetrics.map(([value, label]) => (
             <div
-              className={cn(
-                "osonflow-plan-head border-l border-[#101828]/12 px-4 py-5 sm:px-6",
-                plan.featured && "bg-[#101828] text-white"
-              )}
-              key={plan.name}
+              className="rounded-[12px] border border-white/10 bg-white/[0.04] p-4"
+              key={label}
             >
-              <p className="text-2xl font-semibold">{plan.name}</p>
-              <p
-                className={cn(
-                  "mt-3 text-4xl leading-none font-semibold",
-                  plan.featured ? "text-white" : "text-[#101828]"
-                )}
-              >
-                {plan.price}
-              </p>
+              <p className="text-3xl font-bold text-[#f8f3ea]">{value}</p>
+              <p className="mt-1 text-sm font-bold text-[#8d98a8]">{label}</p>
             </div>
           ))}
         </div>
-        <div className="divide-y divide-[#101828]/10">
-          {pricingRows.map(([label, launch, scale, custom]) => (
-            <div
-              className="osonflow-pricing-row grid min-w-[720px] grid-cols-[1fr_repeat(3,minmax(8rem,0.72fr))]"
-              key={label}
-            >
-              <div className="px-4 py-4 text-sm font-semibold text-[#344054] sm:px-6">
-                {label}
-              </div>
-              {[launch, scale, custom].map((included, index) => (
-                <div
-                  className="flex items-center border-l border-[#101828]/10 px-4 py-4 sm:px-6"
-                  key={`${label}-${index}`}
-                >
-                  {included ? (
-                    <CheckIcon className="size-5 text-[#16A163]" />
-                  ) : (
-                    <span className="h-px w-5 bg-[#CBD5E1]" />
+      </div>
+
+      <div className="mt-12 grid gap-4 lg:grid-cols-3">
+        {pricingPlans.map((plan) => (
+          <article
+            className={cn(
+              "rounded-[16px] p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.1)]",
+              plan.featured
+                ? "bg-[#f8f3ea] text-[#17120f]"
+                : "bg-white/[0.04] text-[#f8f3ea]"
+            )}
+            key={plan.name}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-2xl font-bold">{plan.name}</h3>
+                <p
+                  className={cn(
+                    "mt-3 text-sm leading-6",
+                    plan.featured ? "text-[#5b514b]" : "text-[#c9c0b7]"
                   )}
+                >
+                  {plan.description}
+                </p>
+              </div>
+              {plan.featured ? (
+                <span className="rounded-full bg-[#df37a7] px-3 py-1 text-xs font-bold text-white">
+                  Popular
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-8 text-5xl leading-none font-bold">{plan.price}</p>
+            <div className="mt-8 space-y-3">
+              {plan.features.map((feature) => (
+                <div className="flex items-center gap-3 text-sm" key={feature}>
+                  <CheckIcon
+                    className={cn(
+                      "size-4",
+                      plan.featured ? "text-[#df37a7]" : "text-[#b7ff5a]"
+                    )}
+                  />
+                  <span
+                    className={
+                      plan.featured ? "text-[#342c27]" : "text-[#ddd5cd]"
+                    }
+                  >
+                    {feature}
+                  </span>
                 </div>
               ))}
             </div>
-          ))}
-        </div>
-        <div className="grid min-w-[720px] grid-cols-[1fr_repeat(3,minmax(8rem,0.72fr))] border-t border-[#101828]/12">
-          <div className="px-4 py-5 sm:px-6" />
-          {pricingPlans.map((plan) => (
-            <div
-              className="border-l border-[#101828]/10 px-4 py-5 sm:px-6"
-              key={plan.cta}
+            <Button
+              asChild
+              className={cn(
+                "mt-8 h-11 w-full rounded-[4px] text-sm font-bold",
+                plan.featured
+                  ? "bg-[#17120f] text-white hover:bg-[#2c241f]"
+                  : "bg-[#df37a7] text-white hover:bg-[#d0339c]"
+              )}
             >
-              <Button
-                asChild
-                className={cn(
-                  "h-11 w-full rounded-full text-sm font-semibold",
-                  plan.featured
-                    ? "bg-[#101828] text-white hover:bg-[#1D2939]"
-                    : "bg-white text-[#101828] hover:bg-[#F7F8F5]"
-                )}
-                variant={plan.featured ? "default" : "outline"}
+              <Link href="/sign-up">
+                {plan.name === "Custom" ? "Book a demo" : `Start ${plan.name}`}
+              </Link>
+            </Button>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+)
+
+const FinalCta = () => (
+  <section className="osonflow-command-final relative overflow-hidden py-24 text-[#17120f]">
+    <div className="relative mx-auto grid max-w-[82rem] gap-10 px-5 sm:px-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
+      <div>
+        <Eyebrow>Ready when your queue is</Eyebrow>
+        <h2 className="mt-5 max-w-3xl text-5xl leading-[0.98] font-bold tracking-normal [text-wrap:balance] sm:text-6xl">
+          Launch the support desk customers can feel immediately.
+        </h2>
+        <p className="mt-6 max-w-2xl text-lg leading-8 text-[#5b514b]">
+          Add the widget, load your best answers, and let Osonflow handle first
+          response while your team owns the moments that need taste and care.
+        </p>
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <PrimaryCta href="/sign-up">Start free</PrimaryCta>
+          <Button
+            asChild
+            className="h-12 rounded-[6px] border-[#17120f]/20 bg-transparent px-5 text-base font-bold text-[#17120f] hover:bg-[#17120f]/6"
+            variant="outline"
+          >
+            <Link href="/pricing">
+              View plans
+              <ChevronRightIcon data-icon="inline-end" />
+            </Link>
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-[18px] bg-[#111820] p-5 text-[#f8f3ea] shadow-[0_28px_90px_-64px_rgba(23,18,15,0.65)]">
+        <div className="grid gap-4">
+          {routeSteps
+            .slice(0, 3)
+            .map(({ title, description, icon: Icon }, index) => (
+              <div
+                className="grid gap-4 border-b border-white/10 pb-5 last:border-b-0 last:pb-0 sm:grid-cols-[auto_1fr_auto] sm:items-center"
+                key={title}
               >
-                <Link href={plan.href}>{plan.cta}</Link>
-              </Button>
-            </div>
-          ))}
+                <span className="flex size-11 items-center justify-center rounded-[8px] bg-[#f8f3ea] text-[#17120f]">
+                  <Icon className="size-5" />
+                </span>
+                <div>
+                  <p className="font-bold text-[#f8f3ea]">{title}</p>
+                  <p className="mt-1 text-sm leading-6 text-[#c9c0b7]">
+                    {description}
+                  </p>
+                </div>
+                <span className="font-mono text-sm font-bold text-[#b7ff5a]">
+                  0{index + 1}
+                </span>
+              </div>
+            ))}
         </div>
       </div>
     </div>
   </section>
 )
 
-const HomeCta = () => (
-  <section className="osonflow-launch-section relative overflow-hidden bg-[#0D1118] py-24 text-white">
-    <div className="osonflow-dark-lines absolute inset-0" />
-    <div className="relative mx-auto grid max-w-[88rem] gap-12 px-5 sm:px-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
+const HomeFooter = () => (
+  <footer className="border-t border-white/10 bg-[#080b0f] px-5 py-10 text-[#f8f3ea] sm:px-8">
+    <div className="mx-auto flex max-w-[82rem] flex-col gap-8 md:flex-row md:items-center md:justify-between">
       <div>
-        <div className="inline-flex items-center gap-3">
+        <Link className="inline-flex items-center gap-3" href="/">
           <Image
             alt="Osonflow logo"
             className="h-9 w-auto"
@@ -1059,84 +857,24 @@ const HomeCta = () => (
             src="/logo.svg"
             width={70}
           />
-          <span className="text-2xl font-semibold text-white">Osonflow</span>
-        </div>
-        <h2 className="mt-8 max-w-3xl text-5xl leading-none font-semibold text-white sm:text-6xl">
-          Launch a support desk customers feel on day one
-        </h2>
-        <p className="mt-6 max-w-2xl text-lg leading-8 text-white/66">
-          Add the widget, load your best answers, and let Osonflow handle the
-          first response while your team keeps control of the moments that need
-          judgment.
+          <span className="text-2xl font-bold">Osonflow</span>
+        </Link>
+        <p className="mt-3 max-w-md text-sm leading-6 text-[#8d98a8]">
+          AI support, human handoff, voice, analytics, and customer memory in
+          one operating layer.
         </p>
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <Button
-            asChild
-            className="h-13 rounded-full bg-white px-6 text-base font-semibold text-[#101828] hover:bg-white/90"
-          >
-            <Link href="/sign-up">
-              Start free
-              <ArrowRightIcon data-icon="inline-end" />
-            </Link>
-          </Button>
-          <Button
-            asChild
-            className="h-13 rounded-full border-white/18 bg-white/8 px-6 text-base font-semibold text-white hover:bg-white/14"
-            variant="outline"
-          >
-            <Link href="/pricing">View pricing</Link>
-          </Button>
-        </div>
       </div>
-
-      <div className="osonflow-launch-console overflow-hidden rounded-lg border border-white/14 bg-white/[0.03]">
-        <div className="grid border-b border-white/14 sm:grid-cols-3">
-          {["Day 1", "Week 1", "Always"].map((label) => (
-            <div
-              className="osonflow-launch-tab border-b border-white/14 px-5 py-4 last:border-b-0 sm:border-r sm:border-b-0 sm:last:border-r-0"
-              key={label}
-            >
-              <p className="font-mono text-xs font-semibold text-[#92F2B8]">
-                {label}
-              </p>
-            </div>
-          ))}
-        </div>
-        <div className="divide-y divide-white/14">
-          {launchSteps.map(({ title, description, icon: Icon }, index) => (
-            <div
-              className="osonflow-launch-step grid gap-4 px-5 py-5 sm:grid-cols-[auto_1fr_auto] sm:items-center"
-              key={title}
-            >
-              <div className="osonflow-launch-icon flex size-12 items-center justify-center rounded-full bg-white text-[#101828]">
-                <Icon className="size-5" />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold text-white">{title}</h3>
-                <p className="mt-1 text-sm leading-6 text-white/60">
-                  {description}
-                </p>
-              </div>
-              <span className="font-mono text-sm font-semibold text-white/34">
-                0{index + 1}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div className="grid gap-4 border-t border-white/14 bg-white px-5 py-5 text-[#101828] sm:grid-cols-[1fr_auto] sm:items-center">
-          <div>
-            <p className="text-sm font-semibold">Ready for live handoff</p>
-            <p className="mt-1 text-sm text-[#667085]">
-              Chat, voice, memory, routing, and analytics are part of the same
-              launch path.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 text-sm font-semibold text-[#0B6B3A]">
-            <span className="osonflow-online-dot size-2.5 rounded-full bg-[#16A163]" />
-            Online
-          </div>
-        </div>
+      <div className="flex flex-wrap gap-2 text-sm font-bold text-[#c9c0b7]">
+        {footerLinks.map(([item, href]) => (
+          <Link
+            className="rounded-full px-3 py-2 hover:bg-white/8 hover:text-white"
+            href={href}
+            key={item}
+          >
+            {item}
+          </Link>
+        ))}
       </div>
     </div>
-  </section>
+  </footer>
 )

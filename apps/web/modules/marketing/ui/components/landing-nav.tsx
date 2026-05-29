@@ -23,7 +23,7 @@ const NavLogo = () => (
       src="/logo.svg"
       width={70}
     />
-    <span className="hidden text-[1.35rem] leading-none font-semibold text-[#0A0A0A] sm:inline">
+    <span className="hidden text-[1.35rem] leading-none font-bold text-[#240029] sm:inline">
       Osonflow
     </span>
   </Link>
@@ -60,7 +60,7 @@ export const LandingNav = () => {
   }, [])
 
   return (
-    <header className="sticky top-0 z-40 px-3 py-3 sm:px-8 sm:py-4">
+    <header className="sticky top-0 z-40 bg-white px-3 py-3 sm:px-8 sm:py-4">
       <div
         className={cn(
           "osonflow-nav-shell mx-auto flex h-14 w-full items-center justify-between gap-2 px-2 text-sm font-medium sm:h-16 sm:text-[0.95rem]",
@@ -78,7 +78,7 @@ export const LandingNav = () => {
         >
           {navItems.map((item) => (
             <Link
-              className="shrink-0 rounded-full px-5 py-2.5 whitespace-nowrap text-[#344054] transition hover:bg-white/70 hover:text-[#101828]"
+              className="shrink-0 rounded-full px-5 py-2.5 font-bold whitespace-nowrap text-[#6d526d] transition hover:bg-[#240029] hover:text-white"
               href={item.href}
               key={item.label}
             >
@@ -88,26 +88,26 @@ export const LandingNav = () => {
         </nav>
 
         {(!isLoaded || !isSignedIn) && (
-          <div className="osonflow-nav-island flex h-10 shrink-0 items-center gap-1 px-1 sm:h-12 sm:px-1.5">
+          <div className="osonflow-nav-island flex h-10 max-w-[calc(100vw-7.5rem)] shrink-0 items-center gap-1 overflow-hidden px-1 sm:h-12 sm:max-w-none sm:px-1.5">
             <LanguageSwitcher compact />
             <Link
-              className="hidden rounded-full px-4 py-2.5 whitespace-nowrap text-[#667085] transition hover:bg-white/70 hover:text-[#101828] sm:inline-flex"
+              className="hidden rounded-full px-4 py-2.5 font-bold whitespace-nowrap text-[#6d526d] transition hover:bg-[#29002908] hover:text-[#240029] sm:inline-flex"
               href="/sign-in"
             >
               Login
             </Link>
             <Link
-              className="hidden rounded-full px-4 py-2.5 whitespace-nowrap text-[#344054] transition hover:bg-white/70 hover:text-[#101828] md:inline-flex"
+              className="hidden rounded-full px-4 py-2.5 font-bold whitespace-nowrap text-[#240029] transition hover:bg-[#29002908] md:inline-flex"
               href="/sign-up"
             >
               Sign up
             </Link>
             <Link
-              className="group inline-flex h-10 shrink-0 items-center gap-2 rounded-full bg-[#3A7BFF] px-4 font-semibold whitespace-nowrap text-white shadow-[0_18px_42px_-22px_rgba(58,123,255,0.9)] transition hover:-translate-y-0.5 hover:bg-[#256DFF] sm:h-11 sm:px-5"
+              className="group inline-flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-[4px] bg-[#df37a7] px-0 font-bold whitespace-nowrap text-white shadow-[rgba(255,255,255,0.2)_0_0_0_1px_inset,rgba(0,0,0,0.05)_0_1px_2px_0] transition hover:-translate-y-0.5 hover:bg-[#d0339c] sm:h-11 sm:w-auto sm:px-5"
               href="/sign-up"
             >
-              Book a demo
-              <ArrowRightIcon className="hidden size-4 transition group-hover:translate-x-0.5 sm:block" />
+              <span className="hidden sm:inline">Book a demo</span>
+              <ArrowRightIcon className="size-4 transition group-hover:translate-x-0.5" />
             </Link>
           </div>
         )}
@@ -116,7 +116,7 @@ export const LandingNav = () => {
           <div className="osonflow-nav-island flex h-10 shrink-0 items-center gap-2 px-1.5 sm:h-12 sm:px-2">
             <LanguageSwitcher compact />
             <Link
-              className="inline-flex h-10 shrink-0 items-center rounded-full bg-[#101828] px-4 text-sm font-semibold whitespace-nowrap text-white shadow-[0_18px_42px_-24px_rgba(16,24,40,0.7)] transition hover:-translate-y-0.5 hover:bg-[#1D2939] sm:h-11 sm:px-5"
+              className="inline-flex h-10 shrink-0 items-center rounded-[4px] bg-[#240029] px-4 text-sm font-bold whitespace-nowrap text-white shadow-[rgba(255,255,255,0.2)_0_0_0_1px_inset,rgba(0,0,0,0.05)_0_1px_2px_0] transition hover:-translate-y-0.5 hover:bg-[#3a083f] sm:h-11 sm:px-5"
               href="/analytics"
             >
               Dashboard
