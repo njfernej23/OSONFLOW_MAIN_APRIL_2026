@@ -9,6 +9,10 @@ import { useIsMobile } from "@workspace/ui/hooks/use-mobile"
 import { usePathname } from "next/navigation"
 import { ConversationsPanel } from "../components/conversations-panel"
 
+const CONVERSATIONS_PANEL_DEFAULT_WIDTH = 392
+const CONVERSATIONS_PANEL_MIN_WIDTH = 280
+const CONVERSATIONS_PANEL_MAX_WIDTH = 520
+
 export const ConversationsLayout = ({
   children,
 }: {
@@ -45,9 +49,9 @@ export const ConversationsLayout = ({
     >
       <ResizablePanel
         id="conversations-sidebar"
-        defaultSize={304}
-        minSize={280}
-        maxSize={420}
+        defaultSize={CONVERSATIONS_PANEL_DEFAULT_WIDTH}
+        minSize={CONVERSATIONS_PANEL_MIN_WIDTH}
+        maxSize={CONVERSATIONS_PANEL_MAX_WIDTH}
         groupResizeBehavior="preserve-pixel-size"
         className="flex min-w-0 flex-col"
       >
