@@ -1,10 +1,14 @@
-import type { ComponentProps, HTMLAttributes } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
-import { cn } from "@workspace/ui/lib/utils";
+import type { ComponentProps, HTMLAttributes } from "react"
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@workspace/ui/components/avatar"
+import { cn } from "@workspace/ui/lib/utils"
 
 export type AIMessageProps = HTMLAttributes<HTMLDivElement> & {
-  from: "user" | "assistant";
-};
+  from: "user" | "assistant"
+}
 
 export const AIMessage = ({ className, from, ...props }: AIMessageProps) => (
   <div
@@ -16,9 +20,9 @@ export const AIMessage = ({ className, from, ...props }: AIMessageProps) => (
     )}
     {...props}
   />
-);
+)
 
-export type AIMessageContentProps = HTMLAttributes<HTMLDivElement>;
+export type AIMessageContentProps = HTMLAttributes<HTMLDivElement>
 
 export const AIMessageContent = ({
   children,
@@ -31,18 +35,19 @@ export const AIMessageContent = ({
       "flex flex-col gap-2 rounded-lg border border-border px-3 py-2 text-sm",
       "bg-background text-foreground",
       "group-[.is-user]:border-transparent group-[.is-user]:bg-primary group-[.is-user]:text-primary-foreground",
+      "[--ai-response-link-color:currentColor] [--ai-response-link-decoration-color:color-mix(in_srgb,currentColor_72%,transparent)]",
       className
     )}
     {...props}
   >
     <div className="is-user:dark">{children}</div>
   </div>
-);
+)
 
 export type AIMessageAvatarProps = ComponentProps<typeof Avatar> & {
-  src: string;
-  name?: string;
-};
+  src: string
+  name?: string
+}
 
 export const AIMessageAvatar = ({
   src,
@@ -54,4 +59,4 @@ export const AIMessageAvatar = ({
     <AvatarImage alt="" className="mt-0 mb-0" src={src} />
     <AvatarFallback>{name?.slice(0, 2) || "ME"}</AvatarFallback>
   </Avatar>
-);
+)

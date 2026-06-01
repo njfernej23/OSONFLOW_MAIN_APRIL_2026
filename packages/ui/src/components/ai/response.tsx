@@ -1,15 +1,21 @@
-"use client";
+"use client"
 
-import type { HTMLAttributes } from "react";
-import { memo } from "react";
-import ReactMarkdown, { type Options } from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { cn } from "@workspace/ui/lib/utils";
+import type { CSSProperties, HTMLAttributes } from "react"
+import { memo } from "react"
+import ReactMarkdown, { type Options } from "react-markdown"
+import remarkGfm from "remark-gfm"
+import { cn } from "@workspace/ui/lib/utils"
 
 export type AIResponseProps = HTMLAttributes<HTMLDivElement> & {
-  options?: Options;
-  children: Options["children"];
-};
+  options?: Options
+  children: Options["children"]
+}
+
+const linkStyle = {
+  color: "var(--ai-response-link-color, var(--primary))",
+  textDecorationColor:
+    "var(--ai-response-link-decoration-color, color-mix(in srgb, var(--ai-response-link-color, var(--primary)) 70%, transparent))",
+} satisfies CSSProperties
 
 const components: Options["components"] = {
   ol: ({ children, className, ...props }) => (
@@ -32,19 +38,23 @@ const components: Options["components"] = {
       {children}
     </span>
   ),
-  a: ({ children, className, ...props }) => (
+  a: ({ children, className, style, ...props }) => (
     <a
-      className={cn("font-medium text-primary underline", className)}
-      rel="noreferrer"
-      target="_blank"
+      className={cn(
+        "font-medium break-words underline underline-offset-2 transition-opacity hover:opacity-80",
+        className
+      )}
       {...props}
+      rel="noreferrer"
+      style={{ ...linkStyle, ...style }}
+      target="_blank"
     >
       {children}
     </a>
   ),
   h1: ({ children, className, ...props }) => (
     <h1
-      className={cn("mt-6 mb-2 font-semibold text-3xl", className)}
+      className={cn("mt-6 mb-2 text-3xl font-semibold", className)}
       {...props}
     >
       {children}
@@ -52,43 +62,43 @@ const components: Options["components"] = {
   ),
   h2: ({ children, className, ...props }) => (
     <h2
-      className={cn("mt-6 mb-2 font-semibold text-2xl", className)}
+      className={cn("mt-6 mb-2 text-2xl font-semibold", className)}
       {...props}
     >
       {children}
     </h2>
   ),
   h3: ({ children, className, ...props }) => (
-    <h3 className={cn("mt-6 mb-2 font-semibold text-xl", className)} {...props}>
+    <h3 className={cn("mt-6 mb-2 text-xl font-semibold", className)} {...props}>
       {children}
     </h3>
   ),
   h4: ({ children, className, ...props }) => (
-    <h4 className={cn("mt-6 mb-2 font-semibold text-lg", className)} {...props}>
+    <h4 className={cn("mt-6 mb-2 text-lg font-semibold", className)} {...props}>
       {children}
     </h4>
   ),
   h5: ({ children, className, ...props }) => (
     <h5
-      className={cn("mt-6 mb-2 font-semibold text-base", className)}
+      className={cn("mt-6 mb-2 text-base font-semibold", className)}
       {...props}
     >
       {children}
     </h5>
   ),
   h6: ({ children, className, ...props }) => (
-    <h6 className={cn("mt-6 mb-2 font-semibold text-sm", className)} {...props}>
+    <h6 className={cn("mt-6 mb-2 text-sm font-semibold", className)} {...props}>
       {children}
     </h6>
   ),
-};
+}
 
 export const AIResponse = memo(
   ({ className, options, children, ...props }: AIResponseProps) => (
     <div
       className={cn(
         "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
-        className,
+        className
       )}
       {...props}
     >
@@ -101,7 +111,7 @@ export const AIResponse = memo(
       </ReactMarkdown>
     </div>
   ),
-  (prevProps, nextProps) => prevProps.children === nextProps.children,
-);
+  (prevProps, nextProps) => prevProps.children === nextProps.children
+)
 
-AIResponse.displayName = "AIResponse";
+AIResponse.displayName = "AIResponse"
