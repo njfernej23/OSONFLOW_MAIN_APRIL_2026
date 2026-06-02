@@ -1,37 +1,103 @@
 "use client"
 import { useAction, useMutation, useQuery } from "convex/react"
 import { useAtomValue, useSetAtom } from "jotai"
-import { LoaderIcon } from "lucide-react"
 import {
+  activeVoiceProviderAtom,
   errorMessageAtom,
-  loadingMessageAtom,
   screenAtom,
   organizationIdAtom,
   contactSessionIdAtomFamily,
   widgetSettingsAtom,
+  widgetModeAtom,
   vapiSecretsAtom,
+  type WidgetMode,
+  type VoiceProvider,
 } from "@/modules/widget/atoms/widget-atoms"
-import { WidgetHeader } from "@/modules/widget/ui/components/widget-header"
 import { useState, useEffect } from "react"
 import { api } from "@workspace/backend/_generated/api"
 import { mergeWidgetAppearance } from "@workspace/ui/lib/widget-customization"
+import type { Doc } from "@workspace/backend/_generated/dataModel"
+import { Spinner } from "@workspace/ui/components/spinner"
 
 type InitStep = "org" | "session" | "settings" | "voice" | "done"
 
+const VOICE_VISITOR_KEY_PREFIX = "echo_voice_visitor"
+
+const getVoiceVisitorId = (organizationId: string) => {
+  if (typeof window === "undefined") {
+    return `voice_${Date.now().toString(36)}`
+  }
+
+  const key = `${VOICE_VISITOR_KEY_PREFIX}_${organizationId}`
+  const existingVisitorId = window.localStorage.getItem(key)
+
+  if (existingVisitorId) {
+    return existingVisitorId
+  }
+
+  const randomValue =
+    window.crypto?.randomUUID?.() ??
+    `voice_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`
+  const visitorId = `voice_${randomValue.replace(/[^a-zA-Z0-9_-]/g, "")}`
+
+  window.localStorage.setItem(key, visitorId)
+
+  return visitorId
+}
+
+const getBrowserMetadata = (
+  organizationId: string,
+  parentPageUrl?: string
+): Doc<"contactSessions">["metadata"] => {
+  if (typeof window === "undefined") {
+    return {
+      source: "voice_widget",
+      visitorId: `voice_${Date.now().toString(36)}`,
+    }
+  }
+
+  return {
+    userAgent: navigator.userAgent,
+    language: navigator.language,
+    languages: navigator.languages?.join(","),
+    platform: navigator.platform,
+    vendor: navigator.vendor,
+    screenResolution: `${screen.width}x${screen.height}`,
+    viewportSize: `${window.innerWidth}x${window.innerHeight}`,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timezoneOffset: new Date().getTimezoneOffset(),
+    cookieEnabled: navigator.cookieEnabled,
+    referrer: document.referrer || "direct",
+    currentUrl: parentPageUrl || document.referrer || window.location.href,
+    source: "voice_widget",
+    visitorId: getVoiceVisitorId(organizationId),
+  }
+}
+
 export const WidgetLoadingScreen = ({
+  mode = "standard",
   organizationId,
+  parentPageUrl,
 }: {
+  mode?: WidgetMode
   organizationId: string | null
+  parentPageUrl?: string
 }) => {
   const [step, setStep] = useState<InitStep>("org")
+  const [validatedContactSessionIsAnonymous, setValidatedContactSessionIsAnonymous] =
+    useState(false)
   const setWidgetSettings = useSetAtom(widgetSettingsAtom)
-  const loadingMessage = useAtomValue(loadingMessageAtom)
-  const setLoadingMessage = useSetAtom(loadingMessageAtom)
   const setErrorMessage = useSetAtom(errorMessageAtom)
   const setOrganizationId = useSetAtom(organizationIdAtom)
   const setVapiSecrets = useSetAtom(vapiSecretsAtom)
+  const vapiSecrets = useAtomValue(vapiSecretsAtom)
+  const setActiveVoiceProvider = useSetAtom(activeVoiceProviderAtom)
+  const setWidgetMode = useSetAtom(widgetModeAtom)
 
   const validateOrganization = useAction(api.public.organizations.validate)
+  const createAnonymousContactSession = useAction(
+    api.public.contactSessions.createAnonymous
+  )
   const setScreen = useSetAtom(screenAtom)
 
   const contactSessionId = useAtomValue(
@@ -44,14 +110,12 @@ export const WidgetLoadingScreen = ({
   // Step 1: validate organization
   useEffect(() => {
     if (step != "org") return
-    setLoadingMessage("Finding organization ID...")
 
     if (!organizationId) {
       setErrorMessage("Organization ID is required")
       setScreen("error")
       return
     }
-    setLoadingMessage("Verifying organization...")
     validateOrganization({ organizationId })
       .then((result) => {
         if (result.valid) {
@@ -71,7 +135,6 @@ export const WidgetLoadingScreen = ({
     organizationId,
     setScreen,
     setErrorMessage,
-    setLoadingMessage,
     setOrganizationId,
     validateOrganization,
     setStep,
@@ -83,12 +146,13 @@ export const WidgetLoadingScreen = ({
   )
   useEffect(() => {
     if (step !== "session") return
-    setLoadingMessage("Finding contact session ID...")
     if (!contactSessionId) {
-      setStep("settings")
+      queueMicrotask(() => {
+        setValidatedContactSessionIsAnonymous(false)
+        setStep("settings")
+      })
       return
     }
-    setLoadingMessage("Validating Session... ")
     validateContactSession({
       organizationId: organizationId!,
       contactSessionId,
@@ -96,11 +160,17 @@ export const WidgetLoadingScreen = ({
       .then((result) => {
         if (!result.valid) {
           setContactSessionId(null)
+          setValidatedContactSessionIsAnonymous(false)
+        } else {
+          setValidatedContactSessionIsAnonymous(
+            Boolean(result.contactSession?.isAnonymous)
+          )
         }
         setStep("settings")
       })
       .catch(() => {
         setContactSessionId(null)
+        setValidatedContactSessionIsAnonymous(false)
         setStep("settings")
       })
   }, [
@@ -109,7 +179,6 @@ export const WidgetLoadingScreen = ({
     organizationId,
     setContactSessionId,
     validateContactSession,
-    setLoadingMessage,
   ])
 
   // Step 3: load widget settings
@@ -120,23 +189,30 @@ export const WidgetLoadingScreen = ({
 
   useEffect(() => {
     if (step !== "settings") return
-    setLoadingMessage("Loading widget settings...")
     if (widgetSettings !== undefined) {
-      setWidgetSettings(widgetSettings)
-      setStep("voice")
+      queueMicrotask(() => {
+        setWidgetSettings(widgetSettings)
+        setStep("voice")
+      })
     }
-  }, [step, widgetSettings, setStep, setWidgetSettings, setLoadingMessage])
+  }, [step, widgetSettings, setStep, setWidgetSettings])
 
   useEffect(() => {
     if (widgetSettings === undefined) return
     if (typeof window === "undefined" || window.parent === window) return
 
     const appearance = mergeWidgetAppearance(widgetSettings?.appearance)
+    const liveVoiceEnabled = Boolean(
+      mode === "voice" ||
+      widgetSettings?.openaiRealtimeSettings?.enabled ||
+      widgetSettings?.geminiLiveSettings?.enabled
+    )
+
     window.parent.postMessage(
-      { type: "widget-settings", payload: { appearance } },
+      { type: "widget-settings", payload: { appearance, liveVoiceEnabled } },
       "*"
     )
-  }, [widgetSettings])
+  }, [mode, widgetSettings])
 
   // Step 4: load voice config
   const getVapiSecrets = useAction(api.public.secrets.getVapiSecrets)
@@ -149,8 +225,6 @@ export const WidgetLoadingScreen = ({
       return
     }
 
-    setLoadingMessage("Loading voice features...")
-
     getVapiSecrets({ organizationId })
       .catch(() => null)
       .then((vapiSecrets) => {
@@ -162,7 +236,6 @@ export const WidgetLoadingScreen = ({
     organizationId,
     getVapiSecrets,
     setVapiSecrets,
-    setLoadingMessage,
     setStep,
     setErrorMessage,
     setScreen,
@@ -171,21 +244,92 @@ export const WidgetLoadingScreen = ({
   // Step 5: navigate
   useEffect(() => {
     if (step !== "done") return
-    setScreen(contactSessionId ? "selection" : "auth")
-  }, [step, contactSessionId, setScreen])
+
+    const hasPublishedLiveVoice = Boolean(
+      widgetSettings?.openaiRealtimeSettings?.enabled ||
+      widgetSettings?.geminiLiveSettings?.enabled
+    )
+    const shouldOpenVoiceOnly = mode === "voice" || hasPublishedLiveVoice
+
+    if (!shouldOpenVoiceOnly) {
+      setWidgetMode("standard")
+      if (validatedContactSessionIsAnonymous) {
+        setContactSessionId(null)
+        setScreen("auth")
+        return
+      }
+      setScreen(contactSessionId ? "selection" : "auth")
+      return
+    }
+
+    setWidgetMode("voice")
+
+    const openVoiceScreen = async () => {
+      if (!organizationId) {
+        setErrorMessage("Organization ID is required")
+        setScreen("error")
+        return
+      }
+
+      const nextVoiceProvider: VoiceProvider | null = widgetSettings
+        ?.openaiRealtimeSettings?.enabled
+        ? "openai"
+        : widgetSettings?.geminiLiveSettings?.enabled
+          ? "gemini"
+          : mode === "voice" &&
+              widgetSettings?.vapiSettings?.assistantId &&
+              vapiSecrets
+            ? "vapi"
+            : null
+
+      if (!nextVoiceProvider) {
+        setErrorMessage("Voice AI is not enabled for this widget.")
+        setScreen("error")
+        return
+      }
+
+      setActiveVoiceProvider(nextVoiceProvider)
+
+      if (contactSessionId) {
+        setScreen("voice")
+        return
+      }
+
+      try {
+        const anonymousContactSessionId = await createAnonymousContactSession({
+          organizationId,
+          metadata: getBrowserMetadata(organizationId, parentPageUrl),
+        })
+
+        setContactSessionId(anonymousContactSessionId)
+        setScreen("voice")
+      } catch {
+        setErrorMessage("Unable to start an anonymous voice session.")
+        setScreen("error")
+      }
+    }
+
+    void openVoiceScreen()
+  }, [
+    contactSessionId,
+    createAnonymousContactSession,
+    mode,
+    organizationId,
+    parentPageUrl,
+    setActiveVoiceProvider,
+    setContactSessionId,
+    setErrorMessage,
+    setScreen,
+    setWidgetMode,
+    step,
+    validatedContactSessionIsAnonymous,
+    vapiSecrets,
+    widgetSettings,
+  ])
 
   return (
-    <>
-      <WidgetHeader className="widget-error-header">
-        <div className="flex flex-col justify-between gap-y-2 px-2 py-6 font-semibold">
-          <p className="text-3xl">Hi there 👋</p>
-          <p className="text-lg">Let&apos;s get you started</p>
-        </div>
-      </WidgetHeader>
-      <div className="flex flex-1 flex-col items-center justify-center gap-y-4 p-4 text-muted-foreground">
-        <LoaderIcon className="animate-spin" />
-        <p className="text-sm">{loadingMessage || "Loading..."}</p>
-      </div>
-    </>
+    <div className="flex min-h-0 flex-1 items-center justify-center bg-white text-zinc-400">
+      <Spinner className="size-5" />
+    </div>
   )
 }

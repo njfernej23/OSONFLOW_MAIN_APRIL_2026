@@ -17,6 +17,7 @@ const DEFAULT_THEME = {
 const DEFAULT_APPEARANCE = {
   launcherColor: "#000000",
   launcherLabel: "Chat with us",
+  voiceLauncherLabel: "Talk with us",
   launcherIcon: "question" as const,
   launcherIconUrl: "",
   animation: "scale" as const,
@@ -116,6 +117,7 @@ const themeValidator = v.object({
 const appearanceValidator = v.object({
   launcherColor: v.optional(v.string()),
   launcherLabel: v.optional(v.string()),
+  voiceLauncherLabel: v.optional(v.string()),
   launcherIcon: v.optional(
     v.union(v.literal("chat"), v.literal("sparkles"), v.literal("question"))
   ),
@@ -164,6 +166,7 @@ type WidgetTheme = {
 type WidgetAppearance = {
   launcherColor?: string
   launcherLabel?: string
+  voiceLauncherLabel?: string
   launcherIcon?: "chat" | "sparkles" | "question"
   launcherIconUrl?: string
   animation?: "slide-up" | "scale" | "fade" | "pop"
@@ -402,6 +405,10 @@ const mergeAppearance = (
     incoming?.launcherLabel ??
     base?.launcherLabel ??
     DEFAULT_APPEARANCE.launcherLabel,
+  voiceLauncherLabel:
+    incoming?.voiceLauncherLabel ??
+    base?.voiceLauncherLabel ??
+    DEFAULT_APPEARANCE.voiceLauncherLabel,
   launcherIcon:
     incoming?.launcherIcon ??
     base?.launcherIcon ??

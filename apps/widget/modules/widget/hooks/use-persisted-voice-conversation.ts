@@ -1,17 +1,14 @@
 import { api } from "@workspace/backend/_generated/api"
 import { Id } from "@workspace/backend/_generated/dataModel"
-import { useMutation } from "convex/react"
-import { useAtomValue, useSetAtom } from "jotai"
-import { useRef } from "react"
+import { useMutation, useQuery } from "convex/react"
+import { useAtomValue } from "jotai"
+import { useEffect, useRef } from "react"
 import {
-  chatReturnScreenAtom,
   contactSessionIdAtomFamily,
-  conversationIdAtom,
   organizationIdAtom,
-  screenAtom,
 } from "../atoms/widget-atoms"
 
-type VoiceConversationProvider = "openai_realtime" | "gemini_live"
+type VoiceConversationProvider = "openai_realtime" | "gemini_live" | "vapi"
 
 type TranscriptMessage = {
   role: "user" | "assistant"
@@ -25,25 +22,31 @@ export const usePersistedVoiceConversation = (
   const contactSessionId = useAtomValue(
     contactSessionIdAtomFamily(organizationId || "")
   )
-  const setConversationId = useSetAtom(conversationIdAtom)
-  const setChatReturnScreen = useSetAtom(chatReturnScreenAtom)
-  const setScreen = useSetAtom(screenAtom)
 
   const createConversation = useMutation(api.public.aiConversations.create)
   const appendMessage = useMutation(api.public.aiConversations.appendMessage)
-  const escalateToHumanMutation = useMutation(
-    api.public.aiConversations.escalateToHuman
-  )
-  const resolveConversationMutation = useMutation(
-    api.public.aiConversations.resolve
-  )
   const finishConversationMutation = useMutation(
     api.public.aiConversations.finish
+  )
+  const persistedTranscript = useQuery(
+    api.public.aiConversations.getLatestTranscript,
+    organizationId && contactSessionId
+      ? {
+          organizationId,
+          contactSessionId,
+          provider,
+        }
+      : "skip"
   )
 
   const conversationIdRef = useRef<Id<"aiVoiceConversations"> | null>(null)
   const conversationPromiseRef =
     useRef<Promise<Id<"aiVoiceConversations"> | null> | null>(null)
+
+  useEffect(() => {
+    conversationIdRef.current = null
+    conversationPromiseRef.current = null
+  }, [contactSessionId, organizationId, provider])
 
   const ensureConversation = async () => {
     if (conversationIdRef.current) {
@@ -117,63 +120,9 @@ export const usePersistedVoiceConversation = (
     }
   }
 
-  const escalateToHumanConversation = async () => {
-    if (!contactSessionId) {
-      return null
-    }
-
-    const activeConversationId =
-      (await getActiveConversationId()) ?? (await ensureConversation())
-
-    if (!activeConversationId) {
-      return null
-    }
-
-    try {
-      const result = await escalateToHumanMutation({
-        conversationId: activeConversationId,
-        contactSessionId,
-      })
-
-      setConversationId(result.conversationId)
-      setChatReturnScreen("selection")
-      setScreen("chat")
-
-      return result.conversationId
-    } catch (error) {
-      console.error("Unable to escalate persisted voice conversation", error)
-      return null
-    }
-  }
-
-  const resolveConversation = async () => {
-    if (!contactSessionId) {
-      return false
-    }
-
-    const activeConversationId =
-      (await getActiveConversationId()) ?? (await ensureConversation())
-
-    if (!activeConversationId) {
-      return false
-    }
-
-    try {
-      await resolveConversationMutation({
-        conversationId: activeConversationId,
-        contactSessionId,
-      })
-      return true
-    } catch (error) {
-      console.error("Unable to resolve persisted voice conversation", error)
-      return false
-    }
-  }
-
   const finishConversation = async () => {
     const activeConversationId = await getActiveConversationId()
 
-    conversationIdRef.current = null
     conversationPromiseRef.current = null
 
     if (!activeConversationId || !contactSessionId) {
@@ -192,8 +141,7 @@ export const usePersistedVoiceConversation = (
 
   return {
     persistTranscriptMessage,
-    escalateToHumanConversation,
-    resolveConversation,
     finishConversation,
+    persistedTranscript: persistedTranscript ?? [],
   }
 }

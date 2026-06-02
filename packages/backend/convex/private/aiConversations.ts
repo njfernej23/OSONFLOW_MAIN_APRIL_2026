@@ -251,8 +251,10 @@ export const getMany = query({
 
         if (normalizedSearchQuery) {
           const searchableFields = [
+            contactSession?.isAnonymous ? "anonymous voice visitor" : undefined,
             contactSession?.name,
             contactSession?.email,
+            contactSession?.metadata?.currentUrl,
             syncedConversation.lastMessagePreview,
             syncedConversation.provider,
             syncedConversation.endedAt ? "ended" : "live",

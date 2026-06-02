@@ -7,7 +7,7 @@ import { useThreadMessages, toUIMessages } from "@convex-dev/agent/react"
 import { WidgetHeader } from "@/modules/widget/ui/components/widget-header"
 import { Button } from "@workspace/ui/components/button"
 import { useAtomValue, useSetAtom } from "jotai"
-import { ArrowLeftIcon, DownloadIcon } from "lucide-react"
+import { ArrowLeftIcon } from "lucide-react"
 import {
   chatReturnScreenAtom,
   contactSessionIdAtomFamily,
@@ -67,6 +67,23 @@ type ChatHistoryExport = {
   truncated: boolean
   messages: ChatHistoryMessage[]
 }
+
+const DownloadToLineIcon = ({ className }: { className?: string }) => (
+  <svg
+    aria-hidden="true"
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    strokeWidth="2"
+    viewBox="0 0 24 24"
+  >
+    <path d="M12 17V3" />
+    <path d="m6 11 6 6 6-6" />
+    <path d="M19 21H5" />
+  </svg>
+)
 
 const formatChatHistoryTimestamp = (timestamp: number | null) => {
   if (!timestamp) {
@@ -201,6 +218,21 @@ export const WidgetChatScreen = () => {
         }
       : "skip"
   ) as ChatHistoryExport | undefined
+  const workflowChoices = useQuery(
+    api.public.workflows.getPendingChoices,
+    conversationId && contactSessionId
+      ? {
+          conversationId,
+          contactSessionId,
+        }
+      : "skip"
+  ) as
+    | {
+        pendingNodeId: string | null
+        buttons: Array<{ id: string; label: string }>
+      }
+    | null
+    | undefined
 
   const messages = useThreadMessages(
     api.public.messages.getMany,
@@ -230,6 +262,23 @@ export const WidgetChatScreen = () => {
     pendingAssistantMessageCount !== null &&
     assistantMessageCount < pendingAssistantMessageCount &&
     lastMessage?.role === "user"
+
+  useEffect(() => {
+    if (pendingAssistantMessageCount === null) {
+      return
+    }
+
+    if (
+      assistantMessageCount >= pendingAssistantMessageCount ||
+      workflowChoices?.buttons?.length
+    ) {
+      setPendingAssistantMessageCount(null)
+    }
+  }, [
+    assistantMessageCount,
+    pendingAssistantMessageCount,
+    workflowChoices?.buttons?.length,
+  ])
 
   const { topElementRef, handleLoadMore, canLoadMore, isLoadingMore } =
     useInfiniteScroll({
@@ -318,6 +367,29 @@ export const WidgetChatScreen = () => {
     }
   }
 
+  const submitWorkflowChoice = async (button: {
+    id: string
+    label: string
+  }) => {
+    const threadId = conversation?.threadId
+    if (!threadId || !contactSessionId) {
+      return
+    }
+
+    setPendingAssistantMessageCount(assistantMessageCount + 1)
+
+    try {
+      await createMessage({
+        threadId,
+        prompt: button.label,
+        contactSessionId,
+        workflowButtonId: button.id,
+      })
+    } catch {
+      setPendingAssistantMessageCount(null)
+    }
+  }
+
   const onDownloadChatHistory = () => {
     if (
       !canDownloadChatHistory ||
@@ -393,7 +465,7 @@ export const WidgetChatScreen = () => {
             title="Download chat history"
             variant="transparent"
           >
-            <DownloadIcon />
+            <DownloadToLineIcon className="size-4" />
           </Button>
         ) : null}
       </WidgetHeader>
@@ -430,7 +502,17 @@ export const WidgetChatScreen = () => {
           )}
         </AIConversationContent>
       </AIConversation>
-      {uiMessages.length === 1 && (
+      {workflowChoices?.buttons?.length ? (
+        <AISuggestions className="flex w-full flex-col items-end p-2">
+          {workflowChoices.buttons.map((button) => (
+            <AISuggestion
+              key={button.id}
+              onClick={() => submitWorkflowChoice(button)}
+              suggestion={button.label}
+            />
+          ))}
+        </AISuggestions>
+      ) : uiMessages.length === 1 ? (
         <AISuggestions className="flex w-full flex-col items-end p-2">
           {suggestions.map((suggestion) => {
             if (!suggestion) {
@@ -453,7 +535,7 @@ export const WidgetChatScreen = () => {
             )
           })}
         </AISuggestions>
-      )}
+      ) : null}
 
       <Form {...form}>
         <AIInput

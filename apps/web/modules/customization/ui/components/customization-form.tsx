@@ -940,6 +940,10 @@ export const CustomizationForm = ({
     watchedValues.defaultSuggestions?.suggestion2,
     watchedValues.defaultSuggestions?.suggestion3,
   ].filter((s): s is string => Boolean(s))
+  const previewVoiceOnly = Boolean(
+    watchedValues.openaiRealtimeSettings?.enabled ||
+    watchedValues.geminiLiveSettings?.enabled
+  )
 
   const recentVersions = useMemo(() => versions.slice(0, 6), [versions])
   const isBusy = form.formState.isSubmitting || isPublishing || isRollingBack
@@ -971,6 +975,9 @@ export const CustomizationForm = ({
       launcherLabel:
         values.appearance.launcherLabel.trim() ||
         DEFAULT_WIDGET_APPEARANCE.launcherLabel,
+      voiceLauncherLabel:
+        values.appearance.voiceLauncherLabel.trim() ||
+        DEFAULT_WIDGET_APPEARANCE.voiceLauncherLabel,
       launcherIconUrl: values.appearance.launcherIconUrl.trim(),
       poweredByText:
         values.appearance.poweredByText.trim() ||
@@ -1859,6 +1866,40 @@ export const CustomizationForm = ({
                   className="mt-0 animate-in space-y-6 duration-200 fade-in-0 slide-in-from-right-2"
                   value="voice"
                 >
+                  <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/10 p-4">
+                    <p className="text-sm font-semibold text-foreground">
+                      Live voice mode
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      When OpenAI Realtime or Gemini Live is enabled, the
+                      published widget opens as a voice-only assistant. It skips
+                      name/email collection, hides the regular chat view, and
+                      saves final transcript lines in AI voicechats.
+                    </p>
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="appearance.voiceLauncherLabel"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">
+                          Voice Launcher Text
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            className="bg-muted/20"
+                            placeholder="Talk with us"
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Text shown next to the animated voice orb. This only
+                          applies when live voice opens the widget directly.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <OpenAIRealtimeFormFields form={form} />
                   {hasVapiPlugin ? (
                     <div className="space-y-4 rounded-2xl border border-border/70 bg-muted/10 p-4">
@@ -1882,6 +1923,7 @@ export const CustomizationForm = ({
                 greetMessage={watchedValues.greetMessage}
                 suggestions={previewSuggestions}
                 theme={previewTheme}
+                voiceOnly={previewVoiceOnly}
               />
             </div>
 
@@ -1973,6 +2015,7 @@ export const CustomizationForm = ({
                 greetMessage={watchedValues.greetMessage}
                 suggestions={previewSuggestions}
                 theme={previewTheme}
+                voiceOnly={previewVoiceOnly}
               />
             </div>
           </div>

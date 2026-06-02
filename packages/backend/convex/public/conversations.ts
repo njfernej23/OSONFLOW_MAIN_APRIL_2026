@@ -4,8 +4,31 @@ import { query } from "../_generated/server"
 import { supportAgent } from "../system/ai/agents/supportAgent"
 import { MessageDoc, saveMessage } from "@convex-dev/agent"
 import { components, internal } from "../_generated/api"
+import type { Id } from "../_generated/dataModel"
 import { paginationOptsValidator } from "convex/server"
 import { enforceRateLimit } from "../lib/rateLimits"
+
+const contactSessionMetadataValidator = v.optional(
+  v.object({
+    userAgent: v.optional(v.string()),
+    language: v.optional(v.string()),
+    languages: v.optional(v.string()),
+    platform: v.optional(v.string()),
+    vendor: v.optional(v.string()),
+    telegramUserId: v.optional(v.string()),
+    telegramUsername: v.optional(v.string()),
+    telegramLanguageCode: v.optional(v.string()),
+    screenResolution: v.optional(v.string()),
+    viewportSize: v.optional(v.string()),
+    timezone: v.optional(v.string()),
+    timezoneOffset: v.optional(v.number()),
+    cookieEnabled: v.optional(v.boolean()),
+    referrer: v.optional(v.string()),
+    currentUrl: v.optional(v.string()),
+    source: v.optional(v.string()),
+    visitorId: v.optional(v.string()),
+  })
+)
 
 export const getMany = query({
   args: {
@@ -188,10 +211,47 @@ export const markAsRead = mutation({
 export const create = mutation({
   args: {
     organizationId: v.string(),
-    contactSessionId: v.id("contactSessions"),
+    contactSessionId: v.optional(v.id("contactSessions")),
+    metadata: contactSessionMetadataValidator,
   },
-  handler: async (ctx, args) => {
-    const session = await ctx.db.get(args.contactSessionId)
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    conversationId: Id<"conversations">
+    contactSessionId: Id<"contactSessions">
+    source: "workflow" | "widget"
+  }> => {
+    const activeWorkflow = await ctx.db
+      .query("workflows")
+      .withIndex("by_organization_id_and_active", (q) =>
+        q.eq("organizationId", args.organizationId).eq("isActive", true)
+      )
+      .first()
+    const hasActiveWorkflow = Boolean(activeWorkflow?.publishedDefinition)
+    const contactSessionId: Id<"contactSessions"> | null =
+      args.contactSessionId ??
+      (hasActiveWorkflow
+        ? await ctx.runMutation(
+            (internal as any).public.contactSessions.createAnonymousRecord,
+            {
+              organizationId: args.organizationId,
+              metadata: {
+                ...args.metadata,
+                source: args.metadata?.source ?? "workflow_widget",
+              },
+            }
+          )
+        : null)
+
+    if (!contactSessionId) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Contact details required",
+      })
+    }
+
+    const session = await ctx.db.get(contactSessionId)
 
     if (!session || session.expiresAt < Date.now()) {
       throw new ConvexError({
@@ -208,14 +268,14 @@ export const create = mutation({
     }
 
     await enforceRateLimit(ctx, "widgetConversationCreateBySession", {
-      key: `${args.organizationId}:${args.contactSessionId}`,
+      key: `${args.organizationId}:${contactSessionId}`,
       message:
         "Too many conversations started. Please wait before starting another chat.",
     })
 
     // This refreshes the user's session if they are within the threshold
     await ctx.runMutation(internal.system.contactSessions.refresh, {
-      contactSessionId: args.contactSessionId,
+      contactSessionId,
     })
 
     const widgetSettings = await ctx.db
@@ -229,29 +289,34 @@ export const create = mutation({
       userId: args.organizationId,
     })
 
-    await saveMessage(ctx, components.agent, {
-      threadId,
-      message: {
-        role: "assistant",
-        content:
-          widgetSettings?.greetMessage || "Hello, how can I help you today?",
-      },
-    })
+    if (!hasActiveWorkflow) {
+      await saveMessage(ctx, components.agent, {
+        threadId,
+        message: {
+          role: "assistant",
+          content:
+            widgetSettings?.greetMessage || "Hello, how can I help you today?",
+        },
+      })
+    }
 
-    const conversationId = await ctx.db.insert("conversations", {
-      contactSessionId: session._id,
-      status: "unresolved",
-      organizationId: args.organizationId,
-      threadId,
-      assignedToId: null,
-      assignedToName: null,
-      assignedAt: null,
-      contactLastReadAt: Date.now(),
-      lastCustomerMessageAt: null,
-      lastOperatorMessageAt: null,
-      unreadForContactCount: 0,
-      unreadForOperatorCount: 0,
-    })
+    const conversationId: Id<"conversations"> = await ctx.db.insert(
+      "conversations",
+      {
+        contactSessionId: session._id,
+        status: "unresolved",
+        organizationId: args.organizationId,
+        threadId,
+        assignedToId: null,
+        assignedToName: null,
+        assignedAt: null,
+        contactLastReadAt: Date.now(),
+        lastCustomerMessageAt: null,
+        lastOperatorMessageAt: null,
+        unreadForContactCount: 0,
+        unreadForOperatorCount: 0,
+      }
+    )
 
     await ctx.runMutation(
       (internal as any).system.integrationWebhooks.dispatchEvent,
@@ -263,10 +328,25 @@ export const create = mutation({
           threadId,
           contactSessionId: session._id,
           status: "unresolved",
+          source: hasActiveWorkflow ? "workflow" : "widget",
+          workflowId: hasActiveWorkflow ? activeWorkflow?._id : undefined,
         },
       }
     )
 
-    return conversationId
+    if (hasActiveWorkflow) {
+      await ctx.runMutation(
+        (internal as any).system.workflowRuntime.startForConversation,
+        {
+          conversationId,
+        }
+      )
+    }
+
+    return {
+      conversationId,
+      contactSessionId: session._id,
+      source: hasActiveWorkflow ? "workflow" : "widget",
+    }
   },
 })

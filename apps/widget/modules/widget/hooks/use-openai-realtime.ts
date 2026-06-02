@@ -8,7 +8,17 @@ import {
 } from "../atoms/widget-atoms"
 import { usePersistedVoiceConversation } from "./use-persisted-voice-conversation"
 
-type TranscriptMessage = {
+type TranscriptMessage =
+  | {
+      role: "user" | "assistant"
+      text: string
+    }
+  | {
+      role: "separator"
+      id: string
+    }
+
+type VoiceTranscriptMessage = {
   role: "user" | "assistant"
   text: string
 }
@@ -55,24 +65,45 @@ export const useOpenAIRealtime = () => {
     contactSessionIdAtomFamily(organizationId || "")
   )
   const searchKnowledgeBase = useAction(api.public.voiceKnowledgeBase.search)
-  const {
-    escalateToHumanConversation,
-    finishConversation,
-    persistTranscriptMessage,
-    resolveConversation,
-  } = usePersistedVoiceConversation("openai_realtime")
+  const { finishConversation, persistedTranscript, persistTranscriptMessage } =
+    usePersistedVoiceConversation("openai_realtime")
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
   const dataChannelRef = useRef<RTCDataChannel | null>(null)
   const localStreamRef = useRef<MediaStream | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const lastTranscriptSignatureRef = useRef<string | null>(null)
-  const pendingTransitionRef = useRef<"escalating" | "resolving" | null>(null)
 
   const [isConnected, setIsConnected] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [transcript, setTranscript] = useState<TranscriptMessage[]>([])
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (isConnected || isConnecting || persistedTranscript.length === 0) {
+      return
+    }
+
+    let isCancelled = false
+    const hydratedTranscript = persistedTranscript.map((message) => ({
+      role: message.role,
+      text: message.text,
+    }))
+
+    queueMicrotask(() => {
+      if (isCancelled) {
+        return
+      }
+
+      setTranscript((current) =>
+        current.length > 0 ? current : hydratedTranscript
+      )
+    })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [isConnected, isConnecting, persistedTranscript])
 
   const endCall = () => {
     dataChannelRef.current?.close()
@@ -89,12 +120,21 @@ export const useOpenAIRealtime = () => {
     setIsConnecting(false)
     setIsSpeaking(false)
     lastTranscriptSignatureRef.current = null
-    pendingTransitionRef.current = null
 
     void finishConversation()
   }
 
-  const appendTranscript = (message: TranscriptMessage) => {
+  const addCallSeparator = () => {
+    setTranscript((prev) => {
+      if (prev.length === 0 || prev[prev.length - 1]?.role === "separator") {
+        return prev
+      }
+
+      return [...prev, { role: "separator", id: `call-${Date.now()}` }]
+    })
+  }
+
+  const appendTranscript = (message: VoiceTranscriptMessage) => {
     const text = message.text.trim()
 
     if (!text) {
@@ -128,62 +168,6 @@ export const useOpenAIRealtime = () => {
 
     if (!callId || !name) return
 
-    if (name === "escalate_to_human") {
-      if (pendingTransitionRef.current) {
-        return
-      }
-
-      pendingTransitionRef.current = "escalating"
-      const linkedConversationId = await escalateToHumanConversation()
-
-      sendClientEvent({
-        type: "conversation.item.create",
-        item: {
-          type: "function_call_output",
-          call_id: callId,
-          output: linkedConversationId
-            ? "Conversation escalated to a human operator. Continue in chat."
-            : "Escalation failed. Tell the user a human handoff could not be completed yet.",
-        },
-      })
-
-      if (linkedConversationId) {
-        endCall()
-      } else {
-        pendingTransitionRef.current = null
-        setError("Unable to escalate this voice conversation to a human.")
-      }
-      return
-    }
-
-    if (name === "mark_resolved") {
-      if (pendingTransitionRef.current) {
-        return
-      }
-
-      pendingTransitionRef.current = "resolving"
-      const didResolve = await resolveConversation()
-
-      sendClientEvent({
-        type: "conversation.item.create",
-        item: {
-          type: "function_call_output",
-          call_id: callId,
-          output: didResolve
-            ? "Conversation marked as resolved."
-            : "Resolution failed. Ask the user if they want a human instead.",
-        },
-      })
-
-      if (didResolve) {
-        endCall()
-      } else {
-        pendingTransitionRef.current = null
-        setError("Unable to mark this voice conversation as resolved.")
-      }
-      return
-    }
-
     if (!organizationId || name !== "search_knowledge_base") return
 
     let query =
@@ -214,7 +198,7 @@ export const useOpenAIRealtime = () => {
           type: "function_call_output",
           call_id: callId,
           output:
-            "The knowledge base search failed. Tell the user you could not search the knowledge base and offer human support.",
+            "The knowledge base search failed. Tell the user you could not search the knowledge base right now.",
         },
       })
     }
@@ -291,9 +275,8 @@ export const useOpenAIRealtime = () => {
 
     setIsConnecting(true)
     setError(null)
-    setTranscript([])
+    addCallSeparator()
     lastTranscriptSignatureRef.current = null
-    pendingTransitionRef.current = null
 
     try {
       const tokenResponse = await fetch("/api/openai-realtime-token", {

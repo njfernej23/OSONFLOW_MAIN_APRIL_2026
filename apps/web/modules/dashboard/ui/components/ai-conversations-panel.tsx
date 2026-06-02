@@ -21,8 +21,6 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import {
   AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES,
   AI_CONVERSATION_PROVIDER_LABELS,
-  AI_CONVERSATION_STATUS_BADGE_CLASSNAMES,
-  AI_CONVERSATION_STATUS_LABELS,
 } from "../../constants"
 
 type SessionFilterValue = "all" | "live" | "ended"
@@ -83,6 +81,66 @@ const formatConversationDayLabel = (timestamp: number) => {
   if (isYesterday(date)) return "Yesterday"
 
   return format(date, "MMMM d")
+}
+
+const getProviderLabel = (provider: string) => {
+  if (provider === "vapi") return "Vapi"
+  return (
+    AI_CONVERSATION_PROVIDER_LABELS[
+      provider as keyof typeof AI_CONVERSATION_PROVIDER_LABELS
+    ] ?? "Voice AI"
+  )
+}
+
+const getProviderBadgeClassName = (provider: string) => {
+  if (provider === "vapi") {
+    return "border-violet-500/25 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+  }
+
+  return (
+    AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES[
+      provider as keyof typeof AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES
+    ] ?? "border-sidebar-border bg-sidebar-accent/70 text-sidebar-foreground"
+  )
+}
+
+const formatPageAddress = (value: string | undefined) => {
+  if (!value) return undefined
+
+  try {
+    const url = new URL(value)
+    return `${url.hostname}${url.pathname}`
+  } catch {
+    return value
+  }
+}
+
+const getVisitorLabel = (conversation: {
+  contactSession?: { isAnonymous?: boolean; name?: string } | null
+}) => {
+  if (conversation.contactSession?.isAnonymous) {
+    return "Anonymous voice visitor"
+  }
+
+  return conversation.contactSession?.name ?? "Unknown visitor"
+}
+
+const getVisitorDetail = (conversation: {
+  contactSession?: {
+    email?: string
+    isAnonymous?: boolean
+    metadata?: { currentUrl?: string; timezone?: string }
+  } | null
+}) => {
+  if (!conversation.contactSession?.isAnonymous) {
+    return conversation.contactSession?.email
+  }
+
+  return (
+    formatPageAddress(conversation.contactSession.metadata?.currentUrl) ??
+    conversation.contactSession.metadata?.timezone ??
+    "Anonymous voice session"
+  )
 }
 
 export const AIConversationsPanel = () => {
@@ -355,17 +413,11 @@ export const AIConversationsPanel = () => {
                         const countryFlagUrl = country?.code
                           ? getCountryFlagUrl(country.code)
                           : undefined
-                        const providerLabel =
-                          AI_CONVERSATION_PROVIDER_LABELS[conversation.provider]
+                        const providerLabel = getProviderLabel(
+                          conversation.provider
+                        )
                         const providerBadgeClassName =
-                          AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES[
-                            conversation.provider
-                          ]
-                        const status = conversation.status ?? "unresolved"
-                        const statusLabel =
-                          AI_CONVERSATION_STATUS_LABELS[status]
-                        const statusBadgeClassName =
-                          AI_CONVERSATION_STATUS_BADGE_CLASSNAMES[status]
+                          getProviderBadgeClassName(conversation.provider)
                         const unreadCount =
                           conversation.unreadForOperatorCount ?? 0
 
@@ -405,14 +457,13 @@ export const AIConversationsPanel = () => {
                                   <div className="min-w-0 flex-1">
                                     <p className="truncate text-[13px] leading-snug font-semibold text-sidebar-foreground">
                                       {highlightMatch(
-                                        conversation.contactSession?.name ??
-                                          "Unknown visitor",
+                                        getVisitorLabel(conversation),
                                         normalizedSearchQuery
                                       )}
                                     </p>
                                     <p className="mt-0.5 truncate text-[11px] text-sidebar-foreground/54">
                                       {highlightMatch(
-                                        conversation.contactSession?.email,
+                                        getVisitorDetail(conversation),
                                         normalizedSearchQuery
                                       )}
                                     </p>
@@ -456,15 +507,6 @@ export const AIConversationsPanel = () => {
                                       {conversation.endedAt ? "Ended" : "Live"}
                                     </span>
                                   </div>
-                                  <Badge
-                                    className={cn(
-                                      "h-5 rounded-md border px-1.5 text-[10px] font-medium",
-                                      statusBadgeClassName
-                                    )}
-                                    variant="outline"
-                                  >
-                                    {statusLabel}
-                                  </Badge>
                                   {unreadCount > 0 ? (
                                     <Badge
                                       className="h-5 rounded-md bg-rose-500 px-1.5 text-[10px] font-medium text-white hover:bg-rose-500"

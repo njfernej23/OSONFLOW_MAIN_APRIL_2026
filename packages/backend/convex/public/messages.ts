@@ -295,6 +295,7 @@ export const create = action({
     prompt: v.string(),
     threadId: v.string(),
     contactSessionId: v.id("contactSessions"),
+    workflowButtonId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const contactSession = await ctx.runQuery(
@@ -356,6 +357,20 @@ export const create = action({
     await ctx.runMutation(internal.system.contactSessions.refresh, {
       contactSessionId: args.contactSessionId,
     })
+
+    const workflowResult = await ctx.runMutation(
+      (internal as any).system.workflowRuntime.handleUserMessage,
+      {
+        threadId: args.threadId,
+        prompt: args.prompt,
+        contactSessionId: args.contactSessionId,
+        workflowButtonId: args.workflowButtonId,
+      }
+    )
+
+    if (workflowResult?.handled) {
+      return
+    }
 
     const now = Date.now()
 

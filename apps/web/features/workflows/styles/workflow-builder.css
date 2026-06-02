@@ -275,21 +275,23 @@
 
 .collaboration-strip {
   position: absolute;
-  top: 20px;
-  right: 254px;
+  top: 78px;
+  right: 18px;
   z-index: 28;
   display: flex;
   align-items: center;
   gap: 0;
-  transition: right 0.24s ease;
+  transition:
+    top 0.24s ease,
+    right 0.24s ease;
 }
 
 .builder-shell.inspector-open .collaboration-strip {
-  right: min(692px, calc(100vw - 496px));
+  right: min(456px, calc(100vw - 258px));
 }
 
 .builder-shell.run-drawer-open .collaboration-strip {
-  right: min(696px, calc(100vw - 496px));
+  right: min(460px, calc(100vw - 258px));
 }
 
 .collaborator-invite,
@@ -666,6 +668,41 @@
 .toolbar-button.publish:focus-visible {
   background: #247a5c;
   color: #fff;
+}
+
+.toolbar-button.deactivate {
+  background: #b64052;
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(182, 64, 82, 0.22);
+}
+
+.toolbar-button.deactivate:hover,
+.toolbar-button.deactivate:focus-visible {
+  background: #9f3345;
+  color: #fff;
+}
+
+.toolbar-button:disabled,
+.toolbar-button:disabled:hover,
+.toolbar-button:disabled:focus-visible {
+  cursor: not-allowed;
+  opacity: 0.76;
+  transform: none;
+}
+
+.workflow-status-pill {
+  max-width: 180px;
+  overflow: hidden;
+  border: 1px solid rgba(199, 212, 214, 0.72);
+  border-radius: 999px;
+  background: rgba(245, 248, 248, 0.92);
+  color: #42515f;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 680;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bottom-tools {
@@ -3333,7 +3370,7 @@ button.node-title {
   .collaboration-strip,
   .builder-shell.inspector-open .collaboration-strip,
   .builder-shell.run-drawer-open .collaboration-strip {
-    top: 62px;
+    top: 70px;
     right: 10px;
   }
 

@@ -151,7 +151,7 @@ export const OpenAIRealtimeFormFields = ({
           <p className="text-sm font-semibold">OpenAI Realtime Voice</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Configure the organization OpenAI key from Integrations, then tune
-            the voice experience here.
+            the voice-only widget experience here.
           </p>
         </div>
 
@@ -163,7 +163,8 @@ export const OpenAIRealtimeFormFields = ({
               <div className="space-y-0.5">
                 <FormLabel>Enable OpenAI voice</FormLabel>
                 <FormDescription className="text-xs">
-                  Shows a WebRTC voice option in the widget.
+                  Opens the widget directly into live voice and disables the
+                  regular chat/contact form.
                 </FormDescription>
               </div>
               <FormControl>
@@ -244,7 +245,7 @@ export const OpenAIRealtimeFormFields = ({
           <p className="text-sm font-semibold">Gemini Live Voice</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Configure the organization Gemini key from Integrations, then tune
-            the live voice experience here.
+            the voice-only widget experience here.
           </p>
         </div>
 
@@ -256,7 +257,8 @@ export const OpenAIRealtimeFormFields = ({
               <div className="space-y-0.5">
                 <FormLabel>Enable Gemini Live</FormLabel>
                 <FormDescription className="text-xs">
-                  Shows a Gemini speech-to-speech option in the widget.
+                  Opens the widget directly into live voice and disables the
+                  regular chat/contact form.
                 </FormDescription>
               </div>
               <FormControl>

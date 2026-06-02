@@ -16,6 +16,7 @@ export type WidgetThemeSettings = {
 export type WidgetAppearanceSettings = {
   launcherColor: string
   launcherLabel: string
+  voiceLauncherLabel: string
   launcherIcon: WidgetLauncherIcon
   launcherIconUrl: string
   animation: WidgetAnimation
@@ -40,6 +41,7 @@ export const DEFAULT_WIDGET_THEME: WidgetThemeSettings = {
 export const DEFAULT_WIDGET_APPEARANCE: WidgetAppearanceSettings = {
   launcherColor: "#000000",
   launcherLabel: "Chat with us",
+  voiceLauncherLabel: "Talk with us",
   launcherIcon: "question",
   launcherIconUrl: "",
   animation: "scale",

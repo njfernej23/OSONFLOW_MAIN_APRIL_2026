@@ -1,5 +1,5 @@
 import { EMBED_CONFIG } from "./config"
-import { chatBubbleIcon, closeIcon, questionIcon, sparklesIcon } from "./icons"
+import { chatBubbleIcon, questionIcon, sparklesIcon } from "./icons"
 
 type WidgetPosition = "bottom-right" | "bottom-left"
 type WidgetLauncherIcon = "chat" | "sparkles" | "question"
@@ -8,32 +8,58 @@ type WidgetAnimation = "slide-up" | "scale" | "fade" | "pop"
 type WidgetAppearancePayload = {
   launcherColor?: string
   launcherLabel?: string
+  voiceLauncherLabel?: string
   launcherIcon?: WidgetLauncherIcon
   launcherIconUrl?: string
   animation?: WidgetAnimation
   showPoweredBy?: boolean
 }
 
+type WidgetSettingsPayload = {
+  appearance?: WidgetAppearancePayload
+  liveVoiceEnabled?: boolean
+}
+
 const LAUNCHER_EDGE_OFFSET = 20
-const LAUNCHER_BUTTON_SIZE = 52
+const LAUNCHER_BUTTON_SIZE = 48
+const LAUNCHER_ORB_SIZE = 34
 const LAUNCHER_BUTTON_GAP = 10
-const LAUNCHER_LABEL_PADDING_X = 14
-const CONTAINER_MAX_HEIGHT_GUTTER =
-  LAUNCHER_EDGE_OFFSET * 2 + LAUNCHER_BUTTON_SIZE + LAUNCHER_BUTTON_GAP
+const LAUNCHER_LABEL_PADDING_X = 18
+const WIDGET_CONTAINER_WIDTH = 380
+const WIDGET_CONTAINER_STANDARD_HEIGHT = 640
+const WIDGET_CONTAINER_VOICE_HEIGHT = 470
+const WIDGET_CONTAINER_VOICE_CLOSED_TRANSFORM =
+  "translate3d(0, 26px, 0) scale(0.975)"
+const WIDGET_CONTAINER_VOICE_OPEN_TRANSFORM =
+  "translate3d(0, 0, 0) scale(1)"
+const WIDGET_CONTAINER_VOICE_OPEN_DURATION = 360
+const WIDGET_CONTAINER_VOICE_CLOSE_DURATION = 220
+const WIDGET_CONTAINER_VOICE_OPEN_EASING = "cubic-bezier(0.16, 1, 0.3, 1)"
+const WIDGET_CONTAINER_VOICE_CLOSE_EASING = "cubic-bezier(0.4, 0, 1, 1)"
+const WIDGET_CONTAINER_VOICE_CLOSED_FILTER = "blur(10px)"
+const WIDGET_CONTAINER_VOICE_OPEN_FILTER = "blur(0px)"
+const WIDGET_CONTAINER_OPEN_RADIUS = "30px"
+const CONTAINER_MAX_HEIGHT_GUTTER = LAUNCHER_EDGE_OFFSET * 2
+const LAUNCHER_STYLE_ID = "echo-widget-launcher-styles"
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)"
+const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
 
 ;(function () {
   let iframe: HTMLIFrameElement | null = null
   let container: HTMLDivElement | null = null
+  let revealSurface: HTMLDivElement | null = null
   let button: HTMLButtonElement | null = null
   let isOpen = false
   let hideTimer: number | null = null
   let isLauncherReady = false
+  let isLiveVoiceEnabled = false
 
   const launcherAppearance: Required<
     Pick<
       WidgetAppearancePayload,
       | "launcherColor"
       | "launcherLabel"
+      | "voiceLauncherLabel"
       | "launcherIcon"
       | "launcherIconUrl"
       | "animation"
@@ -41,6 +67,7 @@ const CONTAINER_MAX_HEIGHT_GUTTER =
   > = {
     launcherColor: "#3b82f6",
     launcherLabel: "Chat with us",
+    voiceLauncherLabel: LIVE_VOICE_LAUNCHER_LABEL,
     launcherIcon: "chat",
     launcherIconUrl: "",
     animation: "slide-up",
@@ -158,15 +185,301 @@ const CONTAINER_MAX_HEIGHT_GUTTER =
 
   const escapeHtml = (value: string): string => {
     return value
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;")
   }
 
   const getLauncherImageMarkup = (imageUrl: string): string => {
     return `<img src="${escapeHtml(imageUrl)}" alt="Launcher" style="width: ${LAUNCHER_BUTTON_SIZE}px; height: ${LAUNCHER_BUTTON_SIZE}px; border-radius: 50%; object-fit: cover; display: block;" />`
+  }
+
+  const getLauncherOrbMarkup = (): string => {
+    return `
+      <span class="echo-widget-voice-orb" aria-hidden="true">
+        <span class="echo-widget-voice-orb__pulse"></span>
+        <span class="echo-widget-voice-orb__gradient"></span>
+        <span class="echo-widget-voice-orb__shine"></span>
+        <span class="echo-widget-voice-orb__sweep"></span>
+        <span class="echo-widget-voice-orb__core"></span>
+        <span class="echo-widget-voice-orb__ripple"></span>
+      </span>
+    `
+  }
+
+  const ensureLauncherStyles = () => {
+    if (document.getElementById(LAUNCHER_STYLE_ID)) {
+      return
+    }
+
+    const style = document.createElement("style")
+    style.id = LAUNCHER_STYLE_ID
+    style.textContent = `
+      @keyframes echo-widget-orb-shape {
+        0%, 100% {
+          border-radius: 50%;
+          transform: scale(1) rotate(0deg);
+        }
+
+        50% {
+          border-radius: 44% 56% 53% 47% / 49% 44% 56% 51%;
+          transform: scale(1.08) rotate(8deg);
+        }
+      }
+
+      @keyframes echo-widget-orb-gradient {
+        0% {
+          transform: translate3d(-3%, -2%, 0) rotate(0deg) scale(1);
+        }
+
+        50% {
+          transform: translate3d(3%, 2%, 0) rotate(180deg) scale(1.06);
+        }
+
+        100% {
+          transform: translate3d(-3%, -2%, 0) rotate(360deg) scale(1);
+        }
+      }
+
+      @keyframes echo-widget-orb-core {
+        0%, 100% {
+          transform: scale(0.82);
+          opacity: 0.78;
+        }
+
+        50% {
+          transform: scale(1.18);
+          opacity: 1;
+        }
+      }
+
+      @keyframes echo-widget-orb-pulse-ripple {
+        0% {
+          box-shadow: 0 0 0 0 rgba(125, 211, 252, 0.42);
+          opacity: 0.88;
+        }
+
+        72% {
+          box-shadow: 0 0 0 10px rgba(125, 211, 252, 0);
+          opacity: 0;
+        }
+
+        100% {
+          box-shadow: 0 0 0 10px rgba(125, 211, 252, 0);
+          opacity: 0;
+        }
+      }
+
+      @keyframes echo-widget-orb-sweep {
+        0% {
+          transform: translate3d(-140%, 110%, 0) rotate(34deg);
+          opacity: 0;
+        }
+
+        24% {
+          opacity: 0.72;
+        }
+
+        52% {
+          opacity: 0.34;
+        }
+
+        100% {
+          transform: translate3d(140%, -130%, 0) rotate(34deg);
+          opacity: 0;
+        }
+      }
+
+      @keyframes echo-widget-orb-click-ripple {
+        0% {
+          transform: scale(0.25);
+          opacity: 0.46;
+        }
+
+        100% {
+          transform: scale(2.15);
+          opacity: 0;
+        }
+      }
+
+      @keyframes echo-widget-voice-launcher-glow {
+        0%, 100% {
+          box-shadow:
+            0 16px 36px rgba(0, 0, 0, 0.28),
+            0 0 0 1px rgba(255, 255, 255, 0.08),
+            0 0 0 0 rgba(56, 189, 248, 0.18);
+        }
+
+        50% {
+          box-shadow:
+            0 18px 42px rgba(0, 0, 0, 0.34),
+            0 0 0 1px rgba(255, 255, 255, 0.12),
+            0 0 0 8px rgba(56, 189, 248, 0.08);
+        }
+      }
+
+      @keyframes echo-widget-voice-shimmer {
+        0% {
+          transform: translateX(-130%) skewX(-18deg);
+        }
+
+        100% {
+          transform: translateX(220%) skewX(-18deg);
+        }
+      }
+
+      #echo-widget-button.echo-widget-button--voice {
+        isolation: isolate;
+        overflow: hidden;
+        contain: paint;
+      }
+
+      #echo-widget-button.echo-widget-button--voice::before {
+        content: "";
+        position: absolute;
+        inset: 1px;
+        z-index: -1;
+        overflow: hidden;
+        border-radius: inherit;
+        background:
+          radial-gradient(circle at 17% 50%, rgba(56, 189, 248, 0.1), transparent 30%),
+          linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.98) 54%, rgba(241,245,249,0.96) 100%);
+      }
+
+      #echo-widget-button.echo-widget-button--voice::after {
+        content: "";
+        position: absolute;
+        top: 1px;
+        bottom: 1px;
+        left: 1px;
+        z-index: 0;
+        width: 34%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, transparent, rgba(14,165,233,0.12), transparent);
+        animation: echo-widget-voice-shimmer 3.4s ease-in-out infinite;
+        pointer-events: none;
+      }
+
+      #echo-widget-button.echo-widget-button--voice > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .echo-widget-voice-label {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        white-space: nowrap;
+        line-height: 1;
+        letter-spacing: -0.01em;
+      }
+
+      .echo-widget-voice-orb {
+        position: relative;
+        display: inline-flex;
+        width: ${LAUNCHER_ORB_SIZE}px;
+        height: ${LAUNCHER_ORB_SIZE}px;
+        flex: 0 0 ${LAUNCHER_ORB_SIZE}px;
+        overflow: hidden;
+        border-radius: 50%;
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.38),
+          0 8px 18px rgba(14, 165, 233, 0.34);
+        animation: echo-widget-orb-shape 1.8s ease-in-out infinite;
+      }
+
+      .echo-widget-voice-orb__pulse {
+        position: absolute;
+        inset: 3px;
+        z-index: 0;
+        border-radius: inherit;
+        animation: echo-widget-orb-pulse-ripple 1.9s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+      }
+
+      .echo-widget-voice-orb__gradient {
+        position: absolute;
+        inset: -8px;
+        z-index: 1;
+        background:
+          radial-gradient(circle at 28% 22%, rgba(238, 247, 126, 0.92), transparent 30%),
+          radial-gradient(circle at 72% 24%, rgba(139, 211, 255, 0.96), transparent 34%),
+          radial-gradient(circle at 46% 84%, rgba(0, 120, 224, 0.95), transparent 42%),
+          radial-gradient(circle at 86% 72%, rgba(4, 31, 43, 0.86), transparent 42%),
+          radial-gradient(circle at 20% 70%, rgba(96, 169, 129, 0.74), transparent 34%);
+        animation: echo-widget-orb-gradient 3.2s linear infinite;
+      }
+
+      .echo-widget-voice-orb__shine {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        background: conic-gradient(from 120deg, rgba(255,255,255,0.2), rgba(255,255,255,0), rgba(255,255,255,0.24), rgba(255,255,255,0));
+        mix-blend-mode: overlay;
+        opacity: 0.82;
+      }
+
+      .echo-widget-voice-orb__sweep {
+        position: absolute;
+        inset: -10px;
+        z-index: 3;
+        width: 18px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.74), transparent);
+        filter: blur(0.5px);
+        animation: echo-widget-orb-sweep 2.7s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+      }
+
+      .echo-widget-voice-orb__core {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        z-index: 4;
+        width: 9px;
+        height: 9px;
+        margin-left: -4.5px;
+        margin-top: -4.5px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 0 16px rgba(255, 255, 255, 0.72);
+        animation: echo-widget-orb-core 1.4s ease-in-out infinite;
+      }
+
+      .echo-widget-voice-orb__ripple {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        z-index: 5;
+        width: 100%;
+        height: 100%;
+        margin-left: -50%;
+        margin-top: -50%;
+        border-radius: inherit;
+        background: rgba(255, 255, 255, 0.52);
+        opacity: 0;
+        transform: scale(0.25);
+        pointer-events: none;
+      }
+
+      #echo-widget-button.echo-widget-button--voice:active .echo-widget-voice-orb__ripple {
+        animation: echo-widget-orb-click-ripple 520ms ease-out;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #echo-widget-button.echo-widget-button--voice,
+        #echo-widget-button.echo-widget-button--voice::after,
+        .echo-widget-voice-orb,
+        .echo-widget-voice-orb__pulse,
+        .echo-widget-voice-orb__gradient,
+        .echo-widget-voice-orb__core,
+        .echo-widget-voice-orb__sweep,
+        .echo-widget-voice-orb__ripple {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+        }
+      }
+    `
+    document.head.appendChild(style)
   }
 
   const applyLauncherAppearance = () => {
@@ -174,44 +487,70 @@ const CONTAINER_MAX_HEIGHT_GUTTER =
       return
     }
 
-    const cleanedLabel = launcherAppearance.launcherLabel.trim()
+    if (isOpen) {
+      button.classList.remove("echo-widget-button--voice")
+      syncLauncherVisibility()
+      return
+    }
+
+    const isVoiceSurface = isLiveVoiceEnabled
+    const isVoiceLauncher = isVoiceSurface && !isOpen
+    const cleanedLabel = isVoiceLauncher
+      ? launcherAppearance.voiceLauncherLabel.trim() ||
+        LIVE_VOICE_LAUNCHER_LABEL
+      : launcherAppearance.launcherLabel.trim()
     const hasLauncherImage =
-      !isOpen && launcherAppearance.launcherIconUrl.trim().length > 0
+      !isVoiceLauncher &&
+      !isOpen &&
+      launcherAppearance.launcherIconUrl.trim().length > 0
     const hasVisibleLabel =
-      !isOpen && !hasLauncherImage && cleanedLabel.length > 0
-    const iconMarkup = isOpen
-      ? closeIcon
-      : hasLauncherImage
-        ? getLauncherImageMarkup(launcherAppearance.launcherIconUrl)
+      !isOpen &&
+      (isVoiceLauncher || (!hasLauncherImage && cleanedLabel.length > 0))
+    const iconMarkup = hasLauncherImage
+      ? getLauncherImageMarkup(launcherAppearance.launcherIconUrl)
+      : isVoiceLauncher
+        ? getLauncherOrbMarkup()
         : getLauncherIconMarkup(launcherAppearance.launcherIcon)
 
-    button.style.width = hasVisibleLabel
-      ? "auto"
-      : `${LAUNCHER_BUTTON_SIZE}px`
-    button.style.padding = hasVisibleLabel
-      ? `0 ${LAUNCHER_LABEL_PADDING_X}px`
-      : "0"
+    button.classList.toggle("echo-widget-button--voice", isVoiceLauncher)
+    button.style.width = hasVisibleLabel ? "auto" : `${LAUNCHER_BUTTON_SIZE}px`
+    button.style.padding = isVoiceLauncher
+      ? "0 22px 0 7px"
+      : hasVisibleLabel
+        ? `0 ${LAUNCHER_LABEL_PADDING_X}px 0 8px`
+        : "0"
     button.style.borderRadius = hasVisibleLabel ? "9999px" : "50%"
     button.style.justifyContent = hasVisibleLabel ? "flex-start" : "center"
-    button.style.background = launcherAppearance.launcherColor
-    button.style.color = getContrastingTextColor(
-      launcherAppearance.launcherColor
-    )
-    button.style.boxShadow = `0 4px 24px ${toShadowColor(launcherAppearance.launcherColor)}`
+    button.style.background = isVoiceSurface
+      ? "rgba(255, 255, 255, 0.94)"
+      : launcherAppearance.launcherColor
+    button.style.color = isVoiceSurface
+      ? "#0f172a"
+      : getContrastingTextColor(launcherAppearance.launcherColor)
+    button.style.boxShadow = isVoiceSurface
+      ? "0 16px 36px rgba(15, 23, 42, 0.16), 0 0 0 1px rgba(15, 23, 42, 0.08)"
+      : `0 4px 24px ${toShadowColor(launcherAppearance.launcherColor)}`
+    button.style.animation = isVoiceLauncher
+      ? "echo-widget-voice-launcher-glow 2.8s ease-in-out infinite"
+      : "none"
     button.setAttribute(
       "aria-label",
       isOpen
-        ? "Close chat widget"
+        ? isVoiceSurface
+          ? "Close voice widget"
+          : "Close chat widget"
         : hasVisibleLabel
           ? cleanedLabel
           : "Open chat widget"
     )
 
     if (hasVisibleLabel) {
-      button.innerHTML = `${iconMarkup}<span style="white-space: nowrap; line-height: 1;">${escapeHtml(cleanedLabel)}</span>`
+      button.innerHTML = `${iconMarkup}<span class="echo-widget-voice-label">${escapeHtml(cleanedLabel)}</span>`
     } else {
       button.innerHTML = iconMarkup
     }
+
+    syncLauncherVisibility()
   }
 
   const updateLauncherAppearance = (appearance: WidgetAppearancePayload) => {
@@ -224,6 +563,10 @@ const CONTAINER_MAX_HEIGHT_GUTTER =
 
     if (typeof appearance.launcherLabel === "string") {
       launcherAppearance.launcherLabel = appearance.launcherLabel
+    }
+
+    if (typeof appearance.voiceLauncherLabel === "string") {
+      launcherAppearance.voiceLauncherLabel = appearance.voiceLauncherLabel
     }
 
     if (typeof appearance.launcherIcon === "string") {
@@ -251,9 +594,19 @@ const CONTAINER_MAX_HEIGHT_GUTTER =
     }
 
     isLauncherReady = true
-    button.style.visibility = "visible"
-    button.style.opacity = "1"
-    button.style.pointerEvents = "auto"
+    syncLauncherVisibility()
+  }
+
+  const syncLauncherVisibility = () => {
+    if (!button || !isLauncherReady) {
+      return
+    }
+
+    button.style.visibility = isOpen ? "hidden" : "visible"
+    button.style.display = isOpen ? "none" : "flex"
+    button.style.opacity = isOpen ? "0" : "1"
+    button.style.pointerEvents = isOpen ? "none" : "auto"
+    button.style.transform = "scale(1)"
   }
 
   // Try to get the current script
@@ -299,6 +652,8 @@ const CONTAINER_MAX_HEIGHT_GUTTER =
   }
 
   function render() {
+    ensureLauncherStyles()
+
     // Create floating action button
     button = document.createElement("button")
     button.id = "echo-widget-button"
@@ -321,10 +676,11 @@ const CONTAINER_MAX_HEIGHT_GUTTER =
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 10px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 600;
+      line-height: 1;
       transition: all 0.2s ease;
       visibility: hidden;
       opacity: 0;
@@ -353,22 +709,47 @@ const CONTAINER_MAX_HEIGHT_GUTTER =
           ? `right: ${LAUNCHER_EDGE_OFFSET}px;`
           : `left: ${LAUNCHER_EDGE_OFFSET}px;`
       }
-      bottom: ${LAUNCHER_EDGE_OFFSET + LAUNCHER_BUTTON_SIZE + LAUNCHER_BUTTON_GAP}px;
-      width: 400px;
-      height: 600px;
+      bottom: ${LAUNCHER_EDGE_OFFSET}px;
+      width: ${WIDGET_CONTAINER_WIDTH}px;
+      height: ${WIDGET_CONTAINER_STANDARD_HEIGHT}px;
       max-width: calc(100vw - 40px);
       max-height: calc(100vh - ${CONTAINER_MAX_HEIGHT_GUTTER}px);
       z-index: 999998;
-      border-radius: 16px;
+      border-radius: ${WIDGET_CONTAINER_OPEN_RADIUS};
       overflow: hidden;
+      isolation: isolate;
+      background: #ffffff;
       box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
       display: none;
       opacity: 0;
+      filter: ${WIDGET_CONTAINER_VOICE_OPEN_FILTER};
       transform: ${widgetAnimations[launcherAppearance.animation].closedTransform};
       transform-origin: ${position === "bottom-right" ? "bottom right" : "bottom left"};
       transition:
         opacity ${widgetAnimations[launcherAppearance.animation].duration}ms ${widgetAnimations[launcherAppearance.animation].easing},
-        transform ${widgetAnimations[launcherAppearance.animation].duration}ms ${widgetAnimations[launcherAppearance.animation].easing};
+        transform ${widgetAnimations[launcherAppearance.animation].duration}ms ${widgetAnimations[launcherAppearance.animation].easing},
+        filter ${widgetAnimations[launcherAppearance.animation].duration}ms ${widgetAnimations[launcherAppearance.animation].easing},
+        border-radius ${widgetAnimations[launcherAppearance.animation].duration}ms ${widgetAnimations[launcherAppearance.animation].easing};
+      will-change: opacity, transform, filter, border-radius;
+    `
+
+    revealSurface = document.createElement("div")
+    revealSurface.setAttribute("aria-hidden", "true")
+    revealSurface.style.cssText = `
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.86) 0%, rgba(255,255,255,0) 22%),
+        linear-gradient(0deg, rgba(255,255,255,0.84) 0%, rgba(255,255,255,0) 24%);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      mask-image: linear-gradient(180deg, black 0%, transparent 26%, transparent 74%, black 100%);
+      -webkit-mask-image: linear-gradient(180deg, black 0%, transparent 26%, transparent 74%, black 100%);
+      transform: translate3d(0, 8px, 0);
+      transition: none;
       will-change: opacity, transform;
     `
 
@@ -376,13 +757,20 @@ const CONTAINER_MAX_HEIGHT_GUTTER =
     iframe = document.createElement("iframe")
     iframe.src = buildWidgetUrl()
     iframe.style.cssText = `
+      position: relative;
+      z-index: 2;
       width: 100%;
       height: 100%;
       border: none;
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+      transform-origin: center;
+      will-change: opacity, transform;
     `
     // Add permissions for microphone and clipboard
     iframe.allow = "microphone; clipboard-read; clipboard-write"
 
+    container.appendChild(revealSurface)
     container.appendChild(iframe)
     document.body.appendChild(container)
 
@@ -411,10 +799,18 @@ const CONTAINER_MAX_HEIGHT_GUTTER =
         }
         break
       case "widget-settings":
-        if (payload?.appearance) {
-          updateLauncherAppearance(
-            payload.appearance as WidgetAppearancePayload
-          )
+        if (payload) {
+          const settingsPayload = payload as WidgetSettingsPayload
+          if (typeof settingsPayload.liveVoiceEnabled === "boolean") {
+            isLiveVoiceEnabled = settingsPayload.liveVoiceEnabled
+            applyContainerAnimationState(isOpen ? "open" : "closed")
+          }
+
+          if (settingsPayload.appearance) {
+            updateLauncherAppearance(settingsPayload.appearance)
+          } else {
+            applyLauncherAppearance()
+          }
         }
         break
     }
@@ -428,16 +824,165 @@ const CONTAINER_MAX_HEIGHT_GUTTER =
     }
   }
 
-  function applyContainerAnimationState(state: "open" | "closed") {
+  function prefersReducedMotion() {
+    return window.matchMedia?.(REDUCED_MOTION_QUERY).matches ?? false
+  }
+
+  function getContainerAnimationDuration(state: "open" | "closed") {
+    if (prefersReducedMotion()) {
+      return 0
+    }
+
+    if (isLiveVoiceEnabled) {
+      return state === "open"
+        ? WIDGET_CONTAINER_VOICE_OPEN_DURATION
+        : WIDGET_CONTAINER_VOICE_CLOSE_DURATION
+    }
+
+    return widgetAnimations[launcherAppearance.animation].duration
+  }
+
+  function getContainerAnimationEasingForState(state: "open" | "closed") {
+    if (isLiveVoiceEnabled) {
+      return state === "open"
+        ? WIDGET_CONTAINER_VOICE_OPEN_EASING
+        : WIDGET_CONTAINER_VOICE_CLOSE_EASING
+    }
+
+    return widgetAnimations[launcherAppearance.animation].easing
+  }
+
+  function getContainerTransform(state: "open" | "closed") {
+    if (isLiveVoiceEnabled) {
+      return state === "open"
+        ? WIDGET_CONTAINER_VOICE_OPEN_TRANSFORM
+        : WIDGET_CONTAINER_VOICE_CLOSED_TRANSFORM
+    }
+
+    const animation = widgetAnimations[launcherAppearance.animation]
+    return state === "open" ? animation.openTransform : animation.closedTransform
+  }
+
+  function syncContainerTransformOrigin() {
+    if (!container || !button) {
+      return
+    }
+
+    container.style.transformOrigin =
+      position === "bottom-right" ? "bottom right" : "bottom left"
+  }
+
+  function syncContainerSize() {
     if (!container) {
       return
     }
 
-    const animation = widgetAnimations[launcherAppearance.animation]
-    container.style.transition = `opacity ${animation.duration}ms ${animation.easing}, transform ${animation.duration}ms ${animation.easing}`
-    container.style.opacity = state === "open" ? "1" : "0"
-    container.style.transform =
-      state === "open" ? animation.openTransform : animation.closedTransform
+    container.style.width = `${WIDGET_CONTAINER_WIDTH}px`
+    container.style.height = `${
+      isLiveVoiceEnabled
+        ? WIDGET_CONTAINER_VOICE_HEIGHT
+        : WIDGET_CONTAINER_STANDARD_HEIGHT
+    }px`
+  }
+
+  function applyIframeAnimationState(
+    state: "open" | "closed",
+    immediate = false
+  ) {
+    if (!iframe) {
+      return
+    }
+
+    if (!isLiveVoiceEnabled || immediate || prefersReducedMotion()) {
+      iframe.style.opacity = "1"
+      iframe.style.transition = "none"
+      iframe.style.transform = "translate3d(0, 0, 0)"
+      iframe.style.filter = "blur(0px)"
+      if (isLiveVoiceEnabled && state === "closed") {
+        iframe.style.opacity = "0"
+        iframe.style.transform = "translate3d(0, 10px, 0)"
+        iframe.style.filter = "blur(8px)"
+      }
+      return
+    }
+
+    const duration = state === "open" ? 260 : 120
+    const delay = state === "open" ? 72 : 0
+    const easing =
+      state === "open"
+        ? WIDGET_CONTAINER_VOICE_OPEN_EASING
+        : WIDGET_CONTAINER_VOICE_CLOSE_EASING
+    iframe.style.transition = `opacity ${duration}ms ${easing} ${delay}ms, transform ${duration}ms ${easing} ${delay}ms, filter ${duration}ms ${easing} ${delay}ms`
+    iframe.style.opacity = state === "open" ? "1" : "0"
+    iframe.style.transform =
+      state === "open" ? "translate3d(0, 0, 0)" : "translate3d(0, 10px, 0)"
+    iframe.style.filter = state === "open" ? "blur(0px)" : "blur(8px)"
+  }
+
+  function applyRevealSurfaceAnimationState(
+    state: "open" | "closed",
+    immediate = false
+  ) {
+    if (!revealSurface) {
+      return
+    }
+
+    if (!isLiveVoiceEnabled || immediate || prefersReducedMotion()) {
+      revealSurface.style.opacity = "0"
+      revealSurface.style.transition = "none"
+      revealSurface.style.transform = "translate3d(0, 8px, 0)"
+      return
+    }
+
+    const duration = state === "open" ? 220 : 120
+    const delay = state === "open" ? 42 : 0
+    const easing =
+      state === "open"
+        ? WIDGET_CONTAINER_VOICE_OPEN_EASING
+        : WIDGET_CONTAINER_VOICE_CLOSE_EASING
+    revealSurface.style.transition = `opacity ${duration}ms ${easing} ${delay}ms, transform ${duration}ms ${easing} ${delay}ms`
+    revealSurface.style.opacity = state === "open" ? "0" : "1"
+    revealSurface.style.transform =
+      state === "open" ? "translate3d(0, -4px, 0)" : "translate3d(0, 8px, 0)"
+  }
+
+  function applyContainerAnimationState(
+    state: "open" | "closed",
+    options: { immediate?: boolean } = {}
+  ) {
+    if (!container) {
+      return
+    }
+
+    const duration = getContainerAnimationDuration(state)
+    const easing = getContainerAnimationEasingForState(state)
+    const immediate = options.immediate || duration === 0
+    const finalTransform = getContainerTransform(state)
+    const finalBoxShadow =
+      isLiveVoiceEnabled && state === "open"
+        ? "0 24px 70px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(15, 23, 42, 0.06)"
+        : "0 4px 24px rgba(0, 0, 0, 0.15)"
+    const finalFilter =
+      isLiveVoiceEnabled && state === "closed"
+        ? WIDGET_CONTAINER_VOICE_CLOSED_FILTER
+        : WIDGET_CONTAINER_VOICE_OPEN_FILTER
+
+    syncContainerSize()
+    container.style.transition = immediate
+      ? "none"
+      : `opacity ${duration}ms ${easing}, transform ${duration}ms ${easing}, filter ${duration}ms ${easing}, border-radius ${duration}ms ${easing}, box-shadow ${duration}ms ${easing}`
+    container.style.opacity = isLiveVoiceEnabled
+      ? "1"
+      : state === "open"
+        ? "1"
+        : "0"
+    container.style.background = "#ffffff"
+    container.style.transform = finalTransform
+    container.style.filter = finalFilter
+    container.style.borderRadius = WIDGET_CONTAINER_OPEN_RADIUS
+    container.style.boxShadow = finalBoxShadow
+    applyRevealSurfaceAnimationState(state, immediate)
+    applyIframeAnimationState(state, immediate)
   }
 
   function show() {
@@ -447,9 +992,11 @@ const CONTAINER_MAX_HEIGHT_GUTTER =
         hideTimer = null
       }
 
-      isOpen = true
       container.style.display = "block"
-      applyContainerAnimationState("closed")
+      syncContainerTransformOrigin()
+      applyContainerAnimationState("closed", { immediate: true })
+      isOpen = true
+      syncLauncherVisibility()
       // Trigger animation
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => applyContainerAnimationState("open"))
@@ -466,15 +1013,25 @@ const CONTAINER_MAX_HEIGHT_GUTTER =
       }
 
       isOpen = false
+      const shouldDelayLauncherReveal = isLiveVoiceEnabled
+      applyLauncherAppearance()
+      syncContainerTransformOrigin()
+      if (shouldDelayLauncherReveal && button) {
+        button.style.visibility = "hidden"
+        button.style.opacity = "0"
+        button.style.pointerEvents = "none"
+      }
       applyContainerAnimationState("closed")
       // Hide after animation
       hideTimer = window.setTimeout(() => {
         if (container && !isOpen) {
           container.style.display = "none"
         }
+        if (shouldDelayLauncherReveal) {
+          syncLauncherVisibility()
+        }
         hideTimer = null
-      }, widgetAnimations[launcherAppearance.animation].duration)
-      applyLauncherAppearance()
+      }, getContainerAnimationDuration("closed"))
     }
   }
 
@@ -484,6 +1041,7 @@ const CONTAINER_MAX_HEIGHT_GUTTER =
       container.remove()
       container = null
       iframe = null
+      revealSurface = null
     }
     if (button) {
       button.remove()
@@ -495,6 +1053,7 @@ const CONTAINER_MAX_HEIGHT_GUTTER =
     }
     isOpen = false
     isLauncherReady = false
+    isLiveVoiceEnabled = false
   }
 
   // Function to reinitialize with new config

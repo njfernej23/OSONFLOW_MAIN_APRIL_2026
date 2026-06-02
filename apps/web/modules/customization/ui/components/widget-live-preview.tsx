@@ -8,6 +8,8 @@ import {
   MinusIcon,
   MonitorIcon,
   MoonIcon,
+  PhoneCallIcon,
+  PhoneOffIcon,
   SmartphoneIcon,
   SparklesIcon,
   SunIcon,
@@ -35,6 +37,7 @@ type WidgetLivePreviewProps = {
   suggestions: string[]
   theme: WidgetThemeSettings
   appearance: WidgetAppearanceSettings
+  voiceOnly?: boolean
 }
 
 const LAUNCHER_PREVIEW_SIZE = 52
@@ -44,6 +47,24 @@ const launcherIconMap: Record<WidgetLauncherIcon, ReactNode> = {
   sparkles: <SparklesIcon className="size-4" />,
   question: <CircleHelpIcon className="size-4" />,
 }
+
+const VoiceLauncherButtonPreview = ({
+  label,
+}: {
+  label: string
+}) => (
+  <button
+    className="inline-flex items-center gap-3 overflow-hidden rounded-full border border-slate-200/80 bg-white/94 py-1.5 pr-5 pl-2 text-sm font-semibold text-slate-950 shadow-[0_18px_38px_-24px_rgba(15,23,42,0.34)]"
+    type="button"
+  >
+    <span className="relative flex size-9 shrink-0 overflow-hidden rounded-full shadow-[0_8px_18px_rgba(14,165,233,0.28)]">
+      <span className="absolute -inset-2 bg-[radial-gradient(circle_at_28%_22%,rgba(238,247,126,0.92),transparent_30%),radial-gradient(circle_at_72%_24%,rgba(139,211,255,0.96),transparent_34%),radial-gradient(circle_at_46%_84%,rgba(0,120,224,0.95),transparent_42%),radial-gradient(circle_at_86%_72%,rgba(4,31,43,0.86),transparent_42%),radial-gradient(circle_at_20%_70%,rgba(96,169,129,0.74),transparent_34%)]" />
+      <span className="absolute inset-0 bg-[conic-gradient(from_120deg,rgba(255,255,255,0.2),rgba(255,255,255,0),rgba(255,255,255,0.24),rgba(255,255,255,0))] opacity-80 mix-blend-overlay" />
+      <span className="absolute top-1/2 left-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/92 shadow-[0_0_14px_rgba(255,255,255,0.72)]" />
+    </span>
+    <span className="whitespace-nowrap">{label}</span>
+  </button>
+)
 
 type DeviceMode = "desktop" | "mobile"
 
@@ -264,17 +285,68 @@ const ChatWidget = ({
   )
 }
 
+const VoiceOnlyWidgetPreview = ({
+  appearance,
+}: {
+  theme: WidgetThemeSettings
+  appearance: WidgetAppearanceSettings
+  darkMode: boolean
+}) => {
+  const voiceLauncherLabel =
+    appearance.voiceLauncherLabel.trim() || "Talk with us"
+
+  return (
+    <div className="flex flex-col items-end gap-3">
+      <div className="flex h-[360px] w-[230px] flex-col overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_30px_70px_-36px_rgba(15,23,42,0.55)]">
+        <div className="flex h-14 shrink-0 items-center justify-between px-3">
+          <div className="flex size-9 items-center justify-center rounded-full bg-zinc-100 text-zinc-600">
+            <MessageSquareTextIcon className="size-4" />
+          </div>
+          <div className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[10px] font-medium text-zinc-500 shadow-sm">
+            Voice only
+          </div>
+          <div className="flex size-9 items-center justify-center rounded-full bg-zinc-100 text-zinc-600">
+            <XIcon className="size-4" />
+          </div>
+        </div>
+
+        <div className="flex flex-1 flex-col items-center justify-center px-5 text-center">
+          <div className="relative flex size-28 items-center justify-center overflow-hidden rounded-full">
+            <span className="absolute inset-0 bg-[radial-gradient(circle_at_28%_22%,rgba(238,247,126,0.82),transparent_28%),radial-gradient(circle_at_72%_24%,rgba(139,211,255,0.95),transparent_34%),radial-gradient(circle_at_48%_82%,rgba(0,120,224,0.95),transparent_40%),radial-gradient(circle_at_84%_70%,rgba(4,31,43,0.86),transparent_42%),radial-gradient(circle_at_20%_70%,rgba(96,169,129,0.7),transparent_34%)]" />
+            <span className="relative flex size-10 items-center justify-center rounded-full bg-white text-zinc-950 shadow-[0_16px_30px_-18px_rgba(15,23,42,0.55)]">
+              <PhoneCallIcon className="size-4" />
+            </span>
+          </div>
+          <p className="mt-6 text-[13px] font-medium text-zinc-700">
+            {voiceLauncherLabel}
+          </p>
+        </div>
+
+        <div className="flex h-16 shrink-0 items-center justify-end px-4 pb-4">
+          <div className="flex size-11 items-center justify-center rounded-full bg-zinc-950 text-white">
+            <PhoneOffIcon className="size-4" />
+          </div>
+        </div>
+      </div>
+      <VoiceLauncherButtonPreview label={voiceLauncherLabel} />
+    </div>
+  )
+}
+
 export const WidgetLivePreview = ({
   greetMessage,
   suggestions,
   theme,
   appearance,
+  voiceOnly = false,
 }: WidgetLivePreviewProps) => {
   const [deviceMode, setDeviceMode] = useState<DeviceMode>("desktop")
   const [darkMode, setDarkMode] = useState(false)
   const launcherTextColor = getContrastingTextColor(appearance.launcherColor)
   const launcherImageUrl = appearance.launcherIconUrl?.trim() || ""
   const hasLauncherImage = launcherImageUrl.length > 0
+  const voiceLauncherLabel =
+    appearance.voiceLauncherLabel.trim() || "Talk with us"
 
   return (
     <Card className="surface-elevated overflow-hidden border-0 shadow-none">
@@ -414,13 +486,21 @@ export const WidgetLivePreview = ({
                 </div>
 
                 <div className="absolute right-3 bottom-3">
-                  <ChatWidget
-                    theme={theme}
-                    appearance={appearance}
-                    greetMessage={greetMessage}
-                    suggestions={suggestions}
-                    darkMode={darkMode}
-                  />
+                  {voiceOnly ? (
+                    <VoiceOnlyWidgetPreview
+                      appearance={appearance}
+                      darkMode={darkMode}
+                      theme={theme}
+                    />
+                  ) : (
+                    <ChatWidget
+                      theme={theme}
+                      appearance={appearance}
+                      greetMessage={greetMessage}
+                      suggestions={suggestions}
+                      darkMode={darkMode}
+                    />
+                  )}
                 </div>
               </div>
             </>
@@ -485,13 +565,21 @@ export const WidgetLivePreview = ({
                   </div>
 
                   <div className="absolute right-2 bottom-2">
-                    <ChatWidget
-                      theme={theme}
-                      appearance={appearance}
-                      greetMessage={greetMessage}
-                      suggestions={suggestions}
-                      darkMode={darkMode}
-                    />
+                    {voiceOnly ? (
+                      <VoiceOnlyWidgetPreview
+                        appearance={appearance}
+                        darkMode={darkMode}
+                        theme={theme}
+                      />
+                    ) : (
+                      <ChatWidget
+                        theme={theme}
+                        appearance={appearance}
+                        greetMessage={greetMessage}
+                        suggestions={suggestions}
+                        darkMode={darkMode}
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -520,40 +608,44 @@ export const WidgetLivePreview = ({
             Launcher standalone
           </p>
           <div className="flex items-center gap-3">
-            <button
-              className={cn(
-                "inline-flex text-sm font-medium shadow-[0_22px_44px_-26px_rgba(15,23,42,0.48)] transition-all hover:-translate-y-0.5 active:scale-95",
-                hasLauncherImage
-                  ? "items-center justify-center rounded-full p-0"
-                  : "items-center gap-2 rounded-full px-4 py-2.5"
-              )}
-              style={{
-                backgroundColor: appearance.launcherColor,
-                color: launcherTextColor,
-                ...(hasLauncherImage
-                  ? {
-                      height: LAUNCHER_PREVIEW_SIZE,
-                      width: LAUNCHER_PREVIEW_SIZE,
-                    }
-                  : undefined),
-              }}
-              type="button"
-            >
-              {hasLauncherImage ? (
-                <img
-                  alt="Launcher"
-                  className="size-full rounded-full object-cover"
-                  src={launcherImageUrl}
-                />
-              ) : (
-                <>
-                  {launcherIconMap[appearance.launcherIcon]}
-                  <span>{appearance.launcherLabel}</span>
-                </>
-              )}
-            </button>
+            {voiceOnly ? (
+              <VoiceLauncherButtonPreview label={voiceLauncherLabel} />
+            ) : (
+              <button
+                className={cn(
+                  "inline-flex text-sm font-medium shadow-[0_22px_44px_-26px_rgba(15,23,42,0.48)] transition-all hover:-translate-y-0.5 active:scale-95",
+                  hasLauncherImage
+                    ? "items-center justify-center rounded-full p-0"
+                    : "items-center gap-2 rounded-full px-4 py-2.5"
+                )}
+                style={{
+                  backgroundColor: appearance.launcherColor,
+                  color: launcherTextColor,
+                  ...(hasLauncherImage
+                    ? {
+                        height: LAUNCHER_PREVIEW_SIZE,
+                        width: LAUNCHER_PREVIEW_SIZE,
+                      }
+                    : undefined),
+                }}
+                type="button"
+              >
+                {hasLauncherImage ? (
+                  <img
+                    alt="Launcher"
+                    className="size-full rounded-full object-cover"
+                    src={launcherImageUrl}
+                  />
+                ) : (
+                  <>
+                    {launcherIconMap[appearance.launcherIcon]}
+                    <span>{appearance.launcherLabel}</span>
+                  </>
+                )}
+              </button>
+            )}
             <div className="text-xs text-muted-foreground">
-              ← Click to open chat
+              ← Click to open {voiceOnly ? "voice" : "chat"}
             </div>
           </div>
         </div>

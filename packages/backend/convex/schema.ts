@@ -75,7 +75,8 @@ const geminiLiveSettingsValidator = v.object({
 
 const aiVoiceConversationProviderValidator = v.union(
   v.literal("openai_realtime"),
-  v.literal("gemini_live")
+  v.literal("gemini_live"),
+  v.literal("vapi")
 )
 
 const aiVoiceConversationRoleValidator = v.union(
@@ -100,7 +101,8 @@ const supportUrgencyValidator = v.union(
 const resolutionSourceValidator = v.union(
   v.literal("ai"),
   v.literal("human"),
-  v.literal("voice_ai")
+  v.literal("voice_ai"),
+  v.literal("workflow")
 )
 
 const themeValidator = v.object({
@@ -136,6 +138,7 @@ const themeValidator = v.object({
 const appearanceValidator = v.object({
   launcherColor: v.optional(v.string()),
   launcherLabel: v.optional(v.string()),
+  voiceLauncherLabel: v.optional(v.string()),
   launcherIcon: v.optional(
     v.union(v.literal("chat"), v.literal("sparkles"), v.literal("question"))
   ),
@@ -192,6 +195,20 @@ const webhookProviderConfigValidator = v.object({
   whatsappAccessToken: v.optional(v.string()),
   whatsappPhoneNumberId: v.optional(v.string()),
   whatsappRecipientPhone: v.optional(v.string()),
+})
+
+const workflowDefinitionValidator = v.object({
+  schemaVersion: v.number(),
+  id: v.optional(v.string()),
+  name: v.string(),
+  description: v.optional(v.string()),
+  nodes: v.array(v.any()),
+  edges: v.array(v.any()),
+})
+
+const workflowButtonOptionValidator = v.object({
+  id: v.string(),
+  label: v.string(),
 })
 
 export default defineSchema({
@@ -395,24 +412,44 @@ export default defineSchema({
     organizationId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
-    definition: v.object({
-      schemaVersion: v.number(),
-      id: v.optional(v.string()),
-      name: v.string(),
-      description: v.optional(v.string()),
-      nodes: v.array(v.any()),
-      edges: v.array(v.any()),
-    }),
+    definition: workflowDefinitionValidator,
+    publishedDefinition: v.optional(workflowDefinitionValidator),
+    isActive: v.optional(v.boolean()),
+    publishedAt: v.optional(v.number()),
+    publishedBy: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
     createdBy: v.optional(v.string()),
     updatedBy: v.optional(v.string()),
   })
     .index("by_organization_id", ["organizationId"])
+    .index("by_organization_id_and_active", ["organizationId", "isActive"])
     .index("by_organization_id_and_updated_at", [
       "organizationId",
       "updatedAt",
     ]),
+
+  workflowSessions: defineTable({
+    organizationId: v.string(),
+    workflowId: v.id("workflows"),
+    conversationId: v.id("conversations"),
+    contactSessionId: v.id("contactSessions"),
+    status: v.union(
+      v.literal("active"),
+      v.literal("waiting"),
+      v.literal("ended")
+    ),
+    currentNodeId: v.optional(v.union(v.string(), v.null())),
+    pendingNodeId: v.optional(v.union(v.string(), v.null())),
+    pendingButtons: v.optional(v.array(workflowButtonOptionValidator)),
+    variables: v.any(),
+    startedAt: v.number(),
+    updatedAt: v.number(),
+    endedAt: v.optional(v.number()),
+  })
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_contact_session_id", ["contactSessionId"])
+    .index("by_organization_id", ["organizationId"]),
 
   workflowPresence: defineTable({
     organizationId: v.string(),
@@ -435,6 +472,7 @@ export default defineSchema({
     email: v.string(),
     organizationId: v.string(),
     expiresAt: v.number(),
+    isAnonymous: v.optional(v.boolean()),
     metadata: v.optional(
       v.object({
         userAgent: v.optional(v.string()),
@@ -452,6 +490,8 @@ export default defineSchema({
         cookieEnabled: v.optional(v.boolean()),
         referrer: v.optional(v.string()),
         currentUrl: v.optional(v.string()),
+        source: v.optional(v.string()),
+        visitorId: v.optional(v.string()),
       })
     ),
   })

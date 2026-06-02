@@ -37,6 +37,7 @@ import type * as public_organizations from "../public/organizations.js";
 import type * as public_secrets from "../public/secrets.js";
 import type * as public_voiceKnowledgeBase from "../public/voiceKnowledgeBase.js";
 import type * as public_widgetSettings from "../public/widgetSettings.js";
+import type * as public_workflows from "../public/workflows.js";
 import type * as system_ai_agents_supportAgent from "../system/ai/agents/supportAgent.js";
 import type * as system_ai_constants from "../system/ai/constants.js";
 import type * as system_ai_rag from "../system/ai/rag.js";
@@ -52,6 +53,7 @@ import type * as system_plugins from "../system/plugins.js";
 import type * as system_secrets from "../system/secrets.js";
 import type * as system_subscriptions from "../system/subscriptions.js";
 import type * as system_telegram from "../system/telegram.js";
+import type * as system_workflowRuntime from "../system/workflowRuntime.js";
 
 import type {
   ApiFromModules,
@@ -97,6 +99,7 @@ declare const fullApi: ApiFromModules<{
   "public/secrets": typeof public_secrets;
   "public/voiceKnowledgeBase": typeof public_voiceKnowledgeBase;
   "public/widgetSettings": typeof public_widgetSettings;
+  "public/workflows": typeof public_workflows;
   "system/ai/agents/supportAgent": typeof system_ai_agents_supportAgent;
   "system/ai/constants": typeof system_ai_constants;
   "system/ai/rag": typeof system_ai_rag;
@@ -112,6 +115,7 @@ declare const fullApi: ApiFromModules<{
   "system/secrets": typeof system_secrets;
   "system/subscriptions": typeof system_subscriptions;
   "system/telegram": typeof system_telegram;
+  "system/workflowRuntime": typeof system_workflowRuntime;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
 

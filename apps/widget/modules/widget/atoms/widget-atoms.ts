@@ -6,6 +6,7 @@ import { atom } from "jotai"
 
 export type VoiceProvider = "gemini" | "openai" | "vapi"
 export type ChatReturnScreen = "selection" | "help" | "inbox"
+export type WidgetMode = "standard" | "voice"
 export type WidgetHelpArticle = {
   title: string
   excerpt: string
@@ -28,6 +29,7 @@ export type WidgetHomeHelpCard =
     }
 
 export const screenAtom = atom<WidgetScreen>("loading")
+export const widgetModeAtom = atom<WidgetMode>("standard")
 export const organizationIdAtom = atom<string | null>(null)
 export const contactSessionIdAtomFamily = atomFamily(
   (organizationId: string) => {

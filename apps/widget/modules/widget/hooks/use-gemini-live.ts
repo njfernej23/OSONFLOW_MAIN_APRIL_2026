@@ -14,7 +14,17 @@ import {
 } from "../atoms/widget-atoms"
 import { usePersistedVoiceConversation } from "./use-persisted-voice-conversation"
 
-type TranscriptMessage = {
+type TranscriptMessage =
+  | {
+      role: "user" | "assistant"
+      text: string
+    }
+  | {
+      role: "separator"
+      id: string
+    }
+
+type VoiceTranscriptMessage = {
   role: "user" | "assistant"
   text: string
 }
@@ -99,12 +109,8 @@ export const useGeminiLive = () => {
     contactSessionIdAtomFamily(organizationId || "")
   )
   const searchKnowledgeBase = useAction(api.public.voiceKnowledgeBase.search)
-  const {
-    escalateToHumanConversation,
-    finishConversation,
-    persistTranscriptMessage,
-    resolveConversation,
-  } = usePersistedVoiceConversation("gemini_live")
+  const { finishConversation, persistedTranscript, persistTranscriptMessage } =
+    usePersistedVoiceConversation("gemini_live")
   const sessionRef = useRef<Session | null>(null)
   const localStreamRef = useRef<MediaStream | null>(null)
   const inputContextRef = useRef<AudioContext | null>(null)
@@ -122,7 +128,6 @@ export const useGeminiLive = () => {
   })
   const assistantTextBufferRef = useRef("")
   const lastPersistedTranscriptSignatureRef = useRef<string | null>(null)
-  const pendingTransitionRef = useRef<"escalating" | "resolving" | null>(null)
 
   const [isConnected, setIsConnected] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
@@ -147,7 +152,7 @@ export const useGeminiLive = () => {
     return `${currentText}${joinWithoutSpace ? "" : " "}${incomingText}`.trim()
   }
 
-  const persistFinalTranscript = (message: TranscriptMessage) => {
+  const persistFinalTranscript = (message: VoiceTranscriptMessage) => {
     const text = message.text.trim()
 
     if (!text) {
@@ -171,8 +176,25 @@ export const useGeminiLive = () => {
     setTranscript(nextTranscript)
   }
 
+  useEffect(() => {
+    if (isConnected || isConnecting || persistedTranscript.length === 0) {
+      return
+    }
+
+    if (transcriptRef.current.length > 0) {
+      return
+    }
+
+    syncTranscript(
+      persistedTranscript.map((message) => ({
+        role: message.role,
+        text: message.text,
+      }))
+    )
+  }, [isConnected, isConnecting, persistedTranscript])
+
   const updateTranscriptDraft = (
-    role: TranscriptMessage["role"],
+    role: VoiceTranscriptMessage["role"],
     rawText: string,
     { isFinal = false }: { isFinal?: boolean } = {}
   ) => {
@@ -204,7 +226,7 @@ export const useGeminiLive = () => {
   }
 
   const finalizeTranscriptDraft = (
-    role: TranscriptMessage["role"],
+    role: VoiceTranscriptMessage["role"],
     { persist = true }: { persist?: boolean } = {}
   ) => {
     const draft = draftTranscriptRef.current[role]
@@ -224,14 +246,35 @@ export const useGeminiLive = () => {
     }
   }
 
-  const resetTranscriptState = () => {
+  const resetTranscriptState = ({
+    clear = false,
+  }: { clear?: boolean } = {}) => {
     draftTranscriptRef.current = {
       user: { index: -1, text: "" },
       assistant: { index: -1, text: "" },
     }
     assistantTextBufferRef.current = ""
     lastPersistedTranscriptSignatureRef.current = null
-    syncTranscript([])
+
+    if (clear) {
+      syncTranscript([])
+    }
+  }
+
+  const addCallSeparator = () => {
+    const currentTranscript = transcriptRef.current
+
+    if (
+      currentTranscript.length === 0 ||
+      currentTranscript[currentTranscript.length - 1]?.role === "separator"
+    ) {
+      return
+    }
+
+    syncTranscript([
+      ...currentTranscript,
+      { role: "separator", id: `call-${Date.now()}` },
+    ])
   }
 
   const stopPlayback = () => {
@@ -300,79 +343,8 @@ export const useGeminiLive = () => {
 
     if (!session || functionCalls.length === 0) return
 
-    let shouldEndCall = false
-
     const functionResponses = await Promise.all(
       functionCalls.map(async (functionCall) => {
-        if (functionCall.name === "escalate_to_human") {
-          if (pendingTransitionRef.current) {
-            return {
-              id: functionCall.id,
-              name: functionCall.name,
-              response: { output: "Escalation is already in progress." },
-            }
-          }
-
-          pendingTransitionRef.current = "escalating"
-          const linkedConversationId = await escalateToHumanConversation()
-
-          if (linkedConversationId) {
-            shouldEndCall = true
-            return {
-              id: functionCall.id,
-              name: functionCall.name,
-              response: {
-                output:
-                  "Conversation escalated to a human operator. Continue in chat.",
-              },
-            }
-          }
-
-          pendingTransitionRef.current = null
-          setError("Unable to escalate this voice conversation to a human.")
-          return {
-            id: functionCall.id,
-            name: functionCall.name,
-            response: {
-              error:
-                "Escalation failed. Tell the user the human handoff could not be completed yet.",
-            },
-          }
-        }
-
-        if (functionCall.name === "mark_resolved") {
-          if (pendingTransitionRef.current) {
-            return {
-              id: functionCall.id,
-              name: functionCall.name,
-              response: { output: "Resolution is already in progress." },
-            }
-          }
-
-          pendingTransitionRef.current = "resolving"
-          const didResolve = await resolveConversation()
-
-          if (didResolve) {
-            shouldEndCall = true
-            return {
-              id: functionCall.id,
-              name: functionCall.name,
-              response: { output: "Conversation marked as resolved." },
-            }
-          }
-
-          pendingTransitionRef.current = null
-          setError("Unable to mark this voice conversation as resolved.")
-          return {
-            id: functionCall.id,
-            name: functionCall.name,
-            response: {
-              error:
-                "Resolution failed. Ask the user if they want a human instead.",
-            },
-          }
-        }
-
         if (functionCall.name !== "search_knowledge_base") {
           return {
             id: functionCall.id,
@@ -407,7 +379,7 @@ export const useGeminiLive = () => {
             name: functionCall.name,
             response: {
               error:
-                "The knowledge base search failed. Offer to connect the user with a human support agent.",
+                "The knowledge base search failed. Tell the user you could not search the knowledge base right now.",
             },
           }
         }
@@ -415,10 +387,6 @@ export const useGeminiLive = () => {
     )
 
     session.sendToolResponse({ functionResponses })
-
-    if (shouldEndCall) {
-      endCall()
-    }
   }
 
   const handleServerMessage = (message: LiveServerMessage) => {
@@ -557,7 +525,6 @@ export const useGeminiLive = () => {
     setIsConnecting(false)
     setIsSpeaking(false)
     resetTranscriptState()
-    pendingTransitionRef.current = null
 
     void finishConversation()
   }
@@ -576,7 +543,7 @@ export const useGeminiLive = () => {
     setIsConnecting(true)
     setError(null)
     resetTranscriptState()
-    pendingTransitionRef.current = null
+    addCallSeparator()
 
     try {
       const tokenResponse = await fetch("/api/gemini-live-token", {

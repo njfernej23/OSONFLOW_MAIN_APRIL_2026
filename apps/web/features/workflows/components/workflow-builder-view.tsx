@@ -44,6 +44,7 @@ import { useAuth, useOrganization } from "@clerk/nextjs"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
 import type { Id } from "@workspace/backend/_generated/dataModel"
+import { toast } from "sonner"
 import {
   WORKFLOW_SCHEMA_VERSION,
   type BlockColor,
@@ -76,12 +77,16 @@ type WorkflowSummary = {
   name: string
   description: string | null
   updatedAt: number
+  isActive?: boolean
+  publishedAt?: number | null
 }
 
 type WorkflowRecord = WorkflowSummary & {
   definition: WorkflowDefinition
+  publishedDefinition?: WorkflowDefinition | null
   createdAt: number
   updatedBy?: string
+  publishedBy?: string | null
 }
 
 type WorkflowPresenceMember = {
@@ -1680,6 +1685,8 @@ export const WorkflowBuilderView = ({
     | WorkflowSummary[]
     | undefined
   const saveWorkflow = useMutation(api.private.workflows.save)
+  const publishWorkflow = useMutation(api.private.workflows.publish)
+  const deactivateWorkflow = useMutation(api.private.workflows.deactivate)
   const syncLiveWorkflow = useMutation(api.private.workflows.syncLive)
   const heartbeatPresence = useMutation(api.private.workflows.heartbeatPresence)
   const movePresenceCursor = useMutation(
@@ -1717,7 +1724,10 @@ export const WorkflowBuilderView = ({
     "Route users through deterministic steps with agent handoffs where needed."
   )
   const [presenceNow, setPresenceNow] = useState(() => Date.now())
-  const [, setStatus] = useState<string>("Ready.")
+  const [status, setStatus] = useState<string>("Ready.")
+  const [isSavingWorkflow, setIsSavingWorkflow] = useState(false)
+  const [isPublishingWorkflow, setIsPublishingWorkflow] = useState(false)
+  const [isDeactivatingWorkflow, setIsDeactivatingWorkflow] = useState(false)
   const [activeCategory, setActiveCategory] = useState<CategoryId | null>(null)
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null)
   const [nodeMenu, setNodeMenu] = useState<NodeActionMenuState | null>(null)
@@ -1756,6 +1766,10 @@ export const WorkflowBuilderView = ({
     workflowId ? { workflowId, now: presenceNow } : "skip"
   ) as WorkflowPresenceMember[] | undefined
   const library = workflowList ?? []
+  const currentWorkflowIsActive = Boolean(
+    workflowId &&
+    library.some((workflow) => workflow.id === workflowId && workflow.isActive)
+  )
   const visiblePresenceMembers = (presenceMembers ?? []).slice(0, 3)
   const hiddenPresenceCount = Math.max(0, (presenceMembers?.length ?? 0) - 3)
   const activePresenceUserIds = useMemo(
@@ -1956,10 +1970,8 @@ export const WorkflowBuilderView = ({
     }
 
     const sourcePoint = {
-      x:
-        connectMenu.sourceFlowPoint.x * canvasViewport.zoom + canvasViewport.x,
-      y:
-        connectMenu.sourceFlowPoint.y * canvasViewport.zoom + canvasViewport.y,
+      x: connectMenu.sourceFlowPoint.x * canvasViewport.zoom + canvasViewport.x,
+      y: connectMenu.sourceFlowPoint.y * canvasViewport.zoom + canvasViewport.y,
     }
     const targetPoint = {
       x: connectMenu.x + CONNECT_MENU_PLUS_CENTER_OFFSET.x,
@@ -2512,8 +2524,11 @@ export const WorkflowBuilderView = ({
       }
       const sourceNode = nodes.find((node) => node.id === pending.source)
       const sourceHandleScreenPoint =
-        getSourceHandleScreenPoint(shell, pending.source, pending.sourceHandle) ??
-        pending.sourceScreenPoint
+        getSourceHandleScreenPoint(
+          shell,
+          pending.source,
+          pending.sourceHandle
+        ) ?? pending.sourceScreenPoint
       const nodeWidth =
         sourceNode?.width ?? (sourceNode?.type === "start" ? 148 : 300)
       const nodeHeight =
@@ -3419,8 +3434,23 @@ export const WorkflowBuilderView = ({
     setStatus("Loading workflow library...")
   }, [workflowList])
 
-  const handleSave = async () => {
+  const handleSave = async ({
+    allowDuringPublish = false,
+    showToast = true,
+  }: {
+    allowDuringPublish?: boolean
+    showToast?: boolean
+  } = {}) => {
     const definition = toDefinition()
+    if (
+      isSavingWorkflow ||
+      (isPublishingWorkflow && !allowDuringPublish) ||
+      isDeactivatingWorkflow
+    ) {
+      return null
+    }
+
+    setIsSavingWorkflow(true)
     setStatus("Saving...")
 
     try {
@@ -3451,11 +3481,101 @@ export const WorkflowBuilderView = ({
       hasLoadedWorkflowRef.current = true
       lastRemoteUpdatedAtRef.current = saved.updatedAt
       setStatus("Saved.")
+      if (showToast) {
+        toast.success("Workflow saved")
+      }
       refreshLibrary()
       return saved
-    } catch {
+    } catch (error) {
+      console.error("Failed to save workflow", error)
       setStatus("Save failed. Please try again.")
+      toast.error("Save failed")
       return null
+    } finally {
+      setIsSavingWorkflow(false)
+    }
+  }
+
+  const handlePublish = async () => {
+    if (isSavingWorkflow || isPublishingWorkflow || isDeactivatingWorkflow) {
+      return null
+    }
+
+    setIsPublishingWorkflow(true)
+    setStatus("Publishing...")
+
+    try {
+      const saved = await handleSave({
+        allowDuringPublish: true,
+        showToast: false,
+      })
+
+      if (!saved) {
+        return null
+      }
+
+      const published = (await publishWorkflow({
+        workflowId: saved.id,
+      })) as WorkflowRecord
+      const publishedDefinition = normalizeLoadedWorkflowDefinition(published)
+
+      setWorkflowId(published.id)
+      setLoadWorkflowId(published.id)
+      applyDefinitionToState(publishedDefinition)
+      lastSyncedDefinitionRef.current = publishedDefinition
+      hasLoadedWorkflowRef.current = true
+      lastRemoteUpdatedAtRef.current = published.updatedAt
+      setStatus("Published.")
+      toast.success("Workflow published")
+      refreshLibrary()
+      return published
+    } catch (error) {
+      console.error("Failed to publish workflow", error)
+      setStatus("Publish failed. Please try again.")
+      toast.error("Publish failed")
+      return null
+    } finally {
+      setIsPublishingWorkflow(false)
+    }
+  }
+
+  const handleDeactivate = async () => {
+    if (
+      !workflowId ||
+      isSavingWorkflow ||
+      isPublishingWorkflow ||
+      isDeactivatingWorkflow
+    ) {
+      return null
+    }
+
+    setIsDeactivatingWorkflow(true)
+    setStatus("Deactivating...")
+
+    try {
+      const deactivated = (await deactivateWorkflow({
+        workflowId,
+      })) as WorkflowRecord
+      const deactivatedDefinition =
+        normalizeLoadedWorkflowDefinition(deactivated)
+
+      setWorkflowId(deactivated.id)
+      setLoadWorkflowId(deactivated.id)
+      applyDefinitionToState(deactivatedDefinition)
+      lastSyncedDefinitionRef.current = deactivatedDefinition
+      hasLoadedWorkflowRef.current = true
+      lastRemoteUpdatedAtRef.current = deactivated.updatedAt
+      setStatus("Deactivated.")
+      toast.success("Workflow deactivated")
+      refreshLibrary()
+      return deactivated
+    } catch (error) {
+      console.error("Failed to deactivate workflow", error)
+      setStatus("Deactivate failed. Please try again.")
+      toast.error("Deactivate failed")
+      return null
+    } finally {
+      setIsDeactivatingWorkflow(false)
     }
   }
 
@@ -3628,12 +3748,59 @@ export const WorkflowBuilderView = ({
         </button>
         <button
           className="toolbar-button publish"
-          onClick={handleSave}
+          disabled={
+            isSavingWorkflow || isPublishingWorkflow || isDeactivatingWorkflow
+          }
+          onClick={() => void handleSave()}
           aria-label="Save"
+          aria-busy={isSavingWorkflow}
         >
-          <Icon name="publish" size={18} />
-          <span>Save</span>
+          {isSavingWorkflow ? (
+            <i className="button-spinner" aria-hidden />
+          ) : (
+            <Icon name="publish" size={18} />
+          )}
+          <span>{isSavingWorkflow ? "Saving" : "Save"}</span>
         </button>
+        <button
+          className="toolbar-button publish"
+          disabled={
+            isSavingWorkflow || isPublishingWorkflow || isDeactivatingWorkflow
+          }
+          onClick={handlePublish}
+          aria-label="Publish"
+          aria-busy={isPublishingWorkflow}
+        >
+          {isPublishingWorkflow ? (
+            <i className="button-spinner" aria-hidden />
+          ) : (
+            <Icon name="check" size={18} />
+          )}
+          <span>{isPublishingWorkflow ? "Publishing" : "Publish"}</span>
+        </button>
+        {currentWorkflowIsActive && (
+          <button
+            className="toolbar-button deactivate"
+            disabled={
+              isSavingWorkflow || isPublishingWorkflow || isDeactivatingWorkflow
+            }
+            onClick={handleDeactivate}
+            aria-label="Deactivate workflow"
+            aria-busy={isDeactivatingWorkflow}
+          >
+            {isDeactivatingWorkflow ? (
+              <i className="button-spinner" aria-hidden />
+            ) : (
+              <Icon name="close" size={18} />
+            )}
+            <span>
+              {isDeactivatingWorkflow ? "Deactivating" : "Deactivate"}
+            </span>
+          </button>
+        )}
+        <span className="workflow-status-pill" aria-live="polite">
+          {status}
+        </span>
       </div>
 
       <div className="collaboration-strip" aria-label="Workflow collaborators">
@@ -5187,7 +5354,10 @@ export const WorkflowBuilderView = ({
                     className="library-item"
                     onClick={() => handleLoad(workflow.id)}
                   >
-                    <span>{workflow.name}</span>
+                    <span>
+                      {workflow.name}
+                      {workflow.isActive ? " - Active" : ""}
+                    </span>
                     <em>{workflow.description || "No description."}</em>
                   </button>
                 ))

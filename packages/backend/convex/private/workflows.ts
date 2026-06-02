@@ -120,6 +120,10 @@ const toWorkflowRecord = (workflow: {
   name: string
   description?: string
   definition: unknown
+  publishedDefinition?: unknown
+  isActive?: boolean
+  publishedAt?: number
+  publishedBy?: string
   createdAt: number
   updatedAt: number
   updatedBy?: string
@@ -128,6 +132,10 @@ const toWorkflowRecord = (workflow: {
   name: workflow.name,
   description: workflow.description ?? null,
   definition: workflow.definition,
+  publishedDefinition: workflow.publishedDefinition ?? null,
+  isActive: workflow.isActive ?? false,
+  publishedAt: workflow.publishedAt ?? null,
+  publishedBy: workflow.publishedBy ?? null,
   createdAt: workflow.createdAt,
   updatedAt: workflow.updatedAt,
   updatedBy: workflow.updatedBy,
@@ -454,6 +462,8 @@ export const list = query({
       name: workflow.name,
       description: workflow.description ?? null,
       updatedAt: workflow.updatedAt,
+      isActive: workflow.isActive ?? false,
+      publishedAt: workflow.publishedAt ?? null,
     }))
   },
 })
@@ -680,5 +690,77 @@ export const save = mutation({
 
     const created = await ctx.db.get(workflowId)
     return toWorkflowRecord(created!)
+  },
+})
+
+export const publish = mutation({
+  args: {
+    workflowId: v.id("workflows"),
+  },
+  handler: async (ctx, args) => {
+    const { identity, organizationId } = await getOrganizationIdentity(ctx)
+    const now = Date.now()
+    const workflow = await assertWorkflowAccess(
+      ctx,
+      args.workflowId,
+      organizationId
+    )
+    const definition = withWorkflowMetadata(
+      args.workflowId,
+      workflow.name,
+      workflow.description,
+      workflow.definition as StoredWorkflowDefinition
+    )
+
+    const activeWorkflows = await ctx.db
+      .query("workflows")
+      .withIndex("by_organization_id_and_active", (q) =>
+        q.eq("organizationId", organizationId).eq("isActive", true)
+      )
+      .collect()
+
+    await Promise.all(
+      activeWorkflows
+        .filter((activeWorkflow) => activeWorkflow._id !== args.workflowId)
+        .map((activeWorkflow) =>
+          ctx.db.patch(activeWorkflow._id, {
+            isActive: false,
+            updatedAt: now,
+            updatedBy: identity.subject,
+          })
+        )
+    )
+
+    await ctx.db.patch(args.workflowId, {
+      publishedDefinition: definition,
+      isActive: true,
+      publishedAt: now,
+      publishedBy: identity.subject,
+      updatedAt: now,
+      updatedBy: identity.subject,
+    })
+
+    const published = await ctx.db.get(args.workflowId)
+    return toWorkflowRecord(published!)
+  },
+})
+
+export const deactivate = mutation({
+  args: {
+    workflowId: v.id("workflows"),
+  },
+  handler: async (ctx, args) => {
+    const { identity, organizationId } = await getOrganizationIdentity(ctx)
+    const now = Date.now()
+    await assertWorkflowAccess(ctx, args.workflowId, organizationId)
+
+    await ctx.db.patch(args.workflowId, {
+      isActive: false,
+      updatedAt: now,
+      updatedBy: identity.subject,
+    })
+
+    const deactivated = await ctx.db.get(args.workflowId)
+    return toWorkflowRecord(deactivated!)
   },
 })

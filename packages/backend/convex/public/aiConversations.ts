@@ -1,5 +1,5 @@
 import { ConvexError, v } from "convex/values"
-import { mutation, MutationCtx } from "../_generated/server"
+import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server"
 import { components, internal } from "../_generated/api"
 import { Doc, Id } from "../_generated/dataModel"
 import { saveMessage } from "@convex-dev/agent"
@@ -8,13 +8,14 @@ import { enforceRateLimit } from "../lib/rateLimits"
 
 const providerValidator = v.union(
   v.literal("openai_realtime"),
-  v.literal("gemini_live")
+  v.literal("gemini_live"),
+  v.literal("vapi")
 )
 
 const roleValidator = v.union(v.literal("user"), v.literal("assistant"))
 
 const getValidatedContactSession = async (
-  ctx: MutationCtx,
+  ctx: MutationCtx | QueryCtx,
   {
     contactSessionId,
     organizationId,
@@ -41,6 +42,52 @@ const getValidatedContactSession = async (
 
   return contactSession
 }
+
+export const getLatestTranscript = query({
+  args: {
+    organizationId: v.string(),
+    contactSessionId: v.id("contactSessions"),
+    provider: providerValidator,
+  },
+  handler: async (ctx, args) => {
+    await getValidatedContactSession(ctx, {
+      contactSessionId: args.contactSessionId,
+      organizationId: args.organizationId,
+    })
+
+    const conversations = await ctx.db
+      .query("aiVoiceConversations")
+      .withIndex("by_contact_session_id", (q) =>
+        q.eq("contactSessionId", args.contactSessionId)
+      )
+      .collect()
+
+    const conversation = conversations
+      .filter(
+        (candidate) =>
+          candidate.organizationId === args.organizationId &&
+          candidate.provider === args.provider
+      )
+      .sort((a, b) => b.lastActivityAt - a.lastActivityAt)[0]
+
+    if (!conversation) {
+      return []
+    }
+
+    const messages = await ctx.db
+      .query("aiVoiceConversationMessages")
+      .withIndex("by_conversation_id", (q) =>
+        q.eq("conversationId", conversation._id)
+      )
+      .collect()
+
+    return messages.map((message) => ({
+      role: message.role,
+      text: message.text,
+      createdAt: message._creationTime,
+    }))
+  },
+})
 
 const getValidatedConversation = async (
   ctx: MutationCtx,
@@ -175,6 +222,29 @@ export const create = mutation({
     })
 
     const now = Date.now()
+    const existingConversations = await ctx.db
+      .query("aiVoiceConversations")
+      .withIndex("by_contact_session_id", (q) =>
+        q.eq("contactSessionId", args.contactSessionId)
+      )
+      .collect()
+
+    const existingConversation = existingConversations
+      .filter(
+        (conversation) =>
+          conversation.organizationId === args.organizationId &&
+          conversation.provider === args.provider
+      )
+      .sort((a, b) => b.lastActivityAt - a.lastActivityAt)[0]
+
+    if (existingConversation) {
+      await ctx.db.patch(existingConversation._id, {
+        lastActivityAt: now,
+        endedAt: undefined,
+      })
+
+      return existingConversation._id
+    }
 
     return await ctx.db.insert("aiVoiceConversations", {
       organizationId: args.organizationId,
@@ -213,7 +283,8 @@ export const appendMessage = mutation({
     if (args.role === "user") {
       await enforceRateLimit(ctx, "voiceTranscriptBySession", {
         key: `${conversation.organizationId}:${args.contactSessionId}`,
-        message: "Voice messages are arriving too quickly. Please wait a moment.",
+        message:
+          "Voice messages are arriving too quickly. Please wait a moment.",
       })
     }
 
@@ -231,6 +302,7 @@ export const appendMessage = mutation({
 
     await ctx.db.patch(args.conversationId, {
       lastActivityAt: now,
+      endedAt: undefined,
       lastMessagePreview: text.slice(0, 240),
       lastMessageRole: args.role,
       unreadForOperatorCount:

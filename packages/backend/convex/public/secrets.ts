@@ -44,14 +44,11 @@ type TokenActionResponse = {
 
 const openAIRealtimeInstructions = (prompt?: string) => `${prompt || ""}
 
-For any product, pricing, policy, support, company, or account question, call the search_knowledge_base tool before answering. Only answer from the returned knowledge base result. If the tool returns no specific information, say you could not find that in the knowledge base and offer human support.
-
-If the user asks for a human, a real person, or says they want to escalate, call escalate_to_human.
-If the user confirms their issue is fully handled and they are done, call mark_resolved.`
+For any product, pricing, policy, support, company, or account question, call the search_knowledge_base tool before answering. Only answer from the returned knowledge base result. If the tool returns no specific information, say you could not find that in the knowledge base.`
 
 const geminiLiveInstructions = (prompt?: string) => `${prompt || ""}
 
-For any product, pricing, policy, support, company, or account question, call the search_knowledge_base tool before answering. Only answer from the returned knowledge base result. If the user asks for a human or says they want to escalate, call escalate_to_human. If the user confirms the issue is fully handled, call mark_resolved.`
+For any product, pricing, policy, support, company, or account question, call the search_knowledge_base tool before answering. Only answer from the returned knowledge base result. If the tool returns no specific information, say you could not find that in the knowledge base.`
 
 const getProviderApiKey = async (
   ctx: any,
@@ -183,28 +180,6 @@ export const createOpenAIRealtimeSession = action({
                     },
                   },
                   required: ["query"],
-                  additionalProperties: false,
-                },
-              },
-              {
-                type: "function",
-                name: "escalate_to_human",
-                description:
-                  "Escalate this realtime voice conversation to a human operator and continue in the chat widget.",
-                parameters: {
-                  type: "object",
-                  properties: {},
-                  additionalProperties: false,
-                },
-              },
-              {
-                type: "function",
-                name: "mark_resolved",
-                description:
-                  "Mark this realtime voice conversation as resolved once the user confirms the issue is fully handled.",
-                parameters: {
-                  type: "object",
-                  properties: {},
                   additionalProperties: false,
                 },
               },
@@ -367,24 +342,6 @@ export const createGeminiLiveToken = action({
                           },
                         },
                         required: ["query"],
-                      },
-                    },
-                    {
-                      name: "escalate_to_human",
-                      description:
-                        "Escalate this realtime voice conversation to a human operator and continue in the chat widget.",
-                      parameters: {
-                        type: Type.OBJECT,
-                        properties: {},
-                      },
-                    },
-                    {
-                      name: "mark_resolved",
-                      description:
-                        "Mark this realtime voice conversation as resolved once the user confirms the issue is fully handled.",
-                      parameters: {
-                        type: Type.OBJECT,
-                        properties: {},
                       },
                     },
                   ],

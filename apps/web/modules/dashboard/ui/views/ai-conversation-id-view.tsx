@@ -9,7 +9,6 @@ import {
   BotIcon,
   Clock3Icon,
   GlobeIcon,
-  MessageSquareTextIcon,
   SparklesIcon,
   UserRoundIcon,
   CircleIcon,
@@ -35,8 +34,6 @@ import { cn } from "@workspace/ui/lib/utils"
 import {
   AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES,
   AI_CONVERSATION_PROVIDER_LABELS,
-  AI_CONVERSATION_STATUS_BADGE_CLASSNAMES,
-  AI_CONVERSATION_STATUS_LABELS,
 } from "../../constants"
 
 const formatTimestamp = (timestamp: number) =>
@@ -56,6 +53,55 @@ const formatCurrentPage = (value: string | undefined) => {
   } catch {
     return value
   }
+}
+
+const getVisitorLabel = (conversation: {
+  contactSession?: { isAnonymous?: boolean; name?: string } | null
+}) => {
+  if (conversation.contactSession?.isAnonymous) {
+    return "Anonymous voice visitor"
+  }
+
+  return conversation.contactSession?.name ?? "Unknown visitor"
+}
+
+const getVisitorDetail = (conversation: {
+  contactSession?: {
+    email?: string
+    isAnonymous?: boolean
+    metadata?: { currentUrl?: string; timezone?: string }
+  } | null
+}) => {
+  if (!conversation.contactSession?.isAnonymous) {
+    return conversation.contactSession?.email
+  }
+
+  return (
+    formatCurrentPage(conversation.contactSession.metadata?.currentUrl) ??
+    conversation.contactSession.metadata?.timezone ??
+    "Anonymous voice session"
+  )
+}
+
+const getProviderLabel = (provider: string) => {
+  if (provider === "vapi") return "Vapi"
+  return (
+    AI_CONVERSATION_PROVIDER_LABELS[
+      provider as keyof typeof AI_CONVERSATION_PROVIDER_LABELS
+    ] ?? "Voice AI"
+  )
+}
+
+const getProviderBadgeClassName = (provider: string) => {
+  if (provider === "vapi") {
+    return "border-violet-500/25 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+  }
+
+  return (
+    AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES[
+      provider as keyof typeof AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES
+    ] ?? "border-border bg-muted/50 text-muted-foreground"
+  )
 }
 
 export const AIConversationIdView = ({
@@ -131,12 +177,10 @@ export const AIConversationIdView = ({
     )
   }
 
-  const providerLabel = AI_CONVERSATION_PROVIDER_LABELS[conversation.provider]
-  const providerBadgeClassName =
-    AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES[conversation.provider]
-  const status = conversation.status ?? "unresolved"
-  const statusLabel = AI_CONVERSATION_STATUS_LABELS[status]
-  const statusBadgeClassName = AI_CONVERSATION_STATUS_BADGE_CLASSNAMES[status]
+  const providerLabel = getProviderLabel(conversation.provider)
+  const providerBadgeClassName = getProviderBadgeClassName(
+    conversation.provider
+  )
   const currentPage = formatCurrentPage(
     conversation.contactSession?.metadata?.currentUrl
   )
@@ -169,11 +213,11 @@ export const AIConversationIdView = ({
                 AI Voicechat
               </p>
               <h1 className="mt-1 truncate text-[18px] font-semibold text-foreground sm:text-[20px]">
-                {conversation.contactSession?.name ?? "Unknown visitor"}
+                {getVisitorLabel(conversation)}
               </h1>
-              {conversation.contactSession?.email ? (
+              {getVisitorDetail(conversation) ? (
                 <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
-                  {conversation.contactSession.email}
+                  {getVisitorDetail(conversation)}
                 </p>
               ) : null}
             </div>
@@ -208,30 +252,6 @@ export const AIConversationIdView = ({
               />
               {conversation.endedAt ? "Ended" : "Live"}
             </Badge>
-            <Badge
-              className={cn(
-                "h-6 rounded-md border px-2 text-[11px] font-medium",
-                statusBadgeClassName
-              )}
-              variant="outline"
-            >
-              {statusLabel}
-            </Badge>
-            {conversation.linkedConversationId ? (
-              <Button
-                className="h-7 rounded-lg px-2.5 text-[11px]"
-                onClick={() =>
-                  router.push(
-                    `/conversations/${conversation.linkedConversationId}`
-                  )
-                }
-                size="sm"
-                variant="outline"
-              >
-                <MessageSquareTextIcon className="size-3.5" />
-                Handoff
-              </Button>
-            ) : null}
           </div>
         </div>
 
@@ -362,8 +382,8 @@ export const AIConversationIdView = ({
                       No transcript messages yet
                     </p>
                     <p className="mt-1 text-[11px] text-muted-foreground sm:text-[12px]">
-                      This session was created before transcript lines were
-                      stored.
+                      The call is saved. Final transcript lines will appear here
+                      as the voice provider returns them.
                     </p>
                   </div>
                 </div>

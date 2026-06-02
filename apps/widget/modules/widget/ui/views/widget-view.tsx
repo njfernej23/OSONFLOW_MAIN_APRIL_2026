@@ -1,7 +1,8 @@
 "use client"
-import { useAtomValue } from "jotai"
+import { useAtomValue, useSetAtom } from "jotai"
 import {
   screenAtom,
+  widgetModeAtom,
   widgetSettingsAtom,
 } from "@/modules/widget/atoms/widget-atoms"
 import { WidgetAuthScreen } from "@/modules/widget/ui/screens/widget-auth-screen"
@@ -19,14 +20,23 @@ import {
   getContrastingTextColor,
   mergeWidgetTheme,
 } from "@workspace/ui/lib/widget-customization"
-import { CSSProperties } from "react"
+import { CSSProperties, useEffect } from "react"
+import type { WidgetMode } from "../../atoms/widget-atoms"
 
 interface Props {
   organizationId: string | null
+  mode?: WidgetMode
+  parentPageUrl?: string
 }
 
-export const WidgetView = ({ organizationId }: Props) => {
+export const WidgetView = ({
+  mode = "standard",
+  organizationId,
+  parentPageUrl,
+}: Props) => {
   const screen = useAtomValue(screenAtom)
+  const widgetMode = useAtomValue(widgetModeAtom)
+  const setWidgetMode = useSetAtom(widgetModeAtom)
   const widgetSettings = useAtomValue(widgetSettingsAtom)
   const theme = mergeWidgetTheme(widgetSettings?.theme)
   const primaryForeground = getContrastingTextColor(theme.primaryColor)
@@ -46,8 +56,18 @@ export const WidgetView = ({ organizationId }: Props) => {
     "--primary-foreground": primaryForeground,
   } as CSSProperties
 
+  useEffect(() => {
+    setWidgetMode(mode)
+  }, [mode, setWidgetMode])
+
   const screenComponents = {
-    loading: <WidgetLoadingScreen organizationId={organizationId} />,
+    loading: (
+      <WidgetLoadingScreen
+        mode={mode}
+        organizationId={organizationId}
+        parentPageUrl={parentPageUrl}
+      />
+    ),
     auth: <WidgetAuthScreen />,
     selection: <WidgetSelectionScreen />,
     help: <WidgetHelpScreen />,
@@ -55,7 +75,7 @@ export const WidgetView = ({ organizationId }: Props) => {
     article: <WidgetArticleScreen />,
     error: <WidgetErrorScreen />,
     chat: <WidgetChatScreen />,
-    voice: <WidgetVoiceScreen />,
+    voice: <WidgetVoiceScreen mode={widgetMode} />,
     inbox: <WidgetInboxScreen />,
     contact: <WidgetContactScreen />,
   }
