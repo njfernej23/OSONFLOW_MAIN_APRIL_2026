@@ -333,6 +333,43 @@ export default defineSchema({
     .index("by_organization_id", ["organizationId"])
     .index("by_integration_id_and_chat_id", ["integrationId", "chatId"])
     .index("by_contact_session_id", ["contactSessionId"]),
+  instagramIntegrations: defineTable({
+    organizationId: v.string(),
+    accessToken: v.string(),
+    instagramUserId: v.string(),
+    username: v.optional(v.string()),
+    webhookSecret: v.string(),
+    verifyToken: v.string(),
+    webhookUrl: v.optional(v.string()),
+    isEnabled: v.boolean(),
+    status: v.union(
+      v.literal("connected"),
+      v.literal("needs_webhook_url"),
+      v.literal("error")
+    ),
+    setupError: v.optional(v.string()),
+    lastWebhookAt: v.optional(v.number()),
+    createdBy: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_webhook_secret", ["webhookSecret"])
+    .index("by_instagram_user_id", ["instagramUserId"]),
+  instagramContacts: defineTable({
+    organizationId: v.string(),
+    integrationId: v.id("instagramIntegrations"),
+    senderId: v.string(),
+    username: v.optional(v.string()),
+    contactSessionId: v.id("contactSessions"),
+    activeConversationId: v.optional(v.id("conversations")),
+    lastMessageAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_integration_id_and_sender_id", ["integrationId", "senderId"])
+    .index("by_contact_session_id", ["contactSessionId"]),
   conversations: defineTable({
     threadId: v.string(),
     organizationId: v.string(),
@@ -483,6 +520,9 @@ export default defineSchema({
         telegramUserId: v.optional(v.string()),
         telegramUsername: v.optional(v.string()),
         telegramLanguageCode: v.optional(v.string()),
+        instagramUserId: v.optional(v.string()),
+        instagramUsername: v.optional(v.string()),
+        instagramAccountId: v.optional(v.string()),
         screenResolution: v.optional(v.string()),
         viewportSize: v.optional(v.string()),
         timezone: v.optional(v.string()),

@@ -88,22 +88,26 @@ export const ContactPanel = () => {
       return []
     }
 
+    const isExternalChannel =
+      contactSession.metadata.platform === "Telegram" ||
+      contactSession.metadata.platform === "Instagram"
     const isTelegramSession = contactSession.metadata.platform === "Telegram"
+    const isInstagramSession = contactSession.metadata.platform === "Instagram"
 
     return [
       {
         id: "device-info",
         icon: MonitorIcon,
         title: "Device",
-        items: isTelegramSession
+        items: isExternalChannel
           ? [
               {
                 label: "Platform",
-                value: contactSession.metadata.platform || "Telegram",
+                value: contactSession.metadata.platform || "External",
               },
               {
                 label: "Vendor",
-                value: contactSession.metadata.vendor || "Telegram",
+                value: contactSession.metadata.vendor || "Unknown",
               },
             ]
           : [
@@ -170,6 +174,20 @@ export const ContactPanel = () => {
                   label: "Username",
                   value: contactSession.metadata.telegramUsername
                     ? `@${contactSession.metadata.telegramUsername}`
+                    : "Unknown",
+                },
+              ]
+            : []),
+          ...(isInstagramSession
+            ? [
+                {
+                  label: "Instagram ID",
+                  value: contactSession.metadata.instagramUserId || "Unknown",
+                },
+                {
+                  label: "Username",
+                  value: contactSession.metadata.instagramUsername
+                    ? `@${contactSession.metadata.instagramUsername}`
                     : "Unknown",
                 },
               ]
@@ -328,10 +346,7 @@ export const ContactPanelSkeleton = () => {
                   >
                     <Skeleton className="h-2.5 w-14" />
                     <Skeleton
-                      className={cn(
-                        "h-2.5",
-                        itemIndex === 0 ? "w-24" : "w-20"
-                      )}
+                      className={cn("h-2.5", itemIndex === 0 ? "w-24" : "w-20")}
                     />
                   </div>
                 ))}

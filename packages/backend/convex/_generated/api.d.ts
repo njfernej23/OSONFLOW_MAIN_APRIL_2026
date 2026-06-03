@@ -20,6 +20,7 @@ import type * as private_contactSessions from "../private/contactSessions.js";
 import type * as private_conversations from "../private/conversations.js";
 import type * as private_customerMemories from "../private/customerMemories.js";
 import type * as private_files from "../private/files.js";
+import type * as private_instagram from "../private/instagram.js";
 import type * as private_integrationWebhooks from "../private/integrationWebhooks.js";
 import type * as private_messages from "../private/messages.js";
 import type * as private_plugins from "../private/plugins.js";
@@ -47,6 +48,7 @@ import type * as system_ai_tools_resolveConversation from "../system/ai/tools/re
 import type * as system_ai_tools_search from "../system/ai/tools/search.js";
 import type * as system_contactSessions from "../system/contactSessions.js";
 import type * as system_conversations from "../system/conversations.js";
+import type * as system_instagram from "../system/instagram.js";
 import type * as system_integrationWebhooks from "../system/integrationWebhooks.js";
 import type * as system_intelligence from "../system/intelligence.js";
 import type * as system_plugins from "../system/plugins.js";
@@ -82,6 +84,7 @@ declare const fullApi: ApiFromModules<{
   "private/conversations": typeof private_conversations;
   "private/customerMemories": typeof private_customerMemories;
   "private/files": typeof private_files;
+  "private/instagram": typeof private_instagram;
   "private/integrationWebhooks": typeof private_integrationWebhooks;
   "private/messages": typeof private_messages;
   "private/plugins": typeof private_plugins;
@@ -109,6 +112,7 @@ declare const fullApi: ApiFromModules<{
   "system/ai/tools/search": typeof system_ai_tools_search;
   "system/contactSessions": typeof system_contactSessions;
   "system/conversations": typeof system_conversations;
+  "system/instagram": typeof system_instagram;
   "system/integrationWebhooks": typeof system_integrationWebhooks;
   "system/intelligence": typeof system_intelligence;
   "system/plugins": typeof system_plugins;

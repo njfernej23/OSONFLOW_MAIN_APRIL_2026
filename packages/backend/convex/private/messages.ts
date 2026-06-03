@@ -176,6 +176,15 @@ export const create = mutation({
 
     await ctx.scheduler.runAfter(
       0,
+      (internal as any).system.instagram.sendConversationMessage,
+      {
+        conversationId: args.conversationId,
+        text: args.prompt,
+      }
+    )
+
+    await ctx.scheduler.runAfter(
+      0,
       (internal as any).system.intelligence.analyzeChatConversation,
       {
         conversationId: args.conversationId,

@@ -434,6 +434,12 @@ export const remove = mutation({
       .filter((q) => q.eq(q.field("activeConversationId"), args.conversationId))
       .collect()
 
+    const instagramContacts = await ctx.db
+      .query("instagramContacts")
+      .withIndex("by_organization_id", (q) => q.eq("organizationId", orgId))
+      .filter((q) => q.eq(q.field("activeConversationId"), args.conversationId))
+      .collect()
+
     await Promise.all([
       ctx.runMutation(components.agent.threads.deleteAllForThreadIdAsync, {
         threadId: conversation.threadId,
@@ -447,6 +453,11 @@ export const remove = mutation({
         })
       ),
       ...telegramContacts.map((contact) =>
+        ctx.db.patch(contact._id, {
+          activeConversationId: undefined,
+        })
+      ),
+      ...instagramContacts.map((contact) =>
         ctx.db.patch(contact._id, {
           activeConversationId: undefined,
         })
