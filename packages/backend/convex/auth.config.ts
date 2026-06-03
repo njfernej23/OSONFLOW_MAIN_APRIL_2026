@@ -1,8 +1,8 @@
 export default {
   providers: [
     {
-      domain: "https://relaxed-halibut-53.clerk.accounts.dev",
+      domain: process.env.CLERK_FRONTEND_API_URL!,
       applicationID: "convex",
-    }
-  ]
+    },
+  ],
 };

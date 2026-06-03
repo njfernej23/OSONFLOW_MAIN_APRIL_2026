@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { UserButton, useUser } from "@clerk/nextjs"
+import { UserButton, useOrganization, useUser } from "@clerk/nextjs"
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowRightIcon } from "lucide-react"
@@ -33,6 +33,7 @@ export const LandingNav = () => {
   const [isScrolled, setIsScrolled] = useState(false)
   const isScrolledRef = useRef(false)
   const { isLoaded, isSignedIn } = useUser()
+  const { isLoaded: isOrganizationLoaded, organization } = useOrganization()
 
   useEffect(() => {
     const updateScrolledState = () => {
@@ -117,7 +118,11 @@ export const LandingNav = () => {
             <LanguageSwitcher compact />
             <Link
               className="inline-flex h-10 shrink-0 items-center rounded-[4px] bg-[#240029] px-4 text-sm font-bold whitespace-nowrap text-white shadow-[rgba(255,255,255,0.2)_0_0_0_1px_inset,rgba(0,0,0,0.05)_0_1px_2px_0] transition hover:-translate-y-0.5 hover:bg-[#3a083f] sm:h-11 sm:px-5"
-              href="/analytics"
+              href={
+                isOrganizationLoaded && !organization
+                  ? "/org-selection"
+                  : "/analytics"
+              }
             >
               Dashboard
             </Link>

@@ -47,7 +47,10 @@ export default function RootLayout({
         )}
         suppressHydrationWarning
       >
-        <ClerkProvider>
+        <ClerkProvider
+          signInFallbackRedirectUrl="/analytics"
+          signUpFallbackRedirectUrl="/org-selection"
+        >
           <Providers>
             <Toaster />
             {children}
