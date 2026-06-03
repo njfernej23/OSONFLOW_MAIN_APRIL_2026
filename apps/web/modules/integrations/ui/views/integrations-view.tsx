@@ -1,6 +1,6 @@
 "use client"
 
-import { Show, useOrganization } from "@clerk/nextjs"
+import { useOrganization } from "@clerk/nextjs"
 import { useAction, useMutation, useQuery } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
 import { Badge } from "@workspace/ui/components/badge"
@@ -70,7 +70,7 @@ import {
   ApiKeysSection,
   type ProviderStatuses,
 } from "../components/api-keys-section"
-import { PremiumFeatureOverlay } from "@/modules/billing/ui/components/premium-feature-overlay"
+import { ProFeatureGate } from "@/modules/billing/ui/components/pro-feature-gate"
 
 type WebhookDestination = {
   _id: string
@@ -1178,16 +1178,9 @@ export const IntegrationsView = () => {
 
         {/* ─── API KEYS ─── */}
         {activeSection === "apiKeys" && (
-          <Show
-            when={{ plan: "pro" }}
-            fallback={
-              <PremiumFeatureOverlay>
-                <ApiKeysSection providerStatuses={providerStatuses} />
-              </PremiumFeatureOverlay>
-            }
-          >
+          <ProFeatureGate>
             <ApiKeysSection providerStatuses={providerStatuses} />
-          </Show>
+          </ProFeatureGate>
         )}
 
         {/* ─── TELEGRAM BOT ─── */}
