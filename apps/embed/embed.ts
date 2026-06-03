@@ -1,5 +1,10 @@
 import { EMBED_CONFIG } from "./config"
-import { chatBubbleIcon, questionIcon, sparklesIcon } from "./icons"
+import {
+  chatBubbleIcon,
+  collapseIcon,
+  questionIcon,
+  sparklesIcon,
+} from "./icons"
 
 type WidgetPosition = "bottom-right" | "bottom-left"
 type WidgetLauncherIcon = "chat" | "sparkles" | "question"
@@ -22,6 +27,10 @@ type WidgetSettingsPayload = {
 
 const LAUNCHER_EDGE_OFFSET = 20
 const LAUNCHER_BUTTON_SIZE = 48
+const STANDARD_OPEN_CLOSE_BUTTON_SIZE = LAUNCHER_BUTTON_SIZE
+const STANDARD_OPEN_CLOSE_BUTTON_GAP = 8
+const STANDARD_CLOSE_RETURN_OFFSET_X = 18
+const STANDARD_LAUNCHER_REVEAL_DURATION = 180
 const LAUNCHER_ORB_SIZE = 34
 const LAUNCHER_BUTTON_GAP = 10
 const LAUNCHER_LABEL_PADDING_X = 18
@@ -40,6 +49,12 @@ const WIDGET_CONTAINER_VOICE_CLOSED_FILTER = "blur(10px)"
 const WIDGET_CONTAINER_VOICE_OPEN_FILTER = "blur(0px)"
 const WIDGET_CONTAINER_OPEN_RADIUS = "30px"
 const CONTAINER_MAX_HEIGHT_GUTTER = LAUNCHER_EDGE_OFFSET * 2
+const STANDARD_OPEN_CONTAINER_BOTTOM =
+  LAUNCHER_EDGE_OFFSET +
+  STANDARD_OPEN_CLOSE_BUTTON_SIZE +
+  STANDARD_OPEN_CLOSE_BUTTON_GAP
+const STANDARD_OPEN_CONTAINER_MAX_HEIGHT_GUTTER =
+  LAUNCHER_EDGE_OFFSET + STANDARD_OPEN_CONTAINER_BOTTOM
 const LAUNCHER_STYLE_ID = "echo-widget-launcher-styles"
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)"
 const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
@@ -487,8 +502,28 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
       return
     }
 
+    button.style.transition = "all 0.2s ease"
+
     if (isOpen) {
       button.classList.remove("echo-widget-button--voice")
+      if (!isLiveVoiceEnabled) {
+        button.style.width = `${STANDARD_OPEN_CLOSE_BUTTON_SIZE}px`
+        button.style.minWidth = `${STANDARD_OPEN_CLOSE_BUTTON_SIZE}px`
+        button.style.height = `${STANDARD_OPEN_CLOSE_BUTTON_SIZE}px`
+        button.style.padding = "0"
+        button.style.borderRadius = "50%"
+        button.style.justifyContent = "center"
+        button.style.background = launcherAppearance.launcherColor
+        button.style.color = getContrastingTextColor(
+          launcherAppearance.launcherColor
+        )
+        button.style.boxShadow = `0 18px 40px ${toShadowColor(
+          launcherAppearance.launcherColor
+        )}`
+        button.style.animation = "none"
+        button.setAttribute("aria-label", "Close chat widget")
+        button.innerHTML = collapseIcon
+      }
       syncLauncherVisibility()
       return
     }
@@ -514,6 +549,8 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
 
     button.classList.toggle("echo-widget-button--voice", isVoiceLauncher)
     button.style.width = hasVisibleLabel ? "auto" : `${LAUNCHER_BUTTON_SIZE}px`
+    button.style.minWidth = `${LAUNCHER_BUTTON_SIZE}px`
+    button.style.height = `${LAUNCHER_BUTTON_SIZE}px`
     button.style.padding = isVoiceLauncher
       ? "0 22px 0 7px"
       : hasVisibleLabel
@@ -551,6 +588,31 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
     }
 
     syncLauncherVisibility()
+  }
+
+  const revealStandardClosedLauncher = () => {
+    if (!button) {
+      return
+    }
+
+    applyLauncherAppearance()
+    button.style.transition = "none"
+    button.style.visibility = "visible"
+    button.style.display = "flex"
+    button.style.opacity = "0"
+    button.style.pointerEvents = "none"
+    button.style.transform = `translate3d(${STANDARD_CLOSE_RETURN_OFFSET_X}px, 0, 0) scale(0.94)`
+
+    window.requestAnimationFrame(() => {
+      if (!button) {
+        return
+      }
+
+      button.style.transition = `opacity ${STANDARD_LAUNCHER_REVEAL_DURATION}ms cubic-bezier(0.16, 1, 0.3, 1), transform ${STANDARD_LAUNCHER_REVEAL_DURATION}ms cubic-bezier(0.16, 1, 0.3, 1)`
+      button.style.opacity = "1"
+      button.style.pointerEvents = "auto"
+      button.style.transform = "scale(1)"
+    })
   }
 
   const updateLauncherAppearance = (appearance: WidgetAppearancePayload) => {
@@ -602,10 +664,11 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
       return
     }
 
-    button.style.visibility = isOpen ? "hidden" : "visible"
-    button.style.display = isOpen ? "none" : "flex"
-    button.style.opacity = isOpen ? "0" : "1"
-    button.style.pointerEvents = isOpen ? "none" : "auto"
+    const shouldShowButton = !isOpen || !isLiveVoiceEnabled
+    button.style.visibility = shouldShowButton ? "visible" : "hidden"
+    button.style.display = shouldShowButton ? "flex" : "none"
+    button.style.opacity = shouldShowButton ? "1" : "0"
+    button.style.pointerEvents = shouldShowButton ? "auto" : "none"
     button.style.transform = "scale(1)"
   }
 
@@ -877,7 +940,18 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
       return
     }
 
+    const shouldReserveCloseButtonSpace = isOpen && !isLiveVoiceEnabled
     container.style.width = `${WIDGET_CONTAINER_WIDTH}px`
+    container.style.bottom = `${
+      shouldReserveCloseButtonSpace
+        ? STANDARD_OPEN_CONTAINER_BOTTOM
+        : LAUNCHER_EDGE_OFFSET
+    }px`
+    container.style.maxHeight = `calc(100vh - ${
+      shouldReserveCloseButtonSpace
+        ? STANDARD_OPEN_CONTAINER_MAX_HEIGHT_GUTTER
+        : CONTAINER_MAX_HEIGHT_GUTTER
+    }px)`
     container.style.height = `${
       isLiveVoiceEnabled
         ? WIDGET_CONTAINER_VOICE_HEIGHT
@@ -994,8 +1068,8 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
 
       container.style.display = "block"
       syncContainerTransformOrigin()
-      applyContainerAnimationState("closed", { immediate: true })
       isOpen = true
+      applyContainerAnimationState("closed", { immediate: true })
       syncLauncherVisibility()
       // Trigger animation
       window.requestAnimationFrame(() => {
@@ -1012,11 +1086,15 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
         hideTimer = null
       }
 
+      const shouldRevealStandardLauncherNow = !isLiveVoiceEnabled
+
       isOpen = false
       const shouldDelayLauncherReveal = isLiveVoiceEnabled
-      applyLauncherAppearance()
+      if (!shouldDelayLauncherReveal) {
+        revealStandardClosedLauncher()
+      }
       syncContainerTransformOrigin()
-      if (shouldDelayLauncherReveal && button) {
+      if (isLiveVoiceEnabled && button) {
         button.style.visibility = "hidden"
         button.style.opacity = "0"
         button.style.pointerEvents = "none"
@@ -1029,6 +1107,8 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
         }
         if (shouldDelayLauncherReveal) {
           syncLauncherVisibility()
+        } else if (shouldRevealStandardLauncherNow && button) {
+          button.style.pointerEvents = "auto"
         }
         hideTimer = null
       }, getContainerAnimationDuration("closed"))

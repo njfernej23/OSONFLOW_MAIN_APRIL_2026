@@ -15,6 +15,10 @@ export const questionIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="22" 
   <path d="M12 17h.01"></path>
 </svg>`;
 
+export const collapseIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round">
+  <path d="m6 9 6 6 6-6"></path>
+</svg>`;
+
 // Close X icon
 export const closeIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <line x1="18" y1="6" x2="6" y2="18"></line>
