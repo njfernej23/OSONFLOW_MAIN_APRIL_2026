@@ -215,6 +215,12 @@ export default defineSchema({
   subscriptions: defineTable({
     organizationId: v.string(),
     status: v.string(),
+    provider: v.optional(v.union(v.literal("clerk"), v.literal("polar"))),
+    polarCustomerId: v.optional(v.string()),
+    polarProductId: v.optional(v.string()),
+    polarSubscriptionId: v.optional(v.string()),
+    currentPeriodEnd: v.optional(v.number()),
+    updatedAt: v.optional(v.number()),
   }).index("by_organization_id", ["organizationId"]),
   widgetSettings: defineTable({
     organizationId: v.string(),

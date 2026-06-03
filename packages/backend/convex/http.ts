@@ -1,6 +1,10 @@
 import { Webhook } from "svix"
 import { createClerkClient } from "@clerk/backend"
 import type { WebhookEvent } from "@clerk/backend"
+import {
+  validateEvent,
+  WebhookVerificationError,
+} from "@polar-sh/sdk/webhooks"
 import { httpRouter } from "convex/server"
 import { httpAction } from "./_generated/server"
 import { internal } from "./_generated/api"
@@ -63,6 +67,50 @@ const hasPaidPlanSignal = (payload: any): boolean => {
   }
 
   return /\b(pro|premium|paid|plus|business|team|growth)\b/.test(planText)
+}
+
+const polarSubscriptionEvents = new Set([
+  "subscription.created",
+  "subscription.active",
+  "subscription.updated",
+  "subscription.canceled",
+  "subscription.uncanceled",
+  "subscription.past_due",
+  "subscription.revoked",
+])
+
+const getMetadataString = (
+  metadata: Record<string, unknown> | null | undefined,
+  key: string
+) => {
+  const value = metadata?.[key]
+  return typeof value === "string" && value ? value : null
+}
+
+const getPolarOrganizationId = (subscription: any): string | null => {
+  const externalCustomerId = subscription?.customer?.externalId
+
+  if (typeof externalCustomerId === "string" && externalCustomerId) {
+    return externalCustomerId
+  }
+
+  return (
+    getMetadataString(subscription?.metadata, "organizationId") ??
+    getMetadataString(subscription?.customer?.metadata, "organizationId")
+  )
+}
+
+const getTimestamp = (value: unknown): number | undefined => {
+  if (value instanceof Date) {
+    return value.getTime()
+  }
+
+  if (typeof value === "string") {
+    const timestamp = Date.parse(value)
+    return Number.isFinite(timestamp) ? timestamp : undefined
+  }
+
+  return undefined
 }
 
 const isPaidSubscriptionItemPayload = (payload: any): boolean => {
@@ -168,6 +216,74 @@ http.route({
       default:
         console.log("Ignore Clerk webhook event", event.type)
     }
+    return new Response(null, { status: 200 })
+  }),
+})
+
+http.route({
+  path: "/polar-webhook",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const webhookSecret = process.env.POLAR_WEBHOOK_SECRET
+
+    if (!webhookSecret) {
+      return new Response("Missing Polar webhook secret", { status: 500 })
+    }
+
+    const body = await request.text()
+    const headers = {
+      "webhook-id": request.headers.get("webhook-id") ?? "",
+      "webhook-timestamp": request.headers.get("webhook-timestamp") ?? "",
+      "webhook-signature": request.headers.get("webhook-signature") ?? "",
+    }
+
+    let event: ReturnType<typeof validateEvent>
+
+    try {
+      event = validateEvent(body, headers, webhookSecret)
+    } catch (error) {
+      if (error instanceof WebhookVerificationError) {
+        return new Response("Invalid signature", { status: 403 })
+      }
+
+      throw error
+    }
+
+    if (!polarSubscriptionEvents.has(event.type)) {
+      return new Response(null, { status: 200 })
+    }
+
+    const subscription = event.data as any
+    const organizationId = getPolarOrganizationId(subscription)
+
+    if (!organizationId) {
+      console.warn("Ignore Polar subscription without organization id", {
+        event: event.type,
+        subscriptionId: subscription?.id,
+      })
+      return new Response(null, { status: 200 })
+    }
+
+    await ctx.runMutation(internal.system.subscriptions.upsert, {
+      organizationId,
+      status:
+        typeof subscription.status === "string"
+          ? subscription.status
+          : event.type.replace("subscription.", ""),
+      provider: "polar",
+      polarCustomerId:
+        typeof subscription.customerId === "string"
+          ? subscription.customerId
+          : subscription.customer?.id,
+      polarProductId:
+        typeof subscription.productId === "string"
+          ? subscription.productId
+          : undefined,
+      polarSubscriptionId:
+        typeof subscription.id === "string" ? subscription.id : undefined,
+      currentPeriodEnd: getTimestamp(subscription.currentPeriodEnd),
+    })
+
     return new Response(null, { status: 200 })
   }),
 })
