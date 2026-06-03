@@ -6,9 +6,27 @@ import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Kbd } from "@workspace/ui/components/kbd"
 import { Badge } from "@workspace/ui/components/badge"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@workspace/ui/components/alert-dialog"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@workspace/ui/components/context-menu"
 import { useInfiniteScroll } from "@workspace/ui/hooks/use-infinite-scroll"
 import { InfiniteScrollTrigger } from "@workspace/ui/components/infinite-scroll-trigger"
 import { api } from "@workspace/backend/_generated/api"
+import type { Id } from "@workspace/backend/_generated/dataModel"
 import { useLanguage } from "@/lib/i18n/language-provider"
 import { getCountryFlagUrl, getCountryFromTimezone } from "@/lib/country-utils"
 import { cn } from "@workspace/ui/lib/utils"
@@ -23,16 +41,20 @@ import {
   ArrowUpIcon,
   CheckIcon,
   CornerUpLeftIcon,
+  DownloadIcon,
   SearchIcon,
+  Trash2Icon,
   UserCheckIcon,
   XIcon,
   InboxIcon,
 } from "lucide-react"
-import { usePaginatedQuery } from "convex/react"
+import { useConvex, useMutation, usePaginatedQuery } from "convex/react"
 import Link from "next/link"
 import { useAtomValue, useSetAtom } from "jotai/react"
 import { useEffect, useRef, useState } from "react"
+import { toast } from "sonner"
 import { assignmentFilterAtom, statusFilterAtom } from "../../atoms"
+import { downloadConversationExport } from "../lib/conversation-export"
 
 type CombinedFilterValue =
   | "all"
@@ -114,6 +136,8 @@ const formatConversationTime = (timestamp: number): string => {
 export const ConversationsPanel = () => {
   const { language, t } = useLanguage()
   const { userId } = useAuth()
+  const convex = useConvex()
+  const deleteConversation = useMutation(api.private.conversations.remove)
 
   const statusFilter = useAtomValue(statusFilterAtom)
   const setStatusFilter = useSetAtom(statusFilterAtom)
@@ -124,6 +148,13 @@ export const ConversationsPanel = () => {
     assignmentFilter !== "all" ? assignmentFilter : statusFilter
 
   const [searchQuery, setSearchQuery] = useState("")
+  const [conversationToDelete, setConversationToDelete] = useState<{
+    id: Id<"conversations">
+    label: string
+  } | null>(null)
+  const [isDeletingConversation, setIsDeletingConversation] = useState(false)
+  const [downloadingConversationId, setDownloadingConversationId] =
+    useState<Id<"conversations"> | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const pathname = usePathname()
@@ -186,6 +217,48 @@ export const ConversationsPanel = () => {
     }
     setAssignmentFilter("all")
     setStatusFilter(value)
+  }
+
+  const handleDownloadConversation = async (
+    conversationId: Id<"conversations">,
+    label: string
+  ) => {
+    try {
+      setDownloadingConversationId(conversationId)
+      const exportPayload = await convex.query(
+        api.private.conversations.exportOne,
+        { conversationId }
+      )
+
+      downloadConversationExport(exportPayload, label)
+      toast.success("Conversation downloaded")
+    } catch {
+      toast.error("Failed to download conversation")
+    } finally {
+      setDownloadingConversationId(null)
+    }
+  }
+
+  const handleDeleteConversation = async () => {
+    if (!conversationToDelete) {
+      return
+    }
+
+    try {
+      setIsDeletingConversation(true)
+      await deleteConversation({ conversationId: conversationToDelete.id })
+
+      if (pathname === `/conversations/${conversationToDelete.id}`) {
+        router.push("/conversations")
+      }
+
+      toast.success("Conversation deleted")
+      setConversationToDelete(null)
+    } catch {
+      toast.error("Failed to delete conversation")
+    } finally {
+      setIsDeletingConversation(false)
+    }
   }
 
   return (
@@ -339,108 +412,148 @@ export const ConversationsPanel = () => {
                   (conversation.unreadForContactCount ?? 0) > 0
 
                 return (
-                  <Link
-                    key={conversation._id}
-                    className={cn(
-                      "group relative flex cursor-pointer items-start gap-2.5 rounded-2xl border px-3 py-2.5 text-sm leading-tight transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm",
-                      isActive
-                        ? "border-sidebar-border/80 bg-sidebar-accent/92 text-sidebar-accent-foreground shadow-[0_18px_36px_-24px_rgba(15,23,42,0.45)]"
-                        : "border-transparent bg-transparent hover:border-sidebar-border/70 hover:bg-sidebar-accent/62 hover:text-sidebar-accent-foreground"
-                    )}
-                    href={`/conversations/${conversation._id}`}
-                  >
-                    {/* Status accent stripe */}
-                    <div
-                      className={cn(
-                        "absolute top-2.5 bottom-2.5 left-0 w-[3px] rounded-r-full transition-all duration-200",
-                        statusAccent,
-                        isActive
-                          ? "opacity-80"
-                          : "opacity-0 group-hover:opacity-30"
-                      )}
-                    />
-
-                    <DicebearAvatar
-                      seed={conversation.contactSession._id}
-                      size={36}
-                      badgeImageUrl={countryFlagUrl}
-                      className="mt-0.5 shrink-0"
-                    />
-
-                    <div className="min-w-0 flex-1">
-                      {/* Name + time row */}
-                      <div className="flex w-full items-start justify-between gap-1">
-                        <span className="truncate text-[13px] leading-snug font-semibold">
-                          {highlightMatch(
-                            conversation.contactSession.name,
-                            normalizedSearchQuery
+                  <ContextMenu key={conversation._id}>
+                    <ContextMenuTrigger asChild>
+                      <Link
+                        className={cn(
+                          "group relative flex cursor-pointer items-start gap-2.5 rounded-2xl border px-3 py-2.5 text-sm leading-tight transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm",
+                          isActive
+                            ? "border-sidebar-border/80 bg-sidebar-accent/92 text-sidebar-accent-foreground shadow-[0_18px_36px_-24px_rgba(15,23,42,0.45)]"
+                            : "border-transparent bg-transparent hover:border-sidebar-border/70 hover:bg-sidebar-accent/62 hover:text-sidebar-accent-foreground"
+                        )}
+                        href={`/conversations/${conversation._id}`}
+                      >
+                        {/* Status accent stripe */}
+                        <div
+                          className={cn(
+                            "absolute top-2.5 bottom-2.5 left-0 w-[3px] rounded-r-full transition-all duration-200",
+                            statusAccent,
+                            isActive
+                              ? "opacity-80"
+                              : "opacity-0 group-hover:opacity-30"
                           )}
-                        </span>
-                        <span className="ml-1 shrink-0 text-[11px] text-sidebar-foreground/55 tabular-nums">
-                          {formatConversationTime(activityTimestamp)}
-                        </span>
-                      </div>
+                        />
 
-                      {/* Assignment badge */}
-                      {(!!conversation.assignedToId ||
-                        showOperatorUnreadBadge ||
-                        showVisitorUnreadBadge) && (
-                        <div className="mt-0.5">
-                          {showOperatorUnreadBadge && (
-                            <Badge
-                              className="h-3.5 bg-amber-500 px-1 text-[10px] leading-none whitespace-nowrap text-black hover:bg-amber-500"
-                              variant="default"
-                            >
-                              {conversation.unreadForOperatorCount} unread
-                            </Badge>
-                          )}
-                          {!!conversation.assignedToId && (
-                            <Badge
-                              className={cn(
-                                "h-3.5 px-1 text-[10px] leading-none",
-                                showOperatorUnreadBadge && "ml-1"
+                        <DicebearAvatar
+                          seed={conversation.contactSession._id}
+                          size={36}
+                          badgeImageUrl={countryFlagUrl}
+                          className="mt-0.5 shrink-0"
+                        />
+
+                        <div className="min-w-0 flex-1">
+                          {/* Name + time row */}
+                          <div className="flex w-full items-start justify-between gap-1">
+                            <span className="truncate text-[13px] leading-snug font-semibold">
+                              {highlightMatch(
+                                conversation.contactSession.name,
+                                normalizedSearchQuery
                               )}
-                              variant={isAssignedToMe ? "default" : "outline"}
-                            >
-                              {assigneeLabel}
-                            </Badge>
-                          )}
-                          {showVisitorUnreadBadge && (
-                            <Badge
-                              className="ml-1 h-3.5 bg-rose-500 px-1 text-[10px] leading-none whitespace-nowrap text-white hover:bg-rose-500"
-                              variant="default"
-                            >
-                              Unread {conversation.unreadForContactCount}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
+                            </span>
+                            <span className="ml-1 shrink-0 text-[11px] text-sidebar-foreground/55 tabular-nums">
+                              {formatConversationTime(activityTimestamp)}
+                            </span>
+                          </div>
 
-                      {/* Message preview */}
-                      <div className="mt-1.5 flex items-center justify-between gap-2">
-                        <div className="flex min-w-0 flex-1 items-center gap-1">
-                          {isLastMessageFromOperator && (
-                            <CornerUpLeftIcon className="size-3 shrink-0 text-sidebar-foreground/55" />
+                          {/* Assignment badge */}
+                          {(!!conversation.assignedToId ||
+                            showOperatorUnreadBadge ||
+                            showVisitorUnreadBadge) && (
+                            <div className="mt-0.5">
+                              {showOperatorUnreadBadge && (
+                                <Badge
+                                  className="h-3.5 bg-amber-500 px-1 text-[10px] leading-none whitespace-nowrap text-black hover:bg-amber-500"
+                                  variant="default"
+                                >
+                                  {conversation.unreadForOperatorCount} unread
+                                </Badge>
+                              )}
+                              {!!conversation.assignedToId && (
+                                <Badge
+                                  className={cn(
+                                    "h-3.5 px-1 text-[10px] leading-none",
+                                    showOperatorUnreadBadge && "ml-1"
+                                  )}
+                                  variant={
+                                    isAssignedToMe ? "default" : "outline"
+                                  }
+                                >
+                                  {assigneeLabel}
+                                </Badge>
+                              )}
+                              {showVisitorUnreadBadge && (
+                                <Badge
+                                  className="ml-1 h-3.5 bg-rose-500 px-1 text-[10px] leading-none whitespace-nowrap text-white hover:bg-rose-500"
+                                  variant="default"
+                                >
+                                  Unread {conversation.unreadForContactCount}
+                                </Badge>
+                              )}
+                            </div>
                           )}
-                          <span
-                            className={cn(
-                              "line-clamp-1 text-[12px]",
-                              isLastMessageFromOperator
-                                ? "text-sidebar-foreground/60"
-                                : "font-medium text-sidebar-foreground"
-                            )}
-                          >
-                            {highlightMatch(
-                              conversation.searchMatchPreview ??
-                                conversation.lastMessage?.text,
-                              normalizedSearchQuery
-                            )}
-                          </span>
+
+                          {/* Message preview */}
+                          <div className="mt-1.5 flex items-center justify-between gap-2">
+                            <div className="flex min-w-0 flex-1 items-center gap-1">
+                              {isLastMessageFromOperator && (
+                                <CornerUpLeftIcon className="size-3 shrink-0 text-sidebar-foreground/55" />
+                              )}
+                              <span
+                                className={cn(
+                                  "line-clamp-1 text-[12px]",
+                                  isLastMessageFromOperator
+                                    ? "text-sidebar-foreground/60"
+                                    : "font-medium text-sidebar-foreground"
+                                )}
+                              >
+                                {highlightMatch(
+                                  conversation.searchMatchPreview ??
+                                    conversation.lastMessage?.text,
+                                  normalizedSearchQuery
+                                )}
+                              </span>
+                            </div>
+                            <ConversationStatusIcon
+                              status={conversation.status}
+                            />
+                          </div>
                         </div>
-                        <ConversationStatusIcon status={conversation.status} />
-                      </div>
-                    </div>
-                  </Link>
+                      </Link>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent className="w-48">
+                      <ContextMenuItem
+                        disabled={
+                          downloadingConversationId === conversation._id
+                        }
+                        onSelect={() => {
+                          void handleDownloadConversation(
+                            conversation._id,
+                            conversation.contactSession.name
+                          )
+                        }}
+                      >
+                        <DownloadIcon className="size-4" />
+                        <span>
+                          {downloadingConversationId === conversation._id
+                            ? "Downloading..."
+                            : "Download"}
+                        </span>
+                      </ContextMenuItem>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem
+                        onSelect={() =>
+                          setConversationToDelete({
+                            id: conversation._id,
+                            label: conversation.contactSession.name,
+                          })
+                        }
+                        variant="destructive"
+                      >
+                        <Trash2Icon className="size-4" />
+                        <span>Delete from database</span>
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
                 )
               })
             )}
@@ -454,6 +567,39 @@ export const ConversationsPanel = () => {
           </div>
         </ScrollArea>
       )}
+      <AlertDialog
+        open={!!conversationToDelete}
+        onOpenChange={(open) => {
+          if (!open && !isDeletingConversation) {
+            setConversationToDelete(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes "{conversationToDelete?.label ?? "this conversation"}
+              " from the database. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingConversation}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeletingConversation}
+              onClick={(event) => {
+                event.preventDefault()
+                void handleDeleteConversation()
+              }}
+              variant="destructive"
+            >
+              {isDeletingConversation ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

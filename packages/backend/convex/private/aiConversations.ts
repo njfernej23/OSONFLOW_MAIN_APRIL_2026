@@ -164,10 +164,7 @@ export const markAsRead = mutation({
     const conversation = await ctx.db.get(args.conversationId)
 
     if (!conversation) {
-      throw new ConvexError({
-        code: "NOT_FOUND",
-        message: "AI conversation not found",
-      })
+      return
     }
 
     if (conversation.organizationId !== orgId) {
@@ -326,10 +323,7 @@ export const getOne = query({
     const conversation = await ctx.db.get(args.conversationId)
 
     if (!conversation) {
-      throw new ConvexError({
-        code: "NOT_FOUND",
-        message: "AI conversation not found",
-      })
+      return null
     }
 
     if (conversation.organizationId !== orgId) {
@@ -353,6 +347,130 @@ export const getOne = query({
   },
 })
 
+export const exportOne = query({
+  args: {
+    conversationId: v.id("aiVoiceConversations"),
+  },
+  handler: async (ctx, args) => {
+    const { orgId } = await getOrganizationIdentity(ctx)
+    const conversation = await ctx.db.get(args.conversationId)
+
+    if (!conversation) {
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: "",
+        splitCursor: null,
+      }
+    }
+
+    if (conversation.organizationId !== orgId) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Invalid organization",
+      })
+    }
+
+    const syncedConversation = await withLinkedHandoffStatus(
+      ctx,
+      conversation,
+      orgId
+    )
+    const contactSession = await ctx.db.get(conversation.contactSessionId)
+    const messages = await ctx.db
+      .query("aiVoiceConversationMessages")
+      .withIndex("by_conversation_id", (q) =>
+        q.eq("conversationId", args.conversationId)
+      )
+      .collect()
+
+    return {
+      exportedAt: new Date().toISOString(),
+      type: "ai_voice_conversation",
+      conversation: {
+        id: syncedConversation._id,
+        createdAt: new Date(syncedConversation._creationTime).toISOString(),
+        provider: syncedConversation.provider,
+        status: syncedConversation.status ?? "unresolved",
+        linkedConversationId: syncedConversation.linkedConversationId ?? null,
+        lastActivityAt: new Date(
+          syncedConversation.lastActivityAt
+        ).toISOString(),
+        endedAt: syncedConversation.endedAt
+          ? new Date(syncedConversation.endedAt).toISOString()
+          : null,
+        escalatedAt: syncedConversation.escalatedAt
+          ? new Date(syncedConversation.escalatedAt).toISOString()
+          : null,
+        resolvedAt: syncedConversation.resolvedAt
+          ? new Date(syncedConversation.resolvedAt).toISOString()
+          : null,
+        resolutionSource: syncedConversation.resolutionSource ?? null,
+      },
+      contactSession: contactSession
+        ? {
+            id: contactSession._id,
+            name: contactSession.name,
+            email: contactSession.email,
+            isAnonymous: contactSession.isAnonymous ?? false,
+            metadata: contactSession.metadata ?? null,
+          }
+        : null,
+      messages: messages.map((message) => ({
+        id: message._id,
+        createdAt: new Date(message._creationTime).toISOString(),
+        role: message.role,
+        text: message.text,
+      })),
+    }
+  },
+})
+
+export const remove = mutation({
+  args: {
+    conversationId: v.id("aiVoiceConversations"),
+  },
+  handler: async (ctx, args) => {
+    const { orgId } = await getOrganizationIdentityForMutation(ctx)
+    const conversation = await ctx.db.get(args.conversationId)
+
+    if (!conversation) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "AI conversation not found",
+      })
+    }
+
+    if (conversation.organizationId !== orgId) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Invalid organization",
+      })
+    }
+
+    const messages = await ctx.db
+      .query("aiVoiceConversationMessages")
+      .withIndex("by_conversation_id", (q) =>
+        q.eq("conversationId", args.conversationId)
+      )
+      .collect()
+
+    const insights = await ctx.db
+      .query("conversationInsights")
+      .withIndex("by_ai_voice_conversation_id", (q) =>
+        q.eq("aiVoiceConversationId", args.conversationId)
+      )
+      .collect()
+
+    await Promise.all([
+      ...messages.map((message) => ctx.db.delete(message._id)),
+      ...insights.map((insight) => ctx.db.delete(insight._id)),
+    ])
+
+    await ctx.db.delete(args.conversationId)
+  },
+})
+
 export const getMessages = query({
   args: {
     conversationId: v.id("aiVoiceConversations"),
@@ -364,10 +482,12 @@ export const getMessages = query({
     const conversation = await ctx.db.get(args.conversationId)
 
     if (!conversation) {
-      throw new ConvexError({
-        code: "NOT_FOUND",
-        message: "AI conversation not found",
-      })
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: "",
+        splitCursor: null,
+      }
     }
 
     if (conversation.organizationId !== orgId) {

@@ -1,51 +1,42 @@
 import { ConvexError, v } from "convex/values"
-import { Query } from "convex/server"
-import { query } from "../_generated/server";
+import { query } from "../_generated/server"
 
 export const getOneByConversationId = query({
-    args: {
-        conversationId: v.id("conversations"),
-    },
-    handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
+  args: {
+    conversationId: v.id("conversations"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
 
-        if (identity === null) {
-
-            throw new ConvexError({
-                code: "UNAUTHORIZED",
-                message: "Unauthorized",
-            });
-        }
-
-        const orgId = identity.orgId as string;
-
-        if (!orgId) {
-
-            throw new ConvexError({
-                code: "UNAUTHORIZED",
-                message: "Organization not found",
-            });
-        }
-
-        const conversation = await ctx.db.get(args.conversationId);
-
-        if (!conversation) {
-            throw new ConvexError({
-                code: "NOT_FOUND",
-                message: "Conversation not found",
-            });
-        }
-
-        if (conversation.organizationId !== orgId) {
-            throw new ConvexError({
-                code: "UNAUTHORIZED",
-                message: "Invalid organization id",
-            });
-        }
-
-        const contactSession = await ctx.db.get(conversation.contactSessionId);
-
-        return contactSession;
-
+    if (identity === null) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Unauthorized",
+      })
     }
-});
+
+    const orgId = identity.orgId as string
+
+    if (!orgId) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Organization not found",
+      })
+    }
+
+    const conversation = await ctx.db.get(args.conversationId)
+
+    if (!conversation) {
+      return null
+    }
+
+    if (conversation.organizationId !== orgId) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Invalid organization id",
+      })
+    }
+
+    return await ctx.db.get(conversation.contactSessionId)
+  },
+})

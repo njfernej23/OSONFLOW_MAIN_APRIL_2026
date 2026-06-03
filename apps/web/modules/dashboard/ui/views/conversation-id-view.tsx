@@ -96,11 +96,7 @@ const renderSavedReplyWithContact = ({
     .replace(/{{\s*(email|customer_email)\s*}}/gi, contactEmail)
 }
 
-const ScrollToLatestOnSignal = ({
-  signal,
-}: {
-  signal: number
-}) => {
+const ScrollToLatestOnSignal = ({ signal }: { signal: number }) => {
   const { scrollToBottom } = useStickToBottomContext()
 
   useEffect(() => {
@@ -263,6 +259,12 @@ export const ConversationIdView = ({
     })
   }, [conversation, conversationId, markConversationAsRead])
 
+  useEffect(() => {
+    if (conversation === null) {
+      router.replace("/conversations")
+    }
+  }, [conversation, router])
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (values.message.trimStart().startsWith("/")) {
       toast.error("Select a saved reply before sending")
@@ -343,6 +345,10 @@ export const ConversationIdView = ({
   }
 
   if (conversation === undefined || messages.status === "LoadingFirstPage") {
+    return <ConversationIdViewLoading />
+  }
+
+  if (conversation === null) {
     return <ConversationIdViewLoading />
   }
 

@@ -121,7 +121,7 @@ export const AIConversationIdView = ({
 
   const messages = usePaginatedQuery(
     api.private.aiConversations.getMessages,
-    { conversationId },
+    conversation ? { conversationId } : "skip",
     { initialNumItems: 100 }
   )
 
@@ -143,6 +143,12 @@ export const AIConversationIdView = ({
       conversationId,
     })
   }, [conversation, conversationId, markConversationAsRead])
+
+  useEffect(() => {
+    if (conversation === null) {
+      router.replace("/ai-conversations")
+    }
+  }, [conversation, router])
 
   const transcriptItems = useMemo(
     () =>
@@ -170,11 +176,7 @@ export const AIConversationIdView = ({
   }
 
   if (!conversation) {
-    return (
-      <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
-        Conversation not found.
-      </div>
-    )
+    return <AIConversationIdSkeleton />
   }
 
   const providerLabel = getProviderLabel(conversation.provider)

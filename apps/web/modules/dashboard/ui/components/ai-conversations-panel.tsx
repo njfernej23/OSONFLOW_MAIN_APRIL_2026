@@ -5,23 +5,50 @@ import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Kbd } from "@workspace/ui/components/kbd"
 import { Badge } from "@workspace/ui/components/badge"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@workspace/ui/components/alert-dialog"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@workspace/ui/components/context-menu"
 import { useInfiniteScroll } from "@workspace/ui/hooks/use-infinite-scroll"
 import { InfiniteScrollTrigger } from "@workspace/ui/components/infinite-scroll-trigger"
 import { api } from "@workspace/backend/_generated/api"
+import type { Id } from "@workspace/backend/_generated/dataModel"
 import { getCountryFlagUrl, getCountryFromTimezone } from "@/lib/country-utils"
 import { cn } from "@workspace/ui/lib/utils"
 import { usePathname, useRouter } from "next/navigation"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { format, isToday, isYesterday } from "date-fns"
 import { DicebearAvatar } from "@workspace/ui/components/dicebear-avatar"
-import { BotIcon, CircleIcon, SearchIcon, XIcon } from "lucide-react"
-import { usePaginatedQuery } from "convex/react"
+import {
+  BotIcon,
+  CircleIcon,
+  DownloadIcon,
+  SearchIcon,
+  Trash2Icon,
+  XIcon,
+} from "lucide-react"
+import { useConvex, useMutation, usePaginatedQuery } from "convex/react"
 import Link from "next/link"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { toast } from "sonner"
 import {
   AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES,
   AI_CONVERSATION_PROVIDER_LABELS,
 } from "../../constants"
+import { downloadConversationExport } from "../lib/conversation-export"
 
 type SessionFilterValue = "all" | "live" | "ended"
 
@@ -144,8 +171,17 @@ const getVisitorDetail = (conversation: {
 }
 
 export const AIConversationsPanel = () => {
+  const convex = useConvex()
+  const deleteConversation = useMutation(api.private.aiConversations.remove)
   const [searchQuery, setSearchQuery] = useState("")
   const [sessionFilter, setSessionFilter] = useState<SessionFilterValue>("all")
+  const [conversationToDelete, setConversationToDelete] = useState<{
+    id: Id<"aiVoiceConversations">
+    label: string
+  } | null>(null)
+  const [isDeletingConversation, setIsDeletingConversation] = useState(false)
+  const [downloadingConversationId, setDownloadingConversationId] =
+    useState<Id<"aiVoiceConversations"> | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const pathname = usePathname()
@@ -238,6 +274,48 @@ export const AIConversationsPanel = () => {
       window.removeEventListener("keydown", handleShortcut)
     }
   }, [])
+
+  const handleDownloadConversation = async (
+    conversationId: Id<"aiVoiceConversations">,
+    label: string
+  ) => {
+    try {
+      setDownloadingConversationId(conversationId)
+      const exportPayload = await convex.query(
+        api.private.aiConversations.exportOne,
+        { conversationId }
+      )
+
+      downloadConversationExport(exportPayload, label)
+      toast.success("AI voicechat downloaded")
+    } catch {
+      toast.error("Failed to download AI voicechat")
+    } finally {
+      setDownloadingConversationId(null)
+    }
+  }
+
+  const handleDeleteConversation = async () => {
+    if (!conversationToDelete) {
+      return
+    }
+
+    try {
+      setIsDeletingConversation(true)
+      await deleteConversation({ conversationId: conversationToDelete.id })
+
+      if (pathname === `/ai-conversations/${conversationToDelete.id}`) {
+        router.push("/ai-conversations")
+      }
+
+      toast.success("AI voicechat deleted")
+      setConversationToDelete(null)
+    } catch {
+      toast.error("Failed to delete AI voicechat")
+    } finally {
+      setIsDeletingConversation(false)
+    }
+  }
 
   return (
     <div className="surface-sidebar flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[22px] text-sidebar-foreground">
@@ -421,105 +499,148 @@ export const AIConversationsPanel = () => {
                         const unreadCount =
                           conversation.unreadForOperatorCount ?? 0
 
+                        const visitorLabel = getVisitorLabel(conversation)
+
                         return (
-                          <Link
-                            key={conversation._id}
-                            className={cn(
-                              "group relative block rounded-2xl border px-3 py-3 transition-all duration-200 hover:-translate-y-0.5",
-                              isActive
-                                ? "border-sidebar-primary/20 bg-sidebar-accent/95 shadow-[0_18px_34px_-26px_rgba(15,23,42,0.5)]"
-                                : "border-transparent bg-transparent hover:border-sidebar-border/70 hover:bg-sidebar-accent/58 hover:shadow-sm"
-                            )}
-                            href={`/ai-conversations/${conversation._id}`}
-                          >
-                            <div
-                              className={cn(
-                                "absolute top-3 bottom-3 left-0 w-1 rounded-r-full bg-sidebar-primary transition-opacity",
-                                isActive
-                                  ? "opacity-100"
-                                  : "opacity-0 group-hover:opacity-30"
-                              )}
-                            />
-
-                            <div className="flex items-start gap-3">
-                              <DicebearAvatar
-                                seed={
-                                  conversation.contactSession?._id ??
-                                  conversation._id
-                                }
-                                size={38}
-                                badgeImageUrl={countryFlagUrl}
-                                className="mt-0.5 shrink-0"
-                              />
-
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-start justify-between gap-2.5">
-                                  <div className="min-w-0 flex-1">
-                                    <p className="truncate text-[13px] leading-snug font-semibold text-sidebar-foreground">
-                                      {highlightMatch(
-                                        getVisitorLabel(conversation),
-                                        normalizedSearchQuery
-                                      )}
-                                    </p>
-                                    <p className="mt-0.5 truncate text-[11px] text-sidebar-foreground/54">
-                                      {highlightMatch(
-                                        getVisitorDetail(conversation),
-                                        normalizedSearchQuery
-                                      )}
-                                    </p>
-                                  </div>
-
-                                  <span className="shrink-0 text-[10px] text-sidebar-foreground/50 tabular-nums">
-                                    {formatConversationTime(
-                                      conversation.lastActivityAt
-                                    )}
-                                  </span>
-                                </div>
-
-                                <p className="mt-2 line-clamp-2 text-[12px] leading-relaxed text-sidebar-foreground/62">
-                                  {highlightMatch(
-                                    conversation.searchMatchPreview ??
-                                      conversation.lastMessagePreview,
-                                    normalizedSearchQuery
+                          <ContextMenu key={conversation._id}>
+                            <ContextMenuTrigger asChild>
+                              <Link
+                                className={cn(
+                                  "group relative block rounded-2xl border px-3 py-3 transition-all duration-200 hover:-translate-y-0.5",
+                                  isActive
+                                    ? "border-sidebar-primary/20 bg-sidebar-accent/95 shadow-[0_18px_34px_-26px_rgba(15,23,42,0.5)]"
+                                    : "border-transparent bg-transparent hover:border-sidebar-border/70 hover:bg-sidebar-accent/58 hover:shadow-sm"
+                                )}
+                                href={`/ai-conversations/${conversation._id}`}
+                              >
+                                <div
+                                  className={cn(
+                                    "absolute top-3 bottom-3 left-0 w-1 rounded-r-full bg-sidebar-primary transition-opacity",
+                                    isActive
+                                      ? "opacity-100"
+                                      : "opacity-0 group-hover:opacity-30"
                                   )}
-                                </p>
+                                />
 
-                                <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                                  <Badge
-                                    className={cn(
-                                      "h-5 rounded-md border px-1.5 text-[10px] font-medium",
-                                      providerBadgeClassName
-                                    )}
-                                    variant="outline"
-                                  >
-                                    {providerLabel}
-                                  </Badge>
-                                  <div className="flex h-5 items-center gap-1 rounded-md bg-sidebar-accent/68 px-1.5 text-[10px] font-medium text-sidebar-foreground/58">
-                                    <CircleIcon
-                                      className={cn(
-                                        "size-1.5 fill-current",
-                                        conversation.endedAt
-                                          ? "text-sidebar-foreground/35"
-                                          : "text-emerald-500"
+                                <div className="flex items-start gap-3">
+                                  <DicebearAvatar
+                                    seed={
+                                      conversation.contactSession?._id ??
+                                      conversation._id
+                                    }
+                                    size={38}
+                                    badgeImageUrl={countryFlagUrl}
+                                    className="mt-0.5 shrink-0"
+                                  />
+
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-start justify-between gap-2.5">
+                                      <div className="min-w-0 flex-1">
+                                        <p className="truncate text-[13px] leading-snug font-semibold text-sidebar-foreground">
+                                          {highlightMatch(
+                                            visitorLabel,
+                                            normalizedSearchQuery
+                                          )}
+                                        </p>
+                                        <p className="mt-0.5 truncate text-[11px] text-sidebar-foreground/54">
+                                          {highlightMatch(
+                                            getVisitorDetail(conversation),
+                                            normalizedSearchQuery
+                                          )}
+                                        </p>
+                                      </div>
+
+                                      <span className="shrink-0 text-[10px] text-sidebar-foreground/50 tabular-nums">
+                                        {formatConversationTime(
+                                          conversation.lastActivityAt
+                                        )}
+                                      </span>
+                                    </div>
+
+                                    <p className="mt-2 line-clamp-2 text-[12px] leading-relaxed text-sidebar-foreground/62">
+                                      {highlightMatch(
+                                        conversation.searchMatchPreview ??
+                                          conversation.lastMessagePreview,
+                                        normalizedSearchQuery
                                       )}
-                                    />
-                                    <span>
-                                      {conversation.endedAt ? "Ended" : "Live"}
-                                    </span>
+                                    </p>
+
+                                    <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                                      <Badge
+                                        className={cn(
+                                          "h-5 rounded-md border px-1.5 text-[10px] font-medium",
+                                          providerBadgeClassName
+                                        )}
+                                        variant="outline"
+                                      >
+                                        {providerLabel}
+                                      </Badge>
+                                      <div className="flex h-5 items-center gap-1 rounded-md bg-sidebar-accent/68 px-1.5 text-[10px] font-medium text-sidebar-foreground/58">
+                                        <CircleIcon
+                                          className={cn(
+                                            "size-1.5 fill-current",
+                                            conversation.endedAt
+                                              ? "text-sidebar-foreground/35"
+                                              : "text-emerald-500"
+                                          )}
+                                        />
+                                        <span>
+                                          {conversation.endedAt
+                                            ? "Ended"
+                                            : "Live"}
+                                        </span>
+                                      </div>
+                                      {unreadCount > 0 ? (
+                                        <Badge
+                                          className="h-5 rounded-md bg-rose-500 px-1.5 text-[10px] font-medium text-white hover:bg-rose-500"
+                                          variant="default"
+                                        >
+                                          {unreadCount > 99
+                                            ? "99+"
+                                            : unreadCount}{" "}
+                                          new
+                                        </Badge>
+                                      ) : null}
+                                    </div>
                                   </div>
-                                  {unreadCount > 0 ? (
-                                    <Badge
-                                      className="h-5 rounded-md bg-rose-500 px-1.5 text-[10px] font-medium text-white hover:bg-rose-500"
-                                      variant="default"
-                                    >
-                                      {unreadCount > 99 ? "99+" : unreadCount}{" "}
-                                      new
-                                    </Badge>
-                                  ) : null}
                                 </div>
-                              </div>
-                            </div>
-                          </Link>
+                              </Link>
+                            </ContextMenuTrigger>
+                            <ContextMenuContent className="w-48">
+                              <ContextMenuItem
+                                disabled={
+                                  downloadingConversationId === conversation._id
+                                }
+                                onSelect={() => {
+                                  void handleDownloadConversation(
+                                    conversation._id,
+                                    visitorLabel
+                                  )
+                                }}
+                              >
+                                <DownloadIcon className="size-4" />
+                                <span>
+                                  {downloadingConversationId ===
+                                  conversation._id
+                                    ? "Downloading..."
+                                    : "Download"}
+                                </span>
+                              </ContextMenuItem>
+                              <ContextMenuSeparator />
+                              <ContextMenuItem
+                                onSelect={() =>
+                                  setConversationToDelete({
+                                    id: conversation._id,
+                                    label: visitorLabel,
+                                  })
+                                }
+                                variant="destructive"
+                              >
+                                <Trash2Icon className="size-4" />
+                                <span>Delete from database</span>
+                              </ContextMenuItem>
+                            </ContextMenuContent>
+                          </ContextMenu>
                         )
                       })}
                     </div>
@@ -537,6 +658,40 @@ export const AIConversationsPanel = () => {
           </div>
         </ScrollArea>
       )}
+      <AlertDialog
+        open={!!conversationToDelete}
+        onOpenChange={(open) => {
+          if (!open && !isDeletingConversation) {
+            setConversationToDelete(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete AI voicechat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes "{conversationToDelete?.label ?? "this voicechat"}"
+              and its transcript from the database. This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingConversation}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeletingConversation}
+              onClick={(event) => {
+                event.preventDefault()
+                void handleDeleteConversation()
+              }}
+              variant="destructive"
+            >
+              {isDeletingConversation ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

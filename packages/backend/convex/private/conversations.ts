@@ -24,6 +24,39 @@ const includesSearchQuery = (
   normalizedQuery: string
 ) => value?.toLowerCase().includes(normalizedQuery) ?? false
 
+const getTextFromMessage = (message: any): string => {
+  const content = message?.message?.content ?? message?.text ?? message?.content
+
+  if (typeof content === "string") {
+    return content
+  }
+
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => {
+        if (typeof part === "string") {
+          return part
+        }
+
+        return part?.text ?? part?.content ?? ""
+      })
+      .filter(Boolean)
+      .join(" ")
+  }
+
+  return ""
+}
+
+const getRoleFromMessage = (message: any): "user" | "assistant" | "system" => {
+  const role = message?.message?.role ?? message?.role
+
+  if (role === "user" || role === "assistant") {
+    return role
+  }
+
+  return "system"
+}
+
 const getSearchSnippet = (
   value: string | undefined,
   normalizedQuery: string
@@ -99,10 +132,7 @@ export const updateStatus = mutation({
 
     const conversation = await ctx.db.get(args.conversationId)
     if (!conversation) {
-      throw new ConvexError({
-        code: "NOT_FOUND",
-        message: "Conversation not found",
-      })
+      return null
     }
 
     if (conversation.organizationId !== orgId) {
@@ -223,10 +253,7 @@ export const getOne = query({
 
     const conversation = await ctx.db.get(args.conversationId)
     if (!conversation) {
-      throw new ConvexError({
-        code: "NOT_FOUND",
-        message: "Conversation not found",
-      })
+      return null
     }
 
     if (conversation.organizationId !== orgId) {
@@ -237,10 +264,7 @@ export const getOne = query({
     }
     const contactSession = await ctx.db.get(conversation.contactSessionId)
     if (!contactSession) {
-      throw new ConvexError({
-        code: "NOT_FOUND",
-        message: "Contact Session not found",
-      })
+      return null
     }
 
     return {
@@ -250,7 +274,7 @@ export const getOne = query({
   },
 })
 
-export const markAsRead = mutation({
+export const exportOne = query({
   args: {
     conversationId: v.id("conversations"),
   },
@@ -280,6 +304,186 @@ export const markAsRead = mutation({
         code: "NOT_FOUND",
         message: "Conversation not found",
       })
+    }
+
+    if (conversation.organizationId !== orgId) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Invalid Organization ID",
+      })
+    }
+
+    const contactSession = await ctx.db.get(conversation.contactSessionId)
+    const messages = await supportAgent.listMessages(ctx, {
+      threadId: conversation.threadId,
+      paginationOpts: { numItems: 1000, cursor: null },
+    })
+
+    return {
+      exportedAt: new Date().toISOString(),
+      type: "conversation",
+      conversation: {
+        id: conversation._id,
+        createdAt: new Date(conversation._creationTime).toISOString(),
+        threadId: conversation.threadId,
+        status: conversation.status,
+        assignedToId: conversation.assignedToId ?? null,
+        assignedToName: conversation.assignedToName ?? null,
+        assignedAt: conversation.assignedAt
+          ? new Date(conversation.assignedAt).toISOString()
+          : null,
+        firstCustomerMessageAt: conversation.firstCustomerMessageAt
+          ? new Date(conversation.firstCustomerMessageAt).toISOString()
+          : null,
+        firstHumanResponseAt: conversation.firstHumanResponseAt
+          ? new Date(conversation.firstHumanResponseAt).toISOString()
+          : null,
+        escalatedAt: conversation.escalatedAt
+          ? new Date(conversation.escalatedAt).toISOString()
+          : null,
+        resolvedAt: conversation.resolvedAt
+          ? new Date(conversation.resolvedAt).toISOString()
+          : null,
+        resolutionSource: conversation.resolutionSource ?? null,
+      },
+      contactSession: contactSession
+        ? {
+            id: contactSession._id,
+            name: contactSession.name,
+            email: contactSession.email,
+            isAnonymous: contactSession.isAnonymous ?? false,
+            metadata: contactSession.metadata ?? null,
+          }
+        : null,
+      messages: messages.page
+        .slice()
+        .reverse()
+        .map((message) => ({
+          id: message._id,
+          createdAt:
+            typeof (message as any)._creationTime === "number"
+              ? new Date((message as any)._creationTime).toISOString()
+              : null,
+          role: getRoleFromMessage(message),
+          text: getTextFromMessage(message),
+        }))
+        .filter((message) => message.text.length > 0),
+    }
+  },
+})
+
+export const remove = mutation({
+  args: {
+    conversationId: v.id("conversations"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
+
+    if (identity === null) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Identity not found",
+      })
+    }
+
+    const orgId = identity.orgId as string
+
+    if (!orgId) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Organization not found",
+      })
+    }
+
+    const conversation = await ctx.db.get(args.conversationId)
+
+    if (!conversation) {
+      return
+    }
+
+    if (conversation.organizationId !== orgId) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Invalid Organization ID",
+      })
+    }
+
+    const workflowSessions = await ctx.db
+      .query("workflowSessions")
+      .withIndex("by_conversation_id", (q) =>
+        q.eq("conversationId", args.conversationId)
+      )
+      .collect()
+
+    const insights = await ctx.db
+      .query("conversationInsights")
+      .withIndex("by_conversation_id", (q) =>
+        q.eq("conversationId", args.conversationId)
+      )
+      .collect()
+
+    const linkedVoiceConversations = await ctx.db
+      .query("aiVoiceConversations")
+      .withIndex("by_organization_id", (q) => q.eq("organizationId", orgId))
+      .filter((q) => q.eq(q.field("linkedConversationId"), args.conversationId))
+      .collect()
+
+    const telegramContacts = await ctx.db
+      .query("telegramContacts")
+      .withIndex("by_organization_id", (q) => q.eq("organizationId", orgId))
+      .filter((q) => q.eq(q.field("activeConversationId"), args.conversationId))
+      .collect()
+
+    await Promise.all([
+      ctx.runMutation(components.agent.threads.deleteAllForThreadIdAsync, {
+        threadId: conversation.threadId,
+        limit: 100,
+      }),
+      ...workflowSessions.map((session) => ctx.db.delete(session._id)),
+      ...insights.map((insight) => ctx.db.delete(insight._id)),
+      ...linkedVoiceConversations.map((voiceConversation) =>
+        ctx.db.patch(voiceConversation._id, {
+          linkedConversationId: undefined,
+        })
+      ),
+      ...telegramContacts.map((contact) =>
+        ctx.db.patch(contact._id, {
+          activeConversationId: undefined,
+        })
+      ),
+    ])
+
+    await ctx.db.delete(args.conversationId)
+  },
+})
+
+export const markAsRead = mutation({
+  args: {
+    conversationId: v.id("conversations"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
+
+    if (identity === null) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Identity not found",
+      })
+    }
+
+    const orgId = identity.orgId as string
+
+    if (!orgId) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Organization not found",
+      })
+    }
+
+    const conversation = await ctx.db.get(args.conversationId)
+
+    if (!conversation) {
+      return
     }
 
     if (conversation.organizationId !== orgId) {
