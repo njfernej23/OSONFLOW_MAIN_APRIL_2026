@@ -33,6 +33,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "@workspace/ui/components/sidebar"
 
 import { cn } from "@workspace/ui/lib/utils"
@@ -101,8 +102,35 @@ const accountsItem = [
   },
 ]
 
+const organizationSwitcherAppearance = {
+  elements: {
+    rootBox: "w-full! h-8!",
+    avatarBox: "size-4! rounded-sm!",
+    organizationSwitcherTrigger:
+      "w-full! justify-start! group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2!",
+    organizationPreview: "group-data-[collapsible=icon]:justify-center! gap-2!",
+    organizationPreviewTextContainer:
+      "group-data-[collapsible=icon]:hidden! text-xs! font-medium! text-sidebar-foreground!",
+    organizationSwitcherTriggerIcon:
+      "group-data-[collapsible=icon]:hidden! ml-auto! text-sidebar-foreground!",
+  },
+}
+
+const userButtonAppearance = {
+  elements: {
+    rootBox: "w-full! h-8!",
+    userButtonTrigger:
+      "w-full! p-2! hover:bg-sidebar-accent! hover:text-sidebar-accent-foreground! group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2!",
+    userButtonBox:
+      "w-full! flex-row-reverse! justify-end! gap-2! group-data-[collapsible=icon]:justify-center! text-sidebar-foreground!",
+    userButtonOuterIdentifier: "pl-0! group-data-[collapsible=icon]:hidden!",
+    avatarBox: "size-4!",
+  },
+}
+
 export const DashboardSidebar = () => {
   const pathname = usePathname()
+  const { isMobile, setOpenMobile } = useSidebar()
   const conversationUnreadSummary = useQuery(
     api.private.conversations.getUnreadSummary
   )
@@ -163,6 +191,12 @@ export const DashboardSidebar = () => {
   )
 
   useEffect(() => {
+    if (isMobile) {
+      setOpenMobile(false)
+    }
+  }, [isMobile, pathname, setOpenMobile])
+
+  useEffect(() => {
     if (pathname.startsWith("/conversations")) {
       clearUnreadForUrl("/conversations")
       return
@@ -182,20 +216,11 @@ export const DashboardSidebar = () => {
               <OrganizationSwitcher
                 hidePersonal
                 skipInvitationScreen
-                appearance={{
-                  elements: {
-                    rootBox: "w-full! h-8!",
-                    avatarBox: "size-4! rounded-sm!",
-                    organizationSwitcherTrigger:
-                      "w-full! justify-start! group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2!",
-                    organizationPreview:
-                      "group-data-[collapsible=icon]:justify-center! gap-2!",
-                    organizationPreviewTextContainer:
-                      "group-data-[collapsible=icon]:hidden! text-xs! font-medium! text-sidebar-foreground!",
-                    organizationSwitcherTriggerIcon:
-                      "group-data-[collapsible=icon]:hidden! ml-auto! text-sidebar-foreground!",
-                  },
-                }}
+                createOrganizationMode="navigation"
+                createOrganizationUrl="/create-organization"
+                organizationProfileMode="navigation"
+                organizationProfileUrl="/organization-settings"
+                appearance={organizationSwitcherAppearance}
               />
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -316,18 +341,9 @@ export const DashboardSidebar = () => {
           <SidebarMenuItem>
             <UserButton
               showName
-              appearance={{
-                elements: {
-                  rootBox: "w-full! h-8!",
-                  userButtonTrigger:
-                    "w-full! p-2! hover:bg-sidebar-accent! hover:text-sidebar-accent-foreground! group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2!",
-                  userButtonBox:
-                    "w-full! flex-row-reverse! justify-end! gap-2! group-data-[collapsible=icon]:justify-center! text-sidebar-foreground!",
-                  userButtonOuterIdentifier:
-                    "pl-0! group-data-[collapsible=icon]:hidden!",
-                  avatarBox: "size-4!",
-                },
-              }}
+              userProfileMode="navigation"
+              userProfileUrl="/account"
+              appearance={userButtonAppearance}
             />
           </SidebarMenuItem>
         </SidebarMenu>

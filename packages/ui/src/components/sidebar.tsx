@@ -32,6 +32,31 @@ const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
+type OutsideInteractionEvent = Event & {
+  detail?: {
+    originalEvent?: Event
+  }
+}
+
+const isClerkPortalElement = (target: EventTarget | null) =>
+  target instanceof Element &&
+  Boolean(
+    target.closest(
+      "[class*='cl-'], [data-clerk-element], [data-clerk-id], [data-localization-key]"
+    )
+  )
+
+const preventDismissForClerkPortal = (event: OutsideInteractionEvent) => {
+  const originalTarget = event.detail?.originalEvent?.target ?? null
+
+  if (
+    isClerkPortalElement(event.target) ||
+    isClerkPortalElement(originalTarget)
+  ) {
+    event.preventDefault()
+  }
+}
+
 type SidebarContextProps = {
   state: "expanded" | "collapsed"
   open: boolean
@@ -183,13 +208,21 @@ function Sidebar({
 
   if (isMobile) {
     return (
-      <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
+      <Sheet
+        modal={false}
+        open={openMobile}
+        onOpenChange={setOpenMobile}
+        {...props}
+      >
         <SheetContent
           dir={dir}
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
           className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+          onPointerDownOutside={preventDismissForClerkPortal}
+          onFocusOutside={preventDismissForClerkPortal}
+          onInteractOutside={preventDismissForClerkPortal}
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
