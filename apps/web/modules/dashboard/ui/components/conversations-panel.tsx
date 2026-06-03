@@ -175,6 +175,7 @@ export const ConversationsPanel = () => {
 
   const firstMatchingConversation = filteredConversations[0]
   const hasSearchResults = filteredConversations.length > 0
+  const hasActiveFilters = combinedFilterValue !== "all"
 
   const {
     topElementRef,
@@ -357,27 +358,51 @@ export const ConversationsPanel = () => {
       ) : (
         <ScrollArea className="min-h-0 flex-1">
           <div className="flex w-full flex-col gap-1 p-2.5">
-            {!hasSearchResults && normalizedSearchQuery ? (
+            {!conversations.results.length &&
+            !normalizedSearchQuery &&
+            !hasActiveFilters ? (
+              <div className="mx-auto mt-10 flex max-w-[220px] flex-col items-center gap-3 text-center">
+                <div className="flex size-12 items-center justify-center rounded-2xl border border-sidebar-border bg-sidebar-accent/55">
+                  <InboxIcon className="size-5 text-sidebar-foreground/55" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-sidebar-foreground">
+                    No conversations yet
+                  </p>
+                  <p className="mt-1 text-[12px] text-sidebar-foreground/60">
+                    Customer messages from your widget will appear here.
+                  </p>
+                </div>
+              </div>
+            ) : !hasSearchResults && (normalizedSearchQuery || hasActiveFilters) ? (
               <div className="mx-auto mt-10 flex max-w-[200px] flex-col items-center gap-3 text-center">
                 <div className="flex size-11 items-center justify-center rounded-2xl border border-sidebar-border bg-sidebar-accent/55">
                   <InboxIcon className="size-5 text-sidebar-foreground/55" />
                 </div>
                 <div>
                   <p className="text-xs font-medium text-sidebar-foreground">
-                    No results found
+                    {normalizedSearchQuery
+                      ? "No results found"
+                      : "No conversations match this view"}
                   </p>
                   <p className="mt-0.5 text-[11px] text-sidebar-foreground/60">
-                    Try searching by name, email, or message
+                    {normalizedSearchQuery
+                      ? "Try searching by name, email, or message"
+                      : "Reset the filters to see every conversation."}
                   </p>
                 </div>
                 <Button
-                  onClick={() => setSearchQuery("")}
+                  onClick={() => {
+                    setSearchQuery("")
+                    setAssignmentFilter("all")
+                    setStatusFilter("all")
+                  }}
                   size="sm"
                   type="button"
                   variant="outline"
                   className="h-7 text-xs"
                 >
-                  Clear search
+                  {normalizedSearchQuery ? "Clear search" : "Reset filters"}
                 </Button>
               </div>
             ) : (
@@ -558,12 +583,14 @@ export const ConversationsPanel = () => {
               })
             )}
 
-            <InfiniteScrollTrigger
-              canLoadMore={canLoadMore}
-              isLoadingMore={isLoadingMore}
-              onLoadMore={handleLoadMore}
-              ref={topElementRef}
-            />
+            {hasSearchResults ? (
+              <InfiniteScrollTrigger
+                canLoadMore={canLoadMore}
+                isLoadingMore={isLoadingMore}
+                onLoadMore={handleLoadMore}
+                ref={topElementRef}
+              />
+            ) : null}
           </div>
         </ScrollArea>
       )}
@@ -609,17 +636,9 @@ export const SkeletonConversations = () => {
     <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto p-2.5">
       {Array.from({ length: 6 }).map((_, index) => (
         <div
-          className={cn(
-            "relative flex items-start gap-2.5 rounded-2xl border px-3 py-2.5",
-            index === 1
-              ? "border-sidebar-border/80 bg-sidebar-accent/92 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.45)]"
-              : "border-transparent"
-          )}
+          className="relative flex items-start gap-2.5 rounded-2xl border border-transparent px-3 py-2.5"
           key={index}
         >
-          {index === 1 && (
-            <div className="absolute top-2.5 bottom-2.5 left-0 w-[3px] rounded-r-full bg-emerald-400/80" />
-          )}
           <div className="relative mt-0.5 size-9 shrink-0">
             <Skeleton className="size-9 rounded-full bg-sidebar-accent" />
             <Skeleton className="absolute right-0 bottom-0 size-3.5 rounded-full border-2 border-sidebar bg-sidebar" />

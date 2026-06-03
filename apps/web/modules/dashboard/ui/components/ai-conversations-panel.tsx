@@ -649,12 +649,14 @@ export const AIConversationsPanel = () => {
               </div>
             )}
 
-            <InfiniteScrollTrigger
-              canLoadMore={canLoadMore}
-              isLoadingMore={isLoadingMore}
-              onLoadMore={handleLoadMore}
-              ref={topElementRef}
-            />
+            {hasSearchResults ? (
+              <InfiniteScrollTrigger
+                canLoadMore={canLoadMore}
+                isLoadingMore={isLoadingMore}
+                onLoadMore={handleLoadMore}
+                ref={topElementRef}
+              />
+            ) : null}
           </div>
         </ScrollArea>
       )}
