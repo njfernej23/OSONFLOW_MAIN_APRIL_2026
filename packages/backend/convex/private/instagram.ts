@@ -12,7 +12,7 @@ type InstagramProfileResponse = {
 }
 
 const DEFAULT_INSTAGRAM_WEBHOOK_BASE_URL =
-  "https://resilient-monitor-705.eu-west-1.convex.site"
+  "https://sincere-bandicoot-353.eu-west-1.convex.site"
 
 const INSTAGRAM_GRAPH_API_VERSION =
   process.env.INSTAGRAM_GRAPH_API_VERSION || "v25.0"

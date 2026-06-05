@@ -19,7 +19,7 @@ type TelegramApiResponse = {
 }
 
 const DEFAULT_TELEGRAM_WEBHOOK_BASE_URL =
-  "https://resilient-monitor-705.eu-west-1.convex.site"
+  "https://sincere-bandicoot-353.eu-west-1.convex.site"
 
 const getAuthContext = async (ctx: {
   auth: { getUserIdentity: () => Promise<any> }
