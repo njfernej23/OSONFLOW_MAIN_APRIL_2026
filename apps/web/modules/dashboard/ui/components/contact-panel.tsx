@@ -6,9 +6,9 @@ import { Id } from "@workspace/backend/_generated/dataModel"
 import { Button } from "@workspace/ui/components/button"
 import { DicebearAvatar } from "@workspace/ui/components/dicebear-avatar"
 import { Skeleton } from "@workspace/ui/components/skeleton"
-import { useQuery } from "convex/react"
+import { useAction, useQuery } from "convex/react"
 import { useParams } from "next/navigation"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import Bowser from "bowser"
 import {
   Accordion,
@@ -23,9 +23,11 @@ import {
   GlobeIcon,
   MailIcon,
   MonitorIcon,
+  RefreshCwIcon,
 } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { cn } from "@workspace/ui/lib/utils"
+import { toast } from "sonner"
 
 type InfoItem = {
   label: string
@@ -48,10 +50,20 @@ export const ContactPanel = () => {
     api.private.contactSessions.getOneByConversationId,
     conversationId ? { conversationId } : "skip"
   )
+  const refreshInstagramProfile = useAction(
+    (api as any).private.instagram.refreshContactProfile
+  ) as (args: { conversationId: Id<"conversations"> }) => Promise<{
+    username?: string
+    fullName?: string
+    profilePicUrl?: string
+    followerCount?: number
+  }>
   const customerMemory = useQuery(
     api.private.customerMemories.getByEmail,
     contactSession?.email ? { email: contactSession.email } : "skip"
   )
+  const [isRefreshingInstagramProfile, setIsRefreshingInstagramProfile] =
+    useState(false)
 
   const parseUserAgent = useMemo(() => {
     return (userAgent?: string) => {
@@ -90,6 +102,26 @@ export const ContactPanel = () => {
     isInstagramSession && instagramUsername
       ? `@${instagramUsername}`
       : (contactSession?.email ?? "")
+  const handleRefreshInstagramProfile = async () => {
+    if (!conversationId) {
+      return
+    }
+
+    setIsRefreshingInstagramProfile(true)
+    try {
+      const profile = await refreshInstagramProfile({ conversationId })
+      const label = profile.fullName || profile.username || "Instagram profile"
+      toast.success(`Updated ${label}`)
+    } catch (error: any) {
+      toast.error(
+        error?.data?.message ||
+          error?.message ||
+          "Failed to refresh Instagram profile"
+      )
+    } finally {
+      setIsRefreshingInstagramProfile(false)
+    }
+  }
 
   const accordionSections = useMemo<InfoSection[]>(() => {
     if (!contactSession?.metadata) {
@@ -267,6 +299,24 @@ export const ContactPanel = () => {
               <MailIcon className="size-3.5" />
               <span>Send Email</span>
             </Link>
+          </Button>
+        )}
+        {isInstagramSession && (
+          <Button
+            className="mt-3 w-full"
+            disabled={isRefreshingInstagramProfile}
+            onClick={handleRefreshInstagramProfile}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <RefreshCwIcon
+              className={cn(
+                "size-3.5",
+                isRefreshingInstagramProfile && "animate-spin"
+              )}
+            />
+            <span>Refresh Instagram Profile</span>
           </Button>
         )}
       </div>

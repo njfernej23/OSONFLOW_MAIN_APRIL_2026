@@ -688,6 +688,101 @@ export const getInstagramContactByConversationId = internalQuery({
   },
 })
 
+export const getInstagramContactRefreshContext = internalQuery({
+  args: {
+    conversationId: v.id("conversations"),
+    organizationId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const conversation = await ctx.db.get(args.conversationId)
+
+    if (!conversation || conversation.organizationId !== args.organizationId) {
+      return null
+    }
+
+    const instagramContact = await ctx.db
+      .query("instagramContacts")
+      .withIndex("by_contact_session_id", (q) =>
+        q.eq("contactSessionId", conversation.contactSessionId)
+      )
+      .filter((q) => q.eq(q.field("activeConversationId"), args.conversationId))
+      .unique()
+
+    if (!instagramContact) {
+      return null
+    }
+
+    const integration = await ctx.db.get(instagramContact.integrationId)
+
+    if (!integration || integration.organizationId !== args.organizationId) {
+      return null
+    }
+
+    return {
+      contact: instagramContact,
+      integration,
+    }
+  },
+})
+
+export const updateInstagramContactProfile = internalMutation({
+  args: {
+    contactId: v.id("instagramContacts"),
+    organizationId: v.string(),
+    username: v.optional(v.string()),
+    fullName: v.optional(v.string()),
+    profilePicUrl: v.optional(v.string()),
+    followerCount: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const contact = await ctx.db.get(args.contactId)
+
+    if (!contact || contact.organizationId !== args.organizationId) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "Instagram contact not found",
+      })
+    }
+
+    const contactSession = await ctx.db.get(contact.contactSessionId)
+    const username = args.username ?? contact.username
+    const fullName = args.fullName ?? contact.fullName
+    const profilePicUrl = args.profilePicUrl ?? contact.profilePicUrl
+    const followerCount = args.followerCount ?? contact.followerCount
+    const displayName = getInstagramContactName({ fullName, username })
+
+    await ctx.db.patch(contact._id, {
+      username,
+      fullName,
+      profilePicUrl,
+      followerCount,
+      updatedAt: Date.now(),
+    })
+
+    if (contactSession) {
+      const shouldRenameContact =
+        contactSession.name === "Instagram contact" ||
+        contactSession.name.startsWith("@") ||
+        Boolean(args.fullName)
+
+      await ctx.db.patch(contactSession._id, {
+        name: shouldRenameContact ? displayName : contactSession.name,
+        metadata: {
+          ...contactSession.metadata,
+          ...createInstagramSessionMetadata({
+            senderId: contact.senderId,
+            username,
+            fullName,
+            profilePicUrl,
+            followerCount,
+            accountId: contactSession.metadata?.instagramAccountId,
+          }),
+        },
+      })
+    }
+  },
+})
+
 const handleIncomingMessage = async ({
   ctx,
   integrationId,

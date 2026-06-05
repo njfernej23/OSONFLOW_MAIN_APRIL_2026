@@ -11,6 +11,16 @@ type InstagramProfileResponse = {
   }
 }
 
+type InstagramSenderProfileResponse = {
+  name?: string
+  username?: string
+  profile_pic?: string
+  follower_count?: number
+  error?: {
+    message?: string
+  }
+}
+
 const DEFAULT_INSTAGRAM_WEBHOOK_BASE_URL =
   "https://sincere-bandicoot-353.eu-west-1.convex.site"
 
@@ -81,6 +91,60 @@ const normalizeBaseUrl = (value?: string) => {
       message: "Webhook base URL must be a valid URL",
     })
   }
+}
+
+const fetchSenderProfile = async ({
+  accessToken,
+  senderId,
+}: {
+  accessToken: string
+  senderId: string
+}) => {
+  const fieldSets = [
+    "name,username,profile_pic,follower_count",
+    "name,username,profile_pic",
+    "username",
+  ]
+  let lastError = "Instagram did not return profile data"
+
+  for (const fields of fieldSets) {
+    const response = await fetch(
+      instagramApiUrl(senderId, {
+        fields,
+        access_token: accessToken,
+      })
+    )
+    const body = (await response.json()) as InstagramSenderProfileResponse
+
+    if (!response.ok || body.error) {
+      lastError =
+        body.error?.message ||
+        `Profile lookup failed with HTTP ${response.status}`
+      continue
+    }
+
+    const fullName = body.name?.trim()
+    const username = body.username?.trim()
+    const profilePicUrl = body.profile_pic?.trim()
+    const followerCount =
+      typeof body.follower_count === "number" ? body.follower_count : undefined
+
+    if (!fullName && !username && !profilePicUrl && followerCount === undefined) {
+      continue
+    }
+
+    return {
+      fullName: fullName || undefined,
+      username: username || undefined,
+      profilePicUrl: profilePicUrl || undefined,
+      followerCount,
+    }
+  }
+
+  throw new ConvexError({
+    code: "BAD_REQUEST",
+    message: lastError,
+  })
 }
 
 export const getDashboard = query({
@@ -206,6 +270,55 @@ export const connect = action({
       webhookUrl,
       verifyToken,
     }
+  },
+})
+
+export const refreshContactProfile = action({
+  args: {
+    conversationId: v.id("conversations"),
+  },
+  handler: async (ctx, args) => {
+    const { organizationId } = await getAuthContext(ctx)
+    const refreshContext = (await ctx.runQuery(
+      (internal as any).system.instagram.getInstagramContactRefreshContext,
+      {
+        conversationId: args.conversationId,
+        organizationId,
+      }
+    )) as
+      | {
+          contact: {
+            _id: string
+            senderId: string
+          }
+          integration: {
+            accessToken: string
+          }
+        }
+      | null
+
+    if (!refreshContext) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "Instagram contact not found for this conversation",
+      })
+    }
+
+    const profile = await fetchSenderProfile({
+      accessToken: refreshContext.integration.accessToken,
+      senderId: refreshContext.contact.senderId,
+    })
+
+    await ctx.runMutation(
+      (internal as any).system.instagram.updateInstagramContactProfile,
+      {
+        contactId: refreshContext.contact._id,
+        organizationId,
+        ...profile,
+      }
+    )
+
+    return profile
   },
 })
 
