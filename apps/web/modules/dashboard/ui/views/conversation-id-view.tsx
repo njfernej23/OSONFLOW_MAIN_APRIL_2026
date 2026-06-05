@@ -459,6 +459,13 @@ export const ConversationIdView = ({
     : isAssignedToMe
       ? "Assigned to me"
       : `Assigned: ${conversation.assignedToName ?? "Operator"}`
+  const instagramProfilePic =
+    conversation.contactSession.metadata?.instagramProfilePic
+  const secondaryIdentity =
+    conversation.contactSession.metadata?.platform === "Instagram" &&
+    conversation.contactSession.metadata?.instagramUsername
+      ? `@${conversation.contactSession.metadata.instagramUsername}`
+      : conversation.contactSession.email
 
   return (
     <div className="flex h-full flex-col bg-transparent">
@@ -489,6 +496,7 @@ export const ConversationIdView = ({
           <DicebearAvatar
             seed={conversation.contactSession._id}
             size={32}
+            imageUrl={instagramProfilePic}
             className="shrink-0"
           />
           <div className="min-w-0">
@@ -496,7 +504,7 @@ export const ConversationIdView = ({
               {conversation.contactSession.name}
             </p>
             <p className="truncate text-[11px] leading-tight text-muted-foreground">
-              {conversation.contactSession.email}
+              {secondaryIdentity}
             </p>
           </div>
         </button>
@@ -606,6 +614,7 @@ export const ConversationIdView = ({
                 <DicebearAvatar
                   seed={conversation?.contactSessionId ?? "user"}
                   size={32}
+                  imageUrl={instagramProfilePic}
                 />
               )}
             </AIMessage>

@@ -46,6 +46,20 @@ type InstagramWebhookPayload = {
   }>
 }
 
+type InstagramSenderProfile = {
+  name?: string
+  username?: string
+  profile_pic?: string
+  follower_count?: number
+}
+
+type NormalizedInstagramSenderProfile = {
+  fullName?: string
+  username?: string
+  profilePicUrl?: string
+  followerCount?: number
+}
+
 type InstagramSendMessageResponse = {
   recipient_id?: string
   message_id?: string
@@ -73,21 +87,120 @@ const getSyntheticEmail = (senderId: string) =>
 const createInstagramSessionMetadata = ({
   senderId,
   username,
+  fullName,
+  profilePicUrl,
+  followerCount,
   accountId,
 }: {
   senderId?: string
   username?: string
+  fullName?: string
+  profilePicUrl?: string
+  followerCount?: number
   accountId?: string
 }) => ({
   platform: "Instagram",
   vendor: "Meta",
   instagramUserId: senderId,
   instagramUsername: username,
+  instagramFullName: fullName,
+  instagramProfilePic: profilePicUrl,
+  instagramFollowerCount: followerCount,
   instagramAccountId: accountId,
 })
 
 const instagramMessagesApiUrl = () =>
   `https://graph.instagram.com/${INSTAGRAM_GRAPH_API_VERSION}/me/messages`
+
+const instagramProfileApiUrl = (
+  scopedUserId: string,
+  fields: string,
+  accessToken: string
+) => {
+  const url = new URL(
+    `https://graph.instagram.com/${INSTAGRAM_GRAPH_API_VERSION}/${scopedUserId}`
+  )
+  url.searchParams.set("fields", fields)
+  url.searchParams.set("access_token", accessToken)
+  return url.toString()
+}
+
+const normalizeInstagramProfile = (
+  profile: InstagramSenderProfile | null
+): NormalizedInstagramSenderProfile | undefined => {
+  if (!profile) {
+    return undefined
+  }
+
+  const fullName = profile.name?.trim()
+  const username = profile.username?.trim()
+  const profilePicUrl = profile.profile_pic?.trim()
+  const followerCount =
+    typeof profile.follower_count === "number"
+      ? profile.follower_count
+      : undefined
+
+  if (!fullName && !username && !profilePicUrl && followerCount === undefined) {
+    return undefined
+  }
+
+  return {
+    fullName: fullName || undefined,
+    username: username || undefined,
+    profilePicUrl: profilePicUrl || undefined,
+    followerCount,
+  }
+}
+
+const fetchInstagramSenderProfile = async ({
+  accessToken,
+  senderId,
+}: {
+  accessToken: string
+  senderId: string
+}): Promise<NormalizedInstagramSenderProfile | undefined> => {
+  const fieldSets = [
+    "name,username,profile_pic,follower_count",
+    "name,username,profile_pic",
+    "username",
+  ]
+
+  for (const fields of fieldSets) {
+    try {
+      const response = await fetch(
+        instagramProfileApiUrl(senderId, fields, accessToken)
+      )
+      const body = (await response.json()) as InstagramSenderProfile & {
+        error?: { message?: string }
+      }
+
+      if (!response.ok || body.error) {
+        continue
+      }
+
+      const profile = normalizeInstagramProfile(body)
+
+      if (profile) {
+        return profile
+      }
+    } catch (error) {
+      console.error("Instagram sender profile lookup failed", error)
+      return undefined
+    }
+  }
+
+  return undefined
+}
+
+const getInstagramContactName = ({
+  fullName,
+  username,
+}: {
+  fullName?: string
+  username?: string
+}) =>
+  fullName?.trim() ||
+  (username?.trim() ? `@${username.trim()}` : "Instagram contact")
 
 const extractAgentMessageText = (message: any) => {
   const content = message?.text ?? message?.message?.content
@@ -383,6 +496,9 @@ export const getOrCreateInstagramConversation = internalMutation({
     integrationId: v.id("instagramIntegrations"),
     senderId: v.string(),
     username: v.optional(v.string()),
+    fullName: v.optional(v.string()),
+    profilePicUrl: v.optional(v.string()),
+    followerCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const integration = await ctx.db.get(args.integrationId)
@@ -403,16 +519,26 @@ export const getOrCreateInstagramConversation = internalMutation({
       .unique()
 
     let contactSessionId = instagramContact?.contactSessionId
+    const username = args.username ?? instagramContact?.username
+    const fullName = args.fullName ?? instagramContact?.fullName
+    const profilePicUrl =
+      args.profilePicUrl ?? instagramContact?.profilePicUrl
+    const followerCount =
+      args.followerCount ?? instagramContact?.followerCount
+    const displayName = getInstagramContactName({ fullName, username })
 
     if (!instagramContact) {
       contactSessionId = await ctx.db.insert("contactSessions", {
         organizationId: integration.organizationId,
-        name: args.username || "Instagram contact",
+        name: displayName,
         email: getSyntheticEmail(args.senderId),
         expiresAt: now + SESSION_DURATION_MS,
         metadata: createInstagramSessionMetadata({
           senderId: args.senderId,
-          username: args.username,
+          username,
+          fullName,
+          profilePicUrl,
+          followerCount,
           accountId: integration.instagramUserId,
         }),
       })
@@ -421,7 +547,10 @@ export const getOrCreateInstagramConversation = internalMutation({
         organizationId: integration.organizationId,
         integrationId: args.integrationId,
         senderId: args.senderId,
-        username: args.username,
+        username,
+        fullName,
+        profilePicUrl,
+        followerCount,
         contactSessionId,
         lastMessageAt: now,
         createdAt: now,
@@ -431,7 +560,10 @@ export const getOrCreateInstagramConversation = internalMutation({
       instagramContact = await ctx.db.get(instagramContactId)
     } else {
       await ctx.db.patch(instagramContact._id, {
-        username: args.username ?? instagramContact.username,
+        username,
+        fullName,
+        profilePicUrl,
+        followerCount,
         lastMessageAt: now,
         updatedAt: now,
       })
@@ -439,12 +571,21 @@ export const getOrCreateInstagramConversation = internalMutation({
       const contactSession = await ctx.db.get(instagramContact.contactSessionId)
 
       if (contactSession) {
+        const shouldRenameContact =
+          contactSession.name === "Instagram contact" ||
+          contactSession.name.startsWith("@") ||
+          Boolean(args.fullName)
+
         await ctx.db.patch(contactSession._id, {
+          name: shouldRenameContact ? displayName : contactSession.name,
           metadata: {
             ...contactSession.metadata,
             ...createInstagramSessionMetadata({
               senderId: args.senderId,
-              username: args.username ?? instagramContact.username,
+              username,
+              fullName,
+              profilePicUrl,
+              followerCount,
               accountId: integration.instagramUserId,
             }),
           },
@@ -510,7 +651,8 @@ export const getOrCreateInstagramConversation = internalMutation({
           status: "unresolved",
           source: "instagram",
           instagramSenderId: args.senderId,
-          instagramUsername: args.username,
+          instagramUsername: username,
+          instagramFullName: fullName,
         },
       }
     )
@@ -588,12 +730,21 @@ const handleIncomingMessage = async ({
     return { handled: false, reason: "rate_limited" }
   }
 
+  const senderProfile = await fetchInstagramSenderProfile({
+    accessToken: integrationForUpdate.accessToken,
+    senderId,
+  })
+
   const { integration, contactSessionId, conversationId, threadId, status } =
     (await ctx.runMutation(
       (internal as any).system.instagram.getOrCreateInstagramConversation,
       {
         integrationId,
         senderId,
+        username: senderProfile?.username,
+        fullName: senderProfile?.fullName,
+        profilePicUrl: senderProfile?.profilePicUrl,
+        followerCount: senderProfile?.followerCount,
       }
     )) as {
       integration: InstagramIntegration

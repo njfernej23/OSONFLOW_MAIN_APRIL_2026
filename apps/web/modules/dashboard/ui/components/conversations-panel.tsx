@@ -423,6 +423,8 @@ export const ConversationsPanel = () => {
                 const countryFlagUrl = country?.code
                   ? getCountryFlagUrl(country.code)
                   : undefined
+                const instagramProfilePic =
+                  conversation.contactSession.metadata?.instagramProfilePic
                 const activityTimestamp =
                   conversation.lastCustomerMessageAt ??
                   conversation.lastOperatorMessageAt ??
@@ -462,6 +464,7 @@ export const ConversationsPanel = () => {
                         <DicebearAvatar
                           seed={conversation.contactSession._id}
                           size={36}
+                          imageUrl={instagramProfilePic}
                           badgeImageUrl={countryFlagUrl}
                           className="mt-0.5 shrink-0"
                         />

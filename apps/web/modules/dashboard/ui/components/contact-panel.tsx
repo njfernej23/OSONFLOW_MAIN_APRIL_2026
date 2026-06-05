@@ -82,6 +82,14 @@ export const ContactPanel = () => {
   const countryInfo = useMemo(() => {
     return getCountryFromTimezone(contactSession?.metadata?.timezone)
   }, [contactSession?.metadata?.timezone])
+  const instagramProfilePic = contactSession?.metadata?.instagramProfilePic
+  const instagramUsername = contactSession?.metadata?.instagramUsername
+  const instagramFullName = contactSession?.metadata?.instagramFullName
+  const isInstagramSession = contactSession?.metadata?.platform === "Instagram"
+  const secondaryIdentity =
+    isInstagramSession && instagramUsername
+      ? `@${instagramUsername}`
+      : (contactSession?.email ?? "")
 
   const accordionSections = useMemo<InfoSection[]>(() => {
     if (!contactSession?.metadata) {
@@ -181,6 +189,10 @@ export const ContactPanel = () => {
           ...(isInstagramSession
             ? [
                 {
+                  label: "Profile name",
+                  value: contactSession.metadata.instagramFullName || "Unknown",
+                },
+                {
                   label: "Instagram ID",
                   value: contactSession.metadata.instagramUserId || "Unknown",
                 },
@@ -189,6 +201,14 @@ export const ContactPanel = () => {
                   value: contactSession.metadata.instagramUsername
                     ? `@${contactSession.metadata.instagramUsername}`
                     : "Unknown",
+                },
+                {
+                  label: "Followers",
+                  value:
+                    typeof contactSession.metadata.instagramFollowerCount ===
+                    "number"
+                      ? contactSession.metadata.instagramFollowerCount.toLocaleString()
+                      : "Unknown",
                 },
               ]
             : []),
@@ -216,6 +236,7 @@ export const ContactPanel = () => {
                 ? getCountryFlagUrl(countryInfo.code)
                 : undefined
             }
+            imageUrl={instagramProfilePic}
             seed={contactSession._id}
             size={44}
             className="shrink-0"
@@ -225,8 +246,13 @@ export const ContactPanel = () => {
               {contactSession.name}
             </h4>
             <p className="mt-0.5 truncate text-[12px] text-muted-foreground">
-              {contactSession.email}
+              {secondaryIdentity}
             </p>
+            {isInstagramSession && instagramFullName && instagramUsername && (
+              <p className="mt-1 text-[11px] text-muted-foreground/70">
+                Instagram
+              </p>
+            )}
             {countryInfo?.name && (
               <p className="mt-1 text-[11px] text-muted-foreground/70">
                 {countryInfo.name}
@@ -235,12 +261,14 @@ export const ContactPanel = () => {
           </div>
         </div>
 
-        <Button asChild className="mt-3 w-full" size="sm" variant="outline">
-          <Link href={`mailto:${contactSession.email}`}>
-            <MailIcon className="size-3.5" />
-            <span>Send Email</span>
-          </Link>
-        </Button>
+        {!isInstagramSession && (
+          <Button asChild className="mt-3 w-full" size="sm" variant="outline">
+            <Link href={`mailto:${contactSession.email}`}>
+              <MailIcon className="size-3.5" />
+              <span>Send Email</span>
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* Info sections */}
