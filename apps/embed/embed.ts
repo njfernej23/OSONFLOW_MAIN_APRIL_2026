@@ -399,6 +399,8 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
         flex: 0 0 ${LAUNCHER_ORB_SIZE}px;
         overflow: hidden;
         border-radius: 50%;
+        clip-path: circle(50%);
+        -webkit-clip-path: circle(50%);
         box-shadow:
           inset 0 0 0 1px rgba(255, 255, 255, 0.38),
           0 8px 18px rgba(14, 165, 233, 0.34);

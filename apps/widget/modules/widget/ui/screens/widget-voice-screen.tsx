@@ -220,7 +220,7 @@ const VoiceOrb = ({
       />
       <span
         className={cn(
-          "absolute inset-0 overflow-hidden rounded-full ring-1 ring-black/5 will-change-transform",
+          "absolute inset-0 aspect-square overflow-hidden rounded-full ring-1 ring-black/5 [clip-path:circle(50%)] [-webkit-clip-path:circle(50%)] will-change-transform",
           "[animation:voice-orb-idle_7s_ease-in-out_infinite]",
           isActive &&
             "[animation:voice-orb-listening_2.1s_ease-in-out_infinite]",
@@ -286,7 +286,7 @@ const TranscriptBackControl = ({
       <span
         aria-hidden="true"
         className={cn(
-          "pointer-events-none absolute inset-0 overflow-hidden rounded-full ring-1 ring-black/5 [animation:voice-orb-idle_5.5s_ease-in-out_infinite]",
+          "pointer-events-none absolute inset-0 aspect-square overflow-hidden rounded-full ring-1 ring-black/5 [clip-path:circle(50%)] [-webkit-clip-path:circle(50%)] [animation:voice-orb-idle_5.5s_ease-in-out_infinite]",
           isPressed &&
             "[animation:voice-back-orb-press_170ms_cubic-bezier(0.16,1,0.3,1)_both]"
         )}

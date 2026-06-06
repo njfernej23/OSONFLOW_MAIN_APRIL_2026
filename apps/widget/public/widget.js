@@ -187,6 +187,8 @@
         flex: 0 0 ${u}px;
         overflow: hidden;
         border-radius: 50%;
+        clip-path: circle(50%);
+        -webkit-clip-path: circle(50%);
         box-shadow:
           inset 0 0 0 1px rgba(255, 255, 255, 0.38),
           0 8px 18px rgba(14, 165, 233, 0.34);
