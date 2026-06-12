@@ -433,7 +433,6 @@ export const ConversationsPanel = () => {
                 const statusAccent =
                   STATUS_ACCENT[conversation.status] ?? "bg-transparent"
                 const showOperatorUnreadBadge =
-                  conversation.status === "escalated" &&
                   (conversation.unreadForOperatorCount ?? 0) > 0
                 const showVisitorUnreadBadge =
                   (conversation.unreadForContactCount ?? 0) > 0

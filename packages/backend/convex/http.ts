@@ -395,6 +395,75 @@ http.route({
   }),
 })
 
+http.route({
+  pathPrefix: "/whatsapp/webhook/",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const url = new URL(request.url)
+    const pathParts = url.pathname.split("/").filter(Boolean)
+    const webhookSecret = pathParts[pathParts.length - 1]
+    const mode = url.searchParams.get("hub.mode")
+    const verifyToken = url.searchParams.get("hub.verify_token")
+    const challenge = url.searchParams.get("hub.challenge")
+
+    if (!webhookSecret || !verifyToken || !challenge || mode !== "subscribe") {
+      return new Response("Invalid WhatsApp verification request", {
+        status: 400,
+      })
+    }
+
+    const isVerified = (await ctx.runQuery(
+      (internal as any).system.whatsapp.verifyWebhook,
+      {
+        webhookSecret,
+        verifyToken,
+      }
+    )) as boolean
+
+    if (!isVerified) {
+      return new Response("Invalid WhatsApp verify token", { status: 403 })
+    }
+
+    return new Response(challenge, { status: 200 })
+  }),
+})
+
+http.route({
+  pathPrefix: "/whatsapp/webhook/",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const url = new URL(request.url)
+    const pathParts = url.pathname.split("/").filter(Boolean)
+    const webhookSecret = pathParts[pathParts.length - 1]
+
+    if (!webhookSecret) {
+      return new Response("Missing WhatsApp webhook secret", { status: 400 })
+    }
+
+    let payload: unknown
+
+    try {
+      payload = await request.json()
+    } catch {
+      return new Response("Invalid JSON", { status: 400 })
+    }
+
+    const result = (await ctx.runMutation(
+      (internal as any).system.whatsapp.receiveWebhook,
+      {
+        webhookSecret,
+        payload,
+      }
+    )) as { queued: boolean; reason?: string }
+
+    if (!result.queued && result.reason === "integration_not_found") {
+      return new Response("WhatsApp integration not found", { status: 404 })
+    }
+
+    return new Response("EVENT_RECEIVED", { status: 200 })
+  }),
+})
+
 async function validateRequest(req: Request): Promise<WebhookEvent | null> {
   const payloadString = await req.text()
   const svixHeaders = {

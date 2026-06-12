@@ -98,9 +98,12 @@ export const ContactPanel = () => {
   const instagramUsername = contactSession?.metadata?.instagramUsername
   const instagramFullName = contactSession?.metadata?.instagramFullName
   const isInstagramSession = contactSession?.metadata?.platform === "Instagram"
+  const isWhatsappSession = contactSession?.metadata?.platform === "WhatsApp"
   const secondaryIdentity =
     isInstagramSession && instagramUsername
       ? `@${instagramUsername}`
+      : isWhatsappSession && contactSession?.metadata?.whatsappPhoneNumber
+        ? contactSession.metadata.whatsappPhoneNumber
       : (contactSession?.email ?? "")
   const handleRefreshInstagramProfile = async () => {
     if (!conversationId) {
@@ -130,9 +133,11 @@ export const ContactPanel = () => {
 
     const isExternalChannel =
       contactSession.metadata.platform === "Telegram" ||
-      contactSession.metadata.platform === "Instagram"
+      contactSession.metadata.platform === "Instagram" ||
+      contactSession.metadata.platform === "WhatsApp"
     const isTelegramSession = contactSession.metadata.platform === "Telegram"
     const isInstagramSession = contactSession.metadata.platform === "Instagram"
+    const isWhatsappSession = contactSession.metadata.platform === "WhatsApp"
 
     return [
       {
@@ -241,6 +246,25 @@ export const ContactPanel = () => {
                     "number"
                       ? contactSession.metadata.instagramFollowerCount.toLocaleString()
                       : "Unknown",
+                },
+              ]
+            : []),
+          ...(isWhatsappSession
+            ? [
+                {
+                  label: "WhatsApp phone",
+                  value:
+                    contactSession.metadata.whatsappPhoneNumber || "Unknown",
+                },
+                {
+                  label: "Profile name",
+                  value:
+                    contactSession.metadata.whatsappProfileName || "Unknown",
+                },
+                {
+                  label: "Phone number ID",
+                  value:
+                    contactSession.metadata.whatsappPhoneNumberId || "Unknown",
                 },
               ]
             : []),

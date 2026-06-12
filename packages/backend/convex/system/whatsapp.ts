@@ -19,192 +19,108 @@ import { escalateConversation } from "./ai/tools/escalateConversation"
 import { resolveConversation } from "./ai/tools/resolveConversation"
 import { search } from "./ai/tools/search"
 
-type InstagramIntegration = {
+type WhatsAppIntegration = {
   _id: any
   organizationId: string
   accessToken: string
-  instagramUserId: string
-  username?: string
+  phoneNumberId: string
+  businessAccountId?: string
+  displayPhoneNumber?: string
+  verifiedName?: string
   webhookSecret: string
   verifyToken: string
   isEnabled: boolean
 }
 
-type InstagramMessagingEvent = {
-  sender?: { id?: string }
-  recipient?: { id?: string }
-  timestamp?: number
-  message?: {
-    mid?: string
-    text?: string
-    is_echo?: boolean
+type WhatsAppMessage = {
+  from?: string
+  id?: string
+  type?: string
+  timestamp?: string
+  text?: {
+    body?: string
   }
 }
 
-type InstagramWebhookPayload = {
+type WhatsAppContact = {
+  wa_id?: string
+  profile?: {
+    name?: string
+  }
+}
+
+type WhatsAppWebhookPayload = {
   object?: string
   entry?: Array<{
     id?: string
-    time?: number
-    messaging?: InstagramMessagingEvent[]
+    changes?: Array<{
+      field?: string
+      value?: {
+        messaging_product?: string
+        metadata?: {
+          phone_number_id?: string
+          display_phone_number?: string
+        }
+        contacts?: WhatsAppContact[]
+        messages?: WhatsAppMessage[]
+      }
+    }>
   }>
 }
 
-type InstagramSenderProfile = {
-  name?: string
-  username?: string
-  profile_pic?: string
-  follower_count?: number
-}
-
-type NormalizedInstagramSenderProfile = {
-  fullName?: string
-  username?: string
-  profilePicUrl?: string
-  followerCount?: number
-}
-
-type InstagramSendMessageResponse = {
-  recipient_id?: string
-  message_id?: string
+type WhatsAppSendMessageResponse = {
+  messaging_product?: string
+  contacts?: Array<{ input?: string; wa_id?: string }>
+  messages?: Array<{ id?: string }>
   error?: {
     message?: string
   }
 }
 
-const INSTAGRAM_GRAPH_API_VERSION =
-  process.env.INSTAGRAM_GRAPH_API_VERSION || "v25.0"
+const WHATSAPP_GRAPH_API_VERSION =
+  process.env.WHATSAPP_GRAPH_API_VERSION || "v25.0"
 
 const createWebhookSecret = () =>
-  `ig_${crypto.randomUUID().replaceAll("-", "")}${crypto
+  `wa_${crypto.randomUUID().replaceAll("-", "")}${crypto
     .randomUUID()
     .replaceAll("-", "")}`
 
 const createVerifyToken = () =>
-  `igv_${crypto.randomUUID().replaceAll("-", "")}${crypto
+  `wav_${crypto.randomUUID().replaceAll("-", "")}${crypto
     .randomUUID()
     .replaceAll("-", "")}`
 
-const getSyntheticEmail = (senderId: string) =>
-  `instagram-${senderId}@instagram.local`
+const getSyntheticEmail = (waId: string) => `whatsapp-${waId}@whatsapp.local`
 
-const createInstagramSessionMetadata = ({
-  senderId,
-  username,
-  fullName,
-  profilePicUrl,
-  followerCount,
-  accountId,
+const getWhatsAppContactName = ({
+  profileName,
+  waId,
 }: {
-  senderId?: string
-  username?: string
-  fullName?: string
-  profilePicUrl?: string
-  followerCount?: number
-  accountId?: string
+  profileName?: string
+  waId: string
+}) => profileName?.trim() || `WhatsApp ${waId}`
+
+const createWhatsAppSessionMetadata = ({
+  waId,
+  profileName,
+  phoneNumberId,
+  businessAccountId,
+}: {
+  waId?: string
+  profileName?: string
+  phoneNumberId?: string
+  businessAccountId?: string
 }) => ({
-  platform: "Instagram",
+  platform: "WhatsApp",
   vendor: "Meta",
-  instagramUserId: senderId,
-  instagramUsername: username,
-  instagramFullName: fullName,
-  instagramProfilePic: profilePicUrl,
-  instagramFollowerCount: followerCount,
-  instagramAccountId: accountId,
+  whatsappPhoneNumber: waId,
+  whatsappProfileName: profileName,
+  whatsappPhoneNumberId: phoneNumberId,
+  whatsappBusinessAccountId: businessAccountId,
 })
 
-const instagramMessagesApiUrl = () =>
-  `https://graph.instagram.com/${INSTAGRAM_GRAPH_API_VERSION}/me/messages`
-
-const instagramProfileApiUrl = (
-  scopedUserId: string,
-  fields: string,
-  accessToken: string
-) => {
-  const url = new URL(
-    `https://graph.instagram.com/${INSTAGRAM_GRAPH_API_VERSION}/${scopedUserId}`
-  )
-  url.searchParams.set("fields", fields)
-  url.searchParams.set("access_token", accessToken)
-  return url.toString()
-}
-
-const normalizeInstagramProfile = (
-  profile: InstagramSenderProfile | null
-): NormalizedInstagramSenderProfile | undefined => {
-  if (!profile) {
-    return undefined
-  }
-
-  const fullName = profile.name?.trim()
-  const username = profile.username?.trim()
-  const profilePicUrl = profile.profile_pic?.trim()
-  const followerCount =
-    typeof profile.follower_count === "number"
-      ? profile.follower_count
-      : undefined
-
-  if (!fullName && !username && !profilePicUrl && followerCount === undefined) {
-    return undefined
-  }
-
-  return {
-    fullName: fullName || undefined,
-    username: username || undefined,
-    profilePicUrl: profilePicUrl || undefined,
-    followerCount,
-  }
-}
-
-const fetchInstagramSenderProfile = async ({
-  accessToken,
-  senderId,
-}: {
-  accessToken: string
-  senderId: string
-}): Promise<NormalizedInstagramSenderProfile | undefined> => {
-  const fieldSets = [
-    "name,username,profile_pic,follower_count",
-    "name,username,profile_pic",
-    "username",
-  ]
-
-  for (const fields of fieldSets) {
-    try {
-      const response = await fetch(
-        instagramProfileApiUrl(senderId, fields, accessToken)
-      )
-      const body = (await response.json()) as InstagramSenderProfile & {
-        error?: { message?: string }
-      }
-
-      if (!response.ok || body.error) {
-        continue
-      }
-
-      const profile = normalizeInstagramProfile(body)
-
-      if (profile) {
-        return profile
-      }
-    } catch (error) {
-      console.error("Instagram sender profile lookup failed", error)
-      return undefined
-    }
-  }
-
-  return undefined
-}
-
-const getInstagramContactName = ({
-  fullName,
-  username,
-}: {
-  fullName?: string
-  username?: string
-}) =>
-  fullName?.trim() ||
-  (username?.trim() ? `@${username.trim()}` : "Instagram contact")
+const whatsappMessagesApiUrl = (phoneNumberId: string) =>
+  `https://graph.facebook.com/${WHATSAPP_GRAPH_API_VERSION}/${phoneNumberId}/messages`
 
 const getLatestAssistantMessage = async (ctx: any, threadId: string) => {
   const messages = await supportAgent.listMessages(ctx, {
@@ -226,7 +142,7 @@ const getLatestAssistantMessage = async (ctx: any, threadId: string) => {
   }
 }
 
-const toInstagramPlainText = (value: string) => {
+const toWhatsAppPlainText = (value: string) => {
   return value
     .replace(/\r\n/g, "\n")
     .replace(/^```[^\n]*\n?/gm, "")
@@ -249,34 +165,41 @@ const toInstagramPlainText = (value: string) => {
     .trim()
 }
 
-const sendInstagramMessage = async ({
+const sendWhatsAppMessage = async ({
   accessToken,
-  recipientId,
+  phoneNumberId,
+  recipientPhone,
   text,
 }: {
   accessToken: string
-  instagramUserId: string
-  recipientId: string
+  phoneNumberId: string
+  recipientPhone: string
   text: string
 }) => {
-  const formattedText = toInstagramPlainText(text) || text
-  const response = await fetch(instagramMessagesApiUrl(), {
+  const formattedText = toWhatsAppPlainText(text) || text
+  const response = await fetch(whatsappMessagesApiUrl(phoneNumberId), {
     method: "POST",
     headers: {
       "content-type": "application/json",
       authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({
-      recipient: { id: recipientId },
-      message: { text: formattedText },
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: recipientPhone,
+      type: "text",
+      text: {
+        preview_url: false,
+        body: formattedText.slice(0, 4096),
+      },
     }),
   })
-  const body = (await response.json()) as InstagramSendMessageResponse
+  const body = (await response.json()) as WhatsAppSendMessageResponse
 
   if (!response.ok || body.error) {
     throw new ConvexError({
       code: "BAD_REQUEST",
-      message: `Instagram send message failed: ${
+      message: `WhatsApp send message failed: ${
         body.error?.message || response.statusText
       }`,
     })
@@ -290,13 +213,15 @@ export const upsertIntegration = internalMutation({
     organizationId: v.string(),
     actorId: v.optional(v.string()),
     accessToken: v.string(),
-    instagramUserId: v.string(),
-    username: v.optional(v.string()),
+    phoneNumberId: v.string(),
+    businessAccountId: v.optional(v.string()),
+    displayPhoneNumber: v.optional(v.string()),
+    verifiedName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now()
     const existing = await ctx.db
-      .query("instagramIntegrations")
+      .query("whatsappIntegrations")
       .withIndex("by_organization_id", (q) =>
         q.eq("organizationId", args.organizationId)
       )
@@ -305,8 +230,10 @@ export const upsertIntegration = internalMutation({
     if (existing) {
       await ctx.db.patch(existing._id, {
         accessToken: args.accessToken,
-        instagramUserId: args.instagramUserId,
-        username: args.username,
+        phoneNumberId: args.phoneNumberId,
+        businessAccountId: args.businessAccountId,
+        displayPhoneNumber: args.displayPhoneNumber,
+        verifiedName: args.verifiedName,
         isEnabled: true,
         status: "needs_webhook_url",
         setupError: undefined,
@@ -322,11 +249,13 @@ export const upsertIntegration = internalMutation({
 
     const webhookSecret = createWebhookSecret()
     const verifyToken = createVerifyToken()
-    const integrationId = await ctx.db.insert("instagramIntegrations", {
+    const integrationId = await ctx.db.insert("whatsappIntegrations", {
       organizationId: args.organizationId,
       accessToken: args.accessToken,
-      instagramUserId: args.instagramUserId,
-      username: args.username,
+      phoneNumberId: args.phoneNumberId,
+      businessAccountId: args.businessAccountId,
+      displayPhoneNumber: args.displayPhoneNumber,
+      verifiedName: args.verifiedName,
       webhookSecret,
       verifyToken,
       isEnabled: true,
@@ -342,7 +271,7 @@ export const upsertIntegration = internalMutation({
 
 export const markIntegrationSetup = internalMutation({
   args: {
-    integrationId: v.id("instagramIntegrations"),
+    integrationId: v.id("whatsappIntegrations"),
     organizationId: v.string(),
     status: v.union(
       v.literal("connected"),
@@ -358,7 +287,7 @@ export const markIntegrationSetup = internalMutation({
     if (!integration || integration.organizationId !== args.organizationId) {
       throw new ConvexError({
         code: "NOT_FOUND",
-        message: "Instagram integration not found",
+        message: "WhatsApp integration not found",
       })
     }
 
@@ -374,7 +303,7 @@ export const markIntegrationSetup = internalMutation({
 
 export const removeIntegration = internalMutation({
   args: {
-    integrationId: v.id("instagramIntegrations"),
+    integrationId: v.id("whatsappIntegrations"),
     organizationId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -383,7 +312,7 @@ export const removeIntegration = internalMutation({
     if (!integration || integration.organizationId !== args.organizationId) {
       throw new ConvexError({
         code: "NOT_FOUND",
-        message: "Instagram integration not found",
+        message: "WhatsApp integration not found",
       })
     }
 
@@ -397,7 +326,7 @@ export const getIntegrationByOrganizationId = internalQuery({
   },
   handler: async (ctx, args) => {
     return await ctx.db
-      .query("instagramIntegrations")
+      .query("whatsappIntegrations")
       .withIndex("by_organization_id", (q) =>
         q.eq("organizationId", args.organizationId)
       )
@@ -407,7 +336,7 @@ export const getIntegrationByOrganizationId = internalQuery({
 
 export const getIntegrationById = internalQuery({
   args: {
-    integrationId: v.id("instagramIntegrations"),
+    integrationId: v.id("whatsappIntegrations"),
   },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.integrationId)
@@ -421,7 +350,7 @@ export const verifyWebhook = internalQuery({
   },
   handler: async (ctx, args) => {
     const integration = await ctx.db
-      .query("instagramIntegrations")
+      .query("whatsappIntegrations")
       .withIndex("by_webhook_secret", (q) =>
         q.eq("webhookSecret", args.webhookSecret)
       )
@@ -440,7 +369,7 @@ export const receiveWebhook = internalMutation({
   },
   handler: async (ctx, args) => {
     const integration = await ctx.db
-      .query("instagramIntegrations")
+      .query("whatsappIntegrations")
       .withIndex("by_webhook_secret", (q) =>
         q.eq("webhookSecret", args.webhookSecret)
       )
@@ -457,7 +386,7 @@ export const receiveWebhook = internalMutation({
 
     await ctx.scheduler.runAfter(
       0,
-      (internal as any).system.instagram.handleIncomingWebhook,
+      (internal as any).system.whatsapp.handleIncomingWebhook,
       {
         integrationId: integration._id,
         payload: args.payload,
@@ -468,14 +397,11 @@ export const receiveWebhook = internalMutation({
   },
 })
 
-export const getOrCreateInstagramConversation = internalMutation({
+export const getOrCreateWhatsAppConversation = internalMutation({
   args: {
-    integrationId: v.id("instagramIntegrations"),
-    senderId: v.string(),
-    username: v.optional(v.string()),
-    fullName: v.optional(v.string()),
-    profilePicUrl: v.optional(v.string()),
-    followerCount: v.optional(v.number()),
+    integrationId: v.id("whatsappIntegrations"),
+    waId: v.string(),
+    profileName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const integration = await ctx.db.get(args.integrationId)
@@ -483,102 +409,88 @@ export const getOrCreateInstagramConversation = internalMutation({
     if (!integration || !integration.isEnabled) {
       throw new ConvexError({
         code: "NOT_FOUND",
-        message: "Instagram integration not found",
+        message: "WhatsApp integration not found",
       })
     }
 
     const now = Date.now()
-    let instagramContact = await ctx.db
-      .query("instagramContacts")
-      .withIndex("by_integration_id_and_sender_id", (q) =>
-        q.eq("integrationId", args.integrationId).eq("senderId", args.senderId)
+    let whatsappContact = await ctx.db
+      .query("whatsappContacts")
+      .withIndex("by_integration_id_and_wa_id", (q) =>
+        q.eq("integrationId", args.integrationId).eq("waId", args.waId)
       )
       .unique()
 
-    let contactSessionId = instagramContact?.contactSessionId
-    const username = args.username ?? instagramContact?.username
-    const fullName = args.fullName ?? instagramContact?.fullName
-    const profilePicUrl =
-      args.profilePicUrl ?? instagramContact?.profilePicUrl
-    const followerCount =
-      args.followerCount ?? instagramContact?.followerCount
-    const displayName = getInstagramContactName({ fullName, username })
+    let contactSessionId = whatsappContact?.contactSessionId
+    const profileName = args.profileName ?? whatsappContact?.profileName
+    const displayName = getWhatsAppContactName({
+      profileName,
+      waId: args.waId,
+    })
 
-    if (!instagramContact) {
+    if (!whatsappContact) {
       contactSessionId = await ctx.db.insert("contactSessions", {
         organizationId: integration.organizationId,
         name: displayName,
-        email: getSyntheticEmail(args.senderId),
+        email: getSyntheticEmail(args.waId),
         expiresAt: now + SESSION_DURATION_MS,
-        metadata: createInstagramSessionMetadata({
-          senderId: args.senderId,
-          username,
-          fullName,
-          profilePicUrl,
-          followerCount,
-          accountId: integration.instagramUserId,
+        metadata: createWhatsAppSessionMetadata({
+          waId: args.waId,
+          profileName,
+          phoneNumberId: integration.phoneNumberId,
+          businessAccountId: integration.businessAccountId,
         }),
       })
 
-      const instagramContactId = await ctx.db.insert("instagramContacts", {
+      const whatsappContactId = await ctx.db.insert("whatsappContacts", {
         organizationId: integration.organizationId,
         integrationId: args.integrationId,
-        senderId: args.senderId,
-        username,
-        fullName,
-        profilePicUrl,
-        followerCount,
+        waId: args.waId,
+        profileName,
         contactSessionId,
         lastMessageAt: now,
         createdAt: now,
         updatedAt: now,
       })
 
-      instagramContact = await ctx.db.get(instagramContactId)
+      whatsappContact = await ctx.db.get(whatsappContactId)
     } else {
-      await ctx.db.patch(instagramContact._id, {
-        username,
-        fullName,
-        profilePicUrl,
-        followerCount,
+      await ctx.db.patch(whatsappContact._id, {
+        profileName,
         lastMessageAt: now,
         updatedAt: now,
       })
 
-      const contactSession = await ctx.db.get(instagramContact.contactSessionId)
+      const contactSession = await ctx.db.get(whatsappContact.contactSessionId)
 
       if (contactSession) {
-        const shouldRenameContact =
-          contactSession.name === "Instagram contact" ||
-          contactSession.name.startsWith("@") ||
-          Boolean(args.fullName)
-
         await ctx.db.patch(contactSession._id, {
-          name: shouldRenameContact ? displayName : contactSession.name,
+          name:
+            contactSession.name.startsWith("WhatsApp ") && profileName
+              ? displayName
+              : contactSession.name,
           metadata: {
             ...contactSession.metadata,
-            ...createInstagramSessionMetadata({
-              senderId: args.senderId,
-              username,
-              fullName,
-              profilePicUrl,
-              followerCount,
-              accountId: integration.instagramUserId,
+            ...createWhatsAppSessionMetadata({
+              waId: args.waId,
+              profileName,
+              phoneNumberId: integration.phoneNumberId,
+              businessAccountId: integration.businessAccountId,
             }),
           },
         })
       }
     }
 
-    if (!instagramContact || !contactSessionId) {
+    if (!whatsappContact || !contactSessionId) {
       throw new ConvexError({
         code: "BAD_REQUEST",
-        message: "Unable to create Instagram contact",
+        message: "Unable to create WhatsApp contact",
       })
     }
 
-    const activeConversation = instagramContact.activeConversationId
-      ? await ctx.db.get(instagramContact.activeConversationId)
+    const activeConversation = whatsappContact.activeConversationId
+      ? await ctx.db.get(whatsappContact.activeConversationId)
       : null
 
     if (activeConversation && activeConversation.status !== "resolved") {
@@ -593,7 +505,7 @@ export const getOrCreateInstagramConversation = internalMutation({
 
     const { threadId } = await supportAgent.createThread(ctx, {
       userId: integration.organizationId,
-      title: `Instagram ${args.senderId}`,
+      title: `WhatsApp ${args.waId}`,
     })
 
     const conversationId = await ctx.db.insert("conversations", {
@@ -611,7 +523,7 @@ export const getOrCreateInstagramConversation = internalMutation({
       unreadForOperatorCount: 0,
     })
 
-    await ctx.db.patch(instagramContact._id, {
+    await ctx.db.patch(whatsappContact._id, {
       activeConversationId: conversationId,
       updatedAt: now,
     })
@@ -626,10 +538,9 @@ export const getOrCreateInstagramConversation = internalMutation({
           threadId,
           contactSessionId,
           status: "unresolved",
-          source: "instagram",
-          instagramSenderId: args.senderId,
-          instagramUsername: username,
-          instagramFullName: fullName,
+          source: "whatsapp",
+          whatsappPhoneNumber: args.waId,
+          whatsappProfileName: profileName,
         },
       }
     )
@@ -644,7 +555,7 @@ export const getOrCreateInstagramConversation = internalMutation({
   },
 })
 
-export const getInstagramContactByConversationId = internalQuery({
+export const getWhatsAppContactByConversationId = internalQuery({
   args: {
     conversationId: v.id("conversations"),
   },
@@ -656,145 +567,49 @@ export const getInstagramContactByConversationId = internalQuery({
     }
 
     return await ctx.db
-      .query("instagramContacts")
+      .query("whatsappContacts")
       .withIndex("by_contact_session_id", (q) =>
         q.eq("contactSessionId", conversation.contactSessionId)
       )
       .filter((q) => q.eq(q.field("activeConversationId"), args.conversationId))
       .unique()
-  },
-})
-
-export const getInstagramContactRefreshContext = internalQuery({
-  args: {
-    conversationId: v.id("conversations"),
-    organizationId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const conversation = await ctx.db.get(args.conversationId)
-
-    if (!conversation || conversation.organizationId !== args.organizationId) {
-      return null
-    }
-
-    const instagramContact = await ctx.db
-      .query("instagramContacts")
-      .withIndex("by_contact_session_id", (q) =>
-        q.eq("contactSessionId", conversation.contactSessionId)
-      )
-      .filter((q) => q.eq(q.field("activeConversationId"), args.conversationId))
-      .unique()
-
-    if (!instagramContact) {
-      return null
-    }
-
-    const integration = await ctx.db.get(instagramContact.integrationId)
-
-    if (!integration || integration.organizationId !== args.organizationId) {
-      return null
-    }
-
-    return {
-      contact: instagramContact,
-      integration,
-    }
-  },
-})
-
-export const updateInstagramContactProfile = internalMutation({
-  args: {
-    contactId: v.id("instagramContacts"),
-    organizationId: v.string(),
-    username: v.optional(v.string()),
-    fullName: v.optional(v.string()),
-    profilePicUrl: v.optional(v.string()),
-    followerCount: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    const contact = await ctx.db.get(args.contactId)
-
-    if (!contact || contact.organizationId !== args.organizationId) {
-      throw new ConvexError({
-        code: "NOT_FOUND",
-        message: "Instagram contact not found",
-      })
-    }
-
-    const contactSession = await ctx.db.get(contact.contactSessionId)
-    const username = args.username ?? contact.username
-    const fullName = args.fullName ?? contact.fullName
-    const profilePicUrl = args.profilePicUrl ?? contact.profilePicUrl
-    const followerCount = args.followerCount ?? contact.followerCount
-    const displayName = getInstagramContactName({ fullName, username })
-
-    await ctx.db.patch(contact._id, {
-      username,
-      fullName,
-      profilePicUrl,
-      followerCount,
-      updatedAt: Date.now(),
-    })
-
-    if (contactSession) {
-      const shouldRenameContact =
-        contactSession.name === "Instagram contact" ||
-        contactSession.name.startsWith("@") ||
-        Boolean(args.fullName)
-
-      await ctx.db.patch(contactSession._id, {
-        name: shouldRenameContact ? displayName : contactSession.name,
-        metadata: {
-          ...contactSession.metadata,
-          ...createInstagramSessionMetadata({
-            senderId: contact.senderId,
-            username,
-            fullName,
-            profilePicUrl,
-            followerCount,
-            accountId: contactSession.metadata?.instagramAccountId,
-          }),
-        },
-      })
-    }
   },
 })
 
 const handleIncomingMessage = async ({
   ctx,
   integrationId,
-  event,
+  message,
+  contact,
 }: {
   ctx: any
   integrationId: any
-  event: InstagramMessagingEvent
+  message: WhatsAppMessage
+  contact?: WhatsAppContact
 }) => {
-  const text = event.message?.text?.trim()
-  const senderId = event.sender?.id
+  const text = message.text?.body?.trim()
+  const waId = contact?.wa_id || message.from
+  const profileName = contact?.profile?.name?.trim()
 
-  if (!text || !senderId || event.message?.is_echo) {
+  if (!text || !waId || message.type !== "text") {
     return { handled: false }
   }
 
   const integrationForUpdate = (await ctx.runQuery(
-    (internal as any).system.instagram.getIntegrationById,
+    (internal as any).system.whatsapp.getIntegrationById,
     {
       integrationId,
     }
-  )) as InstagramIntegration | null
+  )) as WhatsAppIntegration | null
 
   if (!integrationForUpdate?.isEnabled) {
     return { handled: false, reason: "integration_disabled" }
   }
 
-  if (senderId === integrationForUpdate.instagramUserId) {
-    return { handled: false, reason: "account_message" }
-  }
-
-  const senderLimit = await checkRateLimit(ctx, "instagramMessageBySender", {
-    key: `${integrationForUpdate.organizationId}:${senderId}`,
+  const senderLimit = await checkRateLimit(ctx, "whatsappMessageBySender", {
+    key: `${integrationForUpdate.organizationId}:${waId}`,
   })
-  const orgLimit = await checkRateLimit(ctx, "instagramMessageByOrg", {
+  const orgLimit = await checkRateLimit(ctx, "whatsappMessageByOrg", {
     key: integrationForUpdate.organizationId,
   })
 
@@ -802,24 +617,16 @@ const handleIncomingMessage = async ({
     return { handled: false, reason: "rate_limited" }
   }
 
-  const senderProfile = await fetchInstagramSenderProfile({
-    accessToken: integrationForUpdate.accessToken,
-    senderId,
-  })
-
   const { integration, contactSessionId, conversationId, threadId, status } =
     (await ctx.runMutation(
-      (internal as any).system.instagram.getOrCreateInstagramConversation,
+      (internal as any).system.whatsapp.getOrCreateWhatsAppConversation,
       {
         integrationId,
-        senderId,
-        username: senderProfile?.username,
-        fullName: senderProfile?.fullName,
-        profilePicUrl: senderProfile?.profilePicUrl,
-        followerCount: senderProfile?.followerCount,
+        waId,
+        profileName,
       }
     )) as {
-      integration: InstagramIntegration
+      integration: WhatsAppIntegration
       contactSessionId: any
       conversationId: any
       threadId: string
@@ -914,8 +721,9 @@ const handleIncomingMessage = async ({
         threadId,
         contactSessionId,
         prompt: text,
-        source: "instagram",
-        instagramSenderId: senderId,
+        source: "whatsapp",
+        whatsappPhoneNumber: waId,
+        whatsappProfileName: profileName,
       },
     }
   )
@@ -930,14 +738,14 @@ const handleIncomingMessage = async ({
 
   if (replyText) {
     try {
-      await sendInstagramMessage({
+      await sendWhatsAppMessage({
         accessToken: integration.accessToken,
-        instagramUserId: integration.instagramUserId,
-        recipientId: senderId,
+        phoneNumberId: integration.phoneNumberId,
+        recipientPhone: waId,
         text: replyText,
       })
     } catch (error) {
-      console.error("Instagram automatic reply failed", error)
+      console.error("WhatsApp automatic reply failed", error)
     }
   }
 
@@ -946,25 +754,33 @@ const handleIncomingMessage = async ({
 
 export const handleIncomingWebhook: any = internalAction({
   args: {
-    integrationId: v.id("instagramIntegrations"),
+    integrationId: v.id("whatsappIntegrations"),
     payload: v.any(),
   },
   handler: async (ctx, args) => {
-    const payload = args.payload as InstagramWebhookPayload
-    const events = (payload.entry ?? []).flatMap(
-      (entry) => entry.messaging ?? []
-    )
+    const payload = args.payload as WhatsAppWebhookPayload
     let handledCount = 0
 
-    for (const event of events) {
-      const result = await handleIncomingMessage({
-        ctx,
-        integrationId: args.integrationId,
-        event,
-      })
+    for (const entry of payload.entry ?? []) {
+      for (const change of entry.changes ?? []) {
+        const contacts = change.value?.contacts ?? []
 
-      if (result.handled) {
-        handledCount += 1
+        for (const message of change.value?.messages ?? []) {
+          const contact =
+            contacts.find(
+              (item) => item.wa_id && item.wa_id === message.from
+            ) ?? contacts[0]
+          const result = await handleIncomingMessage({
+            ctx,
+            integrationId: args.integrationId,
+            message,
+            contact,
+          })
+
+          if (result.handled) {
+            handledCount += 1
+          }
+        }
       }
     }
 
@@ -978,37 +794,37 @@ export const sendConversationMessage: any = internalAction({
     text: v.string(),
   },
   handler: async (ctx, args) => {
-    const instagramContact = await ctx.runQuery(
-      (internal as any).system.instagram.getInstagramContactByConversationId,
+    const whatsappContact = await ctx.runQuery(
+      (internal as any).system.whatsapp.getWhatsAppContactByConversationId,
       {
         conversationId: args.conversationId,
       }
     )
 
-    if (!instagramContact) {
-      return { sent: false, reason: "not_instagram_conversation" }
+    if (!whatsappContact) {
+      return { sent: false, reason: "not_whatsapp_conversation" }
     }
 
     const integration = (await ctx.runQuery(
-      (internal as any).system.instagram.getIntegrationById,
+      (internal as any).system.whatsapp.getIntegrationById,
       {
-        integrationId: instagramContact.integrationId,
+        integrationId: whatsappContact.integrationId,
       }
-    )) as InstagramIntegration | null
+    )) as WhatsAppIntegration | null
 
     if (!integration?.isEnabled) {
       return { sent: false, reason: "integration_disabled" }
     }
 
     try {
-      await sendInstagramMessage({
+      await sendWhatsAppMessage({
         accessToken: integration.accessToken,
-        instagramUserId: integration.instagramUserId,
-        recipientId: instagramContact.senderId,
+        phoneNumberId: integration.phoneNumberId,
+        recipientPhone: whatsappContact.waId,
         text: args.text,
       })
     } catch (error) {
-      console.error("Instagram operator reply failed", error)
+      console.error("WhatsApp operator reply failed", error)
       return { sent: false, reason: "send_failed" }
     }
 

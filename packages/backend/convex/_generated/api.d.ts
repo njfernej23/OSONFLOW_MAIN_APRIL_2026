@@ -31,6 +31,7 @@ import type * as private_secrets from "../private/secrets.js";
 import type * as private_subscriptions from "../private/subscriptions.js";
 import type * as private_telegram from "../private/telegram.js";
 import type * as private_vapi from "../private/vapi.js";
+import type * as private_whatsapp from "../private/whatsapp.js";
 import type * as private_widgetSettings from "../private/widgetSettings.js";
 import type * as private_workflows from "../private/workflows.js";
 import type * as public_aiConversations from "../public/aiConversations.js";
@@ -58,6 +59,7 @@ import type * as system_plugins from "../system/plugins.js";
 import type * as system_secrets from "../system/secrets.js";
 import type * as system_subscriptions from "../system/subscriptions.js";
 import type * as system_telegram from "../system/telegram.js";
+import type * as system_whatsapp from "../system/whatsapp.js";
 import type * as system_workflowRuntime from "../system/workflowRuntime.js";
 
 import type {
@@ -90,6 +92,7 @@ declare const fullApi: ApiFromModules<{
   "private/subscriptions": typeof private_subscriptions;
   "private/telegram": typeof private_telegram;
   "private/vapi": typeof private_vapi;
+  "private/whatsapp": typeof private_whatsapp;
   "private/widgetSettings": typeof private_widgetSettings;
   "private/workflows": typeof private_workflows;
   "public/aiConversations": typeof public_aiConversations;
@@ -117,6 +120,7 @@ declare const fullApi: ApiFromModules<{
   "system/secrets": typeof system_secrets;
   "system/subscriptions": typeof system_subscriptions;
   "system/telegram": typeof system_telegram;
+  "system/whatsapp": typeof system_whatsapp;
   "system/workflowRuntime": typeof system_workflowRuntime;
 }>;
 

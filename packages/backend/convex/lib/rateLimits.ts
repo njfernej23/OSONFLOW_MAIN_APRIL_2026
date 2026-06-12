@@ -77,6 +77,19 @@ const rateLimits = {
     capacity: 80,
     shards: 4,
   },
+  whatsappMessageBySender: {
+    kind: "token bucket",
+    rate: 20,
+    period: MINUTE,
+    capacity: 8,
+  },
+  whatsappMessageByOrg: {
+    kind: "token bucket",
+    rate: 300,
+    period: MINUTE,
+    capacity: 80,
+    shards: 4,
+  },
   fileUploadByUser: {
     kind: "fixed window",
     rate: 20,

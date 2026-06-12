@@ -618,8 +618,6 @@ export const handleIncomingUpdate: any = internalAction({
       widgetSettings?.systemPrompt?.trim() || SUPPORT_AGENT_PROMPT
 
     let replyText: string | null = null
-    let shouldIncrementOperatorUnread =
-      status !== "unresolved" || subscription?.status !== "active"
 
     if (status === "unresolved" && subscription?.status === "active") {
       const openAIPlugin = await ctx.runQuery(
@@ -664,14 +662,6 @@ export const handleIncomingUpdate: any = internalAction({
           ? latestAssistantMessage.text
           : null) ||
         replyText
-      const latestConversation = await ctx.runQuery(
-        internal.system.conversations.getByThreadId,
-        {
-          threadId,
-        }
-      )
-      shouldIncrementOperatorUnread =
-        latestConversation?.status === "escalated" || !replyText
     } else {
       await saveMessage(ctx, components.agent, {
         threadId,
@@ -687,7 +677,6 @@ export const handleIncomingUpdate: any = internalAction({
     await ctx.runMutation(internal.system.conversations.touchCustomerMessage, {
       conversationId,
       timestamp: now,
-      incrementOperatorUnread: shouldIncrementOperatorUnread,
     })
 
     await ctx.runMutation(

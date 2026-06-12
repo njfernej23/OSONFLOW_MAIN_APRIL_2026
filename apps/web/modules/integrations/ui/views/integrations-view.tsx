@@ -142,6 +142,24 @@ type InstagramDashboard = {
   }
 }
 
+type WhatsAppDashboard = {
+  integration: null | {
+    _id: string
+    _creationTime: number
+    phoneNumberId: string
+    businessAccountId?: string
+    displayPhoneNumber?: string
+    verifiedName?: string
+    webhookUrl?: string
+    verifyToken: string
+    isEnabled: boolean
+    status: "connected" | "needs_webhook_url" | "error"
+    setupError?: string
+    lastWebhookAt?: number
+    updatedAt: number
+  }
+}
+
 const webhookEventTypeById = WEBHOOK_EVENT_TYPES.reduce(
   (acc, e) => {
     acc[e.id] = e
@@ -202,7 +220,7 @@ const ChannelIcon = ({
   channel,
   size = 24,
 }: {
-  channel: "telegram" | "instagram"
+  channel: "telegram" | "instagram" | "whatsapp"
   size?: number
 }) => {
   if (channel === "instagram") {
@@ -212,6 +230,10 @@ const ChannelIcon = ({
         className="text-pink-600"
       />
     )
+  }
+
+  if (channel === "whatsapp") {
+    return <ProviderIcon provider="whatsapp" size={size} />
   }
 
   return <ProviderIcon provider="telegram" size={size} />
@@ -342,6 +364,7 @@ type ActiveSection =
   | "apiKeys"
   | "telegram"
   | "instagram"
+  | "whatsapp"
   | "webhooks"
 
 export const IntegrationsView = () => {
@@ -386,6 +409,14 @@ export const IntegrationsView = () => {
   const [isConnectingInstagram, setIsConnectingInstagram] = useState(false)
   const [isDisconnectingInstagram, setIsDisconnectingInstagram] =
     useState(false)
+  const [whatsappChannelAccessToken, setWhatsappChannelAccessToken] =
+    useState("")
+  const [whatsappChannelPhoneNumberId, setWhatsappChannelPhoneNumberId] =
+    useState("")
+  const [whatsappChannelBusinessAccountId, setWhatsappChannelBusinessAccountId] =
+    useState("")
+  const [isConnectingWhatsapp, setIsConnectingWhatsapp] = useState(false)
+  const [isDisconnectingWhatsapp, setIsDisconnectingWhatsapp] = useState(false)
 
   const normalizedScriptUrl = useMemo(
     () => normalizeScriptUrl(scriptUrl),
@@ -427,6 +458,10 @@ export const IntegrationsView = () => {
     (api as any).private.instagram.getDashboard,
     {}
   ) as InstagramDashboard | undefined
+  const whatsappDashboard = useQuery(
+    (api as any).private.whatsapp.getDashboard,
+    {}
+  ) as WhatsAppDashboard | undefined
   const providerStatuses = useQuery(api.private.secrets.getProviderStatuses) as
     | ProviderStatuses
     | undefined
@@ -456,6 +491,25 @@ export const IntegrationsView = () => {
 
   const disconnectInstagram = useAction(
     (api as any).private.instagram.disconnect
+  ) as () => Promise<{ removed: boolean }>
+
+  const connectWhatsapp = useAction(
+    (api as any).private.whatsapp.connect
+  ) as (args: {
+    accessToken: string
+    phoneNumberId: string
+    businessAccountId?: string
+  }) => Promise<{
+    integrationId: string
+    phoneNumberId: string
+    displayPhoneNumber?: string
+    status: "connected" | "needs_webhook_url"
+    webhookUrl?: string
+    verifyToken: string
+  }>
+
+  const disconnectWhatsapp = useAction(
+    (api as any).private.whatsapp.disconnect
   ) as () => Promise<{ removed: boolean }>
 
   const createWebhook = useMutation(
@@ -699,6 +753,56 @@ export const IntegrationsView = () => {
     }
   }
 
+  const handleConnectWhatsapp = async () => {
+    if (
+      !whatsappChannelPhoneNumberId.trim() ||
+      !whatsappChannelAccessToken.trim()
+    ) {
+      toast.error("WhatsApp phone number ID and access token are required")
+      return
+    }
+
+    setIsConnectingWhatsapp(true)
+    try {
+      const result = await connectWhatsapp({
+        phoneNumberId: whatsappChannelPhoneNumberId.trim(),
+        accessToken: whatsappChannelAccessToken.trim(),
+        businessAccountId:
+          whatsappChannelBusinessAccountId.trim() || undefined,
+      })
+      setWhatsappChannelPhoneNumberId("")
+      setWhatsappChannelAccessToken("")
+      setWhatsappChannelBusinessAccountId("")
+      if (result.status === "connected") {
+        toast.success(
+          result.displayPhoneNumber
+            ? `Connected ${result.displayPhoneNumber}`
+            : "WhatsApp number connected"
+        )
+      } else {
+        toast.info(
+          "WhatsApp number saved. Add a webhook base URL to receive messages."
+        )
+      }
+    } catch {
+      toast.error("Failed to connect WhatsApp number")
+    } finally {
+      setIsConnectingWhatsapp(false)
+    }
+  }
+
+  const handleDisconnectWhatsapp = async () => {
+    setIsDisconnectingWhatsapp(true)
+    try {
+      await disconnectWhatsapp()
+      toast.success("WhatsApp number disconnected")
+    } catch {
+      toast.error("Failed to disconnect WhatsApp number")
+    } finally {
+      setIsDisconnectingWhatsapp(false)
+    }
+  }
+
   const handleToggleWebhookEvent = (eventType: WebhookEventType) => {
     setSelectedWebhookEvents((prev) =>
       prev.includes(eventType)
@@ -797,6 +901,7 @@ export const IntegrationsView = () => {
   const deliveryLogs = webhookDashboard?.deliveries ?? []
   const telegramIntegration = telegramDashboard?.integration ?? null
   const instagramIntegration = instagramDashboard?.integration ?? null
+  const whatsappIntegration = whatsappDashboard?.integration ?? null
   const configuredApiKeyCount = [
     providerStatuses?.openaiConfigured ??
       providerStatuses?.openaiRealtimeConfigured,
@@ -845,6 +950,12 @@ export const IntegrationsView = () => {
       label: "Instagram",
       icon: <InstagramIcon className="size-4" />,
       count: instagramIntegration ? 1 : undefined,
+    },
+    {
+      id: "whatsapp",
+      label: "WhatsApp",
+      icon: <ProviderIcon provider="whatsapp" size={16} />,
+      count: whatsappIntegration ? 1 : undefined,
     },
     {
       id: "webhooks",
@@ -915,7 +1026,7 @@ export const IntegrationsView = () => {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-1 rounded-2xl border border-border/70 bg-background/58 p-1 sm:inline-grid sm:grid-cols-5">
+          <div className="mt-4 grid gap-1 rounded-2xl border border-border/70 bg-background/58 p-1 sm:inline-grid sm:grid-cols-6">
             {NAV_ITEMS.map((item) => (
               <button
                 key={item.id}
@@ -1538,6 +1649,261 @@ export const IntegrationsView = () => {
                       <p className="text-xs text-muted-foreground">
                         Last webhook{" "}
                         {formatTimeAgo(instagramIntegration.lastWebhookAt)}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* ─── WHATSAPP ─── */}
+        {activeSection === "whatsapp" && (
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,430px)_minmax(0,1fr)]">
+            <section className="surface-sidebar min-w-0 rounded-[22px] p-3">
+              <div className="px-1 py-1">
+                <p className="text-[10px] font-semibold tracking-[0.12em] text-sidebar-foreground/46 uppercase">
+                  Channel
+                </p>
+                <h2 className="mt-1 text-base font-semibold text-sidebar-foreground">
+                  Connect WhatsApp
+                </h2>
+                <p className="mt-1 text-xs leading-relaxed text-sidebar-foreground/58">
+                  Add your WhatsApp Cloud API number and route customer messages
+                  into the Osonflow inbox.
+                </p>
+              </div>
+
+              <div className="mt-3 space-y-4 rounded-2xl border border-sidebar-border/70 bg-sidebar/58 p-3">
+                <div className="flex items-center gap-3 rounded-xl border border-sidebar-border/70 bg-sidebar-accent/45 p-3">
+                  <ChannelIcon channel="whatsapp" size={30} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-sidebar-foreground">
+                      WhatsApp channel
+                    </p>
+                    <p className="text-xs text-sidebar-foreground/58">
+                      Customer messages become support conversations.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="whatsapp-channel-phone-number-id"
+                    className="text-xs text-sidebar-foreground/58"
+                  >
+                    Phone Number ID
+                  </Label>
+                  <Input
+                    className="bg-sidebar-accent/70 font-mono text-xs"
+                    id="whatsapp-channel-phone-number-id"
+                    onChange={(e) =>
+                      setWhatsappChannelPhoneNumberId(e.target.value)
+                    }
+                    placeholder="123456789012345"
+                    value={whatsappChannelPhoneNumberId}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="whatsapp-channel-access-token"
+                    className="text-xs text-sidebar-foreground/58"
+                  >
+                    Access Token
+                  </Label>
+                  <Input
+                    className="bg-sidebar-accent/70 font-mono text-xs"
+                    id="whatsapp-channel-access-token"
+                    onChange={(e) =>
+                      setWhatsappChannelAccessToken(e.target.value)
+                    }
+                    placeholder="EAAG..."
+                    type="password"
+                    value={whatsappChannelAccessToken}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="whatsapp-channel-business-account-id"
+                    className="text-xs text-sidebar-foreground/58"
+                  >
+                    Business Account ID{" "}
+                    <span className="text-muted-foreground/60">
+                      (optional)
+                    </span>
+                  </Label>
+                  <Input
+                    className="bg-sidebar-accent/70 font-mono text-xs"
+                    id="whatsapp-channel-business-account-id"
+                    onChange={(e) =>
+                      setWhatsappChannelBusinessAccountId(e.target.value)
+                    }
+                    placeholder="987654321098765"
+                    value={whatsappChannelBusinessAccountId}
+                  />
+                </div>
+
+                <Button
+                  className="w-full gap-2"
+                  disabled={isConnectingWhatsapp}
+                  onClick={handleConnectWhatsapp}
+                  type="button"
+                >
+                  {isConnectingWhatsapp ? (
+                    <>
+                      <Loader2Icon className="size-4 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <SendIcon className="size-4" />
+                      Connect WhatsApp
+                    </>
+                  )}
+                </Button>
+              </div>
+            </section>
+
+            <section className="surface-panel min-w-0 overflow-hidden rounded-[22px] shadow-sm">
+              <div className="flex items-center justify-between border-b border-border/70 bg-background/62 px-4 py-4 sm:px-5">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background shadow-sm">
+                    <ProviderIcon provider="whatsapp" size={20} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                      WhatsApp
+                    </p>
+                    <h2 className="mt-1 text-base font-semibold">
+                      Channel status
+                    </h2>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      One WhatsApp number per organization for now.
+                    </p>
+                  </div>
+                </div>
+                <Badge
+                  variant={whatsappIntegration ? "default" : "outline"}
+                  className="shrink-0 text-xs"
+                >
+                  {whatsappIntegration ? "Connected" : "Not connected"}
+                </Badge>
+              </div>
+
+              <div className="p-4 sm:p-5">
+                {!whatsappIntegration ? (
+                  <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed py-14 text-center">
+                    <ChannelIcon channel="whatsapp" size={46} />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        No WhatsApp number connected
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground/60">
+                        Connect a number to receive WhatsApp messages in
+                        Osonflow.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background/60 p-4">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <ChannelIcon channel="whatsapp" size={34} />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold">
+                            {whatsappIntegration.verifiedName ||
+                              whatsappIntegration.displayPhoneNumber ||
+                              "Connected"}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {whatsappIntegration.phoneNumberId}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        aria-label="Disconnect WhatsApp"
+                        className="size-9 p-0"
+                        disabled={isDisconnectingWhatsapp}
+                        onClick={handleDisconnectWhatsapp}
+                        title="Disconnect WhatsApp"
+                        type="button"
+                        variant="destructive"
+                      >
+                        {isDisconnectingWhatsapp ? (
+                          <Loader2Icon className="size-4 animate-spin" />
+                        ) : (
+                          <Trash2Icon className="size-4" />
+                        )}
+                      </Button>
+                    </div>
+
+                    {whatsappIntegration.webhookUrl && (
+                      <div className="rounded-lg border bg-background/60 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-muted-foreground">
+                              Meta callback URL
+                            </p>
+                            <code className="mt-1 block truncate font-mono text-xs">
+                              {whatsappIntegration.webhookUrl}
+                            </code>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="shrink-0 gap-1.5"
+                            onClick={() =>
+                              copyText(
+                                whatsappIntegration.webhookUrl || "",
+                                "Callback URL copied",
+                                "Failed to copy callback URL"
+                              )
+                            }
+                            type="button"
+                          >
+                            <CopyIcon className="size-3.5" />
+                            Copy
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="rounded-lg border bg-background/60 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-muted-foreground">
+                            Meta verify token
+                          </p>
+                          <code className="mt-1 block truncate font-mono text-xs">
+                            {whatsappIntegration.verifyToken}
+                          </code>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0 gap-1.5"
+                          onClick={() =>
+                            copyText(
+                              whatsappIntegration.verifyToken,
+                              "Verify token copied",
+                              "Failed to copy verify token"
+                            )
+                          }
+                          type="button"
+                        >
+                          <CopyIcon className="size-3.5" />
+                          Copy
+                        </Button>
+                      </div>
+                    </div>
+
+                    {whatsappIntegration.lastWebhookAt && (
+                      <p className="text-xs text-muted-foreground">
+                        Last webhook{" "}
+                        {formatTimeAgo(whatsappIntegration.lastWebhookAt)}
                       </p>
                     )}
                   </div>
