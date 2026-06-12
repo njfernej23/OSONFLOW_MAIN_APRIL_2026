@@ -1,3 +1,4 @@
+import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
 import { VapiClient, Vapi } from "@vapi-ai/server-sdk";
 import { internal } from "../_generated/api";
 import { action } from "../_generated/server";
@@ -14,7 +15,7 @@ async function getVapiCredentials(ctx: { runQuery: Function; auth: { getUserIden
         throw new ConvexError({ code: "UNAUTHORIZED", message: "Identity not found" });
     }
 
-    const orgId = identity.orgId as string;
+    const orgId = getOrganizationIdFromIdentity(identity) as string;
 
     if (!orgId) {
         throw new ConvexError({ code: "UNAUTHORIZED", message: "Organization not found" });

@@ -16,7 +16,7 @@ const isOrgFreeRoute = createRouteMatcher([
   "/org-selection(.*)",
 ])
 
-export default clerkMiddleware(async (auth, req) => {
+export const proxy = clerkMiddleware(async (auth, req) => {
   const { userId, orgId } = await auth()
 
   if (!isPublicRoute(req)) {
@@ -32,6 +32,7 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.redirect(orgSelection)
   }
 })
+
 export const config = {
   matcher: [
     // Skip Next.js internals and all static files, unless found in search params

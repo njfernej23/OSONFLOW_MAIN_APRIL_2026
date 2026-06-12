@@ -9,6 +9,10 @@ import {
 import { SESSION_DURATION_MS } from "../constants"
 import { checkRateLimit } from "../lib/rateLimits"
 import { getOpenAIChatModelFromSecretValue } from "../lib/openai"
+import {
+  extractAgentMessageText,
+  getLatestTextAgentMessage,
+} from "../lib/agentMessageText"
 import { supportAgent } from "./ai/agents/supportAgent"
 import { SUPPORT_AGENT_PROMPT } from "./ai/constants"
 import { escalateConversation } from "./ai/tools/escalateConversation"
@@ -202,41 +206,14 @@ const getInstagramContactName = ({
   fullName?.trim() ||
   (username?.trim() ? `@${username.trim()}` : "Instagram contact")
 
-const extractAgentMessageText = (message: any) => {
-  const content = message?.text ?? message?.message?.content
-
-  if (typeof content === "string") {
-    return content.trim()
-  }
-
-  if (Array.isArray(content)) {
-    return content
-      .map((part) => {
-        if (typeof part === "string") {
-          return part
-        }
-
-        if (typeof part?.text === "string") {
-          return part.text
-        }
-
-        return ""
-      })
-      .filter(Boolean)
-      .join("\n")
-      .trim()
-  }
-
-  return ""
-}
-
 const getLatestAssistantMessage = async (ctx: any, threadId: string) => {
   const messages = await supportAgent.listMessages(ctx, {
     threadId,
+    excludeToolMessages: true,
     paginationOpts: { numItems: 20, cursor: null },
   })
-  const message = messages.page.find(
-    (item: any) => item?.message?.role === "assistant"
+  const message = getLatestTextAgentMessage(
+    messages.page.filter((item: any) => item?.message?.role === "assistant")
   )
 
   if (!message) {
@@ -892,6 +869,11 @@ const handleIncomingMessage = async ({
           escalateConversationTool: escalateConversation,
           resolveConversationTool: resolveConversation,
           searchTool: search,
+        },
+      },
+      {
+        contextOptions: {
+          excludeToolMessages: true,
         },
       }
     )

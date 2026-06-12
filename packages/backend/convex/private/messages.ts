@@ -1,3 +1,4 @@
+import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
 import { ConvexError, v } from "convex/values"
 import { mutation, query, action } from "../_generated/server"
 import { components, internal } from "../_generated/api"
@@ -21,7 +22,7 @@ export const enhanceResponse = action({
       })
     }
 
-    const orgId = identity.orgId as string
+    const orgId = getOrganizationIdFromIdentity(identity) as string
 
     if (!orgId) {
       throw new ConvexError({
@@ -54,12 +55,9 @@ export const enhanceResponse = action({
 
     const response: any = await generateText({
       model: getOpenAIChatModelFromSecretValue(openAIPlugin?.secretValue),
+      system:
+        "Enhance the operator's message to be more professional, clear, and helpful while maintaining their intent and key information.",
       messages: [
-        {
-          role: "system",
-          content:
-            "Enhance the operator's message to be more professional, clear, and helpful while maintaining their intent and key information.",
-        },
         {
           role: "user",
           content: args.prompt,
@@ -86,7 +84,7 @@ export const create = mutation({
       })
     }
 
-    const orgId = identity.orgId as string
+    const orgId = getOrganizationIdFromIdentity(identity) as string
 
     if (!orgId) {
       throw new ConvexError({
@@ -208,7 +206,7 @@ export const getMany = query({
       })
     }
 
-    const orgId = identity.orgId as string
+    const orgId = getOrganizationIdFromIdentity(identity) as string
 
     if (!orgId) {
       throw new ConvexError({

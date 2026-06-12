@@ -47,7 +47,7 @@ export const DashboardThemeToggle = ({
         type="button"
         tooltip={label}
         onClick={handleToggle}
-        className="surface-frosted h-11 rounded-2xl border-0 px-2.5 text-sidebar-foreground group-data-[collapsible=icon]:size-11 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0 hover:bg-sidebar-accent/70 group-data-[collapsible=icon]:[&>span]:hidden"
+        className="h-11 rounded-2xl border-0 bg-transparent px-2.5 text-sidebar-foreground group-data-[collapsible=icon]:size-11 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0 hover:bg-sidebar-accent/70 group-data-[collapsible=icon]:[&>span]:hidden"
         aria-label={`Switch to ${label.toLowerCase()}`}
         title={`Switch to ${label.toLowerCase()}`}
       >

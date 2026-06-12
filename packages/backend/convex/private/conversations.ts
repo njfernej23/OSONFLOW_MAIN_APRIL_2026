@@ -9,6 +9,11 @@ import {
 } from "convex/server"
 import { Doc } from "../_generated/dataModel"
 import { components, internal } from "../_generated/api"
+import { requireOrganizationIdentity } from "../lib/organizationIdentity"
+import {
+  extractAgentMessageText,
+  getLatestTextAgentMessage,
+} from "../lib/agentMessageText"
 
 const assignmentFilterValidator = v.union(
   v.literal("all"),
@@ -23,29 +28,6 @@ const includesSearchQuery = (
   value: string | null | undefined,
   normalizedQuery: string
 ) => value?.toLowerCase().includes(normalizedQuery) ?? false
-
-const getTextFromMessage = (message: any): string => {
-  const content = message?.message?.content ?? message?.text ?? message?.content
-
-  if (typeof content === "string") {
-    return content
-  }
-
-  if (Array.isArray(content)) {
-    return content
-      .map((part) => {
-        if (typeof part === "string") {
-          return part
-        }
-
-        return part?.text ?? part?.content ?? ""
-      })
-      .filter(Boolean)
-      .join(" ")
-  }
-
-  return ""
-}
 
 const getRoleFromMessage = (message: any): "user" | "assistant" | "system" => {
   const role = message?.message?.role ?? message?.role
@@ -112,23 +94,7 @@ export const updateStatus = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-
-    if (identity === null) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Identity not found",
-      })
-    }
-
-    const orgId = identity.orgId as string
-
-    if (!orgId) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Organization not found",
-      })
-    }
+    const { orgId } = await requireOrganizationIdentity(ctx)
 
     const conversation = await ctx.db.get(args.conversationId)
     if (!conversation) {
@@ -233,23 +199,7 @@ export const getOne = query({
     conversationId: v.id("conversations"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-
-    if (identity === null) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Identity not found",
-      })
-    }
-
-    const orgId = identity.orgId as string
-
-    if (!orgId) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Organization not found",
-      })
-    }
+    const { orgId } = await requireOrganizationIdentity(ctx)
 
     const conversation = await ctx.db.get(args.conversationId)
     if (!conversation) {
@@ -279,23 +229,7 @@ export const exportOne = query({
     conversationId: v.id("conversations"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-
-    if (identity === null) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Identity not found",
-      })
-    }
-
-    const orgId = identity.orgId as string
-
-    if (!orgId) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Organization not found",
-      })
-    }
+    const { orgId } = await requireOrganizationIdentity(ctx)
 
     const conversation = await ctx.db.get(args.conversationId)
 
@@ -365,7 +299,7 @@ export const exportOne = query({
               ? new Date((message as any)._creationTime).toISOString()
               : null,
           role: getRoleFromMessage(message),
-          text: getTextFromMessage(message),
+            text: extractAgentMessageText(message),
         }))
         .filter((message) => message.text.length > 0),
     }
@@ -377,23 +311,7 @@ export const remove = mutation({
     conversationId: v.id("conversations"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-
-    if (identity === null) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Identity not found",
-      })
-    }
-
-    const orgId = identity.orgId as string
-
-    if (!orgId) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Organization not found",
-      })
-    }
+    const { orgId } = await requireOrganizationIdentity(ctx)
 
     const conversation = await ctx.db.get(args.conversationId)
 
@@ -473,23 +391,7 @@ export const markAsRead = mutation({
     conversationId: v.id("conversations"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-
-    if (identity === null) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Identity not found",
-      })
-    }
-
-    const orgId = identity.orgId as string
-
-    if (!orgId) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Organization not found",
-      })
-    }
+    const { orgId } = await requireOrganizationIdentity(ctx)
 
     const conversation = await ctx.db.get(args.conversationId)
 
@@ -513,23 +415,7 @@ export const markAsRead = mutation({
 export const markAllAsRead = mutation({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity()
-
-    if (identity === null) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Identity not found",
-      })
-    }
-
-    const orgId = identity.orgId as string
-
-    if (!orgId) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Organization not found",
-      })
-    }
+    const { orgId } = await requireOrganizationIdentity(ctx)
 
     const conversations = await ctx.db
       .query("conversations")
@@ -555,23 +441,7 @@ export const markAllAsRead = mutation({
 export const getUnreadSummary = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity()
-
-    if (identity === null) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Identity not found",
-      })
-    }
-
-    const orgId = identity.orgId as string
-
-    if (!orgId) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Organization not found",
-      })
-    }
+    const { orgId } = await requireOrganizationIdentity(ctx)
 
     const conversations = await ctx.db
       .query("conversations")
@@ -603,23 +473,7 @@ export const updateAssignment = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-
-    if (identity === null) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Identity not found",
-      })
-    }
-
-    const orgId = identity.orgId as string
-
-    if (!orgId) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Organization not found",
-      })
-    }
+    const { identity, orgId } = await requireOrganizationIdentity(ctx)
 
     const conversation = await ctx.db.get(args.conversationId)
 
@@ -671,21 +525,7 @@ export const getMany = query({
     assignmentFilter: v.optional(assignmentFilterValidator),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (identity === null) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Identity not found",
-      })
-    }
-    const orgId = identity.orgId as string
-
-    if (!orgId) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Organization not found",
-      })
-    }
+    const { identity, orgId } = await requireOrganizationIdentity(ctx)
 
     const assignmentFilter = args.assignmentFilter ?? "all"
     const normalizedSearchQuery = normalizeSearchQuery(args.searchQuery)
@@ -755,12 +595,11 @@ export const getMany = query({
 
         const messages = await supportAgent.listMessages(ctx, {
           threadId: conversation.threadId,
-          paginationOpts: { numItems: 1, cursor: null },
+          excludeToolMessages: true,
+          paginationOpts: { numItems: 20, cursor: null },
         })
 
-        if (messages.page.length > 0) {
-          lastMessage = messages.page[0] ?? null
-        }
+        lastMessage = getLatestTextAgentMessage(messages.page)
 
         if (normalizedSearchQuery) {
           const searchableFields = [

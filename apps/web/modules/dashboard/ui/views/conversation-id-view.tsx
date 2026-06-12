@@ -80,6 +80,21 @@ const formSchema = z.object({
 
 type SavedReplyDoc = Doc<"savedReplies">
 
+const getUiMessageText = (message: {
+  content?: unknown
+  parts?: Array<{ type?: string; text?: string }>
+}) => {
+  if (typeof message.content === "string") {
+    return message.content
+  }
+
+  return (
+    message.parts
+      ?.map((part) => (part.type === "text" ? (part.text ?? "") : ""))
+      .join("") ?? ""
+  )
+}
+
 const normalizeSavedReplySearch = (value: string) => value.trim().toLowerCase()
 
 const renderSavedReplyWithContact = ({
@@ -598,6 +613,7 @@ export const ConversationIdView = ({
           <InfiniteScrollTrigger
             canLoadMore={canLoadMore}
             isLoadingMore={isLoadingMore}
+            noMoreText="Beginning of conversation"
             onLoadMore={handleLoadMore}
             ref={topElementRef}
           />
@@ -608,7 +624,7 @@ export const ConversationIdView = ({
               key={message.id}
             >
               <AIMessageContent className="shadow-[0_14px_34px_-22px_rgba(15,23,42,0.35)]">
-                <AIResponse>{message.content}</AIResponse>
+                <AIResponse>{getUiMessageText(message)}</AIResponse>
               </AIMessageContent>
               {message.role === "user" && (
                 <DicebearAvatar

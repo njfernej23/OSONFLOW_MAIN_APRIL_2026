@@ -1,3 +1,4 @@
+import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 
@@ -17,7 +18,7 @@ export const remove = mutation({
             });
         }
 
-        const orgId = identity.orgId as string;
+        const orgId = getOrganizationIdFromIdentity(identity) as string;
 
         if (!orgId) {
             throw new ConvexError({
@@ -58,7 +59,7 @@ export const getOne = query({
             });
         }
 
-        const orgId = identity.orgId as string;
+        const orgId = getOrganizationIdFromIdentity(identity) as string;
 
         if (!orgId) {
             throw new ConvexError({

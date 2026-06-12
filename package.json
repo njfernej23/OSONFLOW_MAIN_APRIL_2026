@@ -10,12 +10,14 @@
     "typecheck": "turbo typecheck"
   },
   "devDependencies": {
-    "@types/node": "^25.1.0",
+    "@eslint/js": "^9.39.4",
+    "@types/node": "^25.9.2",
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
-    "prettier": "^3.8.1",
-    "prettier-plugin-tailwindcss": "^0.7.2",
-    "turbo": "^2.8.17",
+    "eslint": "^9.39.4",
+    "prettier": "^3.8.4",
+    "prettier-plugin-tailwindcss": "^0.8.0",
+    "turbo": "^2.9.17",
     "typescript": "5.9.3"
   },
   "packageManager": "pnpm@10.33.0",
@@ -23,7 +25,7 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@convex-dev/agent": "0.1.16",
-    "@convex-dev/workpool": "0.2.18"
+    "@convex-dev/agent": "0.6.2",
+    "@convex-dev/workpool": "0.4.7"
   }
 }

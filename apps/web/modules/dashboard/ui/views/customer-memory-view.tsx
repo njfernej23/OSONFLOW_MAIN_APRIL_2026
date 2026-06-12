@@ -188,7 +188,7 @@ const MemoryCard = ({ memory }: { memory: CustomerMemory }) => {
       : 0
 
   return (
-    <article className="surface-panel overflow-hidden rounded-xl">
+    <article className="surface-panel min-w-0 overflow-hidden rounded-xl">
       <div className="border-b border-border/70 p-4 sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-start gap-3">
@@ -206,7 +206,7 @@ const MemoryCard = ({ memory }: { memory: CustomerMemory }) => {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 sm:justify-end">
+          <div className="flex min-w-0 flex-wrap gap-2 sm:justify-end">
             <Badge variant="secondary">
               {memory.totalConversations} conversations
             </Badge>
@@ -224,7 +224,7 @@ const MemoryCard = ({ memory }: { memory: CustomerMemory }) => {
           </div>
         </div>
 
-        <p className="mt-4 text-sm leading-relaxed text-foreground">
+        <p className="mt-4 break-words text-sm leading-relaxed text-foreground">
           {memory.summary}
         </p>
 
@@ -237,8 +237,8 @@ const MemoryCard = ({ memory }: { memory: CustomerMemory }) => {
         </div>
       </div>
 
-      <div className="grid gap-0 lg:grid-cols-[1fr_1fr]">
-        <div className="border-b border-border/70 p-4 sm:p-5 lg:border-r lg:border-b-0">
+      <div className="grid min-w-0 gap-0">
+        <div className="min-w-0 border-b border-border/70 p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs font-medium text-muted-foreground uppercase">
               Notable facts
@@ -250,7 +250,7 @@ const MemoryCard = ({ memory }: { memory: CustomerMemory }) => {
               memory.notableFacts.slice(0, 4).map((fact) => (
                 <p
                   key={fact}
-                  className="rounded-lg bg-muted/45 px-3 py-2 text-xs leading-relaxed text-foreground"
+                  className="rounded-lg bg-muted/45 px-3 py-2 text-xs leading-relaxed break-words text-foreground"
                 >
                   {fact}
                 </p>
@@ -263,13 +263,13 @@ const MemoryCard = ({ memory }: { memory: CustomerMemory }) => {
           </div>
         </div>
 
-        <div className="p-4 sm:p-5">
+        <div className="min-w-0 p-4 sm:p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase">
               <HistoryIcon className="size-3.5" />
               Recent history
             </p>
-            <Badge variant="ghost" className="w-fit">
+            <Badge variant="ghost" className="w-fit shrink-0">
               Last seen {formatDate(memory.lastSeenAt)}
             </Badge>
           </div>
@@ -278,17 +278,17 @@ const MemoryCard = ({ memory }: { memory: CustomerMemory }) => {
               memory.issueHistory.slice(0, 4).map((item) => (
                 <div
                   key={`${item.at}-${item.summary}`}
-                  className="rounded-lg border border-border/60 bg-background/70 px-3 py-2"
+                  className="min-w-0 rounded-lg border border-border/60 bg-background/70 px-3 py-2"
                 >
                   <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-                    <Badge variant="secondary">
+                    <Badge variant="secondary" className="min-w-0 max-w-full">
                       {formatIntent(item.intent)}
                     </Badge>
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="shrink-0 text-[11px] text-muted-foreground">
                       {formatDate(item.at)}
                     </span>
                   </div>
-                  <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-foreground">
+                  <p className="mt-2 line-clamp-2 text-xs leading-relaxed break-words text-foreground">
                     {item.summary}
                   </p>
                 </div>
@@ -302,7 +302,7 @@ const MemoryCard = ({ memory }: { memory: CustomerMemory }) => {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-t border-border/70 bg-muted/18 px-4 py-3 sm:px-5">
+      <div className="flex min-w-0 flex-wrap items-center gap-2 border-t border-border/70 bg-muted/18 px-4 py-3 sm:px-5">
         <Badge variant="outline">{memory.totalResolved} resolved</Badge>
         <Badge variant="outline">{resolvedRate}% resolution rate</Badge>
         <Badge variant="ghost">Updated {formatDate(memory.updatedAt)}</Badge>
@@ -427,9 +427,9 @@ export const CustomerMemoryView = () => {
   if (memories === undefined) {
     return (
       <div className="h-full overflow-auto p-4 sm:p-6">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
+        <div className="mx-auto flex min-w-0 w-full max-w-7xl flex-col gap-4">
           <Skeleton className="h-24 rounded-2xl" />
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="grid min-w-0 gap-4 xl:grid-cols-2">
             {Array.from({ length: 4 }).map((_, index) => (
               <Skeleton key={index} className="h-64 rounded-2xl" />
             ))}
@@ -441,7 +441,7 @@ export const CustomerMemoryView = () => {
 
   return (
     <div className="h-full overflow-auto p-3 sm:p-5">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
+      <div className="mx-auto flex min-w-0 w-full max-w-7xl flex-col gap-4">
         <section className="surface-frosted rounded-[18px] px-3.5 py-4 sm:rounded-[22px] sm:px-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
@@ -505,7 +505,7 @@ export const CustomerMemoryView = () => {
         </section>
 
         <Tabs
-          className="gap-3"
+          className="min-w-0 gap-3"
           value={activeTab}
           onValueChange={(value) => setActiveTab(value as MemoryTab)}
         >
@@ -548,7 +548,7 @@ export const CustomerMemoryView = () => {
             </TabsList>
           </div>
 
-          <TabsContent value={activeTab}>
+          <TabsContent className="min-w-0" value={activeTab}>
             <SectionHeader
               title={
                 activeTab === "all"
@@ -572,7 +572,7 @@ export const CustomerMemoryView = () => {
             />
 
             {tabbedMemories.length ? (
-              <section className="mt-4 grid gap-4 xl:grid-cols-2">
+              <section className="mt-4 grid min-w-0 gap-4 xl:grid-cols-2">
                 {tabbedMemories.map((memory) => (
                   <MemoryCard key={memory._id} memory={memory} />
                 ))}

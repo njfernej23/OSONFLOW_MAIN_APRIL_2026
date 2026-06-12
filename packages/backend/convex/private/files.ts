@@ -1,3 +1,4 @@
+import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
 import { ConvexError, v } from "convex/values";
 import { action, mutation, query, QueryCtx } from "../_generated/server";
 import { contentHashFromArrayBuffer, Entry, EntryId, guessMimeTypeFromContents, guessMimeTypeFromExtension, vEntryId } from "@convex-dev/rag"
@@ -295,7 +296,7 @@ export const deleteFile = mutation({
             });
         }
 
-        const orgId = identity.orgId as string;
+        const orgId = getOrganizationIdFromIdentity(identity) as string;
 
         if (!orgId) {
             throw new ConvexError({
@@ -362,7 +363,7 @@ export const addFile = action({
             });
         }
 
-        const orgId = identity.orgId as string;
+        const orgId = getOrganizationIdFromIdentity(identity) as string;
 
         if (!orgId) {
             throw new ConvexError({
@@ -457,7 +458,7 @@ export const addWebsite = action({
             });
         }
 
-        const orgId = identity.orgId as string;
+        const orgId = getOrganizationIdFromIdentity(identity) as string;
 
         if (!orgId) {
             throw new ConvexError({
@@ -556,7 +557,7 @@ export const list = query({
             });
         }
 
-        const orgId = identity.orgId as string;
+        const orgId = getOrganizationIdFromIdentity(identity) as string;
 
         if (!orgId) {
             throw new ConvexError({
@@ -602,7 +603,7 @@ export const getAIReplyCacheStats = query({
             });
         }
 
-        const orgId = identity.orgId as string;
+        const orgId = getOrganizationIdFromIdentity(identity) as string;
 
         if (!orgId) {
             throw new ConvexError({
@@ -649,7 +650,7 @@ export const clearAIReplyCache = mutation({
             });
         }
 
-        const orgId = identity.orgId as string;
+        const orgId = getOrganizationIdFromIdentity(identity) as string;
 
         if (!orgId) {
             throw new ConvexError({
@@ -681,7 +682,7 @@ export const getViewerContent = action({
             });
         }
 
-        const orgId = identity.orgId as string;
+        const orgId = getOrganizationIdFromIdentity(identity) as string;
 
         if (!orgId) {
             throw new ConvexError({
@@ -778,7 +779,7 @@ export const testKnowledgeBase = action({
             });
         }
 
-        const orgId = identity.orgId as string;
+        const orgId = getOrganizationIdFromIdentity(identity) as string;
 
         if (!orgId) {
             throw new ConvexError({
@@ -860,11 +861,8 @@ export const testKnowledgeBase = action({
 
         const response: any = await generateText({
             model: getOpenAIChatModelFromSecretValue(openAIPlugin?.secretValue),
+            system: KNOWLEDGE_TEST_PROMPT,
             messages: [
-                {
-                    role: "system",
-                    content: KNOWLEDGE_TEST_PROMPT,
-                },
                 {
                     role: "user",
                     content: `Question: ${question}\n\nKnowledge base context:\n${searchResult.text}`,

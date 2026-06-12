@@ -1,3 +1,4 @@
+import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
 import { ConvexError } from "convex/values"
 import { query } from "../_generated/server"
 
@@ -13,7 +14,7 @@ export const getCurrent = query({
       })
     }
 
-    const organizationId = identity.orgId as string | undefined
+    const organizationId = getOrganizationIdFromIdentity(identity)
 
     if (!organizationId) {
       throw new ConvexError({

@@ -7,6 +7,7 @@ import { components, internal } from "../_generated/api"
 import type { Id } from "../_generated/dataModel"
 import { paginationOptsValidator } from "convex/server"
 import { enforceRateLimit } from "../lib/rateLimits"
+import { getLatestTextAgentMessage } from "../lib/agentMessageText"
 
 const contactSessionMetadataValidator = v.optional(
   v.object({
@@ -62,12 +63,11 @@ export const getMany = query({
 
         const messages = await supportAgent.listMessages(ctx, {
           threadId: conversation.threadId,
-          paginationOpts: { numItems: 1, cursor: null },
+          excludeToolMessages: true,
+          paginationOpts: { numItems: 20, cursor: null },
         })
 
-        if (messages.page.length > 0) {
-          lastMessage = messages.page[0] ?? null
-        }
+        lastMessage = getLatestTextAgentMessage(messages.page)
 
         return {
           _id: conversation._id,

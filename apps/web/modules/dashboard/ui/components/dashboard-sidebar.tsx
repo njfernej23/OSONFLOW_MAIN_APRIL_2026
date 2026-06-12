@@ -1,6 +1,6 @@
 "use client"
 
-import { OrganizationSwitcher, UserButton } from "@clerk/nextjs"
+import { OrganizationSwitcher, UserButton, useAuth } from "@clerk/nextjs"
 
 import {
   BookOpen,
@@ -131,11 +131,15 @@ const userButtonAppearance = {
 export const DashboardSidebar = () => {
   const pathname = usePathname()
   const { isMobile, setOpenMobile } = useSidebar()
+  const { isLoaded: isAuthLoaded, orgId } = useAuth()
+  const hasActiveOrganization = isAuthLoaded && Boolean(orgId)
   const conversationUnreadSummary = useQuery(
-    api.private.conversations.getUnreadSummary
+    api.private.conversations.getUnreadSummary,
+    hasActiveOrganization ? {} : "skip"
   )
   const aiVoicechatUnreadSummary = useQuery(
-    api.private.aiConversations.getUnreadSummary
+    api.private.aiConversations.getUnreadSummary,
+    hasActiveOrganization ? {} : "skip"
   )
   const markAllConversationsAsRead = useMutation(
     api.private.conversations.markAllAsRead
@@ -173,6 +177,10 @@ export const DashboardSidebar = () => {
 
   const clearUnreadForUrl = useCallback(
     (url: string) => {
+      if (!hasActiveOrganization) {
+        return
+      }
+
       if (url === "/conversations" && conversationUnreadCount > 0) {
         void markAllConversationsAsRead({})
         return
@@ -185,6 +193,7 @@ export const DashboardSidebar = () => {
     [
       aiVoicechatUnreadCount,
       conversationUnreadCount,
+      hasActiveOrganization,
       markAllAiVoicechatsAsRead,
       markAllConversationsAsRead,
     ]

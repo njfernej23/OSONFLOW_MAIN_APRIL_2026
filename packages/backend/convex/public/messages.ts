@@ -21,34 +21,10 @@ import {
   getReplyCacheNamespace,
   isCacheablePrompt,
 } from "../system/ai/replyCache"
-
-const extractAgentMessageText = (message: any) => {
-  const content = message?.text ?? message?.message?.content
-
-  if (typeof content === "string") {
-    return content.trim()
-  }
-
-  if (Array.isArray(content)) {
-    return content
-      .map((part) => {
-        if (typeof part === "string") {
-          return part
-        }
-
-        if (typeof part?.text === "string") {
-          return part.text
-        }
-
-        return ""
-      })
-      .filter(Boolean)
-      .join("\n")
-      .trim()
-  }
-
-  return ""
-}
+import {
+  extractAgentMessageText,
+  getLatestTextAgentMessage,
+} from "../lib/agentMessageText"
 
 const getAgentMessageRole = (message: any): string => {
   const role = message?.message?.role ?? message?.role
@@ -79,10 +55,11 @@ const getAgentMessageId = (message: any, fallbackIndex: number): string => {
 const getLatestAssistantMessage = async (ctx: any, threadId: string) => {
   const messages = await supportAgent.listMessages(ctx, {
     threadId,
+    excludeToolMessages: true,
     paginationOpts: { numItems: 20, cursor: null },
   })
-  const message = messages.page.find(
-    (item: any) => item?.message?.role === "assistant"
+  const message = getLatestTextAgentMessage(
+    messages.page.filter((item: any) => item?.message?.role === "assistant")
   )
 
   if (!message) {
@@ -491,6 +468,11 @@ export const create = action({
               escalateConversationTool: escalateConversation,
               resolveConversationTool: resolveConversation,
               searchTool: search,
+            },
+          },
+          {
+            contextOptions: {
+              excludeToolMessages: true,
             },
           }
         )

@@ -37,8 +37,8 @@ export const search = action({
             .join(", ")}. Here is the context:\n\n${searchResult.text}`;
 
         const response: any = await generateText({
+            system: SEARCH_INTERPRETER_PROMPT,
             messages: [
-                { role: "system", content: SEARCH_INTERPRETER_PROMPT },
                 {
                     role: "user",
                     content: `User asked: "${args.query}"\n\nSearch results: ${contextText}`,

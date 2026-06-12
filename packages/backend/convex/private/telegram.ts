@@ -1,3 +1,4 @@
+import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
 import { ConvexError, v } from "convex/values"
 import { internal } from "../_generated/api"
 import { action, query } from "../_generated/server"
@@ -33,7 +34,7 @@ const getAuthContext = async (ctx: {
     })
   }
 
-  const organizationId = identity.orgId as string | undefined
+  const organizationId = getOrganizationIdFromIdentity(identity)
 
   if (!organizationId) {
     throw new ConvexError({

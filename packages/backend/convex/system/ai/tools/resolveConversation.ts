@@ -5,8 +5,8 @@ import { supportAgent } from '../agents/supportAgent';
 
 export const resolveConversation = createTool({
     description: "Resolve a conversation when the user's issue has been successfully addressed",
-    args: z.object({}),
-    handler: async (ctx) => {
+    inputSchema: z.object({}),
+    execute: async (ctx) => {
         if (!ctx.threadId) {
             return "Missing thread ID";
         }

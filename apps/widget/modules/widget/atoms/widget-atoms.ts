@@ -1,4 +1,5 @@
-import { atomFamily, atomWithStorage } from "jotai/utils"
+import { atomFamily } from "jotai-family"
+import { atomWithStorage } from "jotai/utils"
 import { WidgetScreen } from "@/modules/widget/types"
 import { CONTACT_SESSION_KEY } from "../constants"
 import { Doc, Id } from "@workspace/backend/_generated/dataModel"

@@ -68,6 +68,21 @@ type ChatHistoryExport = {
   messages: ChatHistoryMessage[]
 }
 
+const getUiMessageText = (message: {
+  content?: unknown
+  parts?: Array<{ type?: string; text?: string }>
+}) => {
+  if (typeof message.content === "string") {
+    return message.content
+  }
+
+  return (
+    message.parts
+      ?.map((part) => (part.type === "text" ? (part.text ?? "") : ""))
+      .join("") ?? ""
+  )
+}
+
 const DownloadToLineIcon = ({ className }: { className?: string }) => (
   <svg
     aria-hidden="true"
@@ -141,19 +156,31 @@ const buildChatHistoryText = ({
 const AssistantLoadingBubble = ({ logoUrl }: { logoUrl?: string }) => {
   return (
     <AIMessage from="assistant">
-      <AIMessageContent className="border-white/60 bg-[var(--widget-bot-bubble)] text-[var(--widget-bot-bubble-foreground)] shadow-[0_12px_32px_rgba(15,23,42,0.08)] backdrop-blur-sm">
+      <AIMessageContent className="w-fit rounded-full border-white/60 bg-[var(--widget-bot-bubble)] px-3.5 py-2.5 text-[var(--widget-bot-bubble-foreground)] shadow-[0_12px_32px_rgba(15,23,42,0.08)] backdrop-blur-sm">
+        <style>
+          {`@keyframes osonflow-widget-typing-dot {
+            0%, 80%, 100% { transform: translateY(0); opacity: 0.45; }
+            40% { transform: translateY(-3px); opacity: 1; }
+          }`}
+        </style>
         <div
           aria-label="Assistant is preparing a response"
-          className="flex items-center gap-1.5"
+          className="flex h-3 items-center gap-1.5 text-[var(--widget-bot-bubble-foreground)]"
           role="status"
         >
           <span className="sr-only">Assistant is preparing a response</span>
           {[0, 1, 2].map((dot) => (
             <span
               aria-hidden="true"
-              className="size-2 animate-bounce rounded-full bg-current/65"
+              className="block rounded-full"
               key={dot}
-              style={{ animationDelay: `${dot * 0.15}s` }}
+              style={{
+                animation: "osonflow-widget-typing-dot 1s ease-in-out infinite",
+                animationDelay: `${dot * 0.15}s`,
+                backgroundColor: "currentColor",
+                height: 8,
+                width: 8,
+              }}
             />
           ))}
         </div>
@@ -253,15 +280,13 @@ export const WidgetChatScreen = () => {
     () => uiMessages.filter((message) => message.role === "assistant").length,
     [uiMessages]
   )
-  const lastMessage = uiMessages.at(-1)
   const [pendingAssistantMessageCount, setPendingAssistantMessageCount] =
     useState<number | null>(null)
   const submittedInitialMessageRef = useRef<string | null>(null)
   const isAwaitingResponse =
     conversation?.status !== "resolved" &&
     pendingAssistantMessageCount !== null &&
-    assistantMessageCount < pendingAssistantMessageCount &&
-    lastMessage?.role === "user"
+    assistantMessageCount < pendingAssistantMessageCount
 
   useEffect(() => {
     if (pendingAssistantMessageCount === null) {
@@ -476,6 +501,7 @@ export const WidgetChatScreen = () => {
             onLoadMore={handleLoadMore}
             canLoadMore={canLoadMore}
             isLoadingMore={isLoadingMore}
+            noMoreText="Beginning of chat"
           />
           {uiMessages.map((message) => {
             return (
@@ -484,7 +510,7 @@ export const WidgetChatScreen = () => {
                 key={message.id}
               >
                 <AIMessageContent className="bg-[var(--widget-bot-bubble)] text-[var(--widget-bot-bubble-foreground)] group-[.is-user]:bg-[var(--widget-user-bubble)] group-[.is-user]:text-[var(--widget-user-bubble-foreground)]">
-                  <AIResponse>{message.content}</AIResponse>
+                  <AIResponse>{getUiMessageText(message)}</AIResponse>
                 </AIMessageContent>
                 {message.role === "assistant" && (
                   <DicebearAvatar

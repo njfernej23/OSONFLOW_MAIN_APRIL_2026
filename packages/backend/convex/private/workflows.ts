@@ -1,3 +1,4 @@
+import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
 import { ConvexError, v } from "convex/values"
 import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server"
 import type { Id } from "../_generated/dataModel"
@@ -53,7 +54,7 @@ const getOrganizationIdentity = async (ctx: QueryCtx | MutationCtx) => {
     })
   }
 
-  const organizationId = identity.orgId as string | undefined
+  const organizationId = getOrganizationIdFromIdentity(identity)
 
   if (!organizationId) {
     throw new ConvexError({

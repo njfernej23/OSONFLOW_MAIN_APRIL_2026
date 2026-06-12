@@ -14,6 +14,10 @@ import { resolveConversation } from "./ai/tools/resolveConversation"
 import { search } from "./ai/tools/search"
 import { getOpenAIChatModelFromSecretValue } from "../lib/openai"
 import { checkRateLimit } from "../lib/rateLimits"
+import {
+  extractAgentMessageText,
+  getLatestTextAgentMessage,
+} from "../lib/agentMessageText"
 
 type TelegramIntegration = {
   _id: any
@@ -90,41 +94,14 @@ const createTelegramSessionMetadata = ({
   telegramLanguageCode: languageCode,
 })
 
-const extractAgentMessageText = (message: any) => {
-  const content = message?.text ?? message?.message?.content
-
-  if (typeof content === "string") {
-    return content.trim()
-  }
-
-  if (Array.isArray(content)) {
-    return content
-      .map((part) => {
-        if (typeof part === "string") {
-          return part
-        }
-
-        if (typeof part?.text === "string") {
-          return part.text
-        }
-
-        return ""
-      })
-      .filter(Boolean)
-      .join("\n")
-      .trim()
-  }
-
-  return ""
-}
-
 const getLatestAssistantMessage = async (ctx: any, threadId: string) => {
   const messages = await supportAgent.listMessages(ctx, {
     threadId,
+    excludeToolMessages: true,
     paginationOpts: { numItems: 20, cursor: null },
   })
-  const message = messages.page.find(
-    (item: any) => item?.message?.role === "assistant"
+  const message = getLatestTextAgentMessage(
+    messages.page.filter((item: any) => item?.message?.role === "assistant")
   )
 
   if (!message) {
@@ -667,6 +644,11 @@ export const handleIncomingUpdate: any = internalAction({
             escalateConversationTool: escalateConversation,
             resolveConversationTool: resolveConversation,
             searchTool: search,
+          },
+        },
+        {
+          contextOptions: {
+            excludeToolMessages: true,
           },
         }
       )

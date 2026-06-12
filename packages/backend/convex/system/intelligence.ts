@@ -9,6 +9,7 @@ import { internal } from "../_generated/api"
 import { Id } from "../_generated/dataModel"
 import { supportAgent } from "./ai/agents/supportAgent"
 import { getOpenAIChatModelFromSecretValue } from "../lib/openai"
+import { extractAgentMessageText } from "../lib/agentMessageText"
 
 const statusValidator = v.union(
   v.literal("unresolved"),
@@ -78,29 +79,6 @@ const truncate = (value: string, maxLength: number) => {
   }
 
   return `${text.slice(0, maxLength - 3)}...`
-}
-
-const getTextFromMessage = (message: any): string => {
-  const content = message?.message?.content ?? message?.text ?? message?.content
-
-  if (typeof content === "string") {
-    return content
-  }
-
-  if (Array.isArray(content)) {
-    return content
-      .map((part) => {
-        if (typeof part === "string") {
-          return part
-        }
-
-        return part?.text ?? part?.content ?? ""
-      })
-      .filter(Boolean)
-      .join(" ")
-  }
-
-  return ""
 }
 
 const getRoleFromMessage = (message: any): TranscriptLine["role"] => {
@@ -336,12 +314,9 @@ const analyzeTranscript = async ({
     )
     const result = await generateText({
       model: getOpenAIChatModelFromSecretValue(openAIPlugin?.secretValue),
+      system:
+        "Classify a SaaS support conversation for analytics and customer memory. Return only valid JSON with keys: intent, sentiment, urgency, language, summary, isUnanswered, unansweredQuestion, humanSavedMinutes. intent must be one of pricing, billing, technical_issue, onboarding, product_question, demo_or_sales, refund_or_cancellation, account_access, complaint, other. sentiment must be positive, neutral, or negative. urgency must be low, medium, or high. summary must be one sentence under 180 characters. unansweredQuestion should be empty unless the AI could not answer or had to offer a human because the knowledge base was missing information.",
       messages: [
-        {
-          role: "system",
-          content:
-            "Classify a SaaS support conversation for analytics and customer memory. Return only valid JSON with keys: intent, sentiment, urgency, language, summary, isUnanswered, unansweredQuestion, humanSavedMinutes. intent must be one of pricing, billing, technical_issue, onboarding, product_question, demo_or_sales, refund_or_cancellation, account_access, complaint, other. sentiment must be positive, neutral, or negative. urgency must be low, medium, or high. summary must be one sentence under 180 characters. unansweredQuestion should be empty unless the AI could not answer or had to offer a human because the knowledge base was missing information.",
-        },
         {
           role: "user",
           content: `Channel: ${channel}\nCurrent status: ${status}\nTranscript:\n${compactTranscript}`,
@@ -394,6 +369,7 @@ export const getChatSnapshot = internalQuery({
     const contactSession = await ctx.db.get(conversation.contactSessionId)
     const messages = await supportAgent.listMessages(ctx, {
       threadId: conversation.threadId,
+      excludeToolMessages: true,
       paginationOpts: { numItems: 30, cursor: null },
     })
 
@@ -405,7 +381,7 @@ export const getChatSnapshot = internalQuery({
         .reverse()
         .map((message) => ({
           role: getRoleFromMessage(message),
-          text: truncate(getTextFromMessage(message), 800),
+          text: truncate(extractAgentMessageText(message), 800),
         }))
         .filter((line) => line.text.length > 0),
     }

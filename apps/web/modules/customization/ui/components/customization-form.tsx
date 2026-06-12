@@ -4,6 +4,7 @@ import {
   useFieldArray,
   useForm,
   type Path,
+  type Resolver,
   type UseFormReturn,
 } from "react-hook-form"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -919,8 +920,12 @@ export const CustomizationForm = ({
   const [selectedRollbackVersion, setSelectedRollbackVersion] =
     useState<string>(rollbackCandidates[0]?.version.toString() ?? "")
 
-  const form = useForm<FormSchema>({
-    resolver: zodResolver(widgetSettingsSchema),
+  const form = useForm<FormSchema, any, FormSchema>({
+    resolver: zodResolver(widgetSettingsSchema) as Resolver<
+      FormSchema,
+      any,
+      FormSchema
+    >,
     defaultValues: buildFormDefaultValues(draftData),
   })
   const helpTopicsArray = useFieldArray({

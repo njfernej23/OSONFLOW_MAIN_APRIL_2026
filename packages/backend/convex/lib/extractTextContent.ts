@@ -106,7 +106,7 @@ async function extractPdfText(
             {
                 role: "user",
                 content: [
-                    { type: "file", data: new URL(url), mimeType, filename },
+                    { type: "file", data: new URL(url), mediaType: mimeType, filename },
                     {
                         type: "text",
                         text: "Extract the text from the PDF and print it without explaining you'll do so.",
@@ -132,4 +132,3 @@ async function extractImageText(url: string): Promise<string> {
 
     return result.text;
 }
-

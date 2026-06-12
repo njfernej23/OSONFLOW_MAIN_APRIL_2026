@@ -6,49 +6,14 @@ import {
 import { ConvexError, v } from "convex/values"
 import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server"
 import { Doc } from "../_generated/dataModel"
+import { requireOrganizationIdentity } from "../lib/organizationIdentity"
 
 const getOrganizationIdentity = async (ctx: QueryCtx) => {
-  const identity = await ctx.auth.getUserIdentity()
-
-  if (identity === null) {
-    throw new ConvexError({
-      code: "UNAUTHORIZED",
-      message: "Identity not found",
-    })
-  }
-
-  const orgId = identity.orgId as string | undefined
-
-  if (!orgId) {
-    throw new ConvexError({
-      code: "UNAUTHORIZED",
-      message: "Organization not found",
-    })
-  }
-
-  return { identity, orgId }
+  return requireOrganizationIdentity(ctx)
 }
 
 const getOrganizationIdentityForMutation = async (ctx: MutationCtx) => {
-  const identity = await ctx.auth.getUserIdentity()
-
-  if (identity === null) {
-    throw new ConvexError({
-      code: "UNAUTHORIZED",
-      message: "Identity not found",
-    })
-  }
-
-  const orgId = identity.orgId as string | undefined
-
-  if (!orgId) {
-    throw new ConvexError({
-      code: "UNAUTHORIZED",
-      message: "Organization not found",
-    })
-  }
-
-  return { identity, orgId }
+  return requireOrganizationIdentity(ctx)
 }
 
 const normalizeSearchQuery = (query: string | undefined) =>

@@ -226,6 +226,67 @@
     text-rendering: optimizeLegibility;
   }
 
+  :where(
+    a[href],
+    area[href],
+    summary,
+    label[for],
+    select:not(:disabled):not([aria-disabled="true"]):not([data-disabled]),
+    input[type="button"]:not(:disabled):not([aria-disabled="true"]):not(
+        [data-disabled]
+      ),
+    input[type="submit"]:not(:disabled):not([aria-disabled="true"]):not(
+        [data-disabled]
+      ),
+    input[type="reset"]:not(:disabled):not([aria-disabled="true"]):not(
+        [data-disabled]
+      ),
+    input[type="checkbox"]:not(:disabled):not([aria-disabled="true"]):not(
+        [data-disabled]
+      ),
+    input[type="radio"]:not(:disabled):not([aria-disabled="true"]):not(
+        [data-disabled]
+      ),
+    button:not(:disabled):not([aria-disabled="true"]):not([data-disabled]),
+    [role="button"]:not([aria-disabled="true"]):not([data-disabled]),
+    [role="checkbox"]:not([aria-disabled="true"]):not([data-disabled]),
+    [role="link"]:not([aria-disabled="true"]):not([data-disabled]),
+    [role="menuitem"]:not([aria-disabled="true"]):not([data-disabled]),
+    [role="menuitemcheckbox"]:not([aria-disabled="true"]):not([data-disabled]),
+    [role="menuitemradio"]:not([aria-disabled="true"]):not([data-disabled]),
+    [role="option"]:not([aria-disabled="true"]):not([data-disabled]),
+    [role="radio"]:not([aria-disabled="true"]):not([data-disabled]),
+    [role="slider"]:not([aria-disabled="true"]):not([data-disabled]),
+    [role="switch"]:not([aria-disabled="true"]):not([data-disabled]),
+    [role="tab"]:not([aria-disabled="true"]):not([data-disabled]),
+    [data-slot="button"]:not(:disabled):not([aria-disabled="true"]):not(
+        [data-disabled]
+      )
+  ) {
+    cursor: pointer;
+  }
+
+  :is(
+    button,
+    select,
+    input,
+    textarea,
+    [role="button"],
+    [role="checkbox"],
+    [role="link"],
+    [role="menuitem"],
+    [role="menuitemcheckbox"],
+    [role="menuitemradio"],
+    [role="option"],
+    [role="radio"],
+    [role="slider"],
+    [role="switch"],
+    [role="tab"],
+    [data-slot="button"]
+  ):is(:disabled, [aria-disabled="true"], [data-disabled]) {
+    cursor: not-allowed;
+  }
+
   ::selection {
     background: color-mix(in srgb, var(--primary) 22%, white);
     color: var(--foreground);
@@ -350,17 +411,6 @@
     );
     border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
     box-shadow: var(--shadow-lg);
-  }
-
-  .surface-widget button:not(:disabled),
-  .surface-widget [role="button"]:not([aria-disabled="true"]),
-  .surface-widget a[href] {
-    cursor: pointer;
-  }
-
-  .surface-widget button:disabled,
-  .surface-widget [aria-disabled="true"] {
-    cursor: not-allowed;
   }
 
   .surface-hero {
