@@ -617,7 +617,9 @@ export const ConversationIdView = ({
             onLoadMore={handleLoadMore}
             ref={topElementRef}
           />
-          {toUIMessages(messages.results ?? [])?.map((message) => (
+          {toUIMessages(messages.results ?? [])
+            ?.filter((message) => getUiMessageText(message).trim().length > 0)
+            .map((message) => (
             <AIMessage
               // In reverse, because we are watching from "assistant" perspective
               from={message.role === "user" ? "assistant" : "user"}
