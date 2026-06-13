@@ -276,12 +276,31 @@ export const WidgetChatScreen = () => {
     () => toUIMessages(messages.results ?? []),
     [messages.results]
   )
-  const assistantMessageCount = useMemo(
-    () => uiMessages.filter((message) => message.role === "assistant").length,
+  const visibleMessages = useMemo(
+    () =>
+      uiMessages.filter(
+        (message) => getUiMessageText(message).trim().length > 0
+      ),
     [uiMessages]
+  )
+  const assistantMessageCount = useMemo(
+    () =>
+      visibleMessages.filter((message) => message.role === "assistant").length,
+    [visibleMessages]
+  )
+  const userMessageCount = useMemo(
+    () => visibleMessages.filter((message) => message.role === "user").length,
+    [visibleMessages]
   )
   const [pendingAssistantMessageCount, setPendingAssistantMessageCount] =
     useState<number | null>(null)
+  const [optimisticUserMessage, setOptimisticUserMessage] = useState<{
+    text: string
+    baseCount: number
+  } | null>(null)
+  const showOptimisticUserMessage =
+    optimisticUserMessage !== null &&
+    userMessageCount <= optimisticUserMessage.baseCount
   const submittedInitialMessageRef = useRef<string | null>(null)
   const isAwaitingResponse =
     conversation?.status !== "resolved" &&
@@ -304,6 +323,15 @@ export const WidgetChatScreen = () => {
     pendingAssistantMessageCount,
     workflowChoices?.buttons?.length,
   ])
+
+  useEffect(() => {
+    if (
+      optimisticUserMessage !== null &&
+      userMessageCount > optimisticUserMessage.baseCount
+    ) {
+      setOptimisticUserMessage(null)
+    }
+  }, [optimisticUserMessage, userMessageCount])
 
   const { topElementRef, handleLoadMore, canLoadMore, isLoadingMore } =
     useInfiniteScroll({
@@ -337,6 +365,7 @@ export const WidgetChatScreen = () => {
 
     submittedInitialMessageRef.current = prompt
     setPendingInitialMessage(null)
+    setOptimisticUserMessage({ text: prompt, baseCount: userMessageCount })
     setPendingAssistantMessageCount(assistantMessageCount + 1)
 
     void createMessage({
@@ -344,6 +373,7 @@ export const WidgetChatScreen = () => {
       prompt,
       contactSessionId,
     }).catch(() => {
+      setOptimisticUserMessage(null)
       setPendingAssistantMessageCount(null)
       form.setValue("message", prompt, {
         shouldValidate: true,
@@ -353,6 +383,7 @@ export const WidgetChatScreen = () => {
     })
   }, [
     assistantMessageCount,
+    userMessageCount,
     contactSessionId,
     conversation?.threadId,
     createMessage,
@@ -374,6 +405,7 @@ export const WidgetChatScreen = () => {
     }
 
     form.reset()
+    setOptimisticUserMessage({ text: prompt, baseCount: userMessageCount })
     setPendingAssistantMessageCount(assistantMessageCount + 1)
 
     try {
@@ -383,6 +415,7 @@ export const WidgetChatScreen = () => {
         contactSessionId,
       })
     } catch {
+      setOptimisticUserMessage(null)
       setPendingAssistantMessageCount(null)
       form.setValue("message", prompt, {
         shouldValidate: true,
@@ -401,6 +434,7 @@ export const WidgetChatScreen = () => {
       return
     }
 
+    setOptimisticUserMessage({ text: button.label, baseCount: userMessageCount })
     setPendingAssistantMessageCount(assistantMessageCount + 1)
 
     try {
@@ -411,6 +445,7 @@ export const WidgetChatScreen = () => {
         workflowButtonId: button.id,
       })
     } catch {
+      setOptimisticUserMessage(null)
       setPendingAssistantMessageCount(null)
     }
   }
@@ -503,7 +538,7 @@ export const WidgetChatScreen = () => {
             isLoadingMore={isLoadingMore}
             noMoreText="Beginning of chat"
           />
-          {uiMessages.map((message) => {
+          {visibleMessages.map((message) => {
             return (
               <AIMessage
                 from={message.role === "user" ? "user" : "assistant"}
@@ -523,6 +558,13 @@ export const WidgetChatScreen = () => {
               </AIMessage>
             )
           })}
+          {showOptimisticUserMessage && optimisticUserMessage && (
+            <AIMessage from="user" key="optimistic-user-message">
+              <AIMessageContent className="bg-[var(--widget-bot-bubble)] text-[var(--widget-bot-bubble-foreground)] group-[.is-user]:bg-[var(--widget-user-bubble)] group-[.is-user]:text-[var(--widget-user-bubble-foreground)]">
+                <AIResponse>{optimisticUserMessage.text}</AIResponse>
+              </AIMessageContent>
+            </AIMessage>
+          )}
           {isAwaitingResponse && (
             <AssistantLoadingBubble logoUrl={theme.logoUrl} />
           )}
@@ -538,7 +580,7 @@ export const WidgetChatScreen = () => {
             />
           ))}
         </AISuggestions>
-      ) : uiMessages.length === 1 ? (
+      ) : visibleMessages.length === 1 ? (
         <AISuggestions className="flex w-full flex-col items-end p-2">
           {suggestions.map((suggestion) => {
             if (!suggestion) {

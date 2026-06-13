@@ -597,6 +597,7 @@ export const getMany = query({
 
     const paginated = await supportAgent.listMessages(ctx, {
       threadId: args.threadId,
+      excludeToolMessages: true,
       paginationOpts: args.paginationOpts,
     })
 
