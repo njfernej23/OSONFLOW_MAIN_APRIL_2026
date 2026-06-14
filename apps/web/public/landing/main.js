@@ -7,11 +7,39 @@
 (function () {
   "use strict";
 
-  const root = document.getElementById("main");
-  if (!root || root.dataset.landingInitialized === "true") return;
-  root.dataset.landingInitialized = "true";
+  function initOsonflowLanding() {
+    const root = document.getElementById("main");
+    if (!root) return;
 
-  const $ = (s, c) => (c || document).querySelector(s);
+    if (typeof window.__destroyOsonflowLanding === "function") {
+      window.__destroyOsonflowLanding();
+    }
+
+    const ac = new AbortController();
+    const { signal } = ac;
+    const intervals = [];
+    const observers = [];
+    const trackInterval = (fn, ms) => {
+      const id = setInterval(fn, ms);
+      intervals.push(id);
+      return id;
+    };
+    const trackObserver = (observer) => {
+      observers.push(observer);
+      return observer;
+    };
+
+    window.__destroyOsonflowLanding = function () {
+      ac.abort();
+      intervals.forEach(clearInterval);
+      observers.forEach((observer) => observer.disconnect());
+      delete root.dataset.landingInitialized;
+      window.__destroyOsonflowLanding = undefined;
+    };
+
+    root.dataset.landingInitialized = "true";
+
+const $ = (s, c) => (c || document).querySelector(s);
   const $$ = (s, c) => Array.from((c || document).querySelectorAll(s));
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const esc = (t) => String(t).replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
@@ -54,7 +82,7 @@
   /* ---------------- Reveal on scroll (staggered) ---------------- */
   const reveals = $$("[data-reveal]");
   if ("IntersectionObserver" in window && !reduceMotion) {
-    const io = new IntersectionObserver((entries) => {
+    const io = trackObserver(new IntersectionObserver((entries) => {
       entries.forEach((e) => {
         if (e.isIntersecting) {
           const sibs = $$("[data-reveal]", e.target.closest("section") || document).filter((n) => !n.classList.contains("is-in"));
@@ -64,7 +92,7 @@
           io.unobserve(e.target);
         }
       });
-    }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
+    }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }));
     reveals.forEach((el) => io.observe(el));
   } else { reveals.forEach((el) => el.classList.add("is-in")); }
 
@@ -75,13 +103,13 @@
     requestAnimationFrame(step);
   };
   if ("IntersectionObserver" in window) {
-    const co = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { runCount(e.target); co.unobserve(e.target); } }), { threshold: 0.6 });
+    const co = trackObserver(new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { runCount(e.target); co.unobserve(e.target); } }), { threshold: 0.6 }));
     $$("[data-count]").forEach((el) => co.observe(el));
   } else { $$("[data-count]").forEach((el) => (el.textContent = el.dataset.count)); }
 
   /* ---------------- Animate intent bars when revealed ---------------- */
   if ("IntersectionObserver" in window) {
-    const bo = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { $$("i[data-w]", e.target).forEach((i) => (i.style.width = i.dataset.w)); bo.unobserve(e.target); } }), { threshold: 0.4 });
+    const bo = trackObserver(new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { $$("i[data-w]", e.target).forEach((i) => (i.style.width = i.dataset.w)); bo.unobserve(e.target); } }), { threshold: 0.4 }));
     $$(".ibars").forEach((el) => bo.observe(el));
   }
 
@@ -91,8 +119,8 @@
     stage.addEventListener("mousemove", (e) => {
       const r = stage.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
       $$("[data-float]", stage).forEach((p, i) => { const d = (i + 1) * 6; p.style.transform = "translate(" + (-x * d) + "px," + (-y * d) + "px)"; });
-    });
-    stage.addEventListener("mouseleave", () => $$("[data-float]", stage).forEach((p) => (p.style.transform = "")));
+    }, { signal });
+    stage.addEventListener("mouseleave", () => $$("[data-float]", stage).forEach((p) => (p.style.transform = "")), { signal });
   }
 
   /* ---------------- Hero typewriter ---------------- */
@@ -100,7 +128,7 @@
   if (typeEl && !reduceMotion) {
     const phrases = ["Type a message…", "Ask about your order…", "Where is my refund?", "Talk to a human"];
     let pi = 0; typeEl.style.transition = "opacity 0.35s ease";
-    setInterval(() => { typeEl.style.opacity = "0"; setTimeout(() => { pi = (pi + 1) % phrases.length; typeEl.textContent = phrases[pi]; typeEl.style.opacity = "1"; }, 350); }, 2600);
+    trackInterval(() => { typeEl.style.opacity = "0"; setTimeout(() => { pi = (pi + 1) % phrases.length; typeEl.textContent = phrases[pi]; typeEl.style.opacity = "1"; }, 350); }, 2600);
   }
 
   /* ---------------- Pipeline stepper ---------------- */
@@ -125,7 +153,7 @@
       $$(".pstep").forEach((b) => b.classList.remove("is-active"));
       btn.classList.add("is-active");
       renderPipeline(parseInt(btn.dataset.step, 10));
-    }));
+    }, { signal }));
   }
 
   /* ---------------- ROI calculator ---------------- */
@@ -138,7 +166,7 @@
     $("#roiResolved").textContent = fmt(conv * 0.82);
     $("#roiSavings").textContent = "$" + fmt(conv * 0.82 * (cost - 0.4));
   }
-  if (roiConv && roiCost) { roiConv.addEventListener("input", updateRoi); roiCost.addEventListener("input", updateRoi); updateRoi(); }
+  if (roiConv && roiCost) { roiConv.addEventListener("input", updateRoi, { signal }); roiCost.addEventListener("input", updateRoi, { signal }); updateRoi(); }
 
   /* ---------------- Calm wave synthesizer (ASCII) ---------------- */
   const waveEl = $("#synthWave");
@@ -192,12 +220,12 @@
       waveCols = waveColumnCount();
       draw();
     }
-    groundSlider.addEventListener("input", paramsChanged);
-    speedSlider.addEventListener("input", paramsChanged);
+    groundSlider.addEventListener("input", paramsChanged, { signal });
+    speedSlider.addEventListener("input", paramsChanged, { signal });
     paramsChanged();
     resizeWave();
-    window.addEventListener("resize", resizeWave);
-    if (!reduceMotion) { setInterval(() => { phase = (phase + 0.15) % (Math.PI * 2); draw(); }, 60); }
+    window.addEventListener("resize", resizeWave, { signal });
+    if (!reduceMotion) { trackInterval(() => { phase = (phase + 0.15) % (Math.PI * 2); draw(); }, 60); }
   }
 
   /* ---------------- Experience room tabs ---------------- */
@@ -208,8 +236,8 @@
     $$(".xpanel").forEach((p) => p.classList.toggle("is-active", p.dataset.xpanel === name));
   }
   const firstTab = $(".xtab.is-active");
-  if (firstTab) { requestAnimationFrame(() => moveGlider(firstTab)); window.addEventListener("resize", () => moveGlider($(".xtab.is-active"))); }
-  $$(".xtab").forEach((t) => t.addEventListener("click", () => activateTab(t.dataset.xtab)));
+  if (firstTab) { requestAnimationFrame(() => moveGlider(firstTab)); window.addEventListener("resize", () => moveGlider($(".xtab.is-active")), { signal }); }
+  $$(".xtab").forEach((t) => t.addEventListener("click", () => activateTab(t.dataset.xtab), { signal }));
 
   /* ---------------- Threads / workspace state ---------------- */
   const greet = "Greetings. I am Osonflow's calm AI assistant. Ask me anything about Osonflow plans, embed setups, or real-time voice routing pipelines.";
@@ -281,9 +309,9 @@
       if (!v) return;
       chatInput.value = "";
       handleUserMessage(v);
-    });
+    }, { signal });
   }
-  $$("#suggestChips .chip").forEach((c) => c.addEventListener("click", () => { activateTab("chat"); handleUserMessage(c.textContent.trim()); }));
+  $$("#suggestChips .chip").forEach((c) => c.addEventListener("click", () => { activateTab("chat"); handleUserMessage(c.textContent.trim()); }, { signal }));
 
   /* escalation */
   const escalateBtn = $("#escalateBtn");
@@ -294,7 +322,7 @@
     setGrounding("Escalated bypass", 44);
     showTyping();
     setTimeout(() => { hideTyping(); const m = "I have dispatched your thread to the Shared Agent Workspace. A specialist will assume control momentarily."; appendChat("ai", m); pushToLive("ai", m); }, 900);
-  });
+  }, { signal });
 
   /* ---------------- Voice mode ---------------- */
   const voiceToggle = $("#voiceToggle"), voiceStage = $("#voiceStage"), widgetInput = $("#chatForm");
@@ -309,7 +337,7 @@
     if (on) { setVoiceState("listening", "Listening carefully to your sound space…"); setTimeout(() => { if (voiceOn) setVoiceState("speaking", '"Greetings from Osonflow. I am trained on your local FAQs. Ask about pricing or widget setup."'); }, 1700); }
     else setVoiceState("idle", "Tap a prompt below to trigger a simulated real-time voice-to-voice support call.");
   }
-  if (voiceToggle) voiceToggle.addEventListener("click", () => toggleVoice(!voiceOn));
+  if (voiceToggle) voiceToggle.addEventListener("click", () => toggleVoice(!voiceOn), { signal });
   $$(".vbtn").forEach((b) => b.addEventListener("click", () => {
     const kind = b.dataset.voice;
     setVoiceState("listening", kind === "pricing" ? 'Analyzing voice… "What are your pricing plans?"' : 'Analyzing voice… "Can I connect a human specialist?"');
@@ -317,7 +345,7 @@
       if (kind === "pricing") { const t = "Osonflow offers a Starter plan free, and a Growth plan at $20/mo featuring priority real-time voice, crawling, and 10 agent workspace seats."; setVoiceState("speaking", '"' + t + '"'); pushToLive("ai", t, true); }
       else { const t = "Yes, I can transition us immediately. Handing off to the shared agent inbox with full history."; setVoiceState("speaking", '"' + t + '"'); liveThread.status = "waiting"; liveThread.urgency = "high"; liveThread.conf = 44; liveThread.intent = "Escalated bypass"; setGrounding("Escalated bypass", 44); pushToLive("ai", t, true); }
     }, 1400);
-  }));
+  }, { signal }));
 
   /* ---------------- Knowledge hub ---------------- */
   const poolList = $("#poolList"), trainForm = $("#trainForm");
@@ -331,7 +359,7 @@
     $$(".tseg").forEach((x) => x.classList.remove("is-active")); s.classList.add("is-active");
     trainType = s.dataset.ttype;
     $("#trainSource").value = trainType === "file" ? "support_logs.txt" : "https://help.yoursite.com/faq";
-  }));
+  }, { signal }));
   if (trainForm) trainForm.addEventListener("submit", (e) => {
     e.preventDefault();
     const title = $("#trainTitle").value.trim(), content = $("#trainContent").value.trim(), source = $("#trainSource").value.trim();
@@ -340,7 +368,7 @@
     renderPool();
     $("#trainTitle").value = ""; $("#trainContent").value = ""; $("#trainSource").value = "";
     const ok = $("#trainOk"); ok.hidden = false; setTimeout(() => (ok.hidden = true), 4000);
-  });
+  }, { signal });
 
   /* ---------------- Agent workspace ---------------- */
   const wsThreads = $("#wsThreads"), wsLog = $("#wsLog"), wsClient = $("#wsClient"), wsIntent = $("#wsIntent"), wsResolve = $("#wsResolve");
@@ -353,7 +381,7 @@
       const last = t.messages[t.messages.length - 1].text;
       return '<button class="wsitem ' + (t.id === activeThreadId ? "is-active" : "") + '" data-id="' + t.id + '"><div class="wsitem__top"><span class="wsitem__who"><span class="wsitem__ava">' + t.avatar + '</span><span class="wsitem__name">' + esc(t.name) + '</span></span><span class="wsitem__conf">' + (statusIcon[t.status] || "✦") + " " + t.conf + '%</span></div><div class="wsitem__snip">' + esc(last) + '</div><div class="wsitem__foot"><span class="wsitem__intent">' + esc(t.intent) + '</span><span class="ubadge ubadge--' + t.urgency + '">' + t.urgency + "</span></div></button>";
     }).join("");
-    $$(".wsitem", wsThreads).forEach((b) => b.addEventListener("click", () => { activeThreadId = b.dataset.id; renderThreads(); renderWsLog(); }));
+    $$(".wsitem", wsThreads).forEach((b) => b.addEventListener("click", () => { activeThreadId = b.dataset.id; renderThreads(); renderWsLog(); }, { signal }));
   }
   function renderWsLog() {
     const t = threads.find((x) => x.id === activeThreadId) || threads[0];
@@ -367,7 +395,7 @@
   }
   if (wsThreads) {
     renderThreads(); renderWsLog();
-    wsResolve.addEventListener("click", () => { const t = threads.find((x) => x.id === activeThreadId); if (t && t.status !== "resolved") { t.status = "resolved"; renderThreads(); renderWsLog(); } });
+    wsResolve.addEventListener("click", () => { const t = threads.find((x) => x.id === activeThreadId); if (t && t.status !== "resolved") { t.status = "resolved"; renderThreads(); renderWsLog(); } }, { signal });
     $("#wsReplyForm").addEventListener("submit", (e) => {
       e.preventDefault();
       const v = $("#wsReplyInput").value.trim(); if (!v) return;
@@ -375,10 +403,10 @@
       $("#wsReplyInput").value = "";
       renderThreads(); renderWsLog();
       if (t.id === "t-live") appendChat("ai", v);
-    });
+    }, { signal });
   }
   // re-render workspace log when switching to inbox tab
-  $$('.xtab[data-xtab="inbox"]').forEach((t) => t.addEventListener("click", () => renderWsLog()));
+  $$('.xtab[data-xtab="inbox"]').forEach((t) => t.addEventListener("click", () => renderWsLog(), { signal }));
 
   /* ---------------- FAQ accordion ---------------- */
   $$(".acc").forEach((acc) => {
@@ -390,9 +418,9 @@
       const isOpen = acc.classList.contains("is-open");
       $$(".acc").forEach((o) => { if (o !== acc) close(o); });
       isOpen ? close(acc) : open(acc);
-    });
+    }, { signal });
   });
-  window.addEventListener("resize", () => { const o = $(".acc.is-open"); if (o) $(".acc__a", o).style.maxHeight = $(".acc__a", o).scrollHeight + "px"; });
+  window.addEventListener("resize", () => { const o = $(".acc.is-open"); if (o) $(".acc__a", o).style.maxHeight = $(".acc__a", o).scrollHeight + "px"; }, { signal });
 
   /* ---------------- Embed modal ---------------- */
   const modal = $("#embedModal");
@@ -401,21 +429,21 @@
   function renderSnippet() { $("#modalSnippet").innerHTML = snippet(); }
   function openModal() { renderSnippet(); modal.hidden = false; document.body.style.overflow = "hidden"; }
   function closeModal() { modal.hidden = true; document.body.style.overflow = ""; }
-  ["#heroEmbed", "#embedOpen2", "#ctaEmbed"].forEach((id) => { const el = $(id); if (el) el.addEventListener("click", openModal); });
-  ["#modalClose", "#modalCancel", "#modalOverlay"].forEach((id) => { const el = $(id); if (el) el.addEventListener("click", closeModal); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) closeModal(); });
-  $("#modalCompany") && $("#modalCompany").addEventListener("input", (e) => { e.target.value = e.target.value.toLowerCase().replace(/\s+/g, "-"); renderSnippet(); });
-  $("#modalTheme") && $("#modalTheme").addEventListener("change", renderSnippet);
+  ["#heroEmbed", "#embedOpen2", "#ctaEmbed"].forEach((id) => { const el = $(id); if (el) el.addEventListener("click", openModal, { signal }); });
+  ["#modalClose", "#modalCancel", "#modalOverlay"].forEach((id) => { const el = $(id); if (el) el.addEventListener("click", closeModal, { signal }); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) closeModal(); }, { signal });
+  $("#modalCompany") && $("#modalCompany").addEventListener("input", (e) => { e.target.value = e.target.value.toLowerCase().replace(/\s+/g, "-"); renderSnippet(); }, { signal });
+  $("#modalTheme") && $("#modalTheme").addEventListener("change", renderSnippet, { signal });
   function copyText(text, btn) {
     const done = () => { const o = btn.textContent; btn.textContent = "Copied"; btn.classList.add("is-copied"); setTimeout(() => { btn.textContent = o; btn.classList.remove("is-copied"); }, 1600); };
     if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, done); else done();
   }
-  $("#modalCopy") && $("#modalCopy").addEventListener("click", (e) => copyText(plainSnippet(), e.currentTarget));
-  $("#modalCopyClose") && $("#modalCopyClose").addEventListener("click", () => { copyText(plainSnippet(), $("#modalCopy")); setTimeout(closeModal, 300); });
+  $("#modalCopy") && $("#modalCopy").addEventListener("click", (e) => copyText(plainSnippet(), e.currentTarget), { signal });
+  $("#modalCopyClose") && $("#modalCopyClose").addEventListener("click", () => { copyText(plainSnippet(), $("#modalCopy")); setTimeout(closeModal, 300); }, { signal });
 
   /* ---------------- Embed code copy (channels) ---------------- */
   const copyBtn = $("#copyBtn");
-  if (copyBtn) copyBtn.addEventListener("click", () => copyText('<!-- Osonflow widget -->\n<script src="https://embed.osonflow.ai/widget.js"\n        data-id="osf_live_7f3a9c"></' + "script>", copyBtn));
+  if (copyBtn) copyBtn.addEventListener("click", () => copyText('<!-- Osonflow widget -->\n<script src="https://embed.osonflow.ai/widget.js"\n        data-id="osf_live_7f3a9c"></' + "script>", copyBtn), { signal });
 
   /* ---------------- Card tilt micro-interaction ---------------- */
   if (!reduceMotion && window.matchMedia("(pointer:fine)").matches) {
@@ -423,8 +451,12 @@
       card.addEventListener("mousemove", (e) => {
         const r = card.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
         card.style.transform = "perspective(900px) rotateX(" + (-y * 4).toFixed(2) + "deg) rotateY(" + (x * 4).toFixed(2) + "deg) translateY(-4px)";
-      });
-      card.addEventListener("mouseleave", () => (card.style.transform = ""));
+      }, { signal });
+      card.addEventListener("mouseleave", () => (card.style.transform = ""), { signal });
     });
   }
+
+  }
+
+  window.__initOsonflowLanding = initOsonflowLanding;
 })();
