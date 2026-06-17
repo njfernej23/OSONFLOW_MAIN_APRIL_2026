@@ -12,6 +12,7 @@ import type * as constants from "../constants.js";
 import type * as http from "../http.js";
 import type * as lib_agentMessageText from "../lib/agentMessageText.js";
 import type * as lib_extractTextContent from "../lib/extractTextContent.js";
+import type * as lib_instagramApi from "../lib/instagramApi.js";
 import type * as lib_instagramOAuth from "../lib/instagramOAuth.js";
 import type * as lib_openai from "../lib/openai.js";
 import type * as lib_organizationIdentity from "../lib/organizationIdentity.js";
@@ -78,6 +79,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/agentMessageText": typeof lib_agentMessageText;
   "lib/extractTextContent": typeof lib_extractTextContent;
+  "lib/instagramApi": typeof lib_instagramApi;
   "lib/instagramOAuth": typeof lib_instagramOAuth;
   "lib/openai": typeof lib_openai;
   "lib/organizationIdentity": typeof lib_organizationIdentity;

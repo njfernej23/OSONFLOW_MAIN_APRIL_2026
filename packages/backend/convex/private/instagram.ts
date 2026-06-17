@@ -1,5 +1,10 @@
 import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
 import {
+  fetchInstagramAccountIdentity,
+  instagramGraphUrl,
+  subscribeInstagramAccountWebhooks,
+} from "../lib/instagramApi"
+import {
   buildInstagramAuthorizationUrl,
   exchangeInstagramCodeForToken,
   getInstagramOAuthConfig,
@@ -44,9 +49,6 @@ type ConnectInstagramResult = {
   verifyToken: string
 }
 
-const INSTAGRAM_GRAPH_API_VERSION =
-  process.env.INSTAGRAM_GRAPH_API_VERSION || "v25.0"
-
 const getAuthContext = async (ctx: {
   auth: { getUserIdentity: () => Promise<any> }
 }) => {
@@ -74,56 +76,7 @@ const getAuthContext = async (ctx: {
   }
 }
 
-const instagramApiUrl = (
-  path: string,
-  params?: Record<string, string | undefined>
-) => {
-  const url = new URL(
-    `https://graph.instagram.com/${INSTAGRAM_GRAPH_API_VERSION}/${path.replace(/^\//, "")}`
-  )
-
-  for (const [key, value] of Object.entries(params ?? {})) {
-    if (value) {
-      url.searchParams.set(key, value)
-    }
-  }
-
-  return url.toString()
-}
-
-const subscribeInstagramWebhooks = async ({
-  accessToken,
-  instagramUserId,
-}: {
-  accessToken: string
-  instagramUserId: string
-}) => {
-  const response = await fetch(
-    instagramApiUrl(`${instagramUserId}/subscribed_apps`, {
-      access_token: accessToken,
-    }),
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        subscribed_fields: ["messages", "messaging_postbacks"],
-      }),
-    }
-  )
-  const body = (await response.json()) as {
-    success?: boolean
-    error?: { message?: string }
-  }
-
-  if (!response.ok || !body.success) {
-    throw new ConvexError(
-      body.error?.message ||
-        `Failed to subscribe Instagram webhooks (HTTP ${response.status})`
-    )
-  }
-}
+const instagramApiUrl = instagramGraphUrl
 
 const parseInstagramProfilePayload = (
   profile: InstagramProfileResponse
@@ -260,7 +213,7 @@ const finalizeInstagramConnection = async (
   const webhookUrl = `${webhookBaseUrl}/instagram/webhook`
 
   try {
-    await subscribeInstagramWebhooks({ accessToken, instagramUserId })
+    await subscribeInstagramAccountWebhooks(accessToken)
   } catch (error) {
     const setupError =
       error instanceof Error
@@ -351,17 +304,14 @@ const runConnectWithOAuthCode = async (
     code,
   })
 
-  const profile = await fetchInstagramProfile({
-    accessToken: tokenData.accessToken,
-    instagramUserId: tokenData.userId,
-  })
+  const identity = await fetchInstagramAccountIdentity(tokenData.accessToken)
 
   const result = await finalizeInstagramConnection(ctx, {
     organizationId,
     actorId,
     accessToken: tokenData.accessToken,
-    instagramUserId: profile.instagramUserId,
-    username: profile.username,
+    instagramUserId: identity.instagramUserId || tokenData.userId,
+    username: identity.username,
   })
 
   return toConnectResult(result)
@@ -442,6 +392,9 @@ export const getDashboard = query({
       ? `${webhookBaseUrl}/instagram/webhook`
       : integration.webhookUrl
 
+    const configuredVerifyToken =
+      process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN?.trim()
+
     return {
       integration: {
         _id: integration._id,
@@ -449,7 +402,7 @@ export const getDashboard = query({
         instagramUserId: integration.instagramUserId,
         username: integration.username,
         webhookUrl,
-        verifyToken: integration.verifyToken,
+        verifyToken: configuredVerifyToken || integration.verifyToken,
         isEnabled: integration.isEnabled,
         status: integration.status,
         setupError: integration.setupError,
@@ -561,17 +514,14 @@ export const connect = action({
       })
     }
 
-    const profile = await fetchInstagramProfile({
-      accessToken,
-      instagramUserId,
-    })
+    const identity = await fetchInstagramAccountIdentity(accessToken)
 
     const result = await finalizeInstagramConnection(ctx, {
       organizationId,
       actorId,
       accessToken,
-      instagramUserId: profile.instagramUserId,
-      username: profile.username,
+      instagramUserId: identity.instagramUserId || instagramUserId,
+      username: identity.username,
     })
 
     return toConnectResult(result)
@@ -710,10 +660,7 @@ export const resyncWebhooks = action({
     const webhookUrl = `${webhookBaseUrl}/instagram/webhook`
 
     try {
-      await subscribeInstagramWebhooks({
-        accessToken: integration.accessToken,
-        instagramUserId: integration.instagramUserId,
-      })
+      await subscribeInstagramAccountWebhooks(integration.accessToken)
     } catch (error) {
       const setupError =
         error instanceof Error

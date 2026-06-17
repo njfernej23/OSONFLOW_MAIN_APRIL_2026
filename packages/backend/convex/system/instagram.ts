@@ -577,12 +577,28 @@ const resolveIntegrationForWebhook = async (
     await ctx.db.query("instagramIntegrations").collect()
   ).filter((integration: { isEnabled: boolean }) => integration.isEnabled)
 
+  if (enabledIntegrations.length === 0) {
+    return null
+  }
+
   if (payload.object === "instagram" && enabledIntegrations.length === 1) {
     return enabledIntegrations[0]
   }
 
   for (const integration of enabledIntegrations) {
     if (accountIds.includes(integration.instagramUserId)) {
+      return integration
+    }
+  }
+
+  const messagingEvents = extractMessagingEventsFromPayload(payload)
+
+  for (const integration of enabledIntegrations) {
+    const matchesRecipient = messagingEvents.some(
+      (event) => event.recipient?.id === integration.instagramUserId
+    )
+
+    if (matchesRecipient) {
       return integration
     }
   }

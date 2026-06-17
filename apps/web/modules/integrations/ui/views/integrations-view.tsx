@@ -1581,7 +1581,9 @@ export const IntegrationsView = () => {
                 </Button>
 
                 <p className="text-center text-[11px] leading-relaxed text-sidebar-foreground/52">
-                  You will be redirected to Instagram to authorize access.
+                  You will be redirected to Instagram to authorize access. You do
+                  not need to add accounts manually in Meta&apos;s &quot;Generate
+                  access tokens&quot; section.
                 </p>
               </div>
             </section>
@@ -1605,10 +1607,18 @@ export const IntegrationsView = () => {
                   </div>
                 </div>
                 <Badge
-                  variant={instagramIntegration ? "default" : "outline"}
+                  variant={
+                    instagramIntegration?.status === "connected"
+                      ? "default"
+                      : "outline"
+                  }
                   className="shrink-0 text-xs"
                 >
-                  {instagramIntegration ? "Connected" : "Not connected"}
+                  {!instagramIntegration
+                    ? "Not connected"
+                    : instagramIntegration.status === "connected"
+                      ? "Connected"
+                      : "Needs setup"}
                 </Badge>
               </div>
 
@@ -1675,7 +1685,8 @@ export const IntegrationsView = () => {
 
                     <p className="text-xs text-muted-foreground">
                       Instagram DMs are routed into your Osonflow inbox after
-                      Meta webhooks are configured.
+                      Meta webhooks are configured. OAuth automatically subscribes
+                      the authorized account to message webhooks.
                     </p>
 
                     {instagramIntegration.status === "needs_webhook_url" && (
@@ -1758,10 +1769,10 @@ export const IntegrationsView = () => {
                       In Meta App Dashboard, open Instagram → Webhooks, paste the
                       callback URL and verify token above, then subscribe to{" "}
                       <code className="font-mono">messages</code> (required for
-                      DMs). Production webhooks use your Convex production
-                      deployment URL (for example{" "}
-                      <code className="font-mono">nautical-gazelle-675</code>
-                      ), which may differ from your local dev Convex URL.
+                      DMs). This is a one-time app-level setup. For production,
+                      switch your Meta app to Live mode and complete App Review
+                      so any Instagram professional account can connect through
+                      OAuth.
                     </p>
 
                     {instagramIntegration.lastWebhookAt && (
