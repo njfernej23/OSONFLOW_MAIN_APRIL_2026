@@ -1,13 +1,13 @@
 import { Webhook } from "svix"
 import { createClerkClient } from "@clerk/backend"
 import type { WebhookEvent } from "@clerk/backend"
-import {
-  validateEvent,
-  WebhookVerificationError,
-} from "@polar-sh/sdk/webhooks"
 import { httpRouter } from "convex/server"
 import { httpAction } from "./_generated/server"
 import { internal } from "./_generated/api"
+import {
+  PolarWebhookVerificationError,
+  validatePolarWebhookEvent,
+} from "./lib/polarWebhook"
 
 const http = httpRouter()
 
@@ -237,12 +237,12 @@ http.route({
       "webhook-signature": request.headers.get("webhook-signature") ?? "",
     }
 
-    let event: ReturnType<typeof validateEvent>
+    let event: ReturnType<typeof validatePolarWebhookEvent>
 
     try {
-      event = validateEvent(body, headers, webhookSecret)
+      event = validatePolarWebhookEvent(body, headers, webhookSecret)
     } catch (error) {
-      if (error instanceof WebhookVerificationError) {
+      if (error instanceof PolarWebhookVerificationError) {
         return new Response("Invalid signature", { status: 403 })
       }
 

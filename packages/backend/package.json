@@ -22,6 +22,7 @@
     "@convex-dev/workpool": "0.4.7",
     "@google/genai": "^2.8.0",
     "@polar-sh/sdk": "^0.48.1",
+    "standardwebhooks": "^1.0.0",
     "@vapi-ai/server-sdk": "^1.2.0",
     "ai": "6.0.199",
     "convex": "1.40.0",

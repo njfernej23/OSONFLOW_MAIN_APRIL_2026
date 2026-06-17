@@ -3,6 +3,7 @@
 import { OrganizationSwitcher, UserButton, useAuth } from "@clerk/nextjs"
 
 import {
+  ArrowLeftRightIcon,
   BookOpen,
   BotMessageSquare,
   BrainIcon,
@@ -85,6 +86,11 @@ const configurationItems = [
     title: "Workflows",
     url: "/workflows",
     icon: GitBranchIcon,
+  },
+  {
+    title: "Data transfer",
+    url: "/org-transfer",
+    icon: ArrowLeftRightIcon,
   },
   {
     title: "Vapi voice",
@@ -227,6 +233,7 @@ export const DashboardSidebar = () => {
                 skipInvitationScreen
                 createOrganizationMode="navigation"
                 createOrganizationUrl="/create-organization"
+                afterCreateOrganizationUrl="/organization-created"
                 organizationProfileMode="navigation"
                 organizationProfileUrl="/organization-settings"
                 appearance={organizationSwitcherAppearance}

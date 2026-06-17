@@ -296,6 +296,9 @@ importers:
       convex-helpers:
         specifier: 0.1.119
         version: 0.1.119(@standard-schema/spec@1.1.0)(convex@1.40.0(@clerk/react@6.7.3(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7))(hono@4.12.25)(react@19.2.7)(typescript@6.0.3)(zod@4.4.3)
+      standardwebhooks:
+        specifier: ^1.0.0
+        version: 1.0.0
       svix:
         specifier: ^1.95.2
         version: 1.95.2

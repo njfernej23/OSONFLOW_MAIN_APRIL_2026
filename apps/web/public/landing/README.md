@@ -12,3 +12,14 @@ After adding an image, set the matching `imageSrc` in
 - `/landing/product-dashboard.png`
 - `/landing/widget-on-site.png`
 - `/landing/voice-handoff.png`
+
+## Landing styles
+
+The homepage loads `japandi-landing.css` from this folder at runtime and removes it when you leave the page. That prevents landing styles from leaking into the dashboard after client-side navigation.
+
+When editing the source stylesheet at
+`apps/web/modules/marketing/ui/styles/japandi-landing.css`, copy the updated file here:
+
+```bash
+cp apps/web/modules/marketing/ui/styles/japandi-landing.css apps/web/public/landing/japandi-landing.css
+```

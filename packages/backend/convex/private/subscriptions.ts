@@ -32,8 +32,13 @@ export const getCurrent = query({
 
     return {
       isActive: subscription?.status === "active",
+      isPro:
+        subscription?.status === "active" ||
+        subscription?.status === "trialing" ||
+        subscription?.status === "past_due",
       status: subscription?.status ?? null,
       provider: subscription?.provider ?? null,
+      currentPeriodEnd: subscription?.currentPeriodEnd ?? null,
     }
   },
 })

@@ -1,7 +1,14 @@
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { NextResponse, type NextRequest } from "next/server"
 
-import { getAppUrl, getClientIp, getPolar, polarProductIds } from "@/lib/polar"
+import {
+  ensurePolarCustomerForOrganization,
+  getAppUrl,
+  getClientIp,
+  getPolar,
+  organizationHasActivePolarSubscription,
+  polarProductIds,
+} from "@/lib/polar"
 
 export const GET = async (request: NextRequest) => {
   const { orgId, userId } = await auth()
@@ -32,16 +39,27 @@ export const GET = async (request: NextRequest) => {
     )
   }
 
-  const user = await currentUser()
+  const polar = getPolar()
   const appUrl = getAppUrl(request.nextUrl.origin)
+
+  if (await organizationHasActivePolarSubscription(polar, orgId)) {
+    return NextResponse.redirect(new URL("/billing", appUrl))
+  }
+
+  const user = await currentUser()
+  const customer = await ensurePolarCustomerForOrganization(polar, {
+    orgId,
+    userId,
+    userEmail: user?.primaryEmailAddress?.emailAddress,
+    userName: user?.fullName,
+  })
+
   const successUrl = new URL("/billing", appUrl)
   successUrl.searchParams.set("checkout_id", "{CHECKOUT_ID}")
 
-  const checkout = await getPolar().checkouts.create({
+  const checkout = await polar.checkouts.create({
     products: [polarProductIds.pro],
-    externalCustomerId: orgId,
-    customerEmail: user?.primaryEmailAddress?.emailAddress,
-    customerName: user?.fullName,
+    customerId: customer.id,
     customerIpAddress: getClientIp(request.headers),
     metadata: {
       organizationId: orgId,
@@ -50,6 +68,9 @@ export const GET = async (request: NextRequest) => {
     customerMetadata: {
       clerkUserId: userId,
       organizationId: orgId,
+      ...(user?.primaryEmailAddress?.emailAddress
+        ? { contactEmail: user.primaryEmailAddress.emailAddress }
+        : {}),
     },
     successUrl: successUrl.toString(),
     returnUrl: new URL("/billing", appUrl).toString(),

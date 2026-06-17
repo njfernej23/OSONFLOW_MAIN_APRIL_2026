@@ -12,6 +12,8 @@ import { toast } from "sonner"
 import {
   CheckCircle2Icon,
   ChevronRightIcon,
+  ClipboardCopyIcon,
+  ClipboardPasteIcon,
   ClockIcon,
   BoldIcon,
   FileTextIcon,
@@ -35,6 +37,14 @@ import {
 } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog"
 import {
   Form,
   FormControl,
@@ -82,6 +92,11 @@ import { AppearanceFormFields } from "./appearance-form-fields"
 import { WidgetLivePreview } from "./widget-live-preview"
 import { FormSchema } from "../../types"
 import { widgetSettingsSchema } from "../../schemas"
+import {
+  hasConvexHostedImageUrl,
+  parseWidgetSettingsImport,
+  serializeWidgetSettingsExport,
+} from "../../lib/settings-transfer"
 
 type WidgetSettings = Doc<"widgetSettings">
 type WidgetSettingsSnapshot = Pick<
@@ -908,6 +923,9 @@ export const CustomizationForm = ({
 
   const [isPublishing, setIsPublishing] = useState(false)
   const [isRollingBack, setIsRollingBack] = useState(false)
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
+  const [importPayload, setImportPayload] = useState("")
+  const [isImporting, setIsImporting] = useState(false)
   const [activeTab, setActiveTab] = useState("chat")
   const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>("idle")
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1106,6 +1124,59 @@ export const CustomizationForm = ({
       toast.success("Embed preview link copied")
     } catch {
       toast.error("Failed to copy link")
+    }
+  }
+
+  const onCopySettings = async () => {
+    try {
+      const payload = serializeWidgetSettingsExport(form.getValues())
+      await navigator.clipboard.writeText(payload)
+      toast.success("Widget settings copied to clipboard")
+    } catch {
+      toast.error("Failed to copy widget settings")
+    }
+  }
+
+  const onOpenImportDialog = async () => {
+    try {
+      const clipboardText = await navigator.clipboard.readText()
+      setImportPayload(clipboardText)
+    } catch {
+      setImportPayload("")
+    }
+
+    setIsImportDialogOpen(true)
+  }
+
+  const onImportSettings = async () => {
+    setIsImporting(true)
+
+    try {
+      const importedSettings = parseWidgetSettingsImport(importPayload)
+      const mutationPayload = buildMutationPayload(importedSettings)
+
+      await saveDraftWidgetSettings(mutationPayload)
+      form.reset(importedSettings)
+      markCurrentValuesAsSaved(importedSettings)
+      setIsImportDialogOpen(false)
+      setImportPayload("")
+
+      if (hasConvexHostedImageUrl(importedSettings)) {
+        toast.success("Settings imported as draft", {
+          description:
+            "Some images were uploaded to another environment. Re-upload logos and backgrounds if they do not appear.",
+        })
+      } else {
+        toast.success("Settings imported as draft")
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not import widget settings"
+      )
+    } finally {
+      setIsImporting(false)
     }
   }
 
@@ -1315,6 +1386,47 @@ export const CustomizationForm = ({
                   Publish an update to enable rollback.
                 </p>
               ) : null}
+            </div>
+
+            <div className="mt-3 space-y-2 rounded-2xl border border-sidebar-border/70 bg-sidebar/58 p-3">
+              <div className="flex items-center gap-2">
+                <ClipboardCopyIcon className="size-3.5 text-sidebar-foreground/50" />
+                <p className="text-xs font-semibold text-sidebar-foreground">
+                  Transfer
+                </p>
+              </div>
+              <p className="text-[11px] leading-relaxed text-sidebar-foreground/55">
+                Copy settings from this org and paste them into another org or
+                environment. For knowledge base, workflows, and API keys, use{" "}
+                <a className="underline" href="/org-transfer">
+                  Data transfer
+                </a>
+                .
+              </p>
+              <div className="grid gap-2">
+                <Button
+                  className="h-8 w-full gap-1.5 text-xs"
+                  disabled={isBusy}
+                  onClick={onCopySettings}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <ClipboardCopyIcon className="size-3.5" />
+                  Copy settings
+                </Button>
+                <Button
+                  className="h-8 w-full gap-1.5 text-xs"
+                  disabled={isBusy}
+                  onClick={onOpenImportDialog}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <ClipboardPasteIcon className="size-3.5" />
+                  Import settings
+                </Button>
+              </div>
             </div>
 
             {recentVersions.length > 0 ? (
@@ -1969,6 +2081,28 @@ export const CustomizationForm = ({
                 <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                   <Button
                     className="gap-1.5"
+                    disabled={isBusy}
+                    onClick={onCopySettings}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <ClipboardCopyIcon className="size-3.5" />
+                    Copy settings
+                  </Button>
+                  <Button
+                    className="gap-1.5"
+                    disabled={isBusy}
+                    onClick={onOpenImportDialog}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <ClipboardPasteIcon className="size-3.5" />
+                    Import
+                  </Button>
+                  <Button
+                    className="gap-1.5"
                     size="sm"
                     type="button"
                     variant="ghost"
@@ -2026,6 +2160,41 @@ export const CustomizationForm = ({
           </div>
         </Tabs>
       </form>
+
+      <Dialog onOpenChange={setIsImportDialogOpen} open={isImportDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Import widget settings</DialogTitle>
+            <DialogDescription>
+              Paste settings copied from another org or environment. This
+              replaces the current draft for this organization.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            className="min-h-[280px] font-mono text-xs"
+            onChange={(event) => setImportPayload(event.target.value)}
+            placeholder='Paste exported JSON here, e.g. {"type":"osonflow-widget-settings",...}'
+            value={importPayload}
+          />
+          <DialogFooter>
+            <Button
+              disabled={isImporting}
+              onClick={() => setIsImportDialogOpen(false)}
+              type="button"
+              variant="outline"
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={isImporting || !importPayload.trim()}
+              onClick={onImportSettings}
+              type="button"
+            >
+              {isImporting ? "Importing..." : "Import draft"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Form>
   )
 }

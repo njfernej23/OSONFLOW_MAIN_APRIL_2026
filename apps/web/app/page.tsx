@@ -15,5 +15,14 @@ export const metadata: Metadata = {
 }
 
 export default function LandingPage() {
-  return <HomeLandingPage />
+  return (
+    <>
+      <link
+        id="osonflow-landing-styles"
+        rel="stylesheet"
+        href="/landing/japandi-landing.css"
+      />
+      <HomeLandingPage />
+    </>
+  )
 }

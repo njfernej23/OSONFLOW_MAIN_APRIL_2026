@@ -1,7 +1,11 @@
-import { auth } from "@clerk/nextjs/server"
+import { auth, currentUser } from "@clerk/nextjs/server"
 import { NextResponse, type NextRequest } from "next/server"
 
-import { getAppUrl, getPolar } from "@/lib/polar"
+import {
+  ensurePolarCustomerForOrganization,
+  getAppUrl,
+  getPolar,
+} from "@/lib/polar"
 
 export const GET = async (request: NextRequest) => {
   const { orgId, userId } = await auth()
@@ -25,7 +29,17 @@ export const GET = async (request: NextRequest) => {
     )
   }
 
-  const session = await getPolar().customerSessions.create({
+  const polar = getPolar()
+  const user = await currentUser()
+
+  await ensurePolarCustomerForOrganization(polar, {
+    orgId,
+    userId,
+    userEmail: user?.primaryEmailAddress?.emailAddress,
+    userName: user?.fullName,
+  })
+
+  const session = await polar.customerSessions.create({
     externalCustomerId: orgId,
     returnUrl: new URL("/billing", getAppUrl(request.nextUrl.origin)).toString(),
   })

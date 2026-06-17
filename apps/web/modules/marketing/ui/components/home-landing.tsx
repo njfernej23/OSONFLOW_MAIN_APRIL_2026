@@ -3,8 +3,6 @@
 import { useUser } from "@clerk/nextjs"
 import { useEffect } from "react"
 
-import "@/modules/marketing/ui/styles/japandi-landing.css"
-
 import { JapandiLandingNav } from "./japandi-landing-nav"
 import { landingPageBodyMarkup } from "./landing-page-markup"
 
@@ -16,9 +14,35 @@ declare global {
 }
 
 const LANDING_SCRIPT_ID = "osonflow-landing-main"
+const LANDING_STYLES_ID = "osonflow-landing-styles"
+
+function removeLandingStyles() {
+  document.getElementById(LANDING_STYLES_ID)?.remove()
+
+  // Drop any previously bundled landing stylesheet so it cannot leak into the dashboard.
+  document
+    .querySelectorAll('link[rel="stylesheet"][href*="japandi-landing"]')
+    .forEach((node) => {
+      node.remove()
+    })
+}
 
 export const HomeLandingPage = () => {
   const { isLoaded, isSignedIn } = useUser()
+
+  useEffect(() => {
+    document
+      .querySelectorAll('link[rel="stylesheet"][href*="japandi-landing"]')
+      .forEach((node) => {
+        if (node.id !== LANDING_STYLES_ID) {
+          node.remove()
+        }
+      })
+
+    return () => {
+      removeLandingStyles()
+    }
+  }, [])
 
   useEffect(() => {
     if (!isLoaded) return
