@@ -487,40 +487,6 @@ export const getIntegrationById = internalQuery({
   },
 })
 
-export const getIntegrationByInstagramUserId = internalQuery({
-  args: {
-    instagramUserId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("instagramIntegrations")
-      .withIndex("by_instagram_user_id", (q) =>
-        q.eq("instagramUserId", args.instagramUserId)
-      )
-      .unique()
-  },
-})
-
-export const verifyWebhookByVerifyToken = internalQuery({
-  args: {
-    verifyToken: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const configuredToken = process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN?.trim()
-
-    if (configuredToken && configuredToken === args.verifyToken) {
-      return true
-    }
-
-    const integrations = await ctx.db.query("instagramIntegrations").collect()
-
-    return integrations.some(
-      (integration) =>
-        integration.isEnabled && integration.verifyToken === args.verifyToken
-    )
-  },
-})
-
 export const verifyWebhook = internalQuery({
   args: {
     webhookSecret: v.string(),
@@ -542,44 +508,16 @@ export const verifyWebhook = internalQuery({
 
 export const receiveWebhook = internalMutation({
   args: {
-    webhookSecret: v.optional(v.string()),
-    instagramUserId: v.optional(v.string()),
+    webhookSecret: v.string(),
     payload: v.any(),
   },
   handler: async (ctx, args) => {
-    let integration = null
-
-    if (args.webhookSecret) {
-      integration = await ctx.db
-        .query("instagramIntegrations")
-        .withIndex("by_webhook_secret", (q) =>
-          q.eq("webhookSecret", args.webhookSecret!)
-        )
-        .unique()
-    }
-
-    if (!integration && args.instagramUserId) {
-      integration = await ctx.db
-        .query("instagramIntegrations")
-        .withIndex("by_instagram_user_id", (q) =>
-          q.eq("instagramUserId", args.instagramUserId!)
-        )
-        .unique()
-    }
-
-    if (!integration && args.payload) {
-      const payload = args.payload as InstagramWebhookPayload
-      const instagramUserId = payload.entry?.[0]?.id
-
-      if (instagramUserId) {
-        integration = await ctx.db
-          .query("instagramIntegrations")
-          .withIndex("by_instagram_user_id", (q) =>
-            q.eq("instagramUserId", instagramUserId)
-          )
-          .unique()
-      }
-    }
+    const integration = await ctx.db
+      .query("instagramIntegrations")
+      .withIndex("by_webhook_secret", (q) =>
+        q.eq("webhookSecret", args.webhookSecret)
+      )
+      .unique()
 
     if (!integration || !integration.isEnabled) {
       return { queued: false, reason: "integration_not_found" }

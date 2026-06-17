@@ -213,35 +213,3 @@ export const exchangeInstagramShortLivedToken = async ({
       typeof body.expires_in === "number" ? body.expires_in : undefined,
   }
 }
-
-export const subscribeInstagramMessagingWebhooks = async ({
-  accessToken,
-  apiVersion = process.env.INSTAGRAM_GRAPH_API_VERSION || "v25.0",
-}: {
-  accessToken: string
-  apiVersion?: string
-}) => {
-  const url = new URL(
-    `https://graph.instagram.com/${apiVersion}/me/subscribed_apps`
-  )
-  url.searchParams.set("subscribed_fields", "messages")
-  url.searchParams.set("access_token", accessToken)
-
-  const response = await fetch(url.toString(), { method: "POST" })
-  const body = await readJsonResponse<{
-    success?: boolean
-    error?: { message?: string }
-  }>(response)
-
-  if (!response.ok || !body.success) {
-    throw new ConvexError(
-      body.error?.message ||
-        `Failed to subscribe Instagram account to message webhooks (HTTP ${response.status})`
-    )
-  }
-
-  return { success: true as const }
-}
-
-export const getInstagramIncomingWebhookUrl = (webhookBaseUrl: string) =>
-  `${webhookBaseUrl.replace(/\/$/, "")}/instagram/webhook/incoming`

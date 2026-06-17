@@ -2,9 +2,7 @@ import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
 import {
   buildInstagramAuthorizationUrl,
   exchangeInstagramCodeForToken,
-  getInstagramIncomingWebhookUrl,
   getInstagramOAuthConfig,
-  subscribeInstagramMessagingWebhooks,
 } from "../lib/instagramOAuth"
 import { getWebhookBaseUrl } from "../lib/webhookBaseUrl"
 import { ConvexError, v } from "convex/values"
@@ -224,18 +222,7 @@ const finalizeInstagramConnection = async (
     }
   }
 
-  const webhookUrl = getInstagramIncomingWebhookUrl(webhookBaseUrl)
-  let setupError: string | undefined
-
-  try {
-    await subscribeInstagramMessagingWebhooks({ accessToken })
-  } catch (error) {
-    setupError =
-      error instanceof Error
-        ? error.message
-        : "Failed to subscribe Instagram account to message webhooks"
-    console.error("Instagram webhook subscription failed:", setupError)
-  }
+  const webhookUrl = `${webhookBaseUrl}/instagram/webhook/${webhookSecret}`
 
   await ctx.runMutation(
     (internal as any).system.instagram.markIntegrationSetup,
@@ -244,7 +231,6 @@ const finalizeInstagramConnection = async (
       organizationId,
       status: "connected",
       webhookUrl,
-      setupError,
     }
   )
 
@@ -387,18 +373,13 @@ export const getDashboard = query({
       return { integration: null }
     }
 
-    const webhookBaseUrl = getWebhookBaseUrl("INSTAGRAM_WEBHOOK_BASE_URL")
-    const webhookUrl: string | undefined = webhookBaseUrl
-      ? getInstagramIncomingWebhookUrl(webhookBaseUrl)
-      : integration.webhookUrl ?? undefined
-
     return {
       integration: {
         _id: integration._id,
         _creationTime: integration._creationTime,
         instagramUserId: integration.instagramUserId,
         username: integration.username,
-        webhookUrl,
+        webhookUrl: integration.webhookUrl,
         verifyToken: integration.verifyToken,
         isEnabled: integration.isEnabled,
         status: integration.status,
@@ -574,61 +555,6 @@ export const refreshContactProfile = action({
     )
 
     return profile
-  },
-})
-
-export const enableMessagingWebhooks = action({
-  args: {},
-  returns: v.object({
-    subscribed: v.boolean(),
-    webhookUrl: v.optional(v.string()),
-  }),
-  handler: async (ctx): Promise<{
-    subscribed: boolean
-    webhookUrl?: string
-  }> => {
-    const { organizationId } = await getAuthContext(ctx)
-    const integration = (await ctx.runQuery(
-      (internal as any).system.instagram.getIntegrationByOrganizationId,
-      {
-        organizationId,
-      }
-    )) as {
-      _id: string
-      accessToken: string
-      webhookUrl?: string
-    } | null
-
-    if (!integration) {
-      throw new ConvexError("Instagram account is not connected")
-    }
-
-    await subscribeInstagramMessagingWebhooks({
-      accessToken: integration.accessToken,
-    })
-
-    const webhookBaseUrl = getWebhookBaseUrl("INSTAGRAM_WEBHOOK_BASE_URL")
-    const webhookUrl: string | undefined = webhookBaseUrl
-      ? getInstagramIncomingWebhookUrl(webhookBaseUrl)
-      : integration.webhookUrl ?? undefined
-
-    if (webhookUrl) {
-      await ctx.runMutation(
-        (internal as any).system.instagram.markIntegrationSetup,
-        {
-          integrationId: integration._id,
-          organizationId,
-          status: "connected",
-          webhookUrl,
-          setupError: undefined,
-        }
-      )
-    }
-
-    return {
-      subscribed: true,
-      webhookUrl: webhookUrl ?? undefined,
-    }
   },
 })
 

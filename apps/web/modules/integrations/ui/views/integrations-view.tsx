@@ -489,13 +489,6 @@ export const IntegrationsView = () => {
     (api as any).private.instagram.disconnect
   ) as () => Promise<{ removed: boolean }>
 
-  const enableInstagramMessagingWebhooks = useAction(
-    (api as any).private.instagram.enableMessagingWebhooks
-  ) as () => Promise<{ subscribed: boolean; webhookUrl?: string }>
-
-  const [isEnablingInstagramWebhooks, setIsEnablingInstagramWebhooks] =
-    useState(false)
-
   const connectWhatsapp = useAction(
     (api as any).private.whatsapp.connect
   ) as (args: {
@@ -753,22 +746,6 @@ export const IntegrationsView = () => {
       toast.error("Failed to disconnect Instagram account")
     } finally {
       setIsDisconnectingInstagram(false)
-    }
-  }
-
-  const handleEnableInstagramWebhooks = async () => {
-    setIsEnablingInstagramWebhooks(true)
-    try {
-      await enableInstagramMessagingWebhooks()
-      toast.success("Instagram message webhooks enabled")
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to enable Instagram message webhooks"
-      )
-    } finally {
-      setIsEnablingInstagramWebhooks(false)
     }
   }
 
@@ -1615,74 +1592,16 @@ export const IntegrationsView = () => {
                       </Button>
                     </div>
 
-                    {instagramIntegration.setupError ? (
-                      <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-                        {instagramIntegration.setupError}
-                      </div>
-                    ) : null}
+                    <p className="text-xs text-muted-foreground">
+                      Instagram DMs are routed into your Osonflow inbox.
+                    </p>
 
-                    {!instagramIntegration.lastWebhookAt ? (
-                      <div className="space-y-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-                        <p className="text-sm font-medium text-foreground">
-                          One more step in Meta
-                        </p>
-                        <p className="text-xs leading-relaxed text-muted-foreground">
-                          In Meta App Dashboard → Instagram → Configure
-                          webhooks, paste the callback URL and verify token
-                          below, subscribe to{" "}
-                          <span className="font-medium">messages</span>, then
-                          send a test DM to your Instagram account.
-                        </p>
-                        {instagramIntegration.webhookUrl ? (
-                          <div className="space-y-2">
-                            <div>
-                              <p className="text-xs font-semibold text-muted-foreground">
-                                Callback URL
-                              </p>
-                              <code className="mt-1 block break-all font-mono text-xs">
-                                {instagramIntegration.webhookUrl}
-                              </code>
-                            </div>
-                            <div>
-                              <p className="text-xs font-semibold text-muted-foreground">
-                                Verify token
-                              </p>
-                              <code className="mt-1 block break-all font-mono text-xs">
-                                {instagramIntegration.verifyToken}
-                              </code>
-                            </div>
-                          </div>
-                        ) : null}
-                        <Button
-                          className="gap-2"
-                          disabled={isEnablingInstagramWebhooks}
-                          onClick={handleEnableInstagramWebhooks}
-                          size="sm"
-                          type="button"
-                          variant="outline"
-                        >
-                          {isEnablingInstagramWebhooks ? (
-                            <>
-                              <Loader2Icon className="size-4 animate-spin" />
-                              Enabling...
-                            </>
-                          ) : (
-                            "Enable message webhooks"
-                          )}
-                        </Button>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        Instagram DMs are routed into your Osonflow inbox.
-                      </p>
-                    )}
-
-                    {instagramIntegration.lastWebhookAt ? (
+                    {instagramIntegration.lastWebhookAt && (
                       <p className="text-xs text-muted-foreground">
                         Last webhook{" "}
                         {formatTimeAgo(instagramIntegration.lastWebhookAt)}
                       </p>
-                    ) : null}
+                    )}
                   </div>
                 )}
               </div>
