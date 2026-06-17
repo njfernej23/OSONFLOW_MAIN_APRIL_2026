@@ -1716,7 +1716,9 @@ export const IntegrationsView = () => {
                     <p className="text-xs text-muted-foreground">
                       In Meta App Dashboard, open Instagram → Webhooks, paste the
                       callback URL and verify token above, then subscribe to{" "}
-                      <code className="font-mono">messages</code>.
+                      <code className="font-mono">messages</code> (required for
+                      DMs). Comments and reactions alone will not create inbox
+                      conversations.
                     </p>
 
                     {instagramIntegration.lastWebhookAt && (

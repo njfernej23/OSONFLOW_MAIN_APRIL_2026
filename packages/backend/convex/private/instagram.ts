@@ -93,16 +93,23 @@ const instagramApiUrl = (
 
 const subscribeInstagramWebhooks = async ({
   accessToken,
+  instagramUserId,
 }: {
   accessToken: string
+  instagramUserId: string
 }) => {
   const response = await fetch(
-    instagramApiUrl("me/subscribed_apps", {
-      subscribed_fields: "messages,messaging_postbacks",
+    instagramApiUrl(`${instagramUserId}/subscribed_apps`, {
       access_token: accessToken,
     }),
     {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        subscribed_fields: ["messages", "messaging_postbacks"],
+      }),
     }
   )
   const body = (await response.json()) as {
@@ -253,7 +260,7 @@ const finalizeInstagramConnection = async (
   const webhookUrl = `${webhookBaseUrl}/instagram/webhook`
 
   try {
-    await subscribeInstagramWebhooks({ accessToken })
+    await subscribeInstagramWebhooks({ accessToken, instagramUserId })
   } catch (error) {
     const setupError =
       error instanceof Error
@@ -700,6 +707,7 @@ export const resyncWebhooks = action({
     try {
       await subscribeInstagramWebhooks({
         accessToken: integration.accessToken,
+        instagramUserId: integration.instagramUserId,
       })
     } catch (error) {
       const setupError =
