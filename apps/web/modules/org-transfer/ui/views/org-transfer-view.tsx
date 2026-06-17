@@ -31,6 +31,7 @@ import {
 import Link from "next/link"
 import { useState } from "react"
 import { toast } from "sonner"
+import { copyTextToClipboard } from "@/lib/clipboard"
 
 type ExportSummary = {
   widgetSettings: boolean
@@ -138,16 +139,29 @@ export const OrgTransferView = () => {
     try {
       const result = await exportBundle({})
       const json = JSON.stringify(result.bundle, null, 2)
+      const summaryText =
+        formatSummaryLines(result.summary).join(" · ") || "No data found"
 
       setLastExportJson(json)
       setLastExportSummary(result.summary)
-      await navigator.clipboard.writeText(json)
 
-      toast.success("Organization bundle copied to clipboard", {
-        description: formatSummaryLines(result.summary).join(" · ") || "No data found",
-      })
-    } catch {
-      toast.error("Failed to export organization data")
+      const copied = await copyTextToClipboard(json)
+
+      if (copied) {
+        toast.success("Organization bundle copied to clipboard", {
+          description: summaryText,
+        })
+      } else {
+        toast.success("Organization bundle exported", {
+          description: `${summaryText}. Clipboard unavailable — use Download JSON.`,
+        })
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to export organization data"
+      )
     } finally {
       setIsExporting(false)
     }
@@ -306,7 +320,7 @@ export const OrgTransferView = () => {
       </div>
 
       <Dialog onOpenChange={setIsImportDialogOpen} open={isImportDialogOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Import organization bundle</DialogTitle>
             <DialogDescription>
@@ -349,7 +363,7 @@ export const OrgTransferView = () => {
             </div>
 
             <Textarea
-              className="min-h-[320px] font-mono text-xs"
+              className="h-[min(42vh,360px)] resize-none overflow-y-auto font-mono text-xs"
               onChange={(event) => setImportPayload(event.target.value)}
               placeholder='Paste exported JSON here, e.g. {"type":"osonflow-org-bundle",...}'
               value={importPayload}

@@ -1,7 +1,7 @@
-import { OrgTransferView } from "@/modules/org-transfer/ui/views/org-transfer-view"
+import { OrgTransferViewWithProtection } from "@/modules/org-transfer/ui/views/org-transfer-view-with-protection"
 
 const Page = () => {
-  return <OrgTransferView />
+  return <OrgTransferViewWithProtection />
 }
 
 export default Page
