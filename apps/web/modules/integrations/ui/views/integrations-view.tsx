@@ -411,6 +411,7 @@ export const IntegrationsView = () => {
   const [isStartingInstagramOAuth, setIsStartingInstagramOAuth] = useState(false)
   const [isDisconnectingInstagram, setIsDisconnectingInstagram] =
     useState(false)
+  const [isResyncingInstagram, setIsResyncingInstagram] = useState(false)
   const [whatsappChannelAccessToken, setWhatsappChannelAccessToken] =
     useState("")
   const [whatsappChannelPhoneNumberId, setWhatsappChannelPhoneNumberId] =
@@ -488,6 +489,15 @@ export const IntegrationsView = () => {
   const disconnectInstagram = useAction(
     (api as any).private.instagram.disconnect
   ) as () => Promise<{ removed: boolean }>
+
+  const resyncInstagramWebhooks = useAction(
+    (api as any).private.instagram.resyncWebhooks
+  ) as () => Promise<{
+    status: "connected" | "needs_webhook_url"
+    webhookUrl?: string
+    verifyToken: string
+    setupError?: string
+  }>
 
   const connectWhatsapp = useAction(
     (api as any).private.whatsapp.connect
@@ -746,6 +756,29 @@ export const IntegrationsView = () => {
       toast.error("Failed to disconnect Instagram account")
     } finally {
       setIsDisconnectingInstagram(false)
+    }
+  }
+
+  const handleResyncInstagramWebhooks = async () => {
+    setIsResyncingInstagram(true)
+    try {
+      const result = await resyncInstagramWebhooks()
+      if (result.status === "connected") {
+        toast.success("Instagram webhooks refreshed")
+      } else {
+        toast.error(
+          result.setupError ||
+            "Instagram connected, but webhook setup still needs attention"
+        )
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to refresh Instagram webhooks"
+      )
+    } finally {
+      setIsResyncingInstagram(false)
     }
   }
 
@@ -1575,25 +1608,115 @@ export const IntegrationsView = () => {
                           </p>
                         </div>
                       </div>
-                      <Button
-                        aria-label="Disconnect Instagram"
-                        className="size-9 p-0"
-                        disabled={isDisconnectingInstagram}
-                        onClick={handleDisconnectInstagram}
-                        title="Disconnect Instagram"
-                        type="button"
-                        variant="destructive"
-                      >
-                        {isDisconnectingInstagram ? (
-                          <Loader2Icon className="size-4 animate-spin" />
-                        ) : (
-                          <Trash2Icon className="size-4" />
-                        )}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          disabled={isResyncingInstagram}
+                          onClick={handleResyncInstagramWebhooks}
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                        >
+                          {isResyncingInstagram ? (
+                            <Loader2Icon className="size-4 animate-spin" />
+                          ) : (
+                            "Refresh webhooks"
+                          )}
+                        </Button>
+                        <Button
+                          aria-label="Disconnect Instagram"
+                          className="size-9 p-0"
+                          disabled={isDisconnectingInstagram}
+                          onClick={handleDisconnectInstagram}
+                          title="Disconnect Instagram"
+                          type="button"
+                          variant="destructive"
+                        >
+                          {isDisconnectingInstagram ? (
+                            <Loader2Icon className="size-4 animate-spin" />
+                          ) : (
+                            <Trash2Icon className="size-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
 
                     <p className="text-xs text-muted-foreground">
-                      Instagram DMs are routed into your Osonflow inbox.
+                      Instagram DMs are routed into your Osonflow inbox after
+                      Meta webhooks are configured.
+                    </p>
+
+                    {instagramIntegration.status === "needs_webhook_url" && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        {instagramIntegration.setupError
+                          ? instagramIntegration.setupError
+                          : "Finish Meta webhook setup to start receiving Instagram DMs."}
+                      </p>
+                    )}
+
+                    {instagramIntegration.webhookUrl && (
+                      <div className="rounded-lg border bg-background/60 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-muted-foreground">
+                              Meta callback URL
+                            </p>
+                            <code className="mt-1 block truncate font-mono text-xs">
+                              {instagramIntegration.webhookUrl}
+                            </code>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="shrink-0 gap-1.5"
+                            onClick={() =>
+                              copyText(
+                                instagramIntegration.webhookUrl || "",
+                                "Callback URL copied",
+                                "Failed to copy callback URL"
+                              )
+                            }
+                            type="button"
+                          >
+                            <CopyIcon className="size-3.5" />
+                            Copy
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="rounded-lg border bg-background/60 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-muted-foreground">
+                            Meta verify token
+                          </p>
+                          <code className="mt-1 block truncate font-mono text-xs">
+                            {instagramIntegration.verifyToken}
+                          </code>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0 gap-1.5"
+                          onClick={() =>
+                            copyText(
+                              instagramIntegration.verifyToken,
+                              "Verify token copied",
+                              "Failed to copy verify token"
+                            )
+                          }
+                          type="button"
+                        >
+                          <CopyIcon className="size-3.5" />
+                          Copy
+                        </Button>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">
+                      In Meta App Dashboard, open Instagram → Webhooks, paste the
+                      callback URL and verify token above, then subscribe to{" "}
+                      <code className="font-mono">messages</code>.
                     </p>
 
                     {instagramIntegration.lastWebhookAt && (

@@ -327,6 +327,63 @@ http.route({
 })
 
 http.route({
+  path: "/instagram/webhook",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const url = new URL(request.url)
+    const mode = url.searchParams.get("hub.mode")
+    const verifyToken = url.searchParams.get("hub.verify_token")
+    const challenge = url.searchParams.get("hub.challenge")
+
+    if (!verifyToken || !challenge || mode !== "subscribe") {
+      return new Response("Invalid Instagram verification request", {
+        status: 400,
+      })
+    }
+
+    const isVerified = (await ctx.runQuery(
+      (internal as any).system.instagram.verifyWebhookToken,
+      {
+        verifyToken,
+      }
+    )) as boolean
+
+    if (!isVerified) {
+      return new Response("Invalid Instagram verify token", { status: 403 })
+    }
+
+    return new Response(challenge, { status: 200 })
+  }),
+})
+
+http.route({
+  path: "/instagram/webhook",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    let payload: unknown
+
+    try {
+      payload = await request.json()
+    } catch {
+      return new Response("Invalid JSON", { status: 400 })
+    }
+
+    const result = (await ctx.runMutation(
+      (internal as any).system.instagram.receiveWebhookByPayload,
+      {
+        payload,
+      }
+    )) as { queued: boolean; reason?: string }
+
+    if (!result.queued && result.reason === "integration_not_found") {
+      return new Response("Instagram integration not found", { status: 404 })
+    }
+
+    return new Response("EVENT_RECEIVED", { status: 200 })
+  }),
+})
+
+http.route({
   pathPrefix: "/instagram/webhook/",
   method: "GET",
   handler: httpAction(async (ctx, request) => {

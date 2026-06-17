@@ -7,6 +7,7 @@ import {
 import { getWebhookBaseUrl } from "../lib/webhookBaseUrl"
 import { ConvexError, v } from "convex/values"
 import { internal } from "../_generated/api"
+import { Doc } from "../_generated/dataModel"
 import { action, query } from "../_generated/server"
 
 type InstagramProfileResponse = {
@@ -88,6 +89,33 @@ const instagramApiUrl = (
   }
 
   return url.toString()
+}
+
+const subscribeInstagramWebhooks = async ({
+  accessToken,
+}: {
+  accessToken: string
+}) => {
+  const response = await fetch(
+    instagramApiUrl("me/subscribed_apps", {
+      subscribed_fields: "messages,messaging_postbacks",
+      access_token: accessToken,
+    }),
+    {
+      method: "POST",
+    }
+  )
+  const body = (await response.json()) as {
+    success?: boolean
+    error?: { message?: string }
+  }
+
+  if (!response.ok || !body.success) {
+    throw new ConvexError(
+      body.error?.message ||
+        `Failed to subscribe Instagram webhooks (HTTP ${response.status})`
+    )
+  }
 }
 
 const parseInstagramProfilePayload = (
@@ -222,7 +250,35 @@ const finalizeInstagramConnection = async (
     }
   }
 
-  const webhookUrl = `${webhookBaseUrl}/instagram/webhook/${webhookSecret}`
+  const webhookUrl = `${webhookBaseUrl}/instagram/webhook`
+
+  try {
+    await subscribeInstagramWebhooks({ accessToken })
+  } catch (error) {
+    const setupError =
+      error instanceof Error
+        ? error.message
+        : "Failed to subscribe Instagram message webhooks"
+
+    await ctx.runMutation(
+      (internal as any).system.instagram.markIntegrationSetup,
+      {
+        integrationId,
+        organizationId,
+        status: "needs_webhook_url",
+        webhookUrl,
+        setupError,
+      }
+    )
+
+    return {
+      integrationId,
+      username,
+      status: "needs_webhook_url",
+      webhookUrl,
+      verifyToken,
+    }
+  }
 
   await ctx.runMutation(
     (internal as any).system.instagram.markIntegrationSetup,
@@ -231,6 +287,7 @@ const finalizeInstagramConnection = async (
       organizationId,
       status: "connected",
       webhookUrl,
+      setupError: undefined,
     }
   )
 
@@ -582,5 +639,108 @@ export const disconnect = action({
     )
 
     return { removed: true }
+  },
+})
+
+type ResyncWebhooksResult = {
+  status: "connected" | "needs_webhook_url"
+  webhookUrl?: string
+  verifyToken: string
+  setupError?: string
+}
+
+const resyncWebhooksReturns = v.object({
+  status: v.union(v.literal("connected"), v.literal("needs_webhook_url")),
+  webhookUrl: v.optional(v.string()),
+  verifyToken: v.string(),
+  setupError: v.optional(v.string()),
+})
+
+export const resyncWebhooks = action({
+  args: {},
+  returns: resyncWebhooksReturns,
+  handler: async (ctx): Promise<ResyncWebhooksResult> => {
+    const { organizationId } = await getAuthContext(ctx)
+    const integration = (await ctx.runQuery(
+      (internal as any).system.instagram.getIntegrationByOrganizationId,
+      {
+        organizationId,
+      }
+    )) as Doc<"instagramIntegrations"> | null
+
+    if (!integration) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "Instagram integration not found",
+      })
+    }
+
+    const webhookBaseUrl = getWebhookBaseUrl("INSTAGRAM_WEBHOOK_BASE_URL")
+
+    if (!webhookBaseUrl) {
+      await ctx.runMutation(
+        (internal as any).system.instagram.markIntegrationSetup,
+        {
+          integrationId: integration._id,
+          organizationId,
+          status: "needs_webhook_url",
+        }
+      )
+
+      return {
+        status: "needs_webhook_url" as const,
+        verifyToken: integration.verifyToken,
+        setupError:
+          "Webhook base URL is not configured in Convex environment variables.",
+      }
+    }
+
+    const webhookUrl = `${webhookBaseUrl}/instagram/webhook`
+
+    try {
+      await subscribeInstagramWebhooks({
+        accessToken: integration.accessToken,
+      })
+    } catch (error) {
+      const setupError =
+        error instanceof Error
+          ? error.message
+          : "Failed to subscribe Instagram message webhooks"
+
+      await ctx.runMutation(
+        (internal as any).system.instagram.markIntegrationSetup,
+        {
+          integrationId: integration._id,
+          organizationId,
+          status: "needs_webhook_url",
+          webhookUrl,
+          setupError,
+        }
+      )
+
+      return {
+        status: "needs_webhook_url" as const,
+        webhookUrl,
+        verifyToken: integration.verifyToken,
+        setupError,
+      }
+    }
+
+    await ctx.runMutation(
+      (internal as any).system.instagram.markIntegrationSetup,
+      {
+        integrationId: integration._id,
+        organizationId,
+        status: "connected",
+        webhookUrl,
+        setupError: undefined,
+      }
+    )
+
+    return {
+      status: "connected" as const,
+      webhookUrl,
+      verifyToken: integration.verifyToken,
+    }
   },
 })

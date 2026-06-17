@@ -38,6 +38,9 @@ type InstagramMessagingEvent = {
     mid?: string
     text?: string
     is_echo?: boolean
+    is_self?: boolean
+    is_deleted?: boolean
+    attachments?: Array<{ type?: string }>
   }
 }
 
@@ -47,6 +50,16 @@ type InstagramWebhookPayload = {
     id?: string
     time?: number
     messaging?: InstagramMessagingEvent[]
+    changes?: Array<{
+      field?: string
+      value?: {
+        messaging?: InstagramMessagingEvent[]
+        sender?: { id?: string }
+        recipient?: { id?: string }
+        timestamp?: number
+        message?: InstagramMessagingEvent["message"]
+      }
+    }>
   }>
 }
 
@@ -487,6 +500,98 @@ export const getIntegrationById = internalQuery({
   },
 })
 
+export const getIntegrationByInstagramUserId = internalQuery({
+  args: {
+    instagramUserId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("instagramIntegrations")
+      .withIndex("by_instagram_user_id", (q) =>
+        q.eq("instagramUserId", args.instagramUserId)
+      )
+      .unique()
+  },
+})
+
+const extractInstagramAccountIds = (payload: InstagramWebhookPayload) => {
+  const accountIds = new Set<string>()
+
+  for (const entry of payload.entry ?? []) {
+    if (entry.id) {
+      accountIds.add(entry.id)
+    }
+
+    for (const event of entry.messaging ?? []) {
+      if (event.recipient?.id) {
+        accountIds.add(event.recipient.id)
+      }
+    }
+
+    for (const change of entry.changes ?? []) {
+      if (change.field !== "messages") {
+        continue
+      }
+
+      const value = change.value
+
+      if (!value) {
+        continue
+      }
+
+      if (value.recipient?.id) {
+        accountIds.add(value.recipient.id)
+      }
+
+      for (const event of value.messaging ?? []) {
+        if (event.recipient?.id) {
+          accountIds.add(event.recipient.id)
+        }
+      }
+    }
+  }
+
+  return [...accountIds]
+}
+
+export const extractMessagingEventsFromPayload = (
+  payload: InstagramWebhookPayload
+): InstagramMessagingEvent[] => {
+  const events: InstagramMessagingEvent[] = []
+
+  for (const entry of payload.entry ?? []) {
+    events.push(...(entry.messaging ?? []))
+
+    for (const change of entry.changes ?? []) {
+      if (change.field !== "messages") {
+        continue
+      }
+
+      const value = change.value
+
+      if (!value) {
+        continue
+      }
+
+      if (Array.isArray(value.messaging)) {
+        events.push(...value.messaging)
+        continue
+      }
+
+      if (value.sender?.id || value.message) {
+        events.push({
+          sender: value.sender,
+          recipient: value.recipient,
+          timestamp: value.timestamp,
+          message: value.message,
+        })
+      }
+    }
+  }
+
+  return events
+}
+
 export const verifyWebhook = internalQuery({
   args: {
     webhookSecret: v.string(),
@@ -502,6 +607,29 @@ export const verifyWebhook = internalQuery({
 
     return Boolean(
       integration?.isEnabled && integration.verifyToken === args.verifyToken
+    )
+  },
+})
+
+export const verifyWebhookToken = internalQuery({
+  args: {
+    verifyToken: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const configuredVerifyToken = process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN?.trim()
+
+    if (
+      configuredVerifyToken &&
+      configuredVerifyToken === args.verifyToken
+    ) {
+      return true
+    }
+
+    const integrations = await ctx.db.query("instagramIntegrations").collect()
+
+    return integrations.some(
+      (integration) =>
+        integration.isEnabled && integration.verifyToken === args.verifyToken
     )
   },
 })
@@ -538,6 +666,47 @@ export const receiveWebhook = internalMutation({
     )
 
     return { queued: true }
+  },
+})
+
+export const receiveWebhookByPayload = internalMutation({
+  args: {
+    payload: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const payload = args.payload as InstagramWebhookPayload
+    const accountIds = extractInstagramAccountIds(payload)
+
+    for (const accountId of accountIds) {
+      const integration = await ctx.db
+        .query("instagramIntegrations")
+        .withIndex("by_instagram_user_id", (q) =>
+          q.eq("instagramUserId", accountId)
+        )
+        .unique()
+
+      if (!integration?.isEnabled) {
+        continue
+      }
+
+      await ctx.db.patch(integration._id, {
+        lastWebhookAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+
+      await ctx.scheduler.runAfter(
+        0,
+        (internal as any).system.instagram.handleIncomingWebhook,
+        {
+          integrationId: integration._id,
+          payload: args.payload,
+        }
+      )
+
+      return { queued: true, integrationId: integration._id }
+    }
+
+    return { queued: false, reason: "integration_not_found" }
   },
 })
 
@@ -833,6 +1002,26 @@ export const updateInstagramContactProfile = internalMutation({
   },
 })
 
+const getIncomingMessageText = (event: InstagramMessagingEvent) => {
+  const message = event.message
+
+  if (!message || message.is_deleted) {
+    return undefined
+  }
+
+  const text = message.text?.trim()
+
+  if (text) {
+    return text
+  }
+
+  if ((message.attachments?.length ?? 0) > 0) {
+    return "[Instagram attachment]"
+  }
+
+  return undefined
+}
+
 const handleIncomingMessage = async ({
   ctx,
   integrationId,
@@ -842,10 +1031,10 @@ const handleIncomingMessage = async ({
   integrationId: any
   event: InstagramMessagingEvent
 }) => {
-  const text = event.message?.text?.trim()
+  const text = getIncomingMessageText(event)
   const senderId = event.sender?.id
 
-  if (!text || !senderId || event.message?.is_echo) {
+  if (!text || !senderId || event.message?.is_echo || event.message?.is_self) {
     return { handled: false }
   }
 
@@ -1024,10 +1213,16 @@ export const handleIncomingWebhook: any = internalAction({
   },
   handler: async (ctx, args) => {
     const payload = args.payload as InstagramWebhookPayload
-    const events = (payload.entry ?? []).flatMap(
-      (entry) => entry.messaging ?? []
-    )
+    const events = extractMessagingEventsFromPayload(payload)
     let handledCount = 0
+
+    if (events.length === 0) {
+      console.warn("Instagram webhook received with no messaging events", {
+        integrationId: args.integrationId,
+        object: payload.object,
+        entryCount: payload.entry?.length ?? 0,
+      })
+    }
 
     for (const event of events) {
       const result = await handleIncomingMessage({
