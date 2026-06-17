@@ -482,7 +482,12 @@ export const IntegrationsView = () => {
   )
   const syncTelegramWebhook = useAction(
     (api as any).private.telegram.syncWebhook
-  ) as () => Promise<{ removed: boolean }>
+  ) as () => Promise<{
+    integrationId: string
+    botUsername?: string
+    status: "connected" | "needs_webhook_url"
+    webhookUrl?: string
+  }>
 
   const connectInstagram = useAction(
     (api as any).private.instagram.connect
