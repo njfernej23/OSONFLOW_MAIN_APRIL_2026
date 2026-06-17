@@ -14,7 +14,7 @@ export const polarProductIds = {
 }
 
 export const buildOrganizationBillingEmail = (
-  userEmail: string | undefined,
+  userEmail: string | null | undefined,
   orgId: string
 ) => {
   const orgSuffix = orgId.replace(/[^a-zA-Z0-9]/g, "").slice(-16)
