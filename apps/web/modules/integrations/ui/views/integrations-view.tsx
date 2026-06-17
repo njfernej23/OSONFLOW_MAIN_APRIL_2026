@@ -404,8 +404,6 @@ export const IntegrationsView = () => {
   const [telegramChannelBotToken, setTelegramChannelBotToken] = useState("")
   const [isConnectingTelegram, setIsConnectingTelegram] = useState(false)
   const [isDisconnectingTelegram, setIsDisconnectingTelegram] = useState(false)
-  const [isSyncingTelegramWebhook, setIsSyncingTelegramWebhook] =
-    useState(false)
   const [instagramAccessToken, setInstagramAccessToken] = useState("")
   const [instagramUserId, setInstagramUserId] = useState("")
   const [isConnectingInstagram, setIsConnectingInstagram] = useState(false)
@@ -480,14 +478,6 @@ export const IntegrationsView = () => {
   const disconnectTelegram = useAction(
     (api as any).private.telegram.disconnect
   )
-  const syncTelegramWebhook = useAction(
-    (api as any).private.telegram.syncWebhook
-  ) as () => Promise<{
-    integrationId: string
-    botUsername?: string
-    status: "connected" | "needs_webhook_url"
-    webhookUrl?: string
-  }>
 
   const connectInstagram = useAction(
     (api as any).private.instagram.connect
@@ -706,30 +696,6 @@ export const IntegrationsView = () => {
       )
     } finally {
       setIsConnectingTelegram(false)
-    }
-  }
-
-  const handleSyncTelegramWebhook = async () => {
-    setIsSyncingTelegramWebhook(true)
-    try {
-      const result = await syncTelegramWebhook()
-      if (result.status === "connected") {
-        toast.success(
-          result.botUsername
-            ? `Telegram webhook synced for @${result.botUsername}`
-            : "Telegram webhook synced"
-        )
-      } else {
-        toast.info("Webhook base URL is not configured in Convex yet.")
-      }
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to sync Telegram webhook"
-      )
-    } finally {
-      setIsSyncingTelegramWebhook(false)
     }
   }
 
@@ -1475,68 +1441,6 @@ export const IntegrationsView = () => {
                         {telegramIntegration.setupError}
                       </div>
                     ) : null}
-
-                    {telegramIntegration.webhookUrl ? (
-                      <div className="rounded-lg border bg-background/60 p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-muted-foreground">
-                              Telegram webhook URL
-                            </p>
-                            <code className="mt-1 block truncate font-mono text-xs">
-                              {telegramIntegration.webhookUrl}
-                            </code>
-                          </div>
-                          <Button
-                            className="shrink-0 gap-1.5"
-                            onClick={() =>
-                              copyText(
-                                telegramIntegration.webhookUrl || "",
-                                "Webhook URL copied",
-                                "Failed to copy webhook URL"
-                              )
-                            }
-                            size="sm"
-                            type="button"
-                            variant="outline"
-                          >
-                            <CopyIcon className="size-3.5" />
-                            Copy
-                          </Button>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background/60 p-4">
-                      <div>
-                        <p className="text-xs font-semibold text-muted-foreground">
-                          Last Telegram webhook
-                        </p>
-                        <p className="mt-1 text-sm">
-                          {telegramIntegration.lastWebhookAt
-                            ? new Date(
-                                telegramIntegration.lastWebhookAt
-                              ).toLocaleString()
-                            : "No messages received yet"}
-                        </p>
-                      </div>
-                      <Button
-                        disabled={isSyncingTelegramWebhook}
-                        onClick={handleSyncTelegramWebhook}
-                        size="sm"
-                        type="button"
-                        variant="outline"
-                      >
-                        {isSyncingTelegramWebhook ? (
-                          <>
-                            <Loader2Icon className="size-3.5 animate-spin" />
-                            Syncing...
-                          </>
-                        ) : (
-                          "Re-sync webhook"
-                        )}
-                      </Button>
-                    </div>
 
                     <p className="text-xs text-muted-foreground">
                       After connecting, open your bot in Telegram, tap Start,

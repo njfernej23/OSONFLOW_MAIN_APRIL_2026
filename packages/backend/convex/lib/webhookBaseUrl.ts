@@ -60,6 +60,13 @@ export const getWebhookBaseUrl = (...preferredEnvVars: string[]) => {
   return deriveSiteUrlFromCloudUrl()
 }
 
+const DEFAULT_TELEGRAM_WEBHOOK_BASE_URL =
+  "https://nautical-gazelle-675.eu-west-1.convex.site"
+
+export const getTelegramWebhookBaseUrl = () =>
+  getWebhookBaseUrl("TELEGRAM_WEBHOOK_BASE_URL") ??
+  DEFAULT_TELEGRAM_WEBHOOK_BASE_URL
+
 export const requireWebhookBaseUrl = (...preferredEnvVars: string[]) => {
   const baseUrl = getWebhookBaseUrl(...preferredEnvVars)
 

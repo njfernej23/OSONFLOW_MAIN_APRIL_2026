@@ -1,5 +1,5 @@
 import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
-import { getWebhookBaseUrl } from "../lib/webhookBaseUrl"
+import { getTelegramWebhookBaseUrl } from "../lib/webhookBaseUrl"
 import { ConvexError, v } from "convex/values"
 import { internal } from "../_generated/api"
 import { action, query } from "../_generated/server"
@@ -65,7 +65,7 @@ const registerTelegramWebhook = async ({
   webhookSecret: string
   botUsername?: string
 }) => {
-  const webhookBaseUrl = getWebhookBaseUrl("TELEGRAM_WEBHOOK_BASE_URL")
+  const webhookBaseUrl = getTelegramWebhookBaseUrl()
 
   if (!webhookBaseUrl) {
     await ctx.runMutation(
