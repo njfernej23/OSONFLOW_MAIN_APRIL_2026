@@ -13,8 +13,15 @@ type InstagramProfileResponse = {
   id?: string
   user_id?: string
   username?: string
+  data?: Array<{
+    id?: string
+    user_id?: string
+    username?: string
+  }>
   error?: {
     message?: string
+    type?: string
+    code?: number
   }
 }
 
@@ -83,6 +90,31 @@ const instagramApiUrl = (
   return url.toString()
 }
 
+const parseInstagramProfilePayload = (
+  profile: InstagramProfileResponse
+): { instagramUserId?: string; username?: string } => {
+  if (Array.isArray(profile.data) && profile.data[0]) {
+    const entry = profile.data[0]
+    const instagramUserId = entry.user_id ?? entry.id
+    const username =
+      typeof entry.username === "string" ? entry.username : undefined
+
+    return {
+      instagramUserId,
+      username,
+    }
+  }
+
+  const instagramUserId = profile.user_id ?? profile.id
+  const username =
+    typeof profile.username === "string" ? profile.username : undefined
+
+  return {
+    instagramUserId,
+    username,
+  }
+}
+
 const fetchInstagramProfile = async ({
   accessToken,
   instagramUserId,
@@ -90,36 +122,52 @@ const fetchInstagramProfile = async ({
   accessToken: string
   instagramUserId?: string
 }) => {
-  const profilePaths = instagramUserId ? [instagramUserId, "me"] : ["me"]
+  const fieldSets = [
+    "user_id,username",
+    "id,username",
+    "user_id,username,name,account_type",
+    "id,username,name,account_type",
+  ]
+  const profilePaths = ["me", ...(instagramUserId ? [instagramUserId] : [])]
+  let lastError = "Instagram did not return profile data"
 
   for (const profilePath of profilePaths) {
-    const profileResponse = await fetch(
-      instagramApiUrl(profilePath, {
-        fields: "user_id,username",
-        access_token: accessToken,
-      })
-    )
-    const profile = (await profileResponse.json()) as InstagramProfileResponse
+    for (const fields of fieldSets) {
+      const profileResponse = await fetch(
+        instagramApiUrl(profilePath, {
+          fields,
+          access_token: accessToken,
+        })
+      )
+      const profile = (await profileResponse.json()) as InstagramProfileResponse
 
-    if (!profileResponse.ok || profile.error) {
-      continue
-    }
+      if (!profileResponse.ok || profile.error) {
+        lastError =
+          profile.error?.message ||
+          `Profile lookup failed with HTTP ${profileResponse.status}`
+        continue
+      }
 
-    const resolvedUserId = profile.user_id ?? profile.id
-    const username =
-      typeof profile.username === "string" ? profile.username : undefined
+      const parsed = parseInstagramProfilePayload(profile)
+      const resolvedUserId = parsed.instagramUserId ?? instagramUserId
 
-    if (resolvedUserId) {
-      return {
-        instagramUserId: resolvedUserId,
-        username,
+      if (resolvedUserId) {
+        return {
+          instagramUserId: resolvedUserId,
+          username: parsed.username,
+        }
       }
     }
   }
 
-  throw new ConvexError(
-    "Could not load Instagram profile details after authorization"
-  )
+  if (instagramUserId) {
+    return {
+      instagramUserId,
+      username: undefined,
+    }
+  }
+
+  throw new ConvexError(lastError)
 }
 
 const finalizeInstagramConnection = async (
