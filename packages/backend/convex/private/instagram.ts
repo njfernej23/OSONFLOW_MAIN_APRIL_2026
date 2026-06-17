@@ -1,4 +1,9 @@
 import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
+import {
+  buildInstagramAuthorizationUrl,
+  exchangeInstagramCodeForToken,
+  getInstagramOAuthConfig,
+} from "../lib/instagramOAuth"
 import { getWebhookBaseUrl } from "../lib/webhookBaseUrl"
 import { ConvexError, v } from "convex/values"
 import { internal } from "../_generated/api"
@@ -21,6 +26,14 @@ type InstagramSenderProfileResponse = {
   error?: {
     message?: string
   }
+}
+
+type ConnectInstagramResult = {
+  integrationId: string
+  username?: string
+  status: "connected" | "needs_webhook_url"
+  webhookUrl?: string
+  verifyToken: string
 }
 
 const INSTAGRAM_GRAPH_API_VERSION =
@@ -68,6 +81,109 @@ const instagramApiUrl = (
   }
 
   return url.toString()
+}
+
+const fetchInstagramProfile = async ({
+  accessToken,
+  instagramUserId,
+}: {
+  accessToken: string
+  instagramUserId: string
+}) => {
+  const profileResponse = await fetch(
+    instagramApiUrl(instagramUserId, {
+      fields: "user_id,username",
+      access_token: accessToken,
+    })
+  )
+  const profile = (await profileResponse.json()) as InstagramProfileResponse
+
+  if (!profileResponse.ok || profile.error || !profile.user_id) {
+    throw new ConvexError({
+      code: "BAD_REQUEST",
+      message:
+        profile.error?.message ||
+        "Invalid Instagram account ID or access token",
+    })
+  }
+
+  return {
+    instagramUserId: profile.user_id,
+    username: profile.username,
+  }
+}
+
+const finalizeInstagramConnection = async (
+  ctx: { runMutation: (reference: any, args: any) => Promise<any> },
+  {
+    organizationId,
+    actorId,
+    accessToken,
+    instagramUserId,
+    username,
+  }: {
+    organizationId: string
+    actorId?: string
+    accessToken: string
+    instagramUserId: string
+    username?: string
+  }
+): Promise<ConnectInstagramResult> => {
+  const { integrationId, webhookSecret, verifyToken } =
+    (await ctx.runMutation(
+      (internal as any).system.instagram.upsertIntegration,
+      {
+        organizationId,
+        actorId,
+        accessToken,
+        instagramUserId,
+        username,
+      }
+    )) as {
+      integrationId: string
+      webhookSecret: string
+      verifyToken: string
+    }
+
+  const webhookBaseUrl = getWebhookBaseUrl("INSTAGRAM_WEBHOOK_BASE_URL")
+
+  if (!webhookBaseUrl) {
+    await ctx.runMutation(
+      (internal as any).system.instagram.markIntegrationSetup,
+      {
+        integrationId,
+        organizationId,
+        status: "needs_webhook_url",
+      }
+    )
+
+    return {
+      integrationId,
+      username,
+      status: "needs_webhook_url",
+      verifyToken,
+    }
+  }
+
+  const webhookUrl = `${webhookBaseUrl}/instagram/webhook/${webhookSecret}`
+
+  await ctx.runMutation(
+    (internal as any).system.instagram.markIntegrationSetup,
+    {
+      integrationId,
+      organizationId,
+      status: "connected",
+      webhookUrl,
+    }
+  )
+
+  return {
+    integrationId,
+    username,
+    status: "connected",
+    webhookUrl,
+    verifyToken,
+  }
 }
 
 const fetchSenderProfile = async ({
@@ -158,11 +274,108 @@ export const getDashboard = query({
   },
 })
 
+export const getOAuthAuthorizationUrl = action({
+  args: {},
+  returns: v.object({
+    authorizationUrl: v.string(),
+  }),
+  handler: async (ctx) => {
+    const { organizationId, actorId } = await getAuthContext(ctx)
+    const config = getInstagramOAuthConfig()
+    const state = crypto.randomUUID()
+
+    await ctx.runMutation(
+      (internal as any).system.instagram.createOAuthState,
+      {
+        organizationId,
+        actorId,
+        state,
+      }
+    )
+
+    return {
+      authorizationUrl: buildInstagramAuthorizationUrl({
+        appId: config.appId,
+        redirectUri: config.redirectUri,
+        state,
+      }),
+    }
+  },
+})
+
+export const connectWithOAuthCode = action({
+  args: {
+    code: v.string(),
+    state: v.string(),
+  },
+  returns: v.object({
+    integrationId: v.string(),
+    username: v.optional(v.string()),
+    status: v.union(
+      v.literal("connected"),
+      v.literal("needs_webhook_url")
+    ),
+    webhookUrl: v.optional(v.string()),
+    verifyToken: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const { organizationId } = await getAuthContext(ctx)
+    const code = args.code.trim()
+    const state = args.state.trim()
+
+    if (!code || !state) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: "Instagram authorization code and state are required",
+      })
+    }
+
+    const { actorId } = (await ctx.runMutation(
+      (internal as any).system.instagram.consumeOAuthState,
+      {
+        state,
+        organizationId,
+      }
+    )) as { actorId?: string }
+
+    const config = getInstagramOAuthConfig()
+    const tokenData = await exchangeInstagramCodeForToken({
+      appId: config.appId,
+      appSecret: config.appSecret,
+      redirectUri: config.redirectUri,
+      code,
+    })
+
+    const profile = await fetchInstagramProfile({
+      accessToken: tokenData.accessToken,
+      instagramUserId: tokenData.userId,
+    })
+
+    return await finalizeInstagramConnection(ctx, {
+      organizationId,
+      actorId,
+      accessToken: tokenData.accessToken,
+      instagramUserId: profile.instagramUserId,
+      username: profile.username,
+    })
+  },
+})
+
 export const connect = action({
   args: {
     accessToken: v.string(),
     instagramUserId: v.string(),
   },
+  returns: v.object({
+    integrationId: v.string(),
+    username: v.optional(v.string()),
+    status: v.union(
+      v.literal("connected"),
+      v.literal("needs_webhook_url")
+    ),
+    webhookUrl: v.optional(v.string()),
+    verifyToken: v.string(),
+  }),
   handler: async (ctx, args) => {
     const { organizationId, actorId } = await getAuthContext(ctx)
     const accessToken = args.accessToken.trim()
@@ -175,78 +388,18 @@ export const connect = action({
       })
     }
 
-    const profileResponse = await fetch(
-      instagramApiUrl(instagramUserId, {
-        fields: "user_id,username",
-        access_token: accessToken,
-      })
-    )
-    const profile = (await profileResponse.json()) as InstagramProfileResponse
+    const profile = await fetchInstagramProfile({
+      accessToken,
+      instagramUserId,
+    })
 
-    if (!profileResponse.ok || profile.error || !profile.user_id) {
-      throw new ConvexError({
-        code: "BAD_REQUEST",
-        message:
-          profile.error?.message ||
-          "Invalid Instagram account ID or access token",
-      })
-    }
-
-    const { integrationId, webhookSecret, verifyToken } =
-      (await ctx.runMutation(
-        (internal as any).system.instagram.upsertIntegration,
-        {
-          organizationId,
-          actorId,
-          accessToken,
-          instagramUserId: profile.user_id,
-          username: profile.username,
-        }
-      )) as {
-        integrationId: string
-        webhookSecret: string
-        verifyToken: string
-      }
-
-    const webhookBaseUrl = getWebhookBaseUrl("INSTAGRAM_WEBHOOK_BASE_URL")
-
-    if (!webhookBaseUrl) {
-      await ctx.runMutation(
-        (internal as any).system.instagram.markIntegrationSetup,
-        {
-          integrationId,
-          organizationId,
-          status: "needs_webhook_url",
-        }
-      )
-
-      return {
-        integrationId,
-        username: profile.username,
-        status: "needs_webhook_url" as const,
-        verifyToken,
-      }
-    }
-
-    const webhookUrl = `${webhookBaseUrl}/instagram/webhook/${webhookSecret}`
-
-    await ctx.runMutation(
-      (internal as any).system.instagram.markIntegrationSetup,
-      {
-        integrationId,
-        organizationId,
-        status: "connected",
-        webhookUrl,
-      }
-    )
-
-    return {
-      integrationId,
+    return await finalizeInstagramConnection(ctx, {
+      organizationId,
+      actorId,
+      accessToken,
+      instagramUserId: profile.instagramUserId,
       username: profile.username,
-      status: "connected" as const,
-      webhookUrl,
-      verifyToken,
-    }
+    })
   },
 })
 

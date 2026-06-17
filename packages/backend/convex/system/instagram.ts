@@ -285,6 +285,79 @@ const sendInstagramMessage = async ({
   return body
 }
 
+const OAUTH_STATE_TTL_MS = 10 * 60 * 1000
+
+export const createOAuthState = internalMutation({
+  args: {
+    organizationId: v.string(),
+    actorId: v.optional(v.string()),
+    state: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now()
+
+    const existingStates = await ctx.db
+      .query("instagramOAuthStates")
+      .withIndex("by_organization_id", (q) =>
+        q.eq("organizationId", args.organizationId)
+      )
+      .collect()
+
+    for (const existingState of existingStates) {
+      await ctx.db.delete(existingState._id)
+    }
+
+    await ctx.db.insert("instagramOAuthStates", {
+      organizationId: args.organizationId,
+      actorId: args.actorId,
+      state: args.state,
+      expiresAt: now + OAUTH_STATE_TTL_MS,
+      createdAt: now,
+    })
+  },
+})
+
+export const consumeOAuthState = internalMutation({
+  args: {
+    state: v.string(),
+    organizationId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const oauthState = await ctx.db
+      .query("instagramOAuthStates")
+      .withIndex("by_state", (q) => q.eq("state", args.state))
+      .unique()
+
+    if (!oauthState) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: "Invalid or expired Instagram authorization state",
+      })
+    }
+
+    if (oauthState.organizationId !== args.organizationId) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Instagram authorization state does not match this organization",
+      })
+    }
+
+    if (oauthState.expiresAt < Date.now()) {
+      await ctx.db.delete(oauthState._id)
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: "Instagram authorization expired. Please try again.",
+      })
+    }
+
+    await ctx.db.delete(oauthState._id)
+
+    return {
+      actorId: oauthState.actorId,
+    }
+  },
+})
+
 export const upsertIntegration = internalMutation({
   args: {
     organizationId: v.string(),

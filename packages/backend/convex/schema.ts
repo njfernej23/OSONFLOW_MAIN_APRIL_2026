@@ -362,6 +362,15 @@ export default defineSchema({
     .index("by_organization_id", ["organizationId"])
     .index("by_webhook_secret", ["webhookSecret"])
     .index("by_instagram_user_id", ["instagramUserId"]),
+  instagramOAuthStates: defineTable({
+    organizationId: v.string(),
+    actorId: v.optional(v.string()),
+    state: v.string(),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_state", ["state"])
+    .index("by_organization_id", ["organizationId"]),
   instagramContacts: defineTable({
     organizationId: v.string(),
     integrationId: v.id("instagramIntegrations"),

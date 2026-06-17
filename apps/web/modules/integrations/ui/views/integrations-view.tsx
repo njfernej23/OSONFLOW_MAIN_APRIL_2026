@@ -35,11 +35,13 @@ import {
   CheckCircle2Icon,
   ChevronDownIcon,
   CopyIcon,
+  ExternalLinkIcon,
   KeyRoundIcon,
   Loader2Icon,
   PlugZapIcon,
   RefreshCwIcon,
   SendIcon,
+  ShieldCheckIcon,
   Trash2Icon,
   WebhookIcon,
   XCircleIcon,
@@ -47,7 +49,8 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import { formatDistanceToNow } from "date-fns"
-import { useMemo, useState } from "react"
+import { useSearchParams } from "next/navigation"
+import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { cn } from "@workspace/ui/lib/utils"
 import {
@@ -369,6 +372,7 @@ type ActiveSection =
 
 export const IntegrationsView = () => {
   const { organization } = useOrganization()
+  const searchParams = useSearchParams()
 
   const [activeSection, setActiveSection] = useState<ActiveSection>("widget")
   const [selectedIntegration, setSelectedIntegration] =
@@ -404,9 +408,7 @@ export const IntegrationsView = () => {
   const [telegramChannelBotToken, setTelegramChannelBotToken] = useState("")
   const [isConnectingTelegram, setIsConnectingTelegram] = useState(false)
   const [isDisconnectingTelegram, setIsDisconnectingTelegram] = useState(false)
-  const [instagramAccessToken, setInstagramAccessToken] = useState("")
-  const [instagramUserId, setInstagramUserId] = useState("")
-  const [isConnectingInstagram, setIsConnectingInstagram] = useState(false)
+  const [isStartingInstagramOAuth, setIsStartingInstagramOAuth] = useState(false)
   const [isDisconnectingInstagram, setIsDisconnectingInstagram] =
     useState(false)
   const [whatsappChannelAccessToken, setWhatsappChannelAccessToken] =
@@ -479,15 +481,9 @@ export const IntegrationsView = () => {
     (api as any).private.telegram.disconnect
   )
 
-  const connectInstagram = useAction(
-    (api as any).private.instagram.connect
-  ) as (args: { accessToken: string; instagramUserId: string }) => Promise<{
-    integrationId: string
-    username?: string
-    status: "connected" | "needs_webhook_url"
-    webhookUrl?: string
-    verifyToken: string
-  }>
+  const getInstagramOAuthAuthorizationUrl = useAction(
+    (api as any).private.instagram.getOAuthAuthorizationUrl
+  ) as () => Promise<{ authorizationUrl: string }>
 
   const disconnectInstagram = useAction(
     (api as any).private.instagram.disconnect
@@ -511,6 +507,21 @@ export const IntegrationsView = () => {
   const disconnectWhatsapp = useAction(
     (api as any).private.whatsapp.disconnect
   ) as () => Promise<{ removed: boolean }>
+
+  useEffect(() => {
+    const section = searchParams.get("section")
+
+    if (
+      section === "widget" ||
+      section === "apiKeys" ||
+      section === "telegram" ||
+      section === "instagram" ||
+      section === "whatsapp" ||
+      section === "webhooks"
+    ) {
+      setActiveSection(section)
+    }
+  }, [searchParams])
 
   const createWebhook = useMutation(
     (api as any).private.integrationWebhooks.createWebhook
@@ -712,34 +723,17 @@ export const IntegrationsView = () => {
   }
 
   const handleConnectInstagram = async () => {
-    if (!instagramUserId.trim() || !instagramAccessToken.trim()) {
-      toast.error("Instagram account ID and access token are required")
-      return
-    }
-
-    setIsConnectingInstagram(true)
+    setIsStartingInstagramOAuth(true)
     try {
-      const result = await connectInstagram({
-        instagramUserId: instagramUserId.trim(),
-        accessToken: instagramAccessToken.trim(),
-      })
-      setInstagramUserId("")
-      setInstagramAccessToken("")
-      if (result.status === "connected") {
-        toast.success(
-          result.username
-            ? `Connected @${result.username}`
-            : "Instagram account connected"
-        )
-      } else {
-        toast.info(
-          "Instagram account saved. Add a webhook base URL to receive DMs."
-        )
-      }
-    } catch {
-      toast.error("Failed to connect Instagram account")
-    } finally {
-      setIsConnectingInstagram(false)
+      const { authorizationUrl } = await getInstagramOAuthAuthorizationUrl()
+      window.location.assign(authorizationUrl)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to start Instagram authorization"
+      )
+      setIsStartingInstagramOAuth(false)
     }
   }
 
@@ -1466,8 +1460,8 @@ export const IntegrationsView = () => {
                   Connect Instagram
                 </h2>
                 <p className="mt-1 text-xs leading-relaxed text-sidebar-foreground/58">
-                  Add your Instagram professional account token and route DMs
-                  into the Osonflow inbox.
+                  Sign in with Instagram to route DMs and comments into the
+                  Osonflow inbox.
                 </p>
               </div>
 
@@ -1484,57 +1478,45 @@ export const IntegrationsView = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="instagram-user-id"
-                    className="text-xs text-sidebar-foreground/58"
-                  >
-                    Instagram Account ID
-                  </Label>
-                  <Input
-                    className="bg-sidebar-accent/70 font-mono text-xs"
-                    id="instagram-user-id"
-                    onChange={(e) => setInstagramUserId(e.target.value)}
-                    placeholder="17841400000000000"
-                    value={instagramUserId}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="instagram-access-token"
-                    className="text-xs text-sidebar-foreground/58"
-                  >
-                    Access Token
-                  </Label>
-                  <Input
-                    className="bg-sidebar-accent/70 font-mono text-xs"
-                    id="instagram-access-token"
-                    onChange={(e) => setInstagramAccessToken(e.target.value)}
-                    placeholder="IGAA..."
-                    type="password"
-                    value={instagramAccessToken}
-                  />
+                <div className="rounded-xl border border-sidebar-border/70 bg-sidebar-accent/35 p-3">
+                  <div className="flex items-start gap-2">
+                    <ShieldCheckIcon className="mt-0.5 size-4 shrink-0 text-blue-500" />
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-sidebar-foreground">
+                        Osonflow will request permission to:
+                      </p>
+                      <ul className="space-y-1 text-xs text-sidebar-foreground/68">
+                        <li>Read and reply to DM messages</li>
+                        <li>Read and reply to post comments</li>
+                        <li>Access account profile information</li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
 
                 <Button
                   className="w-full gap-2"
-                  disabled={isConnectingInstagram}
+                  disabled={isStartingInstagramOAuth || Boolean(instagramIntegration)}
                   onClick={handleConnectInstagram}
                   type="button"
                 >
-                  {isConnectingInstagram ? (
+                  {isStartingInstagramOAuth ? (
                     <>
                       <Loader2Icon className="size-4 animate-spin" />
-                      Connecting...
+                      Redirecting to Instagram...
                     </>
                   ) : (
                     <>
                       <InstagramIcon className="size-4" />
-                      Connect Instagram
+                      Continue with Instagram
+                      <ExternalLinkIcon className="size-4 opacity-70" />
                     </>
                   )}
                 </Button>
+
+                <p className="text-center text-[11px] leading-relaxed text-sidebar-foreground/52">
+                  You will be redirected to Instagram to authorize access.
+                </p>
               </div>
             </section>
 
