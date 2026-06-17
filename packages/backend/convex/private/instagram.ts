@@ -88,29 +88,38 @@ const fetchInstagramProfile = async ({
   instagramUserId,
 }: {
   accessToken: string
-  instagramUserId: string
+  instagramUserId?: string
 }) => {
-  const profileResponse = await fetch(
-    instagramApiUrl(instagramUserId, {
-      fields: "user_id,username",
-      access_token: accessToken,
-    })
+  const profilePaths = instagramUserId ? [instagramUserId, "me"] : ["me"]
+
+  for (const profilePath of profilePaths) {
+    const profileResponse = await fetch(
+      instagramApiUrl(profilePath, {
+        fields: "user_id,username",
+        access_token: accessToken,
+      })
+    )
+    const profile = (await profileResponse.json()) as InstagramProfileResponse
+
+    if (!profileResponse.ok || profile.error) {
+      continue
+    }
+
+    const resolvedUserId = profile.user_id ?? profile.id
+    const username =
+      typeof profile.username === "string" ? profile.username : undefined
+
+    if (resolvedUserId) {
+      return {
+        instagramUserId: resolvedUserId,
+        username,
+      }
+    }
+  }
+
+  throw new ConvexError(
+    "Could not load Instagram profile details after authorization"
   )
-  const profile = (await profileResponse.json()) as InstagramProfileResponse
-
-  if (!profileResponse.ok || profile.error || !profile.user_id) {
-    throw new ConvexError({
-      code: "BAD_REQUEST",
-      message:
-        profile.error?.message ||
-        "Invalid Instagram account ID or access token",
-    })
-  }
-
-  return {
-    instagramUserId: profile.user_id,
-    username: profile.username,
-  }
 }
 
 const finalizeInstagramConnection = async (
@@ -184,6 +193,66 @@ const finalizeInstagramConnection = async (
     webhookUrl,
     verifyToken,
   }
+}
+
+const normalizeOptionalString = (value: string | null | undefined) =>
+  typeof value === "string" && value.length > 0 ? value : undefined
+
+const toConnectResult = (result: ConnectInstagramResult) => ({
+  integrationId: String(result.integrationId),
+  username: normalizeOptionalString(result.username),
+  status: result.status,
+  webhookUrl: normalizeOptionalString(result.webhookUrl),
+  verifyToken: result.verifyToken,
+})
+
+const runConnectWithOAuthCode = async (
+  ctx: {
+    auth: { getUserIdentity: () => Promise<any> }
+    runMutation: (reference: any, args: any) => Promise<any>
+  },
+  args: { code: string; state: string }
+) => {
+  const { organizationId } = await getAuthContext(ctx)
+  const code = args.code.trim()
+  const state = args.state.trim()
+
+  if (!code || !state) {
+    throw new ConvexError(
+      "Instagram authorization code and state are required"
+    )
+  }
+
+  const { actorId } = (await ctx.runMutation(
+    (internal as any).system.instagram.consumeOAuthState,
+    {
+      state,
+      organizationId,
+    }
+  )) as { actorId?: string }
+
+  const config = getInstagramOAuthConfig()
+  const tokenData = await exchangeInstagramCodeForToken({
+    appId: config.appId,
+    appSecret: config.appSecret,
+    redirectUri: config.redirectUri,
+    code,
+  })
+
+  const profile = await fetchInstagramProfile({
+    accessToken: tokenData.accessToken,
+    instagramUserId: tokenData.userId,
+  })
+
+  const result = await finalizeInstagramConnection(ctx, {
+    organizationId,
+    actorId,
+    accessToken: tokenData.accessToken,
+    instagramUserId: profile.instagramUserId,
+    username: profile.username,
+  })
+
+  return toConnectResult(result)
 }
 
 const fetchSenderProfile = async ({
@@ -319,45 +388,32 @@ export const connectWithOAuthCode = action({
     verifyToken: v.string(),
   }),
   handler: async (ctx, args) => {
-    const { organizationId } = await getAuthContext(ctx)
-    const code = args.code.trim()
-    const state = args.state.trim()
+    try {
+      return await runConnectWithOAuthCode(ctx, args)
+    } catch (error) {
+      console.error("Instagram OAuth connect failed:", error)
 
-    if (!code || !state) {
-      throw new ConvexError({
-        code: "BAD_REQUEST",
-        message: "Instagram authorization code and state are required",
-      })
-    }
+      if (error instanceof ConvexError) {
+        if (typeof error.data === "string") {
+          throw error
+        }
 
-    const { actorId } = (await ctx.runMutation(
-      (internal as any).system.instagram.consumeOAuthState,
-      {
-        state,
-        organizationId,
+        if (
+          error.data &&
+          typeof error.data === "object" &&
+          "message" in error.data &&
+          typeof error.data.message === "string"
+        ) {
+          throw new ConvexError(error.data.message)
+        }
       }
-    )) as { actorId?: string }
 
-    const config = getInstagramOAuthConfig()
-    const tokenData = await exchangeInstagramCodeForToken({
-      appId: config.appId,
-      appSecret: config.appSecret,
-      redirectUri: config.redirectUri,
-      code,
-    })
-
-    const profile = await fetchInstagramProfile({
-      accessToken: tokenData.accessToken,
-      instagramUserId: tokenData.userId,
-    })
-
-    return await finalizeInstagramConnection(ctx, {
-      organizationId,
-      actorId,
-      accessToken: tokenData.accessToken,
-      instagramUserId: profile.instagramUserId,
-      username: profile.username,
-    })
+      throw new ConvexError(
+        error instanceof Error
+          ? error.message
+          : "Failed to connect Instagram account"
+      )
+    }
   },
 })
 
@@ -393,13 +449,15 @@ export const connect = action({
       instagramUserId,
     })
 
-    return await finalizeInstagramConnection(ctx, {
+    const result = await finalizeInstagramConnection(ctx, {
       organizationId,
       actorId,
       accessToken,
       instagramUserId: profile.instagramUserId,
       username: profile.username,
     })
+
+    return toConnectResult(result)
   },
 })
 

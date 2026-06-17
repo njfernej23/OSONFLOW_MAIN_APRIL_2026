@@ -36,17 +36,33 @@ type InstagramLongLivedTokenResponse = {
   }
 }
 
+const readJsonResponse = async <T>(response: Response): Promise<T> => {
+  const raw = await response.text()
+
+  if (!raw.trim()) {
+    throw new ConvexError(
+      `Instagram returned an empty response (HTTP ${response.status})`
+    )
+  }
+
+  try {
+    return JSON.parse(raw) as T
+  } catch {
+    throw new ConvexError(
+      `Instagram returned an unexpected response (HTTP ${response.status})`
+    )
+  }
+}
+
 export const getInstagramOAuthConfig = (): InstagramOAuthConfig => {
   const appId = process.env.INSTAGRAM_APP_ID?.trim()
   const appSecret = process.env.INSTAGRAM_APP_SECRET?.trim()
   const redirectUri = process.env.INSTAGRAM_OAUTH_REDIRECT_URI?.trim()
 
   if (!appId || !appSecret || !redirectUri) {
-    throw new ConvexError({
-      code: "BAD_REQUEST",
-      message:
-        "Instagram OAuth is not configured. Set INSTAGRAM_APP_ID, INSTAGRAM_APP_SECRET, and INSTAGRAM_OAUTH_REDIRECT_URI in Convex.",
-    })
+    throw new ConvexError(
+      "Instagram OAuth is not configured. Set INSTAGRAM_APP_ID, INSTAGRAM_APP_SECRET, and INSTAGRAM_OAUTH_REDIRECT_URI in Convex."
+    )
   }
 
   return { appId, appSecret, redirectUri }
@@ -79,10 +95,7 @@ const parseTokenExchangeResponse = (body: InstagramTokenExchangeResponse) => {
     const userId = entry.user_id
 
     if (!accessToken || userId === undefined || userId === null) {
-      throw new ConvexError({
-        code: "BAD_REQUEST",
-        message: "Instagram did not return an access token",
-      })
+      throw new ConvexError("Instagram did not return an access token")
     }
 
     return {
@@ -95,13 +108,11 @@ const parseTokenExchangeResponse = (body: InstagramTokenExchangeResponse) => {
   const userId = body.user_id
 
   if (!accessToken || userId === undefined || userId === null) {
-    throw new ConvexError({
-      code: "BAD_REQUEST",
-      message:
-        body.error_message ||
+    throw new ConvexError(
+      body.error_message ||
         body.error?.message ||
-        "Instagram did not return an access token",
-    })
+        "Instagram did not return an access token"
+    )
   }
 
   return {
@@ -121,7 +132,7 @@ export const exchangeInstagramCodeForToken = async ({
   redirectUri: string
   code: string
 }) => {
-  const formData = new URLSearchParams({
+  const formBody = new URLSearchParams({
     client_id: appId,
     client_secret: appSecret,
     grant_type: "authorization_code",
@@ -134,31 +145,43 @@ export const exchangeInstagramCodeForToken = async ({
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: formData.toString(),
+    body: formBody.toString(),
   })
 
-  const body = (await response.json()) as InstagramTokenExchangeResponse
+  const body = await readJsonResponse<InstagramTokenExchangeResponse>(response)
 
   if (!response.ok) {
-    throw new ConvexError({
-      code: "BAD_REQUEST",
-      message:
-        body.error_message ||
+    throw new ConvexError(
+      body.error_message ||
         body.error?.message ||
-        "Failed to exchange Instagram authorization code",
-    })
+        `Failed to exchange Instagram authorization code (HTTP ${response.status})`
+    )
   }
 
   const shortLived = parseTokenExchangeResponse(body)
-  const longLived = await exchangeInstagramShortLivedToken({
-    appSecret,
-    accessToken: shortLived.accessToken,
-  })
 
-  return {
-    accessToken: longLived.accessToken,
-    userId: shortLived.userId,
-    expiresIn: longLived.expiresIn,
+  try {
+    const longLived = await exchangeInstagramShortLivedToken({
+      appSecret,
+      accessToken: shortLived.accessToken,
+    })
+
+    return {
+      accessToken: longLived.accessToken,
+      userId: shortLived.userId,
+      expiresIn: longLived.expiresIn,
+    }
+  } catch (error) {
+    console.warn(
+      "Instagram long-lived token exchange failed, using short-lived token:",
+      error instanceof Error ? error.message : error
+    )
+
+    return {
+      accessToken: shortLived.accessToken,
+      userId: shortLived.userId,
+      expiresIn: undefined,
+    }
   }
 }
 
@@ -175,15 +198,13 @@ export const exchangeInstagramShortLivedToken = async ({
   url.searchParams.set("access_token", accessToken)
 
   const response = await fetch(url.toString())
-  const body = (await response.json()) as InstagramLongLivedTokenResponse
+  const body = await readJsonResponse<InstagramLongLivedTokenResponse>(response)
 
   if (!response.ok || !body.access_token) {
-    throw new ConvexError({
-      code: "BAD_REQUEST",
-      message:
-        body.error?.message ||
-        "Failed to exchange Instagram token for a long-lived token",
-    })
+    throw new ConvexError(
+      body.error?.message ||
+        `Failed to exchange Instagram token for a long-lived token (HTTP ${response.status})`
+    )
   }
 
   return {

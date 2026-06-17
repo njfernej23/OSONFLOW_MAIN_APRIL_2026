@@ -1,11 +1,35 @@
 "use client"
 
 import { useAction } from "convex/react"
+import { ConvexError } from "convex/values"
 import { api } from "@workspace/backend/_generated/api"
 import { Loader2Icon } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useRef } from "react"
 import { toast } from "sonner"
+
+const getConnectErrorMessage = (error: unknown) => {
+  if (error instanceof ConvexError) {
+    if (typeof error.data === "string") {
+      return error.data
+    }
+
+    if (
+      error.data &&
+      typeof error.data === "object" &&
+      "message" in error.data &&
+      typeof error.data.message === "string"
+    ) {
+      return error.data.message
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+
+  return "Failed to connect Instagram account"
+}
 
 export const InstagramOAuthCallbackView = () => {
   const router = useRouter()
@@ -47,8 +71,22 @@ export const InstagramOAuthCallbackView = () => {
         return
       }
 
+      const exchangeKey = `instagram-oauth:${code}:${state}`
+      if (typeof window !== "undefined") {
+        const existingExchange = window.sessionStorage.getItem(exchangeKey)
+        if (existingExchange === "done" || existingExchange === "pending") {
+          router.replace("/integrations?section=instagram")
+          return
+        }
+        window.sessionStorage.setItem(exchangeKey, "pending")
+      }
+
       try {
         const result = await connectWithOAuthCode({ code, state })
+
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem(exchangeKey, "done")
+        }
 
         if (result.status === "connected") {
           toast.success(
@@ -62,11 +100,10 @@ export const InstagramOAuthCallbackView = () => {
           )
         }
       } catch (connectError) {
-        toast.error(
-          connectError instanceof Error
-            ? connectError.message
-            : "Failed to connect Instagram account"
-        )
+        if (typeof window !== "undefined") {
+          window.sessionStorage.removeItem(exchangeKey)
+        }
+        toast.error(getConnectErrorMessage(connectError))
       }
 
       router.replace("/integrations?section=instagram")
