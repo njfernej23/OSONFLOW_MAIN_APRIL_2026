@@ -554,6 +554,42 @@ const extractInstagramAccountIds = (payload: InstagramWebhookPayload) => {
   return [...accountIds]
 }
 
+const resolveIntegrationForWebhook = async (
+  ctx: { db: any },
+  payload: InstagramWebhookPayload
+) => {
+  const accountIds = extractInstagramAccountIds(payload)
+
+  for (const accountId of accountIds) {
+    const integration = await ctx.db
+      .query("instagramIntegrations")
+      .withIndex("by_instagram_user_id", (q: any) =>
+        q.eq("instagramUserId", accountId)
+      )
+      .unique()
+
+    if (integration?.isEnabled) {
+      return integration
+    }
+  }
+
+  const enabledIntegrations = (
+    await ctx.db.query("instagramIntegrations").collect()
+  ).filter((integration: { isEnabled: boolean }) => integration.isEnabled)
+
+  if (payload.object === "instagram" && enabledIntegrations.length === 1) {
+    return enabledIntegrations[0]
+  }
+
+  for (const integration of enabledIntegrations) {
+    if (accountIds.includes(integration.instagramUserId)) {
+      return integration
+    }
+  }
+
+  return null
+}
+
 export const extractMessagingEventsFromPayload = (
   payload: InstagramWebhookPayload
 ): InstagramMessagingEvent[] => {
@@ -675,38 +711,32 @@ export const receiveWebhookByPayload = internalMutation({
   },
   handler: async (ctx, args) => {
     const payload = args.payload as InstagramWebhookPayload
-    const accountIds = extractInstagramAccountIds(payload)
+    const integration = await resolveIntegrationForWebhook(ctx, payload)
 
-    for (const accountId of accountIds) {
-      const integration = await ctx.db
-        .query("instagramIntegrations")
-        .withIndex("by_instagram_user_id", (q) =>
-          q.eq("instagramUserId", accountId)
-        )
-        .unique()
-
-      if (!integration?.isEnabled) {
-        continue
-      }
-
-      await ctx.db.patch(integration._id, {
-        lastWebhookAt: Date.now(),
-        updatedAt: Date.now(),
+    if (!integration) {
+      console.warn("Instagram webhook could not be matched to an integration", {
+        object: payload.object,
+        accountIds: extractInstagramAccountIds(payload),
+        entryCount: payload.entry?.length ?? 0,
       })
-
-      await ctx.scheduler.runAfter(
-        0,
-        (internal as any).system.instagram.handleIncomingWebhook,
-        {
-          integrationId: integration._id,
-          payload: args.payload,
-        }
-      )
-
-      return { queued: true, integrationId: integration._id }
+      return { queued: false, reason: "integration_not_found" }
     }
 
-    return { queued: false, reason: "integration_not_found" }
+    await ctx.db.patch(integration._id, {
+      lastWebhookAt: Date.now(),
+      updatedAt: Date.now(),
+    })
+
+    await ctx.scheduler.runAfter(
+      0,
+      (internal as any).system.instagram.handleIncomingWebhook,
+      {
+        integrationId: integration._id,
+        payload: args.payload,
+      }
+    )
+
+    return { queued: true, integrationId: integration._id }
   },
 })
 
@@ -1034,7 +1064,7 @@ const handleIncomingMessage = async ({
   const text = getIncomingMessageText(event)
   const senderId = event.sender?.id
 
-  if (!text || !senderId || event.message?.is_echo || event.message?.is_self) {
+  if (!text || !senderId || event.message?.is_echo) {
     return { handled: false }
   }
 

@@ -375,8 +375,8 @@ http.route({
       }
     )) as { queued: boolean; reason?: string }
 
-    if (!result.queued && result.reason === "integration_not_found") {
-      return new Response("Instagram integration not found", { status: 404 })
+    if (!result.queued) {
+      console.warn("Instagram webhook was not queued", result)
     }
 
     return new Response("EVENT_RECEIVED", { status: 200 })

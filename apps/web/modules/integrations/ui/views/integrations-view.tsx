@@ -930,6 +930,39 @@ export const IntegrationsView = () => {
   const deliveryLogs = webhookDashboard?.deliveries ?? []
   const telegramIntegration = telegramDashboard?.integration ?? null
   const instagramIntegration = instagramDashboard?.integration ?? null
+
+  const convexSiteHost = useMemo(() => {
+    const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL
+
+    if (!convexUrl) {
+      return null
+    }
+
+    try {
+      return new URL(convexUrl).hostname.replace(/\.convex\.cloud$/, ".convex.site")
+    } catch {
+      return null
+    }
+  }, [])
+
+  const instagramWebhookHostMismatch = useMemo(() => {
+    if (!instagramIntegration?.webhookUrl || !convexSiteHost) {
+      return false
+    }
+
+    try {
+      const webhookHost = new URL(instagramIntegration.webhookUrl).hostname
+
+      // Production webhooks often live on a different Convex deployment than local dev.
+      if (webhookHost.includes("nautical-gazelle-675")) {
+        return false
+      }
+
+      return webhookHost !== convexSiteHost
+    } catch {
+      return false
+    }
+  }, [convexSiteHost, instagramIntegration?.webhookUrl])
   const whatsappIntegration = whatsappDashboard?.integration ?? null
   const configuredApiKeyCount = [
     providerStatuses?.openaiConfigured ??
@@ -1653,6 +1686,14 @@ export const IntegrationsView = () => {
                       </p>
                     )}
 
+                    {instagramWebhookHostMismatch && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        This callback URL points to a different Convex deployment
+                        than your app. Click Refresh webhooks, copy the new URL,
+                        and update it in Meta App Dashboard.
+                      </p>
+                    )}
+
                     {instagramIntegration.webhookUrl && (
                       <div className="rounded-lg border bg-background/60 p-4">
                         <div className="flex items-center justify-between gap-3">
@@ -1717,8 +1758,10 @@ export const IntegrationsView = () => {
                       In Meta App Dashboard, open Instagram → Webhooks, paste the
                       callback URL and verify token above, then subscribe to{" "}
                       <code className="font-mono">messages</code> (required for
-                      DMs). Comments and reactions alone will not create inbox
-                      conversations.
+                      DMs). Production webhooks use your Convex production
+                      deployment URL (for example{" "}
+                      <code className="font-mono">nautical-gazelle-675</code>
+                      ), which may differ from your local dev Convex URL.
                     </p>
 
                     {instagramIntegration.lastWebhookAt && (

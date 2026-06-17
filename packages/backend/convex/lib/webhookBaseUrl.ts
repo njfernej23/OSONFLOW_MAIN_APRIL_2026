@@ -43,12 +43,12 @@ const deriveSiteUrlFromCloudUrl = () => {
 export const getWebhookBaseUrl = (...preferredEnvVars: string[]) => {
   for (const envVarName of [
     ...preferredEnvVars,
-    "CHANNEL_WEBHOOK_BASE_URL",
-    "TELEGRAM_WEBHOOK_BASE_URL",
+    "CONVEX_SITE_URL",
     "INSTAGRAM_WEBHOOK_BASE_URL",
     "WHATSAPP_WEBHOOK_BASE_URL",
     "META_WEBHOOK_BASE_URL",
-    "CONVEX_SITE_URL",
+    "TELEGRAM_WEBHOOK_BASE_URL",
+    "CHANNEL_WEBHOOK_BASE_URL",
   ]) {
     const normalized = normalizeUrl(process.env[envVarName])
 
@@ -59,6 +59,23 @@ export const getWebhookBaseUrl = (...preferredEnvVars: string[]) => {
 
   return deriveSiteUrlFromCloudUrl()
 }
+
+const getDeploymentSiteUrl = () =>
+  normalizeUrl(process.env.CONVEX_SITE_URL) ?? deriveSiteUrlFromCloudUrl()
+
+export const getInstagramWebhookBaseUrl = () =>
+  getWebhookBaseUrl(
+    "INSTAGRAM_WEBHOOK_BASE_URL",
+    "CHANNEL_WEBHOOK_BASE_URL",
+    "META_WEBHOOK_BASE_URL"
+  ) ?? getDeploymentSiteUrl()
+
+export const getWhatsAppWebhookBaseUrl = () =>
+  getWebhookBaseUrl(
+    "WHATSAPP_WEBHOOK_BASE_URL",
+    "CHANNEL_WEBHOOK_BASE_URL",
+    "META_WEBHOOK_BASE_URL"
+  ) ?? getDeploymentSiteUrl()
 
 const DEFAULT_TELEGRAM_WEBHOOK_BASE_URL =
   "https://nautical-gazelle-675.eu-west-1.convex.site"

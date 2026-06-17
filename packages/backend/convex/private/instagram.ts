@@ -4,7 +4,7 @@ import {
   exchangeInstagramCodeForToken,
   getInstagramOAuthConfig,
 } from "../lib/instagramOAuth"
-import { getWebhookBaseUrl } from "../lib/webhookBaseUrl"
+import { getInstagramWebhookBaseUrl } from "../lib/webhookBaseUrl"
 import { ConvexError, v } from "convex/values"
 import { internal } from "../_generated/api"
 import { Doc } from "../_generated/dataModel"
@@ -237,7 +237,7 @@ const finalizeInstagramConnection = async (
       verifyToken: string
     }
 
-  const webhookBaseUrl = getWebhookBaseUrl("INSTAGRAM_WEBHOOK_BASE_URL")
+  const webhookBaseUrl = getInstagramWebhookBaseUrl()
 
   if (!webhookBaseUrl) {
     await ctx.runMutation(
@@ -437,13 +437,18 @@ export const getDashboard = query({
       return { integration: null }
     }
 
+    const webhookBaseUrl = getInstagramWebhookBaseUrl()
+    const webhookUrl = webhookBaseUrl
+      ? `${webhookBaseUrl}/instagram/webhook`
+      : integration.webhookUrl
+
     return {
       integration: {
         _id: integration._id,
         _creationTime: integration._creationTime,
         instagramUserId: integration.instagramUserId,
         username: integration.username,
-        webhookUrl: integration.webhookUrl,
+        webhookUrl,
         verifyToken: integration.verifyToken,
         isEnabled: integration.isEnabled,
         status: integration.status,
@@ -682,7 +687,7 @@ export const resyncWebhooks = action({
       })
     }
 
-    const webhookBaseUrl = getWebhookBaseUrl("INSTAGRAM_WEBHOOK_BASE_URL")
+    const webhookBaseUrl = getInstagramWebhookBaseUrl()
 
     if (!webhookBaseUrl) {
       await ctx.runMutation(
