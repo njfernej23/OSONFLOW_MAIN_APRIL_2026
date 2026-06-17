@@ -707,7 +707,7 @@ export const IntegrationsView = () => {
   const handleSyncTelegramWebhook = async () => {
     setIsSyncingTelegramWebhook(true)
     try {
-      const result = await syncTelegramWebhook({})
+      const result = await syncTelegramWebhook()
       if (result.status === "connected") {
         toast.success(
           result.botUsername
