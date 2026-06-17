@@ -1,4 +1,5 @@
 import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
+import { getWebhookBaseUrl } from "../lib/webhookBaseUrl"
 import { ConvexError, v } from "convex/values"
 import { internal } from "../_generated/api"
 import { action, query } from "../_generated/server"
@@ -12,9 +13,6 @@ type WhatsAppPhoneNumberResponse = {
     message?: string
   }
 }
-
-const DEFAULT_WHATSAPP_WEBHOOK_BASE_URL =
-  "https://sincere-bandicoot-353.eu-west-1.convex.site"
 
 const WHATSAPP_GRAPH_API_VERSION =
   process.env.WHATSAPP_GRAPH_API_VERSION || "v25.0"
@@ -61,29 +59,6 @@ const whatsappApiUrl = (
   }
 
   return url.toString()
-}
-
-const normalizeBaseUrl = (value?: string) => {
-  const trimmed =
-    value?.trim() ||
-    process.env.WHATSAPP_WEBHOOK_BASE_URL ||
-    process.env.META_WEBHOOK_BASE_URL ||
-    process.env.TELEGRAM_WEBHOOK_BASE_URL ||
-    DEFAULT_WHATSAPP_WEBHOOK_BASE_URL
-
-  if (!trimmed) {
-    return undefined
-  }
-
-  try {
-    const url = new URL(trimmed)
-    return url.toString().replace(/\/$/, "")
-  } catch {
-    throw new ConvexError({
-      code: "BAD_REQUEST",
-      message: "Webhook base URL must be a valid URL",
-    })
-  }
 }
 
 export const getDashboard = query({
@@ -177,7 +152,10 @@ export const connect = action({
         verifyToken: string
       }
 
-    const webhookBaseUrl = normalizeBaseUrl()
+    const webhookBaseUrl = getWebhookBaseUrl(
+      "WHATSAPP_WEBHOOK_BASE_URL",
+      "META_WEBHOOK_BASE_URL"
+    )
 
     if (!webhookBaseUrl) {
       await ctx.runMutation(

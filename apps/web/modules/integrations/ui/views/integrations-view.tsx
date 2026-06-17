@@ -404,6 +404,8 @@ export const IntegrationsView = () => {
   const [telegramChannelBotToken, setTelegramChannelBotToken] = useState("")
   const [isConnectingTelegram, setIsConnectingTelegram] = useState(false)
   const [isDisconnectingTelegram, setIsDisconnectingTelegram] = useState(false)
+  const [isSyncingTelegramWebhook, setIsSyncingTelegramWebhook] =
+    useState(false)
   const [instagramAccessToken, setInstagramAccessToken] = useState("")
   const [instagramUserId, setInstagramUserId] = useState("")
   const [isConnectingInstagram, setIsConnectingInstagram] = useState(false)
@@ -477,6 +479,9 @@ export const IntegrationsView = () => {
 
   const disconnectTelegram = useAction(
     (api as any).private.telegram.disconnect
+  )
+  const syncTelegramWebhook = useAction(
+    (api as any).private.telegram.syncWebhook
   ) as () => Promise<{ removed: boolean }>
 
   const connectInstagram = useAction(
@@ -690,10 +695,36 @@ export const IntegrationsView = () => {
       } else {
         toast.info("Bot saved. Add a webhook base URL to receive messages.")
       }
-    } catch {
-      toast.error("Failed to connect Telegram bot")
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to connect Telegram bot"
+      )
     } finally {
       setIsConnectingTelegram(false)
+    }
+  }
+
+  const handleSyncTelegramWebhook = async () => {
+    setIsSyncingTelegramWebhook(true)
+    try {
+      const result = await syncTelegramWebhook({})
+      if (result.status === "connected") {
+        toast.success(
+          result.botUsername
+            ? `Telegram webhook synced for @${result.botUsername}`
+            : "Telegram webhook synced"
+        )
+      } else {
+        toast.info("Webhook base URL is not configured in Convex yet.")
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to sync Telegram webhook"
+      )
+    } finally {
+      setIsSyncingTelegramWebhook(false)
     }
   }
 
@@ -1402,26 +1433,111 @@ export const IntegrationsView = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background/60 p-4">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <ProviderIcon provider="telegram" size={34} />
-                      <p className="text-sm font-semibold">Connected</p>
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background/60 p-4">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <ProviderIcon provider="telegram" size={34} />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold">
+                            {telegramIntegration.botUsername
+                              ? `@${telegramIntegration.botUsername}`
+                              : "Connected"}
+                          </p>
+                          <p className="text-xs capitalize text-muted-foreground">
+                            {telegramIntegration.status.replaceAll("_", " ")}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        aria-label="Disconnect Telegram"
+                        className="size-9 p-0"
+                        disabled={isDisconnectingTelegram}
+                        onClick={handleDisconnectTelegram}
+                        title="Disconnect Telegram"
+                        type="button"
+                        variant="destructive"
+                      >
+                        {isDisconnectingTelegram ? (
+                          <Loader2Icon className="size-4 animate-spin" />
+                        ) : (
+                          <Trash2Icon className="size-4" />
+                        )}
+                      </Button>
                     </div>
-                    <Button
-                      aria-label="Disconnect Telegram"
-                      className="size-9 p-0"
-                      disabled={isDisconnectingTelegram}
-                      onClick={handleDisconnectTelegram}
-                      title="Disconnect Telegram"
-                      type="button"
-                      variant="destructive"
-                    >
-                      {isDisconnectingTelegram ? (
-                        <Loader2Icon className="size-4 animate-spin" />
-                      ) : (
-                        <Trash2Icon className="size-4" />
-                      )}
-                    </Button>
+
+                    {telegramIntegration.setupError ? (
+                      <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+                        {telegramIntegration.setupError}
+                      </div>
+                    ) : null}
+
+                    {telegramIntegration.webhookUrl ? (
+                      <div className="rounded-lg border bg-background/60 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-muted-foreground">
+                              Telegram webhook URL
+                            </p>
+                            <code className="mt-1 block truncate font-mono text-xs">
+                              {telegramIntegration.webhookUrl}
+                            </code>
+                          </div>
+                          <Button
+                            className="shrink-0 gap-1.5"
+                            onClick={() =>
+                              copyText(
+                                telegramIntegration.webhookUrl || "",
+                                "Webhook URL copied",
+                                "Failed to copy webhook URL"
+                              )
+                            }
+                            size="sm"
+                            type="button"
+                            variant="outline"
+                          >
+                            <CopyIcon className="size-3.5" />
+                            Copy
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background/60 p-4">
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground">
+                          Last Telegram webhook
+                        </p>
+                        <p className="mt-1 text-sm">
+                          {telegramIntegration.lastWebhookAt
+                            ? new Date(
+                                telegramIntegration.lastWebhookAt
+                              ).toLocaleString()
+                            : "No messages received yet"}
+                        </p>
+                      </div>
+                      <Button
+                        disabled={isSyncingTelegramWebhook}
+                        onClick={handleSyncTelegramWebhook}
+                        size="sm"
+                        type="button"
+                        variant="outline"
+                      >
+                        {isSyncingTelegramWebhook ? (
+                          <>
+                            <Loader2Icon className="size-3.5 animate-spin" />
+                            Syncing...
+                          </>
+                        ) : (
+                          "Re-sync webhook"
+                        )}
+                      </Button>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">
+                      After connecting, open your bot in Telegram, tap Start,
+                      then send a normal message. Only text messages are handled
+                      right now.
+                    </p>
                   </div>
                 )}
               </div>

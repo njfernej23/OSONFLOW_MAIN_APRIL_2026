@@ -546,11 +546,10 @@ export const handleIncomingUpdate: any = internalAction({
     const text = message?.text?.trim()
     const chatId = message?.chat?.id
 
-    if (!text || chatId === undefined || text.startsWith("/start")) {
+    if (chatId === undefined || !text) {
       return { handled: false }
     }
 
-    const from = message?.from
     const integrationForUpdate = (await ctx.runQuery(
       (internal as any).system.telegram.getIntegrationById,
       {
@@ -562,14 +561,36 @@ export const handleIncomingUpdate: any = internalAction({
       return { handled: false, reason: "integration_disabled" }
     }
 
+    const chatIdString = String(chatId)
+
+    if (text.startsWith("/start")) {
+      const widgetSettings = await ctx.runQuery(
+        api.public.widgetSettings.getByOrganizationId,
+        {
+          organizationId: integrationForUpdate.organizationId,
+        }
+      )
+      const greetMessage =
+        widgetSettings?.greetMessage?.trim() ||
+        "Hi! Send me a message and I'll help you out."
+
+      await sendTelegramMessage({
+        botToken: integrationForUpdate.botToken,
+        chatId: chatIdString,
+        text: greetMessage,
+      })
+
+      return { handled: true }
+    }
+
+    const from = message?.from
+
     if (
       integrationForUpdate.botId !== undefined &&
       from?.id === integrationForUpdate.botId
     ) {
       return { handled: false, reason: "bot_message" }
     }
-
-    const chatIdString = String(chatId)
     const chatLimit = await checkRateLimit(ctx, "telegramMessageByChat", {
       key: `${integrationForUpdate.organizationId}:${chatIdString}`,
     })

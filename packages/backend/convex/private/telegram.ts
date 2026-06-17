@@ -1,4 +1,5 @@
 import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
+import { getWebhookBaseUrl } from "../lib/webhookBaseUrl"
 import { ConvexError, v } from "convex/values"
 import { internal } from "../_generated/api"
 import { action, query } from "../_generated/server"
@@ -18,9 +19,6 @@ type TelegramApiResponse = {
   ok: boolean
   description?: string
 }
-
-const DEFAULT_TELEGRAM_WEBHOOK_BASE_URL =
-  "https://sincere-bandicoot-353.eu-west-1.convex.site"
 
 const getAuthContext = async (ctx: {
   auth: { getUserIdentity: () => Promise<any> }
@@ -52,24 +50,88 @@ const getAuthContext = async (ctx: {
 const telegramApiUrl = (botToken: string, method: string) =>
   `https://api.telegram.org/bot${botToken}/${method}`
 
-const normalizeBaseUrl = (value?: string) => {
-  const trimmed =
-    value?.trim() ||
-    process.env.TELEGRAM_WEBHOOK_BASE_URL ||
-    DEFAULT_TELEGRAM_WEBHOOK_BASE_URL
+const registerTelegramWebhook = async ({
+  ctx,
+  integrationId,
+  organizationId,
+  botToken,
+  webhookSecret,
+  botUsername,
+}: {
+  ctx: { runMutation: (ref: any, args: any) => Promise<any> }
+  integrationId: string
+  organizationId: string
+  botToken: string
+  webhookSecret: string
+  botUsername?: string
+}) => {
+  const webhookBaseUrl = getWebhookBaseUrl("TELEGRAM_WEBHOOK_BASE_URL")
 
-  if (!trimmed) {
-    return undefined
+  if (!webhookBaseUrl) {
+    await ctx.runMutation(
+      (internal as any).system.telegram.markIntegrationSetup,
+      {
+        integrationId,
+        organizationId,
+        status: "needs_webhook_url",
+      }
+    )
+
+    return {
+      integrationId,
+      botUsername,
+      status: "needs_webhook_url" as const,
+    }
   }
 
-  try {
-    const url = new URL(trimmed)
-    return url.toString().replace(/\/$/, "")
-  } catch {
+  const webhookUrl = `${webhookBaseUrl}/telegram/webhook/${webhookSecret}`
+  const setWebhookResponse = await fetch(
+    telegramApiUrl(botToken, "setWebhook"),
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        url: webhookUrl,
+        secret_token: webhookSecret,
+        allowed_updates: ["message", "edited_message"],
+      }),
+    }
+  )
+  const setWebhook = (await setWebhookResponse.json()) as TelegramApiResponse
+
+  if (!setWebhookResponse.ok || !setWebhook.ok) {
+    const message = setWebhook.description || "Telegram webhook setup failed"
+    await ctx.runMutation(
+      (internal as any).system.telegram.markIntegrationSetup,
+      {
+        integrationId,
+        organizationId,
+        status: "error",
+        webhookUrl,
+        setupError: message,
+      }
+    )
     throw new ConvexError({
       code: "BAD_REQUEST",
-      message: "Webhook base URL must be a valid URL",
+      message,
     })
+  }
+
+  await ctx.runMutation(
+    (internal as any).system.telegram.markIntegrationSetup,
+    {
+      integrationId,
+      organizationId,
+      status: "connected",
+      webhookUrl,
+    }
+  )
+
+  return {
+    integrationId,
+    botUsername,
+    status: "connected" as const,
+    webhookUrl,
   }
 }
 
@@ -143,74 +205,46 @@ export const connect = action({
       }
     )) as { integrationId: string; webhookSecret: string }
 
-    const webhookBaseUrl = normalizeBaseUrl()
+    return await registerTelegramWebhook({
+      ctx,
+      integrationId,
+      organizationId,
+      botToken,
+      webhookSecret,
+      botUsername: getMe.result.username,
+    })
+  },
+})
 
-    if (!webhookBaseUrl) {
-      await ctx.runMutation(
-        (internal as any).system.telegram.markIntegrationSetup,
-        {
-          integrationId,
-          organizationId,
-          status: "needs_webhook_url",
-        }
-      )
+export const syncWebhook = action({
+  args: {},
+  handler: async (ctx) => {
+    const { organizationId } = await getAuthContext(ctx)
+    const integration = (await ctx.runQuery(
+      (internal as any).system.telegram.getIntegrationByOrganizationId,
+      { organizationId }
+    )) as {
+      _id: string
+      botToken: string
+      webhookSecret: string
+      botUsername?: string
+    } | null
 
-      return {
-        integrationId,
-        botUsername: getMe.result.username,
-        status: "needs_webhook_url" as const,
-      }
-    }
-
-    const webhookUrl = `${webhookBaseUrl}/telegram/webhook/${webhookSecret}`
-    const setWebhookResponse = await fetch(
-      telegramApiUrl(botToken, "setWebhook"),
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          url: webhookUrl,
-          secret_token: webhookSecret,
-          allowed_updates: ["message"],
-        }),
-      }
-    )
-    const setWebhook = (await setWebhookResponse.json()) as TelegramApiResponse
-
-    if (!setWebhookResponse.ok || !setWebhook.ok) {
-      const message = setWebhook.description || "Telegram webhook setup failed"
-      await ctx.runMutation(
-        (internal as any).system.telegram.markIntegrationSetup,
-        {
-          integrationId,
-          organizationId,
-          status: "error",
-          webhookUrl,
-          setupError: message,
-        }
-      )
+    if (!integration) {
       throw new ConvexError({
-        code: "BAD_REQUEST",
-        message,
+        code: "NOT_FOUND",
+        message: "Telegram integration not found",
       })
     }
 
-    await ctx.runMutation(
-      (internal as any).system.telegram.markIntegrationSetup,
-      {
-        integrationId,
-        organizationId,
-        status: "connected",
-        webhookUrl,
-      }
-    )
-
-    return {
-      integrationId,
-      botUsername: getMe.result.username,
-      status: "connected" as const,
-      webhookUrl,
-    }
+    return await registerTelegramWebhook({
+      ctx,
+      integrationId: integration._id,
+      organizationId,
+      botToken: integration.botToken,
+      webhookSecret: integration.webhookSecret,
+      botUsername: integration.botUsername,
+    })
   },
 })
 
