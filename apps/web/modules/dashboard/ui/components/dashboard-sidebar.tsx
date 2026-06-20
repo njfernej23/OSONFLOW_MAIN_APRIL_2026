@@ -13,6 +13,7 @@ import {
   LayoutDashboardIcon,
   MessagesSquare,
   PaletteIcon,
+  UserPlusIcon,
 } from "lucide-react"
 
 import Image from "next/image"
@@ -48,6 +49,11 @@ const customerSupportItems = [
     title: "Conversations",
     url: "/conversations",
     icon: MessagesSquare,
+  },
+  {
+    title: "Leads",
+    url: "/leads",
+    icon: UserPlusIcon,
   },
   {
     title: "AI voicechats",

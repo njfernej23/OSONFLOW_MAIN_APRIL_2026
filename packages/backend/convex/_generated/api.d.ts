@@ -28,6 +28,7 @@ import type * as private_customerMemories from "../private/customerMemories.js";
 import type * as private_files from "../private/files.js";
 import type * as private_instagram from "../private/instagram.js";
 import type * as private_integrationWebhooks from "../private/integrationWebhooks.js";
+import type * as private_leads from "../private/leads.js";
 import type * as private_messages from "../private/messages.js";
 import type * as private_orgTransfer from "../private/orgTransfer.js";
 import type * as private_plugins from "../private/plugins.js";
@@ -95,6 +96,7 @@ declare const fullApi: ApiFromModules<{
   "private/files": typeof private_files;
   "private/instagram": typeof private_instagram;
   "private/integrationWebhooks": typeof private_integrationWebhooks;
+  "private/leads": typeof private_leads;
   "private/messages": typeof private_messages;
   "private/orgTransfer": typeof private_orgTransfer;
   "private/plugins": typeof private_plugins;

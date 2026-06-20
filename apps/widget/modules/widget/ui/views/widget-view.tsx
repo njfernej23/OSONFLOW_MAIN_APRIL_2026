@@ -16,6 +16,7 @@ import { WidgetContactScreen } from "../screens/widget-contact-screen"
 import { WidgetHelpScreen } from "../screens/widget-help-screen"
 import { WidgetArticleScreen } from "../screens/widget-article-screen"
 import { WidgetTopicScreen } from "../screens/widget-topic-screen"
+import { WidgetNotificationSound } from "../components/widget-notification-sound"
 import {
   getContrastingTextColor,
   mergeWidgetTheme,
@@ -89,6 +90,7 @@ export const WidgetView = ({
       }}
     >
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+        <WidgetNotificationSound />
         {screenComponents[screen]}
       </div>
     </main>

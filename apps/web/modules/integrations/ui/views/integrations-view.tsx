@@ -1699,80 +1699,19 @@ export const IntegrationsView = () => {
 
                     {instagramWebhookHostMismatch && (
                       <p className="text-xs text-amber-600 dark:text-amber-400">
-                        This callback URL points to a different Convex deployment
-                        than your app. Click Refresh webhooks, copy the new URL,
-                        and update it in Meta App Dashboard.
+                        Webhook configuration may point to a different Convex
+                        deployment than your app. Click Refresh webhooks and
+                        update Meta App Dashboard if needed.
                       </p>
                     )}
 
-                    {instagramIntegration.webhookUrl && (
-                      <div className="rounded-lg border bg-background/60 p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-muted-foreground">
-                              Meta callback URL
-                            </p>
-                            <code className="mt-1 block truncate font-mono text-xs">
-                              {instagramIntegration.webhookUrl}
-                            </code>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="shrink-0 gap-1.5"
-                            onClick={() =>
-                              copyText(
-                                instagramIntegration.webhookUrl || "",
-                                "Callback URL copied",
-                                "Failed to copy callback URL"
-                              )
-                            }
-                            type="button"
-                          >
-                            <CopyIcon className="size-3.5" />
-                            Copy
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="rounded-lg border bg-background/60 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold text-muted-foreground">
-                            Meta verify token
-                          </p>
-                          <code className="mt-1 block truncate font-mono text-xs">
-                            {instagramIntegration.verifyToken}
-                          </code>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="shrink-0 gap-1.5"
-                          onClick={() =>
-                            copyText(
-                              instagramIntegration.verifyToken,
-                              "Verify token copied",
-                              "Failed to copy verify token"
-                            )
-                          }
-                          type="button"
-                        >
-                          <CopyIcon className="size-3.5" />
-                          Copy
-                        </Button>
-                      </div>
-                    </div>
-
                     <p className="text-xs text-muted-foreground">
-                      In Meta App Dashboard, open Instagram → Webhooks, paste the
-                      callback URL and verify token above, then subscribe to{" "}
-                      <code className="font-mono">messages</code> (required for
-                      DMs). This is a one-time app-level setup. For production,
-                      switch your Meta app to Live mode and complete App Review
-                      so any Instagram professional account can connect through
-                      OAuth.
+                      In Meta App Dashboard, open Instagram → Webhooks and ensure{" "}
+                      <code className="font-mono">messages</code> is subscribed
+                      (required for DMs). This is a one-time app-level setup. For
+                      production, switch your Meta app to Live mode and complete
+                      App Review so any Instagram professional account can connect
+                      through OAuth.
                     </p>
 
                     {instagramIntegration.lastWebhookAt && (

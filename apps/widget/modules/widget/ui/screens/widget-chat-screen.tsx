@@ -42,6 +42,7 @@ import {
   AISuggestions,
 } from "@workspace/ui/components/ai/suggestion"
 import { useInfiniteScroll } from "@workspace/ui/hooks/use-infitnite-scroll"
+import { useNotifyOnNewMessages } from "@workspace/ui/hooks/use-notify-on-new-messages"
 import { InfiniteScrollTrigger } from "@workspace/ui/components/infinite-scroll-trigger"
 import { DicebearAvatar } from "@workspace/ui/components/dicebear-avatar"
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -283,6 +284,10 @@ export const WidgetChatScreen = () => {
       ),
     [uiMessages]
   )
+
+  useNotifyOnNewMessages(visibleMessages, {
+    notifyForRole: "assistant",
+  })
   const assistantMessageCount = useMemo(
     () =>
       visibleMessages.filter((message) => message.role === "assistant").length,

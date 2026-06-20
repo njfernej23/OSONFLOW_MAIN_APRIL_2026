@@ -6,6 +6,7 @@ import {
 } from "@workspace/ui/components/sidebar"
 import { cookies } from "next/headers"
 import { DashboardSidebar } from "../components/dashboard-sidebar"
+import { DashboardNotificationSound } from "../components/dashboard-notification-sound"
 import { DashboardSwipeMenu } from "../components/dashboard-swipe-menu"
 import { DashboardThemeToggle } from "../components/dashboard-theme-toggle"
 import { Provider } from "jotai"
@@ -23,6 +24,7 @@ export const DashboardLayout = async ({
       <OrganizationGuard>
         <Provider>
           <SidebarProvider defaultOpen={defaultOpen}>
+            <DashboardNotificationSound />
             <DashboardSidebar />
             <DashboardSwipeMenu />
             {/* main must be flex-col + h-svh so resizable panels inside get a real height */}
