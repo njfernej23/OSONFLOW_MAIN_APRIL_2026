@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { ClerkProvider } from "@clerk/nextjs"
 import { IBM_Plex_Mono, Lora } from "next/font/google"
 import localFont from "next/font/local"
@@ -6,6 +7,10 @@ import "./globals.css"
 import { Providers } from "@/components/theme-provider"
 import { cn } from "@workspace/ui/lib/utils"
 import { Toaster } from "@workspace/ui/components/sonner"
+
+export const metadata: Metadata = {
+  metadataBase: new URL("https://www.osonflow.uz"),
+}
 
 const fontSerif = Lora({
   subsets: ["latin"],
