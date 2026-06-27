@@ -287,6 +287,7 @@ export const WidgetChatScreen = () => {
 
   useNotifyOnNewMessages(visibleMessages, {
     notifyForRole: "assistant",
+    enabled: false,
   })
   const assistantMessageCount = useMemo(
     () =>

@@ -40,19 +40,13 @@ type WidgetLivePreviewProps = {
   voiceOnly?: boolean
 }
 
-const LAUNCHER_PREVIEW_SIZE = 52
-
 const launcherIconMap: Record<WidgetLauncherIcon, ReactNode> = {
   chat: <MessageSquareTextIcon className="size-4" />,
   sparkles: <SparklesIcon className="size-4" />,
   question: <CircleHelpIcon className="size-4" />,
 }
 
-const VoiceLauncherButtonPreview = ({
-  label,
-}: {
-  label: string
-}) => (
+const VoiceLauncherButtonPreview = ({ label }: { label: string }) => (
   <button
     className="inline-flex items-center gap-3 overflow-hidden rounded-full border border-slate-200/80 bg-white/94 py-1.5 pr-5 pl-2 text-sm font-semibold text-slate-950 shadow-[0_18px_38px_-24px_rgba(15,23,42,0.34)]"
     type="button"
@@ -249,38 +243,36 @@ const ChatWidget = ({
       </div>
 
       {/* Launcher button */}
-      <button
-        className={cn(
-          "inline-flex text-xs font-medium shadow-[0_22px_44px_-26px_rgba(15,23,42,0.48)] transition-all hover:-translate-y-0.5 active:scale-95",
-          hasLauncherImage
-            ? "items-center justify-center rounded-full p-0"
-            : "items-center gap-2 rounded-full px-3.5 py-2"
-        )}
-        style={{
-          backgroundColor: appearance.launcherColor,
-          color: launcherTextColor,
-          ...(hasLauncherImage
-            ? {
-                height: LAUNCHER_PREVIEW_SIZE,
-                width: LAUNCHER_PREVIEW_SIZE,
-              }
-            : undefined),
-        }}
-        type="button"
-      >
-        {hasLauncherImage ? (
-          <img
-            alt="Launcher"
-            className="size-full rounded-full object-cover"
-            src={launcherImageUrl}
-          />
-        ) : (
-          <>
-            {launcherIconMap[appearance.launcherIcon]}
-            <span>{appearance.launcherLabel}</span>
-          </>
-        )}
-      </button>
+      <div className="flex flex-col items-end gap-2">
+        {appearance.launcherPromptEnabled ? (
+          <div className="max-w-[210px] rounded-2xl bg-white px-3 py-2 text-right text-[11px] font-semibold text-slate-950 shadow-[0_16px_34px_-22px_rgba(15,23,42,0.45)]">
+            {appearance.launcherPromptText}
+          </div>
+        ) : null}
+        <button
+          className={cn(
+            "group inline-flex h-[52px] w-[52px] items-center gap-2 overflow-hidden rounded-full px-4 text-xs font-medium shadow-[0_22px_44px_-26px_rgba(15,23,42,0.48)] transition-all hover:w-auto hover:-translate-y-0.5 active:scale-95"
+          )}
+          style={{
+            backgroundColor: appearance.launcherColor,
+            color: launcherTextColor,
+          }}
+          type="button"
+        >
+          {hasLauncherImage ? (
+            <img
+              alt="Launcher"
+              className="size-5 shrink-0 rounded-full object-cover"
+              src={launcherImageUrl}
+            />
+          ) : (
+            launcherIconMap[appearance.launcherIcon]
+          )}
+          <span className="max-w-0 translate-x-2 overflow-hidden whitespace-nowrap opacity-0 transition-all group-hover:max-w-[180px] group-hover:translate-x-0 group-hover:opacity-100">
+            {appearance.launcherLabel}
+          </span>
+        </button>
+      </div>
     </div>
   )
 }
@@ -611,38 +603,34 @@ export const WidgetLivePreview = ({
             {voiceOnly ? (
               <VoiceLauncherButtonPreview label={voiceLauncherLabel} />
             ) : (
-              <button
-                className={cn(
-                  "inline-flex text-sm font-medium shadow-[0_22px_44px_-26px_rgba(15,23,42,0.48)] transition-all hover:-translate-y-0.5 active:scale-95",
-                  hasLauncherImage
-                    ? "items-center justify-center rounded-full p-0"
-                    : "items-center gap-2 rounded-full px-4 py-2.5"
-                )}
-                style={{
-                  backgroundColor: appearance.launcherColor,
-                  color: launcherTextColor,
-                  ...(hasLauncherImage
-                    ? {
-                        height: LAUNCHER_PREVIEW_SIZE,
-                        width: LAUNCHER_PREVIEW_SIZE,
-                      }
-                    : undefined),
-                }}
-                type="button"
-              >
-                {hasLauncherImage ? (
-                  <img
-                    alt="Launcher"
-                    className="size-full rounded-full object-cover"
-                    src={launcherImageUrl}
-                  />
-                ) : (
-                  <>
-                    {launcherIconMap[appearance.launcherIcon]}
-                    <span>{appearance.launcherLabel}</span>
-                  </>
-                )}
-              </button>
+              <div className="flex flex-col items-end gap-2">
+                {appearance.launcherPromptEnabled ? (
+                  <div className="max-w-[220px] rounded-2xl bg-white px-3 py-2 text-right text-xs font-semibold text-slate-950 shadow-[0_16px_34px_-22px_rgba(15,23,42,0.45)]">
+                    {appearance.launcherPromptText}
+                  </div>
+                ) : null}
+                <button
+                  className="group inline-flex h-[52px] w-[52px] items-center gap-2 overflow-hidden rounded-full px-4 text-sm font-medium shadow-[0_22px_44px_-26px_rgba(15,23,42,0.48)] transition-all hover:w-auto hover:-translate-y-0.5 active:scale-95"
+                  style={{
+                    backgroundColor: appearance.launcherColor,
+                    color: launcherTextColor,
+                  }}
+                  type="button"
+                >
+                  {hasLauncherImage ? (
+                    <img
+                      alt="Launcher"
+                      className="size-5 shrink-0 rounded-full object-cover"
+                      src={launcherImageUrl}
+                    />
+                  ) : (
+                    launcherIconMap[appearance.launcherIcon]
+                  )}
+                  <span className="max-w-0 translate-x-2 overflow-hidden whitespace-nowrap opacity-0 transition-all group-hover:max-w-[180px] group-hover:translate-x-0 group-hover:opacity-100">
+                    {appearance.launcherLabel}
+                  </span>
+                </button>
+              </div>
             )}
             <div className="text-xs text-muted-foreground">
               ← Click to open {voiceOnly ? "voice" : "chat"}

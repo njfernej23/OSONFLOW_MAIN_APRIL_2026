@@ -16,6 +16,9 @@ type WidgetAppearancePayload = {
   voiceLauncherLabel?: string
   launcherIcon?: WidgetLauncherIcon
   launcherIconUrl?: string
+  launcherPromptEnabled?: boolean
+  launcherPromptText?: string
+  launcherPromptDelaySeconds?: number
   animation?: WidgetAnimation
   showPoweredBy?: boolean
 }
@@ -34,6 +37,8 @@ const STANDARD_LAUNCHER_REVEAL_DURATION = 180
 const LAUNCHER_ORB_SIZE = 34
 const LAUNCHER_BUTTON_GAP = 10
 const LAUNCHER_LABEL_PADDING_X = 18
+const LAUNCHER_PROMPT_GAP = 8
+const LAUNCHER_PROMPT_MAX_WIDTH = 220
 const WIDGET_CONTAINER_WIDTH = 380
 const WIDGET_CONTAINER_STANDARD_HEIGHT = 640
 const WIDGET_CONTAINER_VOICE_HEIGHT = 470
@@ -66,6 +71,9 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
   let button: HTMLButtonElement | null = null
   let isOpen = false
   let hideTimer: number | null = null
+  let launcherPromptTimer: number | null = null
+  let launcherPrompt: HTMLDivElement | null = null
+  let launcherPromptDismissed = false
   let isLauncherReady = false
   let isLiveVoiceEnabled = false
 
@@ -77,6 +85,9 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
       | "voiceLauncherLabel"
       | "launcherIcon"
       | "launcherIconUrl"
+      | "launcherPromptEnabled"
+      | "launcherPromptText"
+      | "launcherPromptDelaySeconds"
       | "animation"
     >
   > = {
@@ -85,6 +96,9 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
     voiceLauncherLabel: LIVE_VOICE_LAUNCHER_LABEL,
     launcherIcon: "chat",
     launcherIconUrl: "",
+    launcherPromptEnabled: false,
+    launcherPromptText: "Need help? Talk with us",
+    launcherPromptDelaySeconds: 5,
     animation: "slide-up",
   }
 
@@ -205,6 +219,133 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;")
+  }
+
+  const clampLauncherPromptDelaySeconds = (value: number): number => {
+    if (Number.isNaN(value)) {
+      return 5
+    }
+
+    return Math.max(0, Math.min(120, value))
+  }
+
+  const clearLauncherPromptTimer = () => {
+    if (launcherPromptTimer !== null) {
+      window.clearTimeout(launcherPromptTimer)
+      launcherPromptTimer = null
+    }
+  }
+
+  const syncLauncherPromptPosition = () => {
+    if (!launcherPrompt) {
+      return
+    }
+
+    launcherPrompt.style.cssText = `
+      position: fixed;
+      ${
+        position === "bottom-right"
+          ? `right: ${LAUNCHER_EDGE_OFFSET}px;`
+          : `left: ${LAUNCHER_EDGE_OFFSET}px;`
+      }
+      bottom: ${LAUNCHER_EDGE_OFFSET + LAUNCHER_BUTTON_SIZE + LAUNCHER_PROMPT_GAP}px;
+      max-width: ${LAUNCHER_PROMPT_MAX_WIDTH}px;
+      padding: 8px 12px;
+      border-radius: 16px;
+      background: #ffffff;
+      color: #020617;
+      box-shadow: 0 16px 34px -22px rgba(15, 23, 42, 0.45);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.35;
+      text-align: ${position === "bottom-right" ? "right" : "left"};
+      z-index: 999999;
+      pointer-events: none;
+      opacity: 0;
+      transform: translate3d(0, 8px, 0);
+      transition: opacity 220ms cubic-bezier(0.16, 1, 0.3, 1), transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+      display: none;
+    `
+  }
+
+  const hideLauncherPrompt = () => {
+    clearLauncherPromptTimer()
+
+    if (!launcherPrompt) {
+      return
+    }
+
+    launcherPrompt.style.display = "none"
+    launcherPrompt.style.opacity = "0"
+    launcherPrompt.style.transform = "translate3d(0, 8px, 0)"
+  }
+
+  const showLauncherPrompt = () => {
+    if (!launcherPrompt) {
+      return
+    }
+
+    const promptText = launcherAppearance.launcherPromptText.trim()
+    if (!promptText) {
+      return
+    }
+
+    launcherPrompt.textContent = promptText
+    syncLauncherPromptPosition()
+    launcherPrompt.style.display = "block"
+
+    window.requestAnimationFrame(() => {
+      if (!launcherPrompt) {
+        return
+      }
+
+      launcherPrompt.style.opacity = "1"
+      launcherPrompt.style.transform = "translate3d(0, 0, 0)"
+    })
+  }
+
+  const canShowLauncherPrompt = () => {
+    const shouldShowButton = !isOpen || !isLiveVoiceEnabled
+
+    return (
+      launcherAppearance.launcherPromptEnabled &&
+      !launcherPromptDismissed &&
+      !isOpen &&
+      !isLiveVoiceEnabled &&
+      isLauncherReady &&
+      Boolean(button) &&
+      shouldShowButton
+    )
+  }
+
+  const syncLauncherPrompt = () => {
+    if (!canShowLauncherPrompt()) {
+      hideLauncherPrompt()
+      return
+    }
+
+    if (launcherPrompt && launcherPrompt.style.display === "block") {
+      launcherPrompt.textContent = launcherAppearance.launcherPromptText.trim()
+      syncLauncherPromptPosition()
+      return
+    }
+
+    if (launcherPromptTimer !== null) {
+      return
+    }
+
+    const delayMs =
+      clampLauncherPromptDelaySeconds(
+        launcherAppearance.launcherPromptDelaySeconds
+      ) * 1000
+
+    launcherPromptTimer = window.setTimeout(() => {
+      launcherPromptTimer = null
+      if (canShowLauncherPrompt()) {
+        showLauncherPrompt()
+      }
+    }, delayMs)
   }
 
   const getLauncherImageMarkup = (imageUrl: string): string => {
@@ -648,6 +789,20 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
       applyContainerAnimationState(isOpen ? "open" : "closed")
     }
 
+    if (typeof appearance.launcherPromptEnabled === "boolean") {
+      launcherAppearance.launcherPromptEnabled =
+        appearance.launcherPromptEnabled
+    }
+
+    if (typeof appearance.launcherPromptText === "string") {
+      launcherAppearance.launcherPromptText = appearance.launcherPromptText
+    }
+
+    if (typeof appearance.launcherPromptDelaySeconds === "number") {
+      launcherAppearance.launcherPromptDelaySeconds =
+        clampLauncherPromptDelaySeconds(appearance.launcherPromptDelaySeconds)
+    }
+
     applyLauncherAppearance()
     revealLauncher()
   }
@@ -659,6 +814,7 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
 
     isLauncherReady = true
     syncLauncherVisibility()
+    syncLauncherPrompt()
   }
 
   const syncLauncherVisibility = () => {
@@ -672,6 +828,7 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
     button.style.opacity = shouldShowButton ? "1" : "0"
     button.style.pointerEvents = shouldShowButton ? "auto" : "none"
     button.style.transform = "scale(1)"
+    syncLauncherPrompt()
   }
 
   // Try to get the current script
@@ -763,6 +920,12 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
     })
 
     document.body.appendChild(button)
+
+    launcherPrompt = document.createElement("div")
+    launcherPrompt.id = "echo-widget-launcher-prompt"
+    launcherPrompt.setAttribute("aria-hidden", "true")
+    syncLauncherPromptPosition()
+    document.body.appendChild(launcherPrompt)
 
     // Create container (hidden by default)
     container = document.createElement("div")
@@ -1068,6 +1231,9 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
         hideTimer = null
       }
 
+      launcherPromptDismissed = true
+      hideLauncherPrompt()
+
       container.style.display = "block"
       syncContainerTransformOrigin()
       isOpen = true
@@ -1125,6 +1291,10 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
       iframe = null
       revealSurface = null
     }
+    if (launcherPrompt) {
+      launcherPrompt.remove()
+      launcherPrompt = null
+    }
     if (button) {
       button.remove()
       button = null
@@ -1133,9 +1303,11 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
       window.clearTimeout(hideTimer)
       hideTimer = null
     }
+    clearLauncherPromptTimer()
     isOpen = false
     isLauncherReady = false
     isLiveVoiceEnabled = false
+    launcherPromptDismissed = false
   }
 
   // Function to reinitialize with new config

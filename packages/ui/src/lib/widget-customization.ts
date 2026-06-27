@@ -19,6 +19,9 @@ export type WidgetAppearanceSettings = {
   voiceLauncherLabel: string
   launcherIcon: WidgetLauncherIcon
   launcherIconUrl: string
+  launcherPromptEnabled: boolean
+  launcherPromptText: string
+  launcherPromptDelaySeconds: number
   animation: WidgetAnimation
   poweredByText: string
   showPoweredBy: boolean
@@ -44,6 +47,9 @@ export const DEFAULT_WIDGET_APPEARANCE: WidgetAppearanceSettings = {
   voiceLauncherLabel: "Talk with us",
   launcherIcon: "question",
   launcherIconUrl: "",
+  launcherPromptEnabled: true,
+  launcherPromptText: "Need help? Talk with us",
+  launcherPromptDelaySeconds: 5,
   animation: "scale",
   poweredByText: "Osonflow",
   showPoweredBy: true,
@@ -74,6 +80,14 @@ export const clampBorderRadius = (value: number): number => {
   return Math.max(0, Math.min(32, value))
 }
 
+export const clampLauncherPromptDelaySeconds = (value: number): number => {
+  if (Number.isNaN(value)) {
+    return DEFAULT_WIDGET_APPEARANCE.launcherPromptDelaySeconds
+  }
+
+  return Math.max(0, Math.min(120, value))
+}
+
 export const mergeWidgetTheme = (
   theme?: Partial<WidgetThemeSettings> | null
 ): WidgetThemeSettings => {
@@ -91,9 +105,16 @@ export const mergeWidgetTheme = (
 export const mergeWidgetAppearance = (
   appearance?: Partial<WidgetAppearanceSettings> | null
 ): WidgetAppearanceSettings => {
-  return {
+  const merged = {
     ...DEFAULT_WIDGET_APPEARANCE,
     ...(appearance ?? {}),
+  }
+
+  return {
+    ...merged,
+    launcherPromptDelaySeconds: clampLauncherPromptDelaySeconds(
+      Number(merged.launcherPromptDelaySeconds)
+    ),
   }
 }
 

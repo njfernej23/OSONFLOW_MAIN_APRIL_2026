@@ -1203,7 +1203,7 @@ export const IntegrationsView = () => {
                   <Input
                     id="widget-script-url"
                     onChange={(e) => setScriptUrl(e.target.value)}
-                    placeholder="https://widget.osonflow.uz/widget.js"
+                    placeholder="http://localhost:3001/widget.js"
                     value={scriptUrl}
                     className={cn(
                       "h-10 min-w-0 bg-sidebar-accent/70 font-mono text-xs",

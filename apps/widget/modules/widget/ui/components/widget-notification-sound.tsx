@@ -9,8 +9,11 @@ import {
   screenAtom,
 } from "@/modules/widget/atoms/widget-atoms"
 import { useNotifyOnCountIncrease } from "@workspace/ui/hooks/use-notify-on-count-increase"
+import { useNotificationSoundUnlock } from "@workspace/ui/hooks/use-notification-sound-unlock"
 
 export const WidgetNotificationSound = () => {
+  useNotificationSoundUnlock()
+
   const screen = useAtomValue(screenAtom)
   const organizationId = useAtomValue(organizationIdAtom)
   const contactSessionId = useAtomValue(
@@ -24,6 +27,7 @@ export const WidgetNotificationSound = () => {
 
   useNotifyOnCountIncrease(unreadSummary?.unreadMessageCount, {
     enabled: screen !== "chat",
+    resetKey: screen,
   })
 
   return null

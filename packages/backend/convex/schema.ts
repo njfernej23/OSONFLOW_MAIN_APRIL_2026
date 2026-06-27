@@ -143,6 +143,9 @@ const appearanceValidator = v.object({
     v.union(v.literal("chat"), v.literal("sparkles"), v.literal("question"))
   ),
   launcherIconUrl: v.optional(v.string()),
+  launcherPromptEnabled: v.optional(v.boolean()),
+  launcherPromptText: v.optional(v.string()),
+  launcherPromptDelaySeconds: v.optional(v.number()),
   animation: v.optional(
     v.union(
       v.literal("slide-up"),

@@ -99,6 +99,13 @@ export const widgetSettingsSchema = z.object({
       .max(40, "Voice launcher label must be at most 40 characters"),
     launcherIcon: z.enum(["chat", "sparkles", "question"]),
     launcherIconUrl: imageUrlField,
+    launcherPromptEnabled: z.boolean(),
+    launcherPromptText: z
+      .string()
+      .trim()
+      .min(1, "Launcher prompt text is required")
+      .max(80, "Launcher prompt text must be at most 80 characters"),
+    launcherPromptDelaySeconds: z.coerce.number().min(0).max(120),
     animation: z.enum(["slide-up", "scale", "fade", "pop"]),
     poweredByText: z
       .string()

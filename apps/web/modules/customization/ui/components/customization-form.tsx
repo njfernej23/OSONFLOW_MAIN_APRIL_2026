@@ -73,6 +73,7 @@ import {
 import { Textarea } from "@workspace/ui/components/textarea"
 import {
   clampBorderRadius,
+  clampLauncherPromptDelaySeconds,
   DEFAULT_WIDGET_APPEARANCE,
   mergeWidgetAppearance,
   mergeWidgetTheme,
@@ -1002,6 +1003,12 @@ export const CustomizationForm = ({
         values.appearance.voiceLauncherLabel.trim() ||
         DEFAULT_WIDGET_APPEARANCE.voiceLauncherLabel,
       launcherIconUrl: values.appearance.launcherIconUrl.trim(),
+      launcherPromptText:
+        values.appearance.launcherPromptText.trim() ||
+        DEFAULT_WIDGET_APPEARANCE.launcherPromptText,
+      launcherPromptDelaySeconds: clampLauncherPromptDelaySeconds(
+        Number(values.appearance.launcherPromptDelaySeconds)
+      ),
       poweredByText:
         values.appearance.poweredByText.trim() ||
         DEFAULT_WIDGET_APPEARANCE.poweredByText,

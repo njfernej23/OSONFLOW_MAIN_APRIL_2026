@@ -21,6 +21,9 @@ const DEFAULT_APPEARANCE = {
   voiceLauncherLabel: "Talk with us",
   launcherIcon: "question" as const,
   launcherIconUrl: "",
+  launcherPromptEnabled: true,
+  launcherPromptText: "Need help? Talk with us",
+  launcherPromptDelaySeconds: 5,
   animation: "scale" as const,
   poweredByText: "Osonflow",
   showPoweredBy: true,
@@ -123,6 +126,9 @@ const appearanceValidator = v.object({
     v.union(v.literal("chat"), v.literal("sparkles"), v.literal("question"))
   ),
   launcherIconUrl: v.optional(v.string()),
+  launcherPromptEnabled: v.optional(v.boolean()),
+  launcherPromptText: v.optional(v.string()),
+  launcherPromptDelaySeconds: v.optional(v.number()),
   animation: v.optional(
     v.union(
       v.literal("slide-up"),
@@ -170,6 +176,9 @@ type WidgetAppearance = {
   voiceLauncherLabel?: string
   launcherIcon?: "chat" | "sparkles" | "question"
   launcherIconUrl?: string
+  launcherPromptEnabled?: boolean
+  launcherPromptText?: string
+  launcherPromptDelaySeconds?: number
   animation?: "slide-up" | "scale" | "fade" | "pop"
   poweredByText?: string
   showPoweredBy?: boolean
@@ -418,6 +427,18 @@ const mergeAppearance = (
     incoming?.launcherIconUrl ??
     base?.launcherIconUrl ??
     DEFAULT_APPEARANCE.launcherIconUrl,
+  launcherPromptEnabled:
+    incoming?.launcherPromptEnabled ??
+    base?.launcherPromptEnabled ??
+    DEFAULT_APPEARANCE.launcherPromptEnabled,
+  launcherPromptText:
+    incoming?.launcherPromptText ??
+    base?.launcherPromptText ??
+    DEFAULT_APPEARANCE.launcherPromptText,
+  launcherPromptDelaySeconds:
+    incoming?.launcherPromptDelaySeconds ??
+    base?.launcherPromptDelaySeconds ??
+    DEFAULT_APPEARANCE.launcherPromptDelaySeconds,
   animation:
     incoming?.animation ?? base?.animation ?? DEFAULT_APPEARANCE.animation,
   poweredByText:

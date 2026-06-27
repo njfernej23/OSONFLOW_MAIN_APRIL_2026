@@ -114,9 +114,7 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
       toast.success("Launcher image uploaded")
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to upload this image"
+        error instanceof Error ? error.message : "Unable to upload this image"
       toast.error(message)
     }
   }
@@ -162,7 +160,9 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
         name="appearance.launcherIconUrl"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-xs font-medium">Launcher Image</FormLabel>
+            <FormLabel className="text-xs font-medium">
+              Launcher Image
+            </FormLabel>
             <FormControl>
               <div className="space-y-2.5">
                 <div className="flex flex-wrap items-center gap-2">
@@ -225,6 +225,76 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
           </FormItem>
         )}
       />
+
+      <div className="rounded-xl border bg-muted/10 p-4">
+        <FormField
+          control={form.control}
+          name="appearance.launcherPromptEnabled"
+          render={({ field }) => (
+            <FormItem className="flex items-center justify-between gap-4">
+              <div className="space-y-1">
+                <FormLabel className="text-xs font-medium">
+                  Delayed Launcher Prompt
+                </FormLabel>
+                <FormDescription className="text-xs">
+                  Show a short message above the launcher after a delay
+                </FormDescription>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_160px]">
+          <FormField
+            control={form.control}
+            name="appearance.launcherPromptText"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-xs font-medium">
+                  Prompt Text
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    className="bg-muted/20"
+                    placeholder="Need help? Talk with us"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="appearance.launcherPromptDelaySeconds"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-xs font-medium">
+                  Delay Seconds
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    className="bg-muted/20"
+                    max={120}
+                    min={0}
+                    step={1}
+                    type="number"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      </div>
 
       {/* Launcher icon visual picker */}
       <FormField
@@ -306,7 +376,9 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
         name="appearance.poweredByText"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-xs font-medium">Powered By Text</FormLabel>
+            <FormLabel className="text-xs font-medium">
+              Powered By Text
+            </FormLabel>
             <FormControl>
               <Input
                 {...field}
