@@ -1604,3 +1604,103 @@ button[data-sidebar="rail"] {
     transform: translateY(0);
   }
 }
+
+/* Auth — custom Clerk sign-in / sign-up */
+.auth-page {
+  color-scheme: light;
+}
+
+.auth-brand-panel {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 203, 15, 0.22), transparent 34%),
+    radial-gradient(circle at 82% 78%, rgba(223, 55, 167, 0.18), transparent 38%),
+    linear-gradient(155deg, #240029 0%, #3a1244 42%, #1a1024 100%);
+}
+
+.auth-brand-pattern {
+  background:
+    linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(#000, rgba(0, 0, 0, 0.72) 58%, transparent 96%);
+}
+
+.auth-brand-accent {
+  background: linear-gradient(120deg, #ffcc11 0%, #ffb8d8 48%, #ffffff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.auth-brand-card {
+  animation: auth-card-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.auth-brand-card:nth-child(2) {
+  animation-delay: 0.08s;
+}
+
+.auth-brand-card:nth-child(3) {
+  animation-delay: 0.16s;
+}
+
+.auth-form-glow {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(223, 55, 167, 0.08), transparent 42%),
+    radial-gradient(circle at 100% 100%, rgba(99, 91, 255, 0.06), transparent 36%);
+}
+
+.auth-form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+.auth-form-card {
+  animation: auth-card-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.auth-input {
+  border-color: color-mix(in srgb, var(--border) 88%, #240029 12%);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.auth-input:focus-visible {
+  border-color: color-mix(in srgb, #635bff 55%, var(--border) 45%);
+  box-shadow: 0 0 0 4px rgba(99, 91, 255, 0.12);
+}
+
+.auth-primary-btn {
+  background: linear-gradient(135deg, #240029 0%, #3d1548 52%, #635bff 100%);
+  color: #fff;
+  border: 0;
+  box-shadow: 0 18px 40px -22px rgba(36, 0, 41, 0.75);
+}
+
+.auth-primary-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2f0a36 0%, #4a1a57 52%, #574fff 100%);
+}
+
+.auth-social-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, #635bff 28%, var(--border) 72%);
+  background: rgba(255, 255, 255, 1);
+}
+
+@keyframes auth-card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-brand-card,
+  .auth-form-card {
+    animation: none;
+  }
+}

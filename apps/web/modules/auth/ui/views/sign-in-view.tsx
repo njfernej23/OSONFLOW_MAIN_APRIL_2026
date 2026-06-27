@@ -1,7 +1,7 @@
-import {SignIn} from "@clerk/nextjs"
-export const SignInView = () => {
-    return (
-        <SignIn/>
-    );
-}
+"use client"
 
+import { CustomSignInForm } from "../components/custom-sign-in-form"
+
+export const SignInView = () => {
+  return <CustomSignInForm />
+}
