@@ -1,7 +1,6 @@
 "use client"
 
-import { useUser } from "@clerk/nextjs"
-import { useEffect } from "react"
+import { useLayoutEffect, useEffect } from "react"
 
 import { JapandiLandingNav } from "./japandi-landing-nav"
 import { landingPageBodyMarkup } from "./landing-page-markup"
@@ -15,11 +14,34 @@ declare global {
 
 const LANDING_SCRIPT_ID = "osonflow-landing-main"
 const LANDING_STYLES_ID = "osonflow-landing-styles"
+const LANDING_STYLES_HREF = "/landing/japandi-landing.css"
+
+function ensureLandingStyles() {
+  const existing = document.getElementById(LANDING_STYLES_ID)
+
+  if (existing instanceof HTMLLinkElement) {
+    return existing
+  }
+
+  document
+    .querySelectorAll('link[rel="stylesheet"][href*="japandi-landing"]')
+    .forEach((node) => {
+      if (node.id !== LANDING_STYLES_ID) {
+        node.remove()
+      }
+    })
+
+  const link = document.createElement("link")
+  link.id = LANDING_STYLES_ID
+  link.rel = "stylesheet"
+  link.href = LANDING_STYLES_HREF
+  document.head.appendChild(link)
+  return link
+}
 
 function removeLandingStyles() {
   document.getElementById(LANDING_STYLES_ID)?.remove()
 
-  // Drop any previously bundled landing stylesheet so it cannot leak into the dashboard.
   document
     .querySelectorAll('link[rel="stylesheet"][href*="japandi-landing"]')
     .forEach((node) => {
@@ -27,17 +49,37 @@ function removeLandingStyles() {
     })
 }
 
-export const HomeLandingPage = () => {
-  const { isLoaded, isSignedIn } = useUser()
+function initLandingScript() {
+  const initLanding = () => {
+    window.__initOsonflowLanding?.()
+  }
 
-  useEffect(() => {
-    document
-      .querySelectorAll('link[rel="stylesheet"][href*="japandi-landing"]')
-      .forEach((node) => {
-        if (node.id !== LANDING_STYLES_ID) {
-          node.remove()
-        }
-      })
+  const existingScript = document.getElementById(LANDING_SCRIPT_ID)
+
+  if (existingScript) {
+    initLanding()
+    return
+  }
+
+  const script = document.createElement("script")
+  script.id = LANDING_SCRIPT_ID
+  script.src = "/landing/main.js"
+  script.async = true
+  script.onload = initLanding
+  document.body.appendChild(script)
+}
+
+function revealLandingContent() {
+  document.querySelectorAll(".japandi-landing [data-reveal]").forEach((element) => {
+    element.classList.add("is-in")
+  })
+}
+
+export const HomeLandingPage = () => {
+  // Inject styles before paint so client-side navigations (e.g. sign-out → /)
+  // never render an unstyled landing page.
+  useLayoutEffect(() => {
+    ensureLandingStyles()
 
     return () => {
       removeLandingStyles()
@@ -45,34 +87,14 @@ export const HomeLandingPage = () => {
   }, [])
 
   useEffect(() => {
-    if (!isLoaded) return
-
-    document.querySelectorAll(".japandi-landing [data-reveal]").forEach((element) => {
-      element.classList.add("is-in")
-    })
-
-    const initLanding = () => {
-      window.__initOsonflowLanding?.()
-    }
-
-    const existingScript = document.getElementById(LANDING_SCRIPT_ID)
-
-    if (existingScript) {
-      initLanding()
-    } else {
-      const script = document.createElement("script")
-      script.id = LANDING_SCRIPT_ID
-      script.src = "/landing/main.js"
-      script.async = true
-      script.onload = initLanding
-      document.body.appendChild(script)
-    }
+    revealLandingContent()
+    initLandingScript()
 
     return () => {
       window.__destroyOsonflowLanding?.()
       document.body.style.overflow = ""
     }
-  }, [isLoaded, isSignedIn])
+  }, [])
 
   return (
     <div className="japandi-landing">

@@ -1,30 +1,35 @@
-"use client";
+"use client"
 
-import {Authenticated, Unauthenticated, AuthLoading} from "convex/react";
-import {AuthLayout} from "../layouts/auth-layout";
-import {SignInView} from "../views/sign-in-view";
+import { useAuth } from "@clerk/nextjs"
+import { Spinner } from "@workspace/ui/components/spinner"
+import { usePathname, useRouter } from "next/navigation"
+import { useEffect } from "react"
 
+function AuthGuardLoading() {
+  return (
+    <div className="flex min-h-svh items-center justify-center bg-background">
+      <Spinner className="size-6 text-muted-foreground" />
+    </div>
+  )
+}
 
-export const AuthGuard = ({children}: {children: React.ReactNode}) => {
-    return (
-        <>
-            <AuthLoading>
-                <AuthLayout>
-                    <p>Loading...</p>
-                </AuthLayout>
-            </AuthLoading>
+export const AuthGuard = ({ children }: { children: React.ReactNode }) => {
+  const { isLoaded, isSignedIn } = useAuth()
+  const router = useRouter()
+  const pathname = usePathname()
 
-            <Authenticated>
-               {children}
-            </Authenticated>
+  useEffect(() => {
+    if (!isLoaded || isSignedIn) {
+      return
+    }
 
-            <Unauthenticated>
-                <AuthLayout>
-                    <SignInView />
-                </AuthLayout>
-            </Unauthenticated>
-        
-        
-        </>
-    );
-};
+    const params = new URLSearchParams({ redirect_url: pathname })
+    router.replace(`/sign-in?${params.toString()}`)
+  }, [isLoaded, isSignedIn, pathname, router])
+
+  if (!isLoaded || !isSignedIn) {
+    return <AuthGuardLoading />
+  }
+
+  return <>{children}</>
+}

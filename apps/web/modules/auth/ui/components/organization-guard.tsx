@@ -1,30 +1,33 @@
-"use client";
+"use client"
 
-import { useOrganization } from "@clerk/nextjs";
-import {AuthLayout} from "@/modules/auth/ui/layouts/auth-layout";
-import { OrgSelectView } from "@/modules/auth/ui/views/org-select-view";
+import { useOrganization } from "@clerk/nextjs"
+import { Spinner } from "@workspace/ui/components/spinner"
 
-export const OrganizationGuard = ({children}: {children: React.ReactNode}) => {
-    const { organization, isLoaded } = useOrganization();
+import { AuthLayout } from "../layouts/auth-layout"
+import { OrgSelectView } from "../views/org-select-view"
 
-    // Wait for Clerk to load before rendering anything
-    if (!isLoaded) {
-        return null;
-    }
+function OrganizationGuardLoading() {
+  return (
+    <div className="flex min-h-svh items-center justify-center bg-background">
+      <Spinner className="size-6 text-muted-foreground" />
+    </div>
+  )
+}
 
-    if (!organization) {
-        return (
-            <AuthLayout>
-               <OrgSelectView />
-            </AuthLayout>
-        );
-    }
+export const OrganizationGuard = ({ children }: { children: React.ReactNode }) => {
+  const { organization, isLoaded } = useOrganization()
 
-    return(
-        <>
-            {children}
-        </>
+  if (!isLoaded) {
+    return <OrganizationGuardLoading />
+  }
+
+  if (!organization) {
+    return (
+      <AuthLayout>
+        <OrgSelectView />
+      </AuthLayout>
     )
+  }
 
-
+  return <>{children}</>
 }
