@@ -2,6 +2,7 @@ import { ConvexError } from "convex/values"
 
 export const GOOGLE_SHEETS_OAUTH_SCOPES = [
   "https://www.googleapis.com/auth/spreadsheets",
+  "https://www.googleapis.com/auth/drive.readonly",
   "https://www.googleapis.com/auth/userinfo.email",
 ] as const
 

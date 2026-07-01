@@ -74,6 +74,10 @@ export const AssistantToolsView = () => {
   const tools = useQuery(api.private.assistantTools.list)
   const googleSheetsStatus = useQuery(api.private.googleSheets.getConnectionStatus)
   const getGoogleOAuthUrl = useAction(api.private.googleSheets.getOAuthAuthorizationUrl)
+  const listSpreadsheets = useAction(api.private.googleSheetsActions.listSpreadsheets)
+  const listSpreadsheetTabs = useAction(
+    api.private.googleSheetsActions.listSpreadsheetTabsForPicker
+  )
   const disconnectGoogleSheets = useMutation(api.private.googleSheets.disconnect)
   const upsertGoogleSheetsApiKey = useMutation(api.private.googleSheets.upsertApiKey)
   const bootstrapBuiltinTools = useMutation(
@@ -94,6 +98,13 @@ export const AssistantToolsView = () => {
   const [isDisconnectingGoogle, setIsDisconnectingGoogle] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isSavingGoogleKey, setIsSavingGoogleKey] = useState(false)
+  const [spreadsheetOptions, setSpreadsheetOptions] = useState<
+    Array<{ id: string; name: string }>
+  >([])
+  const [sheetTabOptions, setSheetTabOptions] = useState<string[]>([])
+  const [isLoadingSpreadsheets, setIsLoadingSpreadsheets] = useState(false)
+  const [isLoadingSheetTabs, setIsLoadingSheetTabs] = useState(false)
+  const [useManualSpreadsheetId, setUseManualSpreadsheetId] = useState(false)
   const hasBootstrappedRef = useRef(false)
 
   useEffect(() => {
@@ -129,6 +140,104 @@ export const AssistantToolsView = () => {
     () => (tools ?? []).filter((tool) => !tool.isBuiltin),
     [tools]
   )
+
+  const isGoogleSheetsEditor =
+    selectedTool?.type === "google_sheets" || newToolType === "google_sheets"
+
+  useEffect(() => {
+    if (!isGoogleSheetsEditor || googleSheetsStatus?.authMethod !== "oauth") {
+      setSpreadsheetOptions([])
+      return
+    }
+
+    let cancelled = false
+    setIsLoadingSpreadsheets(true)
+
+    void listSpreadsheets({})
+      .then((options) => {
+        if (!cancelled) {
+          setSpreadsheetOptions(options)
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          toast.error(
+            error instanceof Error ? error.message : "Unable to load spreadsheets"
+          )
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingSpreadsheets(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [googleSheetsStatus?.authMethod, isGoogleSheetsEditor, listSpreadsheets])
+
+  useEffect(() => {
+    const spreadsheetId = editor.config.spreadsheetId?.trim()
+
+    if (
+      !isGoogleSheetsEditor ||
+      googleSheetsStatus?.authMethod !== "oauth" ||
+      !spreadsheetId
+    ) {
+      setSheetTabOptions([])
+      return
+    }
+
+    let cancelled = false
+    setIsLoadingSheetTabs(true)
+
+    void listSpreadsheetTabs({ spreadsheetId })
+      .then((tabs) => {
+        if (!cancelled) {
+          setSheetTabOptions(tabs)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSheetTabOptions([])
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingSheetTabs(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    editor.config.spreadsheetId,
+    googleSheetsStatus?.authMethod,
+    isGoogleSheetsEditor,
+    listSpreadsheetTabs,
+  ])
+
+  useEffect(() => {
+    if (sheetTabOptions.length === 0) {
+      return
+    }
+
+    setEditor((current) => {
+      if (current.config.range?.trim()) {
+        return current
+      }
+
+      return {
+        ...current,
+        config: {
+          ...current.config,
+          range: sheetTabOptions[0],
+        },
+      }
+    })
+  }, [sheetTabOptions])
 
   const selectTool = (tool: AssistantTool) => {
     setSelectedToolId(tool._id)
@@ -705,6 +814,7 @@ export const AssistantToolsView = () => {
                       <p className="text-sm font-medium">Google account</p>
                       <p className="text-xs text-muted-foreground">
                         Connect the Google account that owns or can access your spreadsheet.
+                        After connecting, your spreadsheets and tabs load automatically.
                       </p>
                     </div>
                     <Badge
@@ -723,6 +833,12 @@ export const AssistantToolsView = () => {
                       Google sign-in is not configured on the server yet. Ask your admin to
                       set the Google OAuth environment variables in Convex, or use an API key
                       below.
+                    </p>
+                  ) : googleSheetsStatus?.authMethod !== "oauth" ? (
+                    <p className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-700 dark:text-sky-300">
+                      Connect Google to browse your spreadsheets and sheet tabs here. If you
+                      connected before, disconnect and reconnect once so Drive access is
+                      granted.
                     </p>
                   ) : null}
 
@@ -796,33 +912,136 @@ export const AssistantToolsView = () => {
 
                   <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
                     <div className="space-y-2">
-                      <Label>Spreadsheet ID</Label>
-                      <Input
-                        value={editor.config.spreadsheetId ?? ""}
-                        onChange={(event) =>
-                          setEditor((current) => ({
-                            ...current,
-                            config: {
-                              ...current.config,
-                              spreadsheetId: event.target.value,
-                            },
-                          }))
-                        }
-                        placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-                      />
+                      <Label>Spreadsheet</Label>
+                      {googleSheetsStatus?.authMethod === "oauth" &&
+                      !useManualSpreadsheetId ? (
+                        <>
+                          <Select
+                            value={editor.config.spreadsheetId || undefined}
+                            onValueChange={(value) =>
+                              setEditor((current) => ({
+                                ...current,
+                                config: {
+                                  ...current.config,
+                                  spreadsheetId: value,
+                                },
+                              }))
+                            }
+                            disabled={isLoadingSpreadsheets}
+                          >
+                            <SelectTrigger>
+                              <SelectValue
+                                placeholder={
+                                  isLoadingSpreadsheets
+                                    ? "Loading your spreadsheets..."
+                                    : "Choose a spreadsheet"
+                                }
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {spreadsheetOptions.map((option) => (
+                                <SelectItem key={option.id} value={option.id}>
+                                  {option.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {spreadsheetOptions.length === 0 && !isLoadingSpreadsheets ? (
+                            <p className="text-xs text-muted-foreground">
+                              No spreadsheets found in this Google account.
+                            </p>
+                          ) : null}
+                          {editor.config.spreadsheetId ? (
+                            <p className="text-xs text-muted-foreground">
+                              ID: {editor.config.spreadsheetId}
+                            </p>
+                          ) : null}
+                          <Button
+                            type="button"
+                            variant="link"
+                            size="sm"
+                            className="h-auto px-0"
+                            onClick={() => setUseManualSpreadsheetId(true)}
+                          >
+                            Enter spreadsheet ID manually
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Input
+                            value={editor.config.spreadsheetId ?? ""}
+                            onChange={(event) =>
+                              setEditor((current) => ({
+                                ...current,
+                                config: {
+                                  ...current.config,
+                                  spreadsheetId: event.target.value,
+                                },
+                              }))
+                            }
+                            placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                          />
+                          {googleSheetsStatus?.authMethod === "oauth" ? (
+                            <Button
+                              type="button"
+                              variant="link"
+                              size="sm"
+                              className="h-auto px-0"
+                              onClick={() => setUseManualSpreadsheetId(false)}
+                            >
+                              Choose from my Google Drive
+                            </Button>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              Connect Google account to browse your spreadsheets.
+                            </p>
+                          )}
+                        </>
+                      )}
                     </div>
                     <div className="space-y-2">
-                      <Label>Range</Label>
-                      <Input
-                        value={editor.config.range ?? ""}
-                        onChange={(event) =>
-                          setEditor((current) => ({
-                            ...current,
-                            config: { ...current.config, range: event.target.value },
-                          }))
-                        }
-                        placeholder="Accounts"
-                      />
+                      <Label>Sheet tab</Label>
+                      {sheetTabOptions.length > 0 ? (
+                        <Select
+                          value={editor.config.range || undefined}
+                          onValueChange={(value) =>
+                            setEditor((current) => ({
+                              ...current,
+                              config: { ...current.config, range: value },
+                            }))
+                          }
+                          disabled={isLoadingSheetTabs}
+                        >
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder={
+                                isLoadingSheetTabs ? "Loading tabs..." : "Choose a tab"
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {sheetTabOptions.map((tab) => (
+                              <SelectItem key={tab} value={tab}>
+                                {tab}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          value={editor.config.range ?? ""}
+                          onChange={(event) =>
+                            setEditor((current) => ({
+                              ...current,
+                              config: { ...current.config, range: event.target.value },
+                            }))
+                          }
+                          placeholder="Sheet1"
+                        />
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        The tab name inside the spreadsheet (must include a header row).
+                      </p>
                     </div>
                   </div>
                   {(editor.config.operation ?? "lookup") === "lookup" ||
