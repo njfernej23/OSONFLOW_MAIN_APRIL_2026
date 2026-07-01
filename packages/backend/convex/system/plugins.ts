@@ -4,7 +4,12 @@ import { v } from "convex/values"
 
 export const upsert = internalMutation({
     args: {
-        service: v.union(v.literal("vapi"), v.literal("openai_realtime"), v.literal("gemini_live")),
+        service: v.union(
+            v.literal("vapi"),
+            v.literal("openai_realtime"),
+            v.literal("gemini_live"),
+            v.literal("google_sheets")
+        ),
         secretName: v.string(),
         secretValue: v.optional(v.string()),
         organizationId: v.string(),
@@ -37,7 +42,12 @@ export const upsert = internalMutation({
 export const getByOrganizationIdAndService = internalQuery({
     args: {
         organizationId: v.string(),
-        service: v.union(v.literal("vapi"), v.literal("openai_realtime"), v.literal("gemini_live")),
+        service: v.union(
+            v.literal("vapi"),
+            v.literal("openai_realtime"),
+            v.literal("gemini_live"),
+            v.literal("google_sheets")
+        ),
     },
     handler: async (ctx, args) => {
         return await ctx.db

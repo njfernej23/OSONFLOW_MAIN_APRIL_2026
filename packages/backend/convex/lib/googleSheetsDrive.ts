@@ -25,12 +25,6 @@ type SpreadsheetMetadataResponse = {
   }
 }
 
-type TokenInfoResponse = {
-  scope?: string
-  error?: string
-  error_description?: string
-}
-
 export type GoogleSpreadsheetOption = {
   id: string
   name: string
@@ -55,28 +49,6 @@ const driveRequest = async <T>(accessToken: string, url: string): Promise<T> => 
   }
 
   return payload
-}
-
-export const assertGoogleDriveScope = async (accessToken: string) => {
-  const response = await fetch(
-    `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${encodeURIComponent(accessToken)}`
-  )
-
-  const payload = (await response.json().catch(() => null)) as TokenInfoResponse | null
-
-  if (!response.ok || !payload?.scope) {
-    throw new Error(
-      "Unable to verify Google permissions. Disconnect and reconnect your Google account."
-    )
-  }
-
-  const scopes = payload.scope.split(" ")
-
-  if (!scopes.some((scope) => scope.includes("drive"))) {
-    throw new Error(
-      "Google Drive access was not granted. Disconnect your account here, then reconnect and approve Drive access when Google asks."
-    )
-  }
 }
 
 const listDriveFiles = async (
@@ -127,10 +99,9 @@ const listDriveFiles = async (
 export const listGoogleSpreadsheets = async (
   accessToken: string
 ): Promise<GoogleSpreadsheetOption[]> => {
-  await assertGoogleDriveScope(accessToken)
-
   const seen = new Set<string>()
   const spreadsheets: GoogleSpreadsheetOption[] = []
+  let lastError: Error | null = null
 
   const addFiles = (files: DriveFile[]) => {
     for (const file of files) {
@@ -148,30 +119,27 @@ export const listGoogleSpreadsheets = async (
 
   const baseQuery = `mimeType='${SPREADSHEET_MIME}' and trashed=false`
 
-  const queries = [
-    baseQuery,
-    `${baseQuery} and sharedWithMe=true`,
-    `${baseQuery} and 'me' in owners`,
-  ]
-
-  for (const query of queries) {
-    try {
-      const files = await listDriveFiles(accessToken, { query })
-      addFiles(files)
-    } catch {
-      // Try the next query shape if one variant fails for this account.
-    }
+  try {
+    const files = await listDriveFiles(accessToken, { query: baseQuery })
+    addFiles(files)
+  } catch (error) {
+    lastError = error instanceof Error ? error : new Error("Google Drive request failed.")
   }
 
-  try {
-    const sharedDriveFiles = await listDriveFiles(accessToken, {
-      query: baseQuery,
-      corpora: "allDrives",
-      includeAllDrives: true,
-    })
-    addFiles(sharedDriveFiles)
-  } catch {
-    // Shared drives are optional for most accounts.
+  if (spreadsheets.length === 0 && lastError) {
+    if (lastError.message.toLowerCase().includes("insufficient")) {
+      throw new Error(
+        "Google Drive access was not granted. Disconnect your account, remove Osonflow from Google account permissions, then reconnect and approve Drive access."
+      )
+    }
+
+    if (lastError.message.toLowerCase().includes("has not been used")) {
+      throw new Error(
+        "Enable the Google Drive API in Google Cloud Console for your OAuth project, then try again."
+      )
+    }
+
+    throw lastError
   }
 
   return spreadsheets.sort((left, right) => left.name.localeCompare(right.name))
