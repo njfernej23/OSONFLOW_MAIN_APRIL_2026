@@ -13,6 +13,7 @@ import {
   MessagesSquare,
   PaletteIcon,
   UserPlusIcon,
+  WrenchIcon,
 } from "lucide-react"
 
 import Image from "next/image"
@@ -81,6 +82,11 @@ const configurationItems = [
     title: "Widget customization",
     url: "/customization",
     icon: PaletteIcon,
+  },
+  {
+    title: "Assistant tools",
+    url: "/assistant-tools",
+    icon: WrenchIcon,
   },
   {
     title: "Integrations",

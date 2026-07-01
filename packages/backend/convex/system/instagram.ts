@@ -18,6 +18,10 @@ import { SUPPORT_AGENT_PROMPT } from "./ai/constants"
 import { escalateConversation } from "./ai/tools/escalateConversation"
 import { resolveConversation } from "./ai/tools/resolveConversation"
 import { search } from "./ai/tools/search"
+import {
+  buildToolAwareSystemPrompt,
+  getEnabledChatTools,
+} from "./assistantTools/getChatTools"
 
 type InstagramIntegration = {
   _id: any
@@ -1164,18 +1168,37 @@ const handleIncomingMessage = async ({
       ctx,
       threadId
     )
+    const configuredTools = await ctx.runQuery(
+      internal.system.assistantTools.listEnabledForOrganization,
+      {
+        organizationId: integration.organizationId,
+        channel: "chat",
+      }
+    )
+    const dynamicTools = await getEnabledChatTools(
+      ctx,
+      integration.organizationId
+    )
+    const chatTools =
+      Object.keys(dynamicTools).length > 0
+        ? dynamicTools
+        : {
+            escalateConversationTool: escalateConversation,
+            resolveConversationTool: resolveConversation,
+            searchTool: search,
+          }
+    const toolAwareSystemPrompt = buildToolAwareSystemPrompt(
+      systemPrompt,
+      configuredTools
+    )
     const result = await supportAgent.generateText(
       ctx,
       { threadId },
       {
         model: getOpenAIChatModelFromSecretValue(openAIPlugin?.secretValue),
-        system: systemPrompt,
+        system: toolAwareSystemPrompt,
         prompt: text,
-        tools: {
-          escalateConversationTool: escalateConversation,
-          resolveConversationTool: resolveConversation,
-          searchTool: search,
-        },
+        tools: chatTools,
       },
       {
         contextOptions: {

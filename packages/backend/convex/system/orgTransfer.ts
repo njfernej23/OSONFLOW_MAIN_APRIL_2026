@@ -28,7 +28,8 @@ const webhookProviderConfigValidator = v.object({
 const pluginServiceValidator = v.union(
   v.literal("vapi"),
   v.literal("openai_realtime"),
-  v.literal("gemini_live")
+  v.literal("gemini_live"),
+  v.literal("google_sheets")
 )
 
 // Workflows disabled — not developing this feature for now

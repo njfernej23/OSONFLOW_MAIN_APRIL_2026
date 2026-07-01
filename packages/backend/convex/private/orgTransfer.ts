@@ -55,7 +55,7 @@ type OrgBundle = {
   //   isActive?: boolean
   // }>
   plugins?: Array<{
-    service: "vapi" | "openai_realtime" | "gemini_live"
+    service: "vapi" | "openai_realtime" | "gemini_live" | "google_sheets"
     secretName: string
     value: unknown
   }>

@@ -64,7 +64,7 @@ export const useOpenAIRealtime = () => {
   const contactSessionId = useAtomValue(
     contactSessionIdAtomFamily(organizationId || "")
   )
-  const searchKnowledgeBase = useAction(api.public.voiceKnowledgeBase.search)
+  const executeAssistantTool = useAction(api.public.assistantTools.execute)
   const { finishConversation, persistedTranscript, persistTranscriptMessage } =
     usePersistedVoiceConversation("openai_realtime")
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
@@ -168,21 +168,22 @@ export const useOpenAIRealtime = () => {
 
     if (!callId || !name) return
 
-    if (!organizationId || name !== "search_knowledge_base") return
+    if (!organizationId || !name) return
 
-    let query =
-      "Search the knowledge base for information related to the user's latest question."
+    let parsedArgs: Record<string, unknown> = {}
     try {
-      const parsedArgs = JSON.parse(rawArguments) as { query?: unknown }
-      if (typeof parsedArgs.query === "string" && parsedArgs.query.trim()) {
-        query = parsedArgs.query
-      }
+      parsedArgs = JSON.parse(rawArguments) as Record<string, unknown>
     } catch {
-      // Keep the fallback query if the model emitted malformed JSON.
+      parsedArgs = {}
     }
 
     try {
-      const result = await searchKnowledgeBase({ organizationId, query })
+      const result = await executeAssistantTool({
+        organizationId,
+        toolName: name,
+        args: parsedArgs,
+        channel: "voice",
+      })
       sendClientEvent({
         type: "conversation.item.create",
         item: {
@@ -198,7 +199,7 @@ export const useOpenAIRealtime = () => {
           type: "function_call_output",
           call_id: callId,
           output:
-            "The knowledge base search failed. Tell the user you could not search the knowledge base right now.",
+            "The tool call failed. Tell the user you could not complete that action right now.",
         },
       })
     }

@@ -7,6 +7,10 @@ import { escalateConversation } from "../system/ai/tools/escalateConversation"
 import { resolveConversation } from "../system/ai/tools/resolveConversation"
 import { saveMessage } from "@convex-dev/agent"
 import { search } from "../system/ai/tools/search"
+import {
+  buildToolAwareSystemPrompt,
+  getEnabledChatTools,
+} from "../system/assistantTools/getChatTools"
 import { SUPPORT_AGENT_PROMPT } from "../system/ai/constants"
 import {
   OPENAI_CHAT_MODEL,
@@ -455,6 +459,34 @@ export const create = action({
           ctx,
           args.threadId
         )
+
+        const configuredTools = await ctx.runQuery(
+          internal.system.assistantTools.listEnabledForOrganization,
+          {
+            organizationId: conversation.organizationId,
+            channel: "chat",
+          }
+        )
+
+        const dynamicTools = await getEnabledChatTools(
+          ctx,
+          conversation.organizationId
+        )
+
+        const chatTools =
+          Object.keys(dynamicTools).length > 0
+            ? dynamicTools
+            : {
+                escalateConversationTool: escalateConversation,
+                resolveConversationTool: resolveConversation,
+                searchTool: search,
+              }
+
+        const toolAwareSystemPrompt = buildToolAwareSystemPrompt(
+          systemPrompt,
+          configuredTools
+        )
+
         const result = await supportAgent.generateText(
           ctx,
           { threadId: args.threadId },
@@ -463,13 +495,9 @@ export const create = action({
               openAISecretValue,
               chatModel
             ),
-            system: systemPrompt,
+            system: toolAwareSystemPrompt,
             prompt: args.prompt,
-            tools: {
-              escalateConversationTool: escalateConversation,
-              resolveConversationTool: resolveConversation,
-              searchTool: search,
-            },
+            tools: chatTools,
           },
           {
             contextOptions: {

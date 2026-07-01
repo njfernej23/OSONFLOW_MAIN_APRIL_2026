@@ -108,7 +108,7 @@ export const useGeminiLive = () => {
   const contactSessionId = useAtomValue(
     contactSessionIdAtomFamily(organizationId || "")
   )
-  const searchKnowledgeBase = useAction(api.public.voiceKnowledgeBase.search)
+  const executeAssistantTool = useAction(api.public.assistantTools.execute)
   const { finishConversation, persistedTranscript, persistTranscriptMessage } =
     usePersistedVoiceConversation("gemini_live")
   const sessionRef = useRef<Session | null>(null)
@@ -345,14 +345,6 @@ export const useGeminiLive = () => {
 
     const functionResponses = await Promise.all(
       functionCalls.map(async (functionCall) => {
-        if (functionCall.name !== "search_knowledge_base") {
-          return {
-            id: functionCall.id,
-            name: functionCall.name,
-            response: { error: `Unknown function: ${functionCall.name}` },
-          }
-        }
-
         if (!organizationId) {
           return {
             id: functionCall.id,
@@ -361,13 +353,18 @@ export const useGeminiLive = () => {
           }
         }
 
-        const query =
-          typeof functionCall.args?.query === "string"
-            ? functionCall.args.query
-            : "Search the knowledge base for information related to the user's latest question."
+        const args =
+          typeof functionCall.args === "object" && functionCall.args !== null
+            ? (functionCall.args as Record<string, unknown>)
+            : {}
 
         try {
-          const result = await searchKnowledgeBase({ organizationId, query })
+          const result = await executeAssistantTool({
+            organizationId,
+            toolName: functionCall.name ?? "unknown_tool",
+            args,
+            channel: "voice",
+          })
           return {
             id: functionCall.id,
             name: functionCall.name,
@@ -379,7 +376,7 @@ export const useGeminiLive = () => {
             name: functionCall.name,
             response: {
               error:
-                "The knowledge base search failed. Tell the user you could not search the knowledge base right now.",
+                "The tool call failed. Tell the user you could not complete that action right now.",
             },
           }
         }

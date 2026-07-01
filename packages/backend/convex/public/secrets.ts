@@ -1,10 +1,15 @@
 import { v } from "convex/values"
-import { GoogleGenAI, Modality, Type } from "@google/genai"
+import { GoogleGenAI, Modality } from "@google/genai"
 import { api, internal } from "../_generated/api"
 import { action } from "../_generated/server"
 import { Doc } from "../_generated/dataModel"
 import { parseSecretValue } from "../lib/secrets"
 import { checkRateLimit } from "../lib/rateLimits"
+import {
+  buildGeminiVoiceTools,
+  buildOpenAIVoiceTools,
+  buildVoiceToolInstructions,
+} from "../lib/voiceToolDeclarations"
 
 export const getVapiSecrets = action({
   args: { organizationId: v.string() },
@@ -42,13 +47,45 @@ type TokenActionResponse = {
   body: Record<string, unknown>
 }
 
-const openAIRealtimeInstructions = (prompt?: string) => `${prompt || ""}
+const openAIRealtimeInstructions = (
+  prompt: string | undefined,
+  tools: Doc<"assistantTools">[]
+) =>
+  buildVoiceToolInstructions(prompt, tools)
 
-For any product, pricing, policy, support, company, or account question, call the search_knowledge_base tool before answering. Only answer from the returned knowledge base result. If the tool returns no specific information, say you could not find that in the knowledge base.`
+const geminiLiveInstructions = (
+  prompt: string | undefined,
+  tools: Doc<"assistantTools">[]
+) =>
+  buildVoiceToolInstructions(prompt, tools)
 
-const geminiLiveInstructions = (prompt?: string) => `${prompt || ""}
-
-For any product, pricing, policy, support, company, or account question, call the search_knowledge_base tool before answering. Only answer from the returned knowledge base result. If the tool returns no specific information, say you could not find that in the knowledge base.`
+const defaultVoiceTools = (): Doc<"assistantTools">[] => [
+  {
+    _id: "default_search" as Doc<"assistantTools">["_id"],
+    _creationTime: 0,
+    organizationId: "",
+    name: "search_knowledge_base",
+    description:
+      "Search the organization's knowledge base for accurate product, pricing, policy, support, or company information before answering the user.",
+    type: "query",
+    isBuiltin: true,
+    isEnabled: true,
+    enabledForChat: true,
+    enabledForVoice: true,
+    parameters: [
+      {
+        name: "query",
+        description:
+          "The user's question or the specific information to search for.",
+        type: "string",
+        required: true,
+      },
+    ],
+    config: undefined,
+    sortOrder: 0,
+    updatedAt: 0,
+  },
+]
 
 const getProviderApiKey = async (
   ctx: any,
@@ -149,6 +186,18 @@ export const createOpenAIRealtimeSession = action({
       }
     }
 
+    const configuredVoiceTools: Doc<"assistantTools">[] = await ctx.runQuery(
+      internal.system.assistantTools.listEnabledForOrganization,
+      {
+        organizationId: args.organizationId,
+        channel: "voice",
+      }
+    )
+    const voiceTools =
+      configuredVoiceTools.length > 0
+        ? configuredVoiceTools
+        : defaultVoiceTools()
+
     const response: Response = await fetch(
       "https://api.openai.com/v1/realtime/client_secrets",
       {
@@ -162,28 +211,10 @@ export const createOpenAIRealtimeSession = action({
             type: "realtime",
             model: realtimeSettings.model || "gpt-realtime",
             instructions: openAIRealtimeInstructions(
-              widgetSettings?.systemPrompt || widgetSettings?.greetMessage
+              widgetSettings?.systemPrompt || widgetSettings?.greetMessage,
+              voiceTools
             ),
-            tools: [
-              {
-                type: "function",
-                name: "search_knowledge_base",
-                description:
-                  "Search the organization's knowledge base for accurate product, pricing, policy, support, or company information before answering the user.",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    query: {
-                      type: "string",
-                      description:
-                        "The user's question or the specific information to search for.",
-                    },
-                  },
-                  required: ["query"],
-                  additionalProperties: false,
-                },
-              },
-            ],
+            tools: buildOpenAIVoiceTools(voiceTools),
             tool_choice: "auto",
             audio: {
               output: {
@@ -301,6 +332,17 @@ export const createGeminiLiveToken = action({
       const model =
         liveSettings.model || "gemini-2.5-flash-native-audio-preview-12-2025"
       const voice = liveSettings.voice || "Kore"
+      const configuredVoiceTools: Doc<"assistantTools">[] = await ctx.runQuery(
+        internal.system.assistantTools.listEnabledForOrganization,
+        {
+          organizationId: args.organizationId,
+          channel: "voice",
+        }
+      )
+      const voiceTools =
+        configuredVoiceTools.length > 0
+          ? configuredVoiceTools
+          : defaultVoiceTools()
       const ai = new GoogleGenAI({
         apiKey,
         httpOptions: { apiVersion: "v1alpha" },
@@ -316,7 +358,8 @@ export const createGeminiLiveToken = action({
             config: {
               responseModalities: [Modality.AUDIO],
               systemInstruction: geminiLiveInstructions(
-                widgetSettings?.systemPrompt || widgetSettings?.greetMessage
+                widgetSettings?.systemPrompt || widgetSettings?.greetMessage,
+                voiceTools
               ),
               speechConfig: {
                 voiceConfig: {
@@ -325,28 +368,7 @@ export const createGeminiLiveToken = action({
               },
               inputAudioTranscription: {},
               outputAudioTranscription: {},
-              tools: [
-                {
-                  functionDeclarations: [
-                    {
-                      name: "search_knowledge_base",
-                      description:
-                        "Search the organization's knowledge base for accurate product, pricing, policy, support, or company information before answering the user.",
-                      parameters: {
-                        type: Type.OBJECT,
-                        properties: {
-                          query: {
-                            type: Type.STRING,
-                            description:
-                              "The user's question or the specific information to search for.",
-                          },
-                        },
-                        required: ["query"],
-                      },
-                    },
-                  ],
-                },
-              ],
+              tools: buildGeminiVoiceTools(voiceTools),
             },
           },
         },

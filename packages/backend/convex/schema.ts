@@ -201,6 +201,49 @@ const webhookProviderConfigValidator = v.object({
   whatsappRecipientPhone: v.optional(v.string()),
 })
 
+const assistantToolTypeValidator = v.union(
+  v.literal("query"),
+  v.literal("handoff"),
+  v.literal("resolve"),
+  v.literal("google_sheets"),
+  v.literal("api_request"),
+  v.literal("custom_webhook")
+)
+
+const assistantToolParameterValidator = v.object({
+  name: v.string(),
+  description: v.string(),
+  type: v.union(
+    v.literal("string"),
+    v.literal("number"),
+    v.literal("boolean")
+  ),
+  required: v.boolean(),
+})
+
+const assistantToolConfigValidator = v.object({
+  knowledgeBaseModel: v.optional(v.string()),
+  spreadsheetId: v.optional(v.string()),
+  range: v.optional(v.string()),
+  operation: v.optional(
+    v.union(
+      v.literal("lookup"),
+      v.literal("append"),
+      v.literal("update"),
+      v.literal("delete")
+    )
+  ),
+  searchColumns: v.optional(v.array(v.string())),
+  valueColumns: v.optional(v.array(v.string())),
+  updateColumns: v.optional(v.array(v.string())),
+  url: v.optional(v.string()),
+  method: v.optional(v.union(v.literal("GET"), v.literal("POST"))),
+  headersJson: v.optional(v.string()),
+  bodyTemplate: v.optional(v.string()),
+  webhookUrl: v.optional(v.string()),
+  webhookMethod: v.optional(v.union(v.literal("GET"), v.literal("POST"))),
+})
+
 // Workflows disabled — not developing this feature for now
 // const workflowDefinitionValidator = v.object({
 //   schemaVersion: v.number(),
@@ -263,12 +306,29 @@ export default defineSchema({
   })
     .index("by_organization_id", ["organizationId"])
     .index("by_organization_id_and_version", ["organizationId", "version"]),
+  assistantTools: defineTable({
+    organizationId: v.string(),
+    name: v.string(),
+    description: v.string(),
+    type: assistantToolTypeValidator,
+    isBuiltin: v.boolean(),
+    isEnabled: v.boolean(),
+    enabledForChat: v.boolean(),
+    enabledForVoice: v.boolean(),
+    parameters: v.array(assistantToolParameterValidator),
+    config: v.optional(assistantToolConfigValidator),
+    sortOrder: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_organization_id_and_name", ["organizationId", "name"]),
   plugins: defineTable({
     organizationId: v.string(),
     service: v.union(
       v.literal("vapi"),
       v.literal("openai_realtime"),
-      v.literal("gemini_live")
+      v.literal("gemini_live"),
+      v.literal("google_sheets")
     ),
     secretName: v.string(),
     secretValue: v.optional(v.string()),
@@ -368,6 +428,15 @@ export default defineSchema({
     .index("by_webhook_secret", ["webhookSecret"])
     .index("by_instagram_user_id", ["instagramUserId"]),
   instagramOAuthStates: defineTable({
+    organizationId: v.string(),
+    actorId: v.optional(v.string()),
+    state: v.string(),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_state", ["state"])
+    .index("by_organization_id", ["organizationId"]),
+  googleSheetsOAuthStates: defineTable({
     organizationId: v.string(),
     actorId: v.optional(v.string()),
     state: v.string(),
