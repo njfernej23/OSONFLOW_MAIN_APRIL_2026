@@ -164,6 +164,7 @@ const appearanceValidator = v.object({
 const widgetSettingsSnapshotValidator = v.object({
   greetMessage: v.string(),
   systemPrompt: v.optional(v.string()),
+  enabledToolIds: v.optional(v.array(v.id("assistantTools"))),
   chatSettings: v.optional(chatSettingsValidator),
   defaultSuggestions: defaultSuggestionsValidator,
   helpArticles: v.optional(legacyHelpArticlesValidator),
@@ -274,6 +275,7 @@ export default defineSchema({
     organizationId: v.string(),
     greetMessage: v.string(),
     systemPrompt: v.optional(v.string()),
+    enabledToolIds: v.optional(v.array(v.id("assistantTools"))),
     chatSettings: v.optional(chatSettingsValidator),
     defaultSuggestions: defaultSuggestionsValidator,
     helpArticles: v.optional(legacyHelpArticlesValidator),

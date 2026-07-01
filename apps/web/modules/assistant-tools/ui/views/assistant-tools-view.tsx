@@ -39,6 +39,8 @@ import {
   type AssistantTool,
   type IntegrationToolType,
 } from "../../constants"
+import { buildGoogleSheetsParameters } from "../../lib/google-sheets-parameters"
+import { SheetColumnPicker } from "../components/sheet-column-picker"
 
 type ToolEditorState = {
   name: string
@@ -78,6 +80,9 @@ export const AssistantToolsView = () => {
   const listSpreadsheetTabs = useAction(
     api.private.googleSheetsActions.listSpreadsheetTabsForPicker
   )
+  const listSpreadsheetColumnHeaders = useAction(
+    api.private.googleSheetsActions.listSpreadsheetColumnHeadersForPicker
+  )
   const disconnectGoogleSheets = useMutation(api.private.googleSheets.disconnect)
   const upsertGoogleSheetsApiKey = useMutation(api.private.googleSheets.upsertApiKey)
   const bootstrapBuiltinTools = useMutation(
@@ -102,8 +107,10 @@ export const AssistantToolsView = () => {
     Array<{ id: string; name: string }>
   >([])
   const [sheetTabOptions, setSheetTabOptions] = useState<string[]>([])
+  const [sheetColumnOptions, setSheetColumnOptions] = useState<string[]>([])
   const [isLoadingSpreadsheets, setIsLoadingSpreadsheets] = useState(false)
   const [isLoadingSheetTabs, setIsLoadingSheetTabs] = useState(false)
+  const [isLoadingSheetColumns, setIsLoadingSheetColumns] = useState(false)
   const [useManualSpreadsheetId, setUseManualSpreadsheetId] = useState(false)
   const [spreadsheetLoadError, setSpreadsheetLoadError] = useState<string | null>(null)
   const hasBootstrappedRef = useRef(false)
@@ -184,7 +191,7 @@ export const AssistantToolsView = () => {
 
     if (
       !isGoogleSheetsEditor ||
-      googleSheetsStatus?.authMethod !== "oauth" ||
+      !googleSheetsStatus?.isConfigured ||
       !spreadsheetId
     ) {
       setSheetTabOptions([])
@@ -216,9 +223,54 @@ export const AssistantToolsView = () => {
     }
   }, [
     editor.config.spreadsheetId,
-    googleSheetsStatus?.authMethod,
+    googleSheetsStatus?.isConfigured,
     isGoogleSheetsEditor,
     listSpreadsheetTabs,
+  ])
+
+  useEffect(() => {
+    const spreadsheetId = editor.config.spreadsheetId?.trim()
+    const sheetName = editor.config.range?.trim()
+
+    if (
+      !isGoogleSheetsEditor ||
+      !googleSheetsStatus?.isConfigured ||
+      !spreadsheetId ||
+      !sheetName
+    ) {
+      setSheetColumnOptions([])
+      return
+    }
+
+    let cancelled = false
+    setIsLoadingSheetColumns(true)
+
+    void listSpreadsheetColumnHeaders({ spreadsheetId, sheetName })
+      .then((headers) => {
+        if (!cancelled) {
+          setSheetColumnOptions(headers)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSheetColumnOptions([])
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingSheetColumns(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    editor.config.range,
+    editor.config.spreadsheetId,
+    googleSheetsStatus?.isConfigured,
+    isGoogleSheetsEditor,
+    listSpreadsheetColumnHeaders,
   ])
 
   useEffect(() => {
@@ -240,6 +292,59 @@ export const AssistantToolsView = () => {
       }
     })
   }, [sheetTabOptions])
+
+  useEffect(() => {
+    if (!isGoogleSheetsEditor || sheetColumnOptions.length === 0) {
+      return
+    }
+
+    const matchColumns = (requested: string[] = [], fallbackCount = 1) => {
+      const matched = requested.filter((column) => sheetColumnOptions.includes(column))
+      return matched.length > 0
+        ? matched
+        : sheetColumnOptions.slice(0, Math.min(fallbackCount, sheetColumnOptions.length))
+    }
+
+    setEditor((current) => {
+      const operation = current.config.operation ?? "lookup"
+      const searchColumns = matchColumns(current.config.searchColumns, 2)
+      const valueColumns = matchColumns(
+        current.config.valueColumns ?? [],
+        sheetColumnOptions.length
+      )
+      const updateColumns = matchColumns(
+        current.config.updateColumns ?? [],
+        Math.max(sheetColumnOptions.length - 1, 1)
+      )
+
+      const columnsUnchanged =
+        JSON.stringify(searchColumns) === JSON.stringify(current.config.searchColumns) &&
+        JSON.stringify(valueColumns) === JSON.stringify(current.config.valueColumns) &&
+        JSON.stringify(updateColumns) === JSON.stringify(current.config.updateColumns)
+
+      if (columnsUnchanged) {
+        return current
+      }
+
+      const nextConfig = {
+        ...current.config,
+        searchColumns,
+        valueColumns,
+        updateColumns,
+      }
+
+      return {
+        ...current,
+        config: nextConfig,
+        parameters: buildGoogleSheetsParameters({
+          operation,
+          searchColumns: nextConfig.searchColumns,
+          valueColumns: nextConfig.valueColumns,
+          updateColumns: nextConfig.updateColumns,
+        }),
+      }
+    })
+  }, [isGoogleSheetsEditor, sheetColumnOptions])
 
   const selectTool = (tool: AssistantTool) => {
     setSelectedToolId(tool._id)
@@ -291,10 +396,68 @@ export const AssistantToolsView = () => {
     })
   }
 
+  const handleSheetColumnsChange = (
+    field: "searchColumns" | "valueColumns" | "updateColumns",
+    columns: string[]
+  ) => {
+    setEditor((current) => {
+      const nextConfig = {
+        ...current.config,
+        [field]: columns,
+      }
+      const operation = nextConfig.operation ?? "lookup"
+
+      return {
+        ...current,
+        config: nextConfig,
+        parameters: buildGoogleSheetsParameters({
+          operation,
+          searchColumns: nextConfig.searchColumns ?? [],
+          valueColumns: nextConfig.valueColumns ?? [],
+          updateColumns: nextConfig.updateColumns ?? [],
+        }),
+      }
+    })
+  }
+
   const handleSave = async () => {
     if (!editor.name.trim() || !editor.description.trim()) {
       toast.error("Tool name and description are required")
       return
+    }
+
+    if (isGoogleSheetsEditor) {
+      if (!editor.config.spreadsheetId?.trim()) {
+        toast.error("Choose a spreadsheet before saving")
+        return
+      }
+
+      if (!editor.config.range?.trim()) {
+        toast.error("Choose a sheet tab before saving")
+        return
+      }
+
+      const operation = editor.config.operation ?? "lookup"
+
+      if (
+        (operation === "lookup" ||
+          operation === "update" ||
+          operation === "delete") &&
+        (editor.config.searchColumns ?? []).length === 0
+      ) {
+        toast.error("Select at least one search column")
+        return
+      }
+
+      if (operation === "append" && (editor.config.valueColumns ?? []).length === 0) {
+        toast.error("Select at least one value column")
+        return
+      }
+
+      if (operation === "update" && (editor.config.updateColumns ?? []).length === 0) {
+        toast.error("Select at least one update column")
+        return
+      }
     }
 
     setIsSaving(true)
@@ -1030,7 +1193,7 @@ export const AssistantToolsView = () => {
                     </div>
                     <div className="space-y-2">
                       <Label>Sheet tab</Label>
-                      {sheetTabOptions.length > 0 ? (
+                      {googleSheetsStatus?.isConfigured && sheetTabOptions.length > 0 ? (
                         <Select
                           value={editor.config.range || undefined}
                           onValueChange={(value) =>
@@ -1066,88 +1229,52 @@ export const AssistantToolsView = () => {
                             }))
                           }
                           placeholder="Sheet1"
+                          disabled={!editor.config.spreadsheetId?.trim()}
                         />
                       )}
                       <p className="text-xs text-muted-foreground">
-                        The tab name inside the spreadsheet (must include a header row).
+                        The tab inside your spreadsheet. Column headers load automatically
+                        from the first row.
                       </p>
                     </div>
                   </div>
                   {(editor.config.operation ?? "lookup") === "lookup" ||
                   (editor.config.operation ?? "lookup") === "update" ||
                   (editor.config.operation ?? "lookup") === "delete" ? (
-                    <div className="space-y-2">
-                      <Label>Search columns</Label>
-                      <Input
-                        value={(editor.config.searchColumns ?? []).join(", ")}
-                        onChange={(event) =>
-                          setEditor((current) => ({
-                            ...current,
-                            config: {
-                              ...current.config,
-                              searchColumns: event.target.value
-                                .split(",")
-                                .map((value) => value.trim())
-                                .filter(Boolean),
-                            },
-                          }))
-                        }
-                        placeholder="name, phone"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Columns used to find the row. Parameter names should match these
-                        headers.
-                      </p>
-                    </div>
+                    <SheetColumnPicker
+                      label="Search columns"
+                      description="Columns used to find the matching row. Tool parameters are generated from your selection."
+                      columns={sheetColumnOptions}
+                      selected={editor.config.searchColumns ?? []}
+                      isLoading={isLoadingSheetColumns}
+                      onChange={(columns) =>
+                        handleSheetColumnsChange("searchColumns", columns)
+                      }
+                    />
                   ) : null}
                   {(editor.config.operation ?? "lookup") === "append" ? (
-                    <div className="space-y-2">
-                      <Label>Value columns</Label>
-                      <Input
-                        value={(editor.config.valueColumns ?? []).join(", ")}
-                        onChange={(event) =>
-                          setEditor((current) => ({
-                            ...current,
-                            config: {
-                              ...current.config,
-                              valueColumns: event.target.value
-                                .split(",")
-                                .map((value) => value.trim())
-                                .filter(Boolean),
-                            },
-                          }))
-                        }
-                        placeholder="name, phone, email"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Sheet headers to fill when adding a row. Parameter names should match
-                        these columns.
-                      </p>
-                    </div>
+                    <SheetColumnPicker
+                      label="Value columns"
+                      description="Columns the assistant can fill when adding a new row."
+                      columns={sheetColumnOptions}
+                      selected={editor.config.valueColumns ?? []}
+                      isLoading={isLoadingSheetColumns}
+                      onChange={(columns) =>
+                        handleSheetColumnsChange("valueColumns", columns)
+                      }
+                    />
                   ) : null}
                   {(editor.config.operation ?? "lookup") === "update" ? (
-                    <div className="space-y-2">
-                      <Label>Update columns</Label>
-                      <Input
-                        value={(editor.config.updateColumns ?? []).join(", ")}
-                        onChange={(event) =>
-                          setEditor((current) => ({
-                            ...current,
-                            config: {
-                              ...current.config,
-                              updateColumns: event.target.value
-                                .split(",")
-                                .map((value) => value.trim())
-                                .filter(Boolean),
-                            },
-                          }))
-                        }
-                        placeholder="phone, email, status"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Columns the assistant can change after finding a row.
-                      </p>
-                    </div>
+                    <SheetColumnPicker
+                      label="Update columns"
+                      description="Columns the assistant can change after finding a row."
+                      columns={sheetColumnOptions}
+                      selected={editor.config.updateColumns ?? []}
+                      isLoading={isLoadingSheetColumns}
+                      onChange={(columns) =>
+                        handleSheetColumnsChange("updateColumns", columns)
+                      }
+                    />
                   ) : null}
                 </div>
               )}

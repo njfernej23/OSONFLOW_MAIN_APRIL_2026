@@ -6,7 +6,10 @@ import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
 import { resolveGoogleSheetsAuth } from "../lib/googleSheetsAuth"
 import {
   listGoogleSpreadsheets,
+  listSpreadsheetColumnHeaders,
+  listSpreadsheetColumnHeadersWithApiKey,
   listSpreadsheetTabs,
+  listSpreadsheetTabsWithApiKey,
 } from "../lib/googleSheetsDrive"
 
 const getAuthContext = async (ctx: {
@@ -85,15 +88,72 @@ export const listSpreadsheetTabsForPicker = action({
     }
 
     const { organizationId } = await getAuthContext(ctx)
-    const accessToken = await requireOAuthAccessToken(ctx, organizationId)
+    const auth = await resolveGoogleSheetsAuth(ctx, organizationId)
+
+    if (!auth) {
+      throw new ConvexError(
+        "Connect Google Sheets or save an API key to browse spreadsheet tabs."
+      )
+    }
 
     try {
-      return await listSpreadsheetTabs(accessToken, spreadsheetId)
+      if (auth.method === "oauth") {
+        return await listSpreadsheetTabs(auth.accessToken, spreadsheetId)
+      }
+
+      return await listSpreadsheetTabsWithApiKey(auth.apiKey, spreadsheetId)
     } catch (error) {
       throw new ConvexError(
         error instanceof Error
           ? error.message
           : "Unable to load tabs for this spreadsheet."
+      )
+    }
+  },
+})
+
+export const listSpreadsheetColumnHeadersForPicker = action({
+  args: {
+    spreadsheetId: v.string(),
+    sheetName: v.string(),
+  },
+  returns: v.array(v.string()),
+  handler: async (ctx, args) => {
+    const spreadsheetId = args.spreadsheetId.trim()
+    const sheetName = args.sheetName.trim()
+
+    if (!spreadsheetId || !sheetName) {
+      return []
+    }
+
+    const { organizationId } = await getAuthContext(ctx)
+    const auth = await resolveGoogleSheetsAuth(ctx, organizationId)
+
+    if (!auth) {
+      throw new ConvexError(
+        "Connect Google Sheets or save an API key to load column headers."
+      )
+    }
+
+    try {
+      if (auth.method === "oauth") {
+        return await listSpreadsheetColumnHeaders(
+          auth.accessToken,
+          spreadsheetId,
+          sheetName
+        )
+      }
+
+      return await listSpreadsheetColumnHeadersWithApiKey(
+        auth.apiKey,
+        spreadsheetId,
+        sheetName
+      )
+    } catch (error) {
+      throw new ConvexError(
+        error instanceof Error
+          ? error.message
+          : "Unable to load column headers for this sheet tab."
       )
     }
   },

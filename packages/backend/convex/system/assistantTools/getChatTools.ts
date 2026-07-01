@@ -1,11 +1,24 @@
 import { internal } from "../../_generated/api"
-import { Doc } from "../../_generated/dataModel"
+import { Doc, Id } from "../../_generated/dataModel"
 import { ActionCtx } from "../../_generated/server"
 import { buildAssistantToolsForChat } from "../ai/tools/buildAssistantTools"
 
+export const filterAssistantToolsByIds = (
+  tools: Doc<"assistantTools">[],
+  enabledToolIds?: Id<"assistantTools">[]
+) => {
+  if (!enabledToolIds || enabledToolIds.length === 0) {
+    return tools
+  }
+
+  const allowed = new Set(enabledToolIds.map((toolId) => String(toolId)))
+  return tools.filter((tool) => allowed.has(String(tool._id)))
+}
+
 export const getEnabledChatTools = async (
   ctx: ActionCtx,
-  organizationId: string
+  organizationId: string,
+  enabledToolIds?: Id<"assistantTools">[]
 ) => {
   const configuredTools: Doc<"assistantTools">[] = await ctx.runQuery(
     internal.system.assistantTools.listEnabledForOrganization,
@@ -15,11 +28,13 @@ export const getEnabledChatTools = async (
     }
   )
 
-  if (configuredTools.length === 0) {
+  const filteredTools = filterAssistantToolsByIds(configuredTools, enabledToolIds)
+
+  if (filteredTools.length === 0) {
     return {}
   }
 
-  return buildAssistantToolsForChat(organizationId, configuredTools)
+  return buildAssistantToolsForChat(organizationId, filteredTools)
 }
 
 export const buildToolAwareSystemPrompt = (

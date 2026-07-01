@@ -16,6 +16,15 @@ export type GoogleSheetsOperation = NonNullable<
   AssistantTool["config"]
 >["operation"]
 
+export const ASSISTANT_TOOL_TYPE_LABELS: Record<AssistantTool["type"], string> = {
+  query: "Query",
+  handoff: "Handoff",
+  resolve: "Resolve",
+  google_sheets: "Google Sheets",
+  api_request: "API Request",
+  custom_webhook: "Custom Tool",
+}
+
 export const GOOGLE_SHEETS_OPERATION_LABELS: Record<
   NonNullable<GoogleSheetsOperation>,
   string

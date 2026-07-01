@@ -83,7 +83,7 @@ import {
   sanitizeRichTextHtml,
 } from "@workspace/ui/lib/rich-text"
 import { cn } from "@workspace/ui/lib/utils"
-import { Doc } from "@workspace/backend/_generated/dataModel"
+import { Doc, Id } from "@workspace/backend/_generated/dataModel"
 import { useMutation } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
 import { VapiFormFields } from "./vapi-form-fields"
@@ -91,6 +91,7 @@ import { OpenAIRealtimeFormFields } from "./openai-realtime-form-fields"
 import { ThemeFormFields } from "./theme-form-fields"
 import { AppearanceFormFields } from "./appearance-form-fields"
 import { WidgetLivePreview } from "./widget-live-preview"
+import { WidgetToolsPicker } from "./widget-tools-picker"
 import { FormSchema } from "../../types"
 import { widgetSettingsSchema } from "../../schemas"
 import {
@@ -104,6 +105,7 @@ type WidgetSettingsSnapshot = Pick<
   WidgetSettings,
   | "greetMessage"
   | "systemPrompt"
+  | "enabledToolIds"
   | "defaultSuggestions"
   | "helpTopics"
   | "homeCards"
@@ -428,6 +430,7 @@ const buildFormDefaultValues = (
   return {
     greetMessage: snapshot.greetMessage || "Hi! How can I help you today?",
     systemPrompt: snapshot.systemPrompt || "",
+    enabledToolIds: snapshot.enabledToolIds,
     chatSettings: {
       model: snapshot.chatSettings?.model || defaultChatModel,
     },
@@ -1028,6 +1031,10 @@ export const CustomizationForm = ({
     return {
       greetMessage: values.greetMessage,
       systemPrompt: values.systemPrompt.trim(),
+      enabledToolIds:
+        values.enabledToolIds && values.enabledToolIds.length > 0
+          ? (values.enabledToolIds as Id<"assistantTools">[])
+          : undefined,
       chatSettings: {
         model: values.chatSettings.model.trim() || defaultChatModel,
       },
@@ -1664,6 +1671,29 @@ export const CustomizationForm = ({
                             </span>
                           </div>
                         </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="enabledToolIds"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">
+                          Tools for this widget
+                        </FormLabel>
+                        <FormControl>
+                          <WidgetToolsPicker
+                            value={field.value as Id<"assistantTools">[] | undefined}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Saved with your widget draft when you publish. Configure tool
+                          definitions in Assistant Tools first.
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}

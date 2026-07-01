@@ -44,6 +44,7 @@ export const widgetSettingsSchema = z.object({
     .trim()
     .min(1, "System prompt is required")
     .max(12000, "System prompt must be at most 12000 characters"),
+  enabledToolIds: z.array(z.string()).optional(),
   chatSettings: z.object({
     model: z.string().trim().min(1, "Model is required"),
   }),

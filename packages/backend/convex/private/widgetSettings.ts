@@ -1,6 +1,7 @@
 import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
 import { ConvexError, v } from "convex/values"
 import { mutation, query } from "../_generated/server"
+import { Id } from "../_generated/dataModel"
 import { SUPPORT_AGENT_PROMPT } from "../system/ai/constants"
 
 const DEFAULT_THEME = {
@@ -146,6 +147,7 @@ const appearanceValidator = v.object({
 const widgetSettingsArgsValidator = {
   greetMessage: v.string(),
   systemPrompt: v.optional(v.string()),
+  enabledToolIds: v.optional(v.array(v.id("assistantTools"))),
   defaultSuggestions: defaultSuggestionsValidator,
   helpArticles: v.optional(legacyHelpArticlesValidator),
   helpTopics: helpTopicsValidator,
@@ -227,6 +229,7 @@ type HomeCard = {
 type WidgetSettingsSnapshot = {
   greetMessage: string
   systemPrompt?: string
+  enabledToolIds?: Id<"assistantTools">[]
   chatSettings?: {
     model?: string
   }
@@ -554,6 +557,7 @@ const normalizeSnapshot = (
     greetMessage: snapshot.greetMessage,
     systemPrompt:
       snapshot.systemPrompt ?? fallback.systemPrompt ?? SUPPORT_AGENT_PROMPT,
+    enabledToolIds: snapshot.enabledToolIds ?? fallback.enabledToolIds,
     defaultSuggestions: {
       suggestion1:
         snapshot.defaultSuggestions.suggestion1 ??
@@ -637,6 +641,7 @@ const getPublishedSnapshot = (
     {
       greetMessage: widgetSettings.greetMessage ?? fallback.greetMessage,
       systemPrompt: widgetSettings.systemPrompt ?? fallback.systemPrompt,
+      enabledToolIds: widgetSettings.enabledToolIds ?? fallback.enabledToolIds,
       defaultSuggestions:
         widgetSettings.defaultSuggestions ?? fallback.defaultSuggestions,
       helpArticles: widgetSettings.helpArticles ?? fallback.helpArticles,
@@ -708,6 +713,7 @@ const getWidgetSettingsByOrganizationId = async (
 const applyPublishedSnapshotPatch = (snapshot: WidgetSettingsSnapshot) => ({
   greetMessage: snapshot.greetMessage,
   systemPrompt: snapshot.systemPrompt,
+  enabledToolIds: snapshot.enabledToolIds,
   defaultSuggestions: snapshot.defaultSuggestions,
   helpArticles: snapshot.helpArticles,
   helpTopics: snapshot.helpTopics,

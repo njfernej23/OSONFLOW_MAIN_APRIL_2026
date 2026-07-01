@@ -14,6 +14,7 @@ import { resolveConversation } from "./ai/tools/resolveConversation"
 import { search } from "./ai/tools/search"
 import {
   buildToolAwareSystemPrompt,
+  filterAssistantToolsByIds,
   getEnabledChatTools,
 } from "./assistantTools/getChatTools"
 import { getOpenAIChatModelFromSecretValue } from "../lib/openai"
@@ -641,6 +642,7 @@ export const handleIncomingUpdate: any = internalAction({
     )
     const systemPrompt =
       widgetSettings?.systemPrompt?.trim() || SUPPORT_AGENT_PROMPT
+    const enabledToolIds = widgetSettings?.enabledToolIds
 
     let replyText: string | null = null
 
@@ -663,9 +665,14 @@ export const handleIncomingUpdate: any = internalAction({
           channel: "chat",
         }
       )
+      const activeTools = filterAssistantToolsByIds(
+        configuredTools,
+        enabledToolIds
+      )
       const dynamicTools = await getEnabledChatTools(
         ctx,
-        integration.organizationId
+        integration.organizationId,
+        enabledToolIds
       )
       const chatTools =
         Object.keys(dynamicTools).length > 0
@@ -677,7 +684,7 @@ export const handleIncomingUpdate: any = internalAction({
             }
       const toolAwareSystemPrompt = buildToolAwareSystemPrompt(
         systemPrompt,
-        configuredTools
+        activeTools
       )
       const result = await supportAgent.generateText(
         ctx,

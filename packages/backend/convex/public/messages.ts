@@ -9,6 +9,7 @@ import { saveMessage } from "@convex-dev/agent"
 import { search } from "../system/ai/tools/search"
 import {
   buildToolAwareSystemPrompt,
+  filterAssistantToolsByIds,
   getEnabledChatTools,
 } from "../system/assistantTools/getChatTools"
 import { SUPPORT_AGENT_PROMPT } from "../system/ai/constants"
@@ -409,6 +410,7 @@ export const create = action({
 
     const systemPrompt =
       widgetSettings?.systemPrompt?.trim() || SUPPORT_AGENT_PROMPT
+    const enabledToolIds = widgetSettings?.enabledToolIds
     const chatModel =
       widgetSettings?.chatSettings?.model?.trim() || OPENAI_CHAT_MODEL
 
@@ -468,9 +470,15 @@ export const create = action({
           }
         )
 
+        const activeTools = filterAssistantToolsByIds(
+          configuredTools,
+          enabledToolIds
+        )
+
         const dynamicTools = await getEnabledChatTools(
           ctx,
-          conversation.organizationId
+          conversation.organizationId,
+          enabledToolIds
         )
 
         const chatTools =
@@ -484,7 +492,7 @@ export const create = action({
 
         const toolAwareSystemPrompt = buildToolAwareSystemPrompt(
           systemPrompt,
-          configuredTools
+          activeTools
         )
 
         const result = await supportAgent.generateText(

@@ -20,6 +20,7 @@ import { resolveConversation } from "./ai/tools/resolveConversation"
 import { search } from "./ai/tools/search"
 import {
   buildToolAwareSystemPrompt,
+  filterAssistantToolsByIds,
   getEnabledChatTools,
 } from "./assistantTools/getChatTools"
 
@@ -652,6 +653,7 @@ const handleIncomingMessage = async ({
   )
   const systemPrompt =
     widgetSettings?.systemPrompt?.trim() || SUPPORT_AGENT_PROMPT
+  const enabledToolIds = widgetSettings?.enabledToolIds
 
   let replyText: string | null = null
 
@@ -674,9 +676,11 @@ const handleIncomingMessage = async ({
         channel: "chat",
       }
     )
+    const activeTools = filterAssistantToolsByIds(configuredTools, enabledToolIds)
     const dynamicTools = await getEnabledChatTools(
       ctx,
-      integration.organizationId
+      integration.organizationId,
+      enabledToolIds
     )
     const chatTools =
       Object.keys(dynamicTools).length > 0
@@ -688,7 +692,7 @@ const handleIncomingMessage = async ({
           }
     const toolAwareSystemPrompt = buildToolAwareSystemPrompt(
       systemPrompt,
-      configuredTools
+      activeTools
     )
     const result = await supportAgent.generateText(
       ctx,

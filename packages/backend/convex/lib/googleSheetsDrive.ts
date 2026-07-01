@@ -158,3 +158,71 @@ export const listSpreadsheetTabs = async (
     .map((sheet) => sheet.properties?.title?.trim())
     .filter((title): title is string => Boolean(title))
 }
+
+type SheetValuesResponse = {
+  values?: string[][]
+  error?: {
+    message?: string
+  }
+}
+
+const sheetsMetadataRequest = async <T>(
+  url: string,
+  headers?: Record<string, string>
+): Promise<T> => {
+  const response = await fetch(url, { headers })
+  const payload = (await response.json().catch(() => null)) as T & {
+    error?: { message?: string }
+  }
+
+  if (!response.ok) {
+    const message = payload?.error?.message || "Google Sheets request failed."
+    throw new Error(message)
+  }
+
+  return payload
+}
+
+export const listSpreadsheetTabsWithApiKey = async (
+  apiKey: string,
+  spreadsheetId: string
+): Promise<string[]> => {
+  const payload = await sheetsMetadataRequest<SpreadsheetMetadataResponse>(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties.title&key=${apiKey}`
+  )
+
+  return (payload.sheets ?? [])
+    .map((sheet) => sheet.properties?.title?.trim())
+    .filter((title): title is string => Boolean(title))
+}
+
+export const listSpreadsheetColumnHeaders = async (
+  accessToken: string,
+  spreadsheetId: string,
+  sheetName: string
+): Promise<string[]> => {
+  const encodedRange = encodeURIComponent(`${sheetName}!1:1`)
+  const payload = await driveRequest<SheetValuesResponse>(
+    accessToken,
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedRange}`
+  )
+
+  return (payload.values?.[0] ?? [])
+    .map((header) => header.trim())
+    .filter(Boolean)
+}
+
+export const listSpreadsheetColumnHeadersWithApiKey = async (
+  apiKey: string,
+  spreadsheetId: string,
+  sheetName: string
+): Promise<string[]> => {
+  const encodedRange = encodeURIComponent(`${sheetName}!1:1`)
+  const payload = await sheetsMetadataRequest<SheetValuesResponse>(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedRange}?key=${apiKey}`
+  )
+
+  return (payload.values?.[0] ?? [])
+    .map((header) => header.trim())
+    .filter(Boolean)
+}
