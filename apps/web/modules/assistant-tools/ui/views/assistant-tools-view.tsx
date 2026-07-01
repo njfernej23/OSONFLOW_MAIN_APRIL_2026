@@ -105,6 +105,7 @@ export const AssistantToolsView = () => {
   const [isLoadingSpreadsheets, setIsLoadingSpreadsheets] = useState(false)
   const [isLoadingSheetTabs, setIsLoadingSheetTabs] = useState(false)
   const [useManualSpreadsheetId, setUseManualSpreadsheetId] = useState(false)
+  const [spreadsheetLoadError, setSpreadsheetLoadError] = useState<string | null>(null)
   const hasBootstrappedRef = useRef(false)
 
   useEffect(() => {
@@ -144,38 +145,39 @@ export const AssistantToolsView = () => {
   const isGoogleSheetsEditor =
     selectedTool?.type === "google_sheets" || newToolType === "google_sheets"
 
-  useEffect(() => {
+  const loadSpreadsheetOptions = async () => {
     if (!isGoogleSheetsEditor || googleSheetsStatus?.authMethod !== "oauth") {
       setSpreadsheetOptions([])
+      setSpreadsheetLoadError(null)
       return
     }
 
-    let cancelled = false
     setIsLoadingSpreadsheets(true)
+    setSpreadsheetLoadError(null)
 
-    void listSpreadsheets({})
-      .then((options) => {
-        if (!cancelled) {
-          setSpreadsheetOptions(options)
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          toast.error(
-            error instanceof Error ? error.message : "Unable to load spreadsheets"
-          )
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsLoadingSpreadsheets(false)
-        }
-      })
+    try {
+      const options = await listSpreadsheets({})
+      setSpreadsheetOptions(options)
 
-    return () => {
-      cancelled = true
+      if (options.length === 0) {
+        setSpreadsheetLoadError(
+          "No spreadsheets were returned. Enable the Google Drive API in Google Cloud Console, then disconnect and reconnect this account."
+        )
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to load spreadsheets"
+      setSpreadsheetOptions([])
+      setSpreadsheetLoadError(message)
+      toast.error(message)
+    } finally {
+      setIsLoadingSpreadsheets(false)
     }
-  }, [googleSheetsStatus?.authMethod, isGoogleSheetsEditor, listSpreadsheets])
+  }
+
+  useEffect(() => {
+    void loadSpreadsheetOptions()
+  }, [googleSheetsStatus?.authMethod, isGoogleSheetsEditor])
 
   useEffect(() => {
     const spreadsheetId = editor.config.spreadsheetId?.trim()
@@ -365,6 +367,9 @@ export const AssistantToolsView = () => {
 
     try {
       await disconnectGoogleSheets()
+      setSpreadsheetOptions([])
+      setSheetTabOptions([])
+      setSpreadsheetLoadError(null)
       toast.success("Google account disconnected")
     } catch (error) {
       toast.error(
@@ -836,11 +841,24 @@ export const AssistantToolsView = () => {
                     </p>
                   ) : googleSheetsStatus?.authMethod !== "oauth" ? (
                     <p className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-700 dark:text-sky-300">
-                      Connect Google to browse your spreadsheets and sheet tabs here. If you
-                      connected before, disconnect and reconnect once so Drive access is
-                      granted.
+                      Connect Google to browse your spreadsheets and sheet tabs here.
                     </p>
-                  ) : null}
+                  ) : (
+                    <p className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-700 dark:text-sky-300">
+                      If spreadsheets do not appear, remove Osonflow from your{" "}
+                      <a
+                        href="https://myaccount.google.com/permissions"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline"
+                      >
+                        Google account permissions
+                      </a>
+                      , then disconnect and reconnect here so Drive access is granted.
+                      Also enable the Google Drive API in Google Cloud Console for your OAuth
+                      project.
+                    </p>
+                  )}
 
                   <div className="flex flex-wrap gap-2">
                     {googleSheetsStatus?.authMethod === "oauth" ? (
@@ -946,25 +964,36 @@ export const AssistantToolsView = () => {
                               ))}
                             </SelectContent>
                           </Select>
-                          {spreadsheetOptions.length === 0 && !isLoadingSpreadsheets ? (
+                          {spreadsheetLoadError ? (
+                            <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                              {spreadsheetLoadError}
+                            </p>
+                          ) : spreadsheetOptions.length === 0 && !isLoadingSpreadsheets ? (
                             <p className="text-xs text-muted-foreground">
                               No spreadsheets found in this Google account.
                             </p>
                           ) : null}
-                          {editor.config.spreadsheetId ? (
-                            <p className="text-xs text-muted-foreground">
-                              ID: {editor.config.spreadsheetId}
-                            </p>
-                          ) : null}
-                          <Button
-                            type="button"
-                            variant="link"
-                            size="sm"
-                            className="h-auto px-0"
-                            onClick={() => setUseManualSpreadsheetId(true)}
-                          >
-                            Enter spreadsheet ID manually
-                          </Button>
+                          <div className="flex flex-wrap gap-3">
+                            <Button
+                              type="button"
+                              variant="link"
+                              size="sm"
+                              className="h-auto px-0"
+                              onClick={() => setUseManualSpreadsheetId(true)}
+                            >
+                              Enter spreadsheet ID manually
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="link"
+                              size="sm"
+                              className="h-auto px-0"
+                              disabled={isLoadingSpreadsheets}
+                              onClick={() => void loadSpreadsheetOptions()}
+                            >
+                              {isLoadingSpreadsheets ? "Refreshing..." : "Refresh list"}
+                            </Button>
+                          </div>
                         </>
                       ) : (
                         <>

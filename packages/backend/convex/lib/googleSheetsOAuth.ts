@@ -74,10 +74,12 @@ export const buildGoogleSheetsAuthorizationUrl = ({
   clientId,
   redirectUri,
   state,
+  loginHint,
 }: {
   clientId: string
   redirectUri: string
   state: string
+  loginHint?: string
 }) => {
   const params = new URLSearchParams({
     client_id: clientId,
@@ -87,8 +89,12 @@ export const buildGoogleSheetsAuthorizationUrl = ({
     state,
     access_type: "offline",
     prompt: "consent",
-    include_granted_scopes: "true",
+    include_granted_scopes: "false",
   })
+
+  if (loginHint?.trim()) {
+    params.set("login_hint", loginHint.trim())
+  }
 
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
 }
