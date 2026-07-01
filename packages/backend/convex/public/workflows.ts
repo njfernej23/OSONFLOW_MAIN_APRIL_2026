@@ -1,3 +1,5 @@
+// Workflows disabled — not developing this feature for now.
+/*
 import { v } from "convex/values"
 import { query } from "../_generated/server"
 
@@ -61,3 +63,4 @@ export const getPendingChoices = query({
     }
   },
 })
+*/

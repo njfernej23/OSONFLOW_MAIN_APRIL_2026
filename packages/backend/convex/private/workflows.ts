@@ -1,3 +1,5 @@
+// Workflows disabled — not developing this feature for now.
+/*
 import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
 import { ConvexError, v } from "convex/values"
 import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server"
@@ -765,3 +767,4 @@ export const deactivate = mutation({
     return toWorkflowRecord(deactivated!)
   },
 })
+*/

@@ -1,3 +1,5 @@
+// Workflows disabled — not developing this feature for now.
+/*
 import { saveMessage } from "@convex-dev/agent"
 import { ConvexError, v } from "convex/values"
 import { components, internal } from "../_generated/api"
@@ -641,3 +643,4 @@ export const handleUserMessage = internalMutation({
     return { handled: true }
   },
 })
+*/

@@ -265,7 +265,7 @@ export const createAnonymousRecord = internalMutation({
       isAnonymous: true,
       metadata: {
         ...args.metadata,
-        source: args.metadata?.source ?? "workflow_widget",
+        source: args.metadata?.source ?? "widget",
         visitorId,
       },
     })
@@ -283,7 +283,7 @@ export const createAnonymousRecord = internalMutation({
           isAnonymous: true,
           metadata: {
             ...args.metadata,
-            source: args.metadata?.source ?? "workflow_widget",
+            source: args.metadata?.source ?? "widget",
             visitorId,
           },
         },

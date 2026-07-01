@@ -84,7 +84,7 @@ const getLeadChannel = (metadata?: Doc<"contactSessions">["metadata"]) => {
     return "Instagram"
   }
 
-  if (metadata?.source === "workflow_widget") {
+  if (metadata?.source === "widget" || metadata?.source === "workflow_widget") {
     return "Widget"
   }
 

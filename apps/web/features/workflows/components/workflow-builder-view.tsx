@@ -1,3 +1,6 @@
+// Workflows disabled — not developing this feature for now.
+export const WorkflowBuilderView = () => null
+/*
 "use client"
 
 import {
@@ -5382,3 +5385,4 @@ export const WorkflowBuilderView = ({
     </div>
   )
 }
+*/

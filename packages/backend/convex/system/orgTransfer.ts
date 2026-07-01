@@ -31,14 +31,15 @@ const pluginServiceValidator = v.union(
   v.literal("gemini_live")
 )
 
-const workflowDefinitionValidator = v.object({
-  schemaVersion: v.number(),
-  id: v.optional(v.string()),
-  name: v.string(),
-  description: v.optional(v.string()),
-  nodes: v.array(v.any()),
-  edges: v.array(v.any()),
-})
+// Workflows disabled — not developing this feature for now
+// const workflowDefinitionValidator = v.object({
+//   schemaVersion: v.number(),
+//   id: v.optional(v.string()),
+//   name: v.string(),
+//   description: v.optional(v.string()),
+//   nodes: v.array(v.any()),
+//   edges: v.array(v.any()),
+// })
 
 export const collectTableData = internalQuery({
   args: {
@@ -61,12 +62,13 @@ export const collectTableData = internalQuery({
       )
       .collect()
 
-    const workflows = await ctx.db
-      .query("workflows")
-      .withIndex("by_organization_id", (q) =>
-        q.eq("organizationId", organizationId)
-      )
-      .collect()
+    // Workflows disabled — not developing this feature for now
+    // const workflows = await ctx.db
+    //   .query("workflows")
+    //   .withIndex("by_organization_id", (q) =>
+    //     q.eq("organizationId", organizationId)
+    //   )
+    //   .collect()
 
     const plugins = await ctx.db
       .query("plugins")
@@ -89,13 +91,13 @@ export const collectTableData = internalQuery({
         body: reply.body,
         category: reply.category,
       })),
-      workflows: workflows.map((workflow) => ({
-        name: workflow.name,
-        description: workflow.description,
-        definition: workflow.definition,
-        publishedDefinition: workflow.publishedDefinition,
-        isActive: workflow.isActive ?? false,
-      })),
+      // workflows: workflows.map((workflow) => ({
+      //   name: workflow.name,
+      //   description: workflow.description,
+      //   definition: workflow.definition,
+      //   publishedDefinition: workflow.publishedDefinition,
+      //   isActive: workflow.isActive ?? false,
+      // })),
       plugins: plugins.map((plugin) => ({
         service: plugin.service,
         secretName: plugin.secretName,
@@ -146,6 +148,8 @@ export const importIntegrationWebhook = internalMutation({
   },
 })
 
+// Workflows disabled — not developing this feature for now
+/*
 export const importWorkflow = internalMutation({
   args: {
     organizationId: v.string(),
@@ -176,6 +180,7 @@ export const importWorkflow = internalMutation({
     return workflowId
   },
 })
+*/
 
 export const importSavedReply = internalMutation({
   args: {

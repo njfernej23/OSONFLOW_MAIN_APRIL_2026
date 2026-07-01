@@ -1404,7 +1404,7 @@ export const CustomizationForm = ({
               </div>
               <p className="text-[11px] leading-relaxed text-sidebar-foreground/55">
                 Copy settings from this org and paste them into another org or
-                environment. For knowledge base, workflows, and API keys, use{" "}
+                environment. For knowledge base and API keys, use{" "}
                 <a className="underline" href="/org-transfer">
                   Data transfer
                 </a>

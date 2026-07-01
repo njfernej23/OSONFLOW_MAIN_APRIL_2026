@@ -326,12 +326,13 @@ export const remove = mutation({
       })
     }
 
-    const workflowSessions = await ctx.db
-      .query("workflowSessions")
-      .withIndex("by_conversation_id", (q) =>
-        q.eq("conversationId", args.conversationId)
-      )
-      .collect()
+    // Workflows disabled — not developing this feature for now
+    // const workflowSessions = await ctx.db
+    //   .query("workflowSessions")
+    //   .withIndex("by_conversation_id", (q) =>
+    //     q.eq("conversationId", args.conversationId)
+    //   )
+    //   .collect()
 
     const insights = await ctx.db
       .query("conversationInsights")
@@ -363,7 +364,7 @@ export const remove = mutation({
         threadId: conversation.threadId,
         limit: 100,
       }),
-      ...workflowSessions.map((session) => ctx.db.delete(session._id)),
+      // ...workflowSessions.map((session) => ctx.db.delete(session._id)),
       ...insights.map((insight) => ctx.db.delete(insight._id)),
       ...linkedVoiceConversations.map((voiceConversation) =>
         ctx.db.patch(voiceConversation._id, {

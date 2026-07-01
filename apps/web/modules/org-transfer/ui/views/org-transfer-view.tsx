@@ -37,7 +37,7 @@ type ExportSummary = {
   widgetSettings: boolean
   knowledgeBaseCount: number
   savedRepliesCount: number
-  workflowsCount: number
+  // workflowsCount: number // Workflows disabled
   pluginsCount: number
   integrationWebhooksCount: number
 }
@@ -49,7 +49,7 @@ type ImportSummary = {
   knowledgeBaseSkipped: number
   knowledgeBaseCleared: number
   savedReplies: number
-  workflows: number
+  // workflows: number // Workflows disabled
   plugins: number
   integrationWebhooks: number
 }
@@ -89,13 +89,14 @@ const formatSummaryLines = (summary: ExportSummary | ImportSummary) => {
     lines.push(`${summary.savedReplies} saved replies imported`)
   }
 
-  if ("workflowsCount" in summary && summary.workflowsCount > 0) {
-    lines.push(`${summary.workflowsCount} workflows`)
-  }
+  // Workflows disabled
+  // if ("workflowsCount" in summary && summary.workflowsCount > 0) {
+  //   lines.push(`${summary.workflowsCount} workflows`)
+  // }
 
-  if ("workflows" in summary && summary.workflows > 0) {
-    lines.push(`${summary.workflows} workflows imported`)
-  }
+  // if ("workflows" in summary && summary.workflows > 0) {
+  //   lines.push(`${summary.workflows} workflows imported`)
+  // }
 
   if ("pluginsCount" in summary && summary.pluginsCount > 0) {
     lines.push(`${summary.pluginsCount} integration keys`)
@@ -237,7 +238,7 @@ export const OrgTransferView = () => {
         <p className="max-w-3xl text-sm text-muted-foreground">
           Export this organization&apos;s configuration before switching Convex
           environments or paste it into another Clerk organization. This includes
-          widget customization, knowledge base sources, saved replies, workflows,
+          widget customization, knowledge base sources, saved replies,
           integration keys, and outbound webhooks.
         </p>
       </div>
@@ -255,7 +256,7 @@ export const OrgTransferView = () => {
             <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
               <li>Widget customization draft and published settings</li>
               <li>Knowledge base indexed text for files and websites</li>
-              <li>Saved replies, workflows, API keys, and outbound webhooks</li>
+              <li>Saved replies, API keys, and outbound webhooks</li>
             </ul>
 
             {lastExportSummary ? (

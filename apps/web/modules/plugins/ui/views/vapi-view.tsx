@@ -4,7 +4,7 @@ import {
     GlobeIcon,
     PhoneCallIcon,
     PhoneIcon,
-    WorkflowIcon,
+    // WorkflowIcon,
 } from "lucide-react";
 import { type Feature, PluginCard } from "../components/plugin-card";
 import { useMutation, useQuery } from "convex/react";
@@ -55,11 +55,12 @@ const vapiFeatures: Feature[] = [
         label: "Outbound calls",
         description: "Automated customer outreach",
     },
-    {
-        icon: WorkflowIcon,
-        label: "Workflows",
-        description: "Custom conversation flows",
-    },
+    // Workflows disabled — not developing this feature for now
+    // {
+    //     icon: WorkflowIcon,
+    //     label: "Workflows",
+    //     description: "Custom conversation flows",
+    // },
 ];
 
 

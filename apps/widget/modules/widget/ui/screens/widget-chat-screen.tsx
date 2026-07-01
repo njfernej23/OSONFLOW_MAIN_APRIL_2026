@@ -246,21 +246,22 @@ export const WidgetChatScreen = () => {
         }
       : "skip"
   ) as ChatHistoryExport | undefined
-  const workflowChoices = useQuery(
-    api.public.workflows.getPendingChoices,
-    conversationId && contactSessionId
-      ? {
-          conversationId,
-          contactSessionId,
-        }
-      : "skip"
-  ) as
-    | {
-        pendingNodeId: string | null
-        buttons: Array<{ id: string; label: string }>
-      }
-    | null
-    | undefined
+  // Workflows disabled — not developing this feature for now
+  // const workflowChoices = useQuery(
+  //   api.public.workflows.getPendingChoices,
+  //   conversationId && contactSessionId
+  //     ? {
+  //         conversationId,
+  //         contactSessionId,
+  //       }
+  //     : "skip"
+  // ) as
+  //   | {
+  //       pendingNodeId: string | null
+  //       buttons: Array<{ id: string; label: string }>
+  //     }
+  //   | null
+  //   | undefined
 
   const messages = useThreadMessages(
     api.public.messages.getMany,
@@ -318,16 +319,12 @@ export const WidgetChatScreen = () => {
       return
     }
 
-    if (
-      assistantMessageCount >= pendingAssistantMessageCount ||
-      workflowChoices?.buttons?.length
-    ) {
+    if (assistantMessageCount >= pendingAssistantMessageCount) {
       setPendingAssistantMessageCount(null)
     }
   }, [
     assistantMessageCount,
     pendingAssistantMessageCount,
-    workflowChoices?.buttons?.length,
   ])
 
   useEffect(() => {
@@ -431,30 +428,31 @@ export const WidgetChatScreen = () => {
     }
   }
 
-  const submitWorkflowChoice = async (button: {
-    id: string
-    label: string
-  }) => {
-    const threadId = conversation?.threadId
-    if (!threadId || !contactSessionId) {
-      return
-    }
+  // Workflows disabled — not developing this feature for now
+  // const submitWorkflowChoice = async (button: {
+  //   id: string
+  //   label: string
+  // }) => {
+  //   const threadId = conversation?.threadId
+  //   if (!threadId || !contactSessionId) {
+  //     return
+  //   }
 
-    setOptimisticUserMessage({ text: button.label, baseCount: userMessageCount })
-    setPendingAssistantMessageCount(assistantMessageCount + 1)
+  //   setOptimisticUserMessage({ text: button.label, baseCount: userMessageCount })
+  //   setPendingAssistantMessageCount(assistantMessageCount + 1)
 
-    try {
-      await createMessage({
-        threadId,
-        prompt: button.label,
-        contactSessionId,
-        workflowButtonId: button.id,
-      })
-    } catch {
-      setOptimisticUserMessage(null)
-      setPendingAssistantMessageCount(null)
-    }
-  }
+  //   try {
+  //     await createMessage({
+  //       threadId,
+  //       prompt: button.label,
+  //       contactSessionId,
+  //       workflowButtonId: button.id,
+  //     })
+  //   } catch {
+  //     setOptimisticUserMessage(null)
+  //     setPendingAssistantMessageCount(null)
+  //   }
+  // }
 
   const onDownloadChatHistory = () => {
     if (
@@ -576,17 +574,7 @@ export const WidgetChatScreen = () => {
           )}
         </AIConversationContent>
       </AIConversation>
-      {workflowChoices?.buttons?.length ? (
-        <AISuggestions className="flex w-full flex-col items-end p-2">
-          {workflowChoices.buttons.map((button) => (
-            <AISuggestion
-              key={button.id}
-              onClick={() => submitWorkflowChoice(button)}
-              suggestion={button.label}
-            />
-          ))}
-        </AISuggestions>
-      ) : visibleMessages.length === 1 ? (
+      {visibleMessages.length === 1 ? (
         <AISuggestions className="flex w-full flex-col items-end p-2">
           {suggestions.map((suggestion) => {
             if (!suggestion) {
@@ -610,6 +598,22 @@ export const WidgetChatScreen = () => {
           })}
         </AISuggestions>
       ) : null}
+
+      {/* Workflows disabled — workflow choice buttons removed
+      {workflowChoices?.buttons?.length ? (
+        <AISuggestions className="flex w-full flex-col items-end p-2">
+          {workflowChoices.buttons.map((button) => (
+            <AISuggestion
+              key={button.id}
+              onClick={() => submitWorkflowChoice(button)}
+              suggestion={button.label}
+            />
+          ))}
+        </AISuggestions>
+      ) : visibleMessages.length === 1 ? (
+        ...
+      ) : null}
+      */}
 
       <Form {...form}>
         <AIInput

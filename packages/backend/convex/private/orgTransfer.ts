@@ -46,13 +46,14 @@ type OrgBundle = {
     body: string
     category?: string
   }>
-  workflows?: Array<{
-    name: string
-    description?: string
-    definition: unknown
-    publishedDefinition?: unknown
-    isActive?: boolean
-  }>
+  // Workflows disabled — not developing this feature for now
+  // workflows?: Array<{
+  //   name: string
+  //   description?: string
+  //   definition: unknown
+  //   publishedDefinition?: unknown
+  //   isActive?: boolean
+  // }>
   plugins?: Array<{
     service: "vapi" | "openai_realtime" | "gemini_live"
     secretName: string
@@ -319,7 +320,7 @@ export const exportBundle = action({
       widgetSettings: boolean
       knowledgeBaseCount: number
       savedRepliesCount: number
-      workflowsCount: number
+      // workflowsCount: number // Workflows disabled
       pluginsCount: number
       integrationWebhooksCount: number
     }
@@ -362,7 +363,7 @@ export const exportBundle = action({
         : undefined,
       knowledgeBase,
       savedReplies: tableData.savedReplies,
-      workflows: tableData.workflows,
+      // workflows: tableData.workflows, // Workflows disabled
       plugins: tableData.plugins,
       integrationWebhooks: tableData.integrationWebhooks,
     }
@@ -373,7 +374,7 @@ export const exportBundle = action({
         widgetSettings: Boolean(bundle.widgetSettings),
         knowledgeBaseCount: knowledgeBase.length,
         savedRepliesCount: tableData.savedReplies.length,
-        workflowsCount: tableData.workflows.length,
+        // workflowsCount: tableData.workflows.length, // Workflows disabled
         pluginsCount: tableData.plugins.length,
         integrationWebhooksCount: tableData.integrationWebhooks.length,
       },
@@ -425,7 +426,7 @@ export const importBundle = action({
       knowledgeBaseSkipped: 0,
       knowledgeBaseCleared: 0,
       savedReplies: 0,
-      workflows: 0,
+      // workflows: 0, // Workflows disabled
       plugins: 0,
       integrationWebhooks: 0,
     }
@@ -481,20 +482,21 @@ export const importBundle = action({
       }
     }
 
-    if (bundle.workflows?.length) {
-      for (const workflow of bundle.workflows) {
-        await ctx.runMutation(internal.system.orgTransfer.importWorkflow, {
-          organizationId: orgId,
-          actorId: identity.subject,
-          name: workflow.name,
-          description: workflow.description,
-          definition: workflow.definition as never,
-          publishedDefinition: workflow.publishedDefinition as never,
-          isActive: workflow.isActive,
-        })
-        summary.workflows += 1
-      }
-    }
+    // Workflows disabled — not developing this feature for now
+    // if (bundle.workflows?.length) {
+    //   for (const workflow of bundle.workflows) {
+    //     await ctx.runMutation(internal.system.orgTransfer.importWorkflow, {
+    //       organizationId: orgId,
+    //       actorId: identity.subject,
+    //       name: workflow.name,
+    //       description: workflow.description,
+    //       definition: workflow.definition as never,
+    //       publishedDefinition: workflow.publishedDefinition as never,
+    //       isActive: workflow.isActive,
+    //     })
+    //     summary.workflows += 1
+    //   }
+    // }
 
     if (bundle.plugins?.length) {
       for (const plugin of bundle.plugins) {
