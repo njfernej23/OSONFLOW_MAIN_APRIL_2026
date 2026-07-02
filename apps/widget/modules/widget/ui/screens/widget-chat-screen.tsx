@@ -328,6 +328,20 @@ export const WidgetChatScreen = () => {
   ])
 
   useEffect(() => {
+    if (pendingAssistantMessageCount === null) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setPendingAssistantMessageCount(null)
+    }, 90_000)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [pendingAssistantMessageCount])
+
+  useEffect(() => {
     if (
       optimisticUserMessage !== null &&
       userMessageCount > optimisticUserMessage.baseCount

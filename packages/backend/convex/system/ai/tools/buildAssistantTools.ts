@@ -95,12 +95,30 @@ export const buildAssistantToolsForChat = (
           ? buildParameterSchema(tool.parameters)
           : z.object({}),
       execute: async (ctx, args): Promise<string> => {
-        return ctx.runAction(internal.system.assistantTools.execute.executeTool, {
-          organizationId,
-          toolName: tool.name,
-          args,
-          threadId: ctx.threadId,
-        })
+        const result = await ctx.runAction(
+          internal.system.assistantTools.execute.executeTool,
+          {
+            organizationId,
+            toolName: tool.name,
+            args,
+            threadId: ctx.threadId,
+            channel: "chat",
+          }
+        )
+
+        const reply = result.trim()
+
+        if (ctx.threadId && reply) {
+          await supportAgent.saveMessage(ctx, {
+            threadId: ctx.threadId,
+            message: {
+              role: "assistant",
+              content: reply,
+            },
+          })
+        }
+
+        return result
       },
     })
   }
