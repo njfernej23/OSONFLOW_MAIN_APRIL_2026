@@ -1032,9 +1032,9 @@ export const CustomizationForm = ({
       greetMessage: values.greetMessage,
       systemPrompt: values.systemPrompt.trim(),
       enabledToolIds:
-        values.enabledToolIds && values.enabledToolIds.length > 0
-          ? (values.enabledToolIds as Id<"assistantTools">[])
-          : undefined,
+        values.enabledToolIds === undefined
+          ? undefined
+          : (values.enabledToolIds as Id<"assistantTools">[]),
       chatSettings: {
         model: values.chatSettings.model.trim() || defaultChatModel,
       },

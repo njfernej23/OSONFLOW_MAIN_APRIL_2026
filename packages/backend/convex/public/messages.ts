@@ -11,6 +11,7 @@ import {
   buildToolAwareSystemPrompt,
   filterAssistantToolsByIds,
   getEnabledChatTools,
+  resolveChatToolsForWidget,
 } from "../system/assistantTools/getChatTools"
 import { SUPPORT_AGENT_PROMPT } from "../system/ai/constants"
 import {
@@ -481,14 +482,17 @@ export const create = action({
           enabledToolIds
         )
 
-        const chatTools =
-          Object.keys(dynamicTools).length > 0
-            ? dynamicTools
-            : {
-                escalateConversationTool: escalateConversation,
-                resolveConversationTool: resolveConversation,
-                searchTool: search,
-              }
+        const legacyTools = {
+          escalateConversationTool: escalateConversation,
+          resolveConversationTool: resolveConversation,
+          searchTool: search,
+        }
+
+        const chatTools = resolveChatToolsForWidget(
+          dynamicTools,
+          enabledToolIds,
+          legacyTools
+        )
 
         const toolAwareSystemPrompt = buildToolAwareSystemPrompt(
           systemPrompt,

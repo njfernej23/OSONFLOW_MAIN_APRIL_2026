@@ -22,17 +22,22 @@ export const WidgetToolsPicker = ({ value, onChange }: WidgetToolsPickerProps) =
     (tool) => tool.isEnabled && tool.enabledForChat
   )
 
+  const isAllToolsMode = value === undefined
+
   const effectiveSelected = useMemo(() => {
-    if (!value || value.length === 0) {
+    if (isAllToolsMode) {
       return new Set(chatTools.map((tool) => String(tool._id)))
     }
 
-    return new Set(value.map((toolId) => String(toolId)))
-  }, [chatTools, value])
+    return new Set((value ?? []).map((toolId) => String(toolId)))
+  }, [chatTools, isAllToolsMode, value])
 
   const isAllSelected =
-    chatTools.length > 0 &&
-    chatTools.every((tool) => effectiveSelected.has(String(tool._id)))
+    isAllToolsMode ||
+    (chatTools.length > 0 &&
+      chatTools.every((tool) => effectiveSelected.has(String(tool._id))))
+
+  const isNoneSelected = value !== undefined && value.length === 0
 
   const emitSelection = (nextSelected: Set<string>) => {
     const allIds = chatTools.map((tool) => String(tool._id))
@@ -95,8 +100,8 @@ export const WidgetToolsPicker = ({ value, onChange }: WidgetToolsPickerProps) =
         <div>
           <p className="text-sm font-medium">Assistant tools</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Choose which tools the widget assistant can call. All selected means every
-            chat-enabled tool is available.
+            Choose which tools the widget assistant can call. Uncheck all to disable
+            tools for this widget.
           </p>
         </div>
         <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
@@ -145,9 +150,19 @@ export const WidgetToolsPicker = ({ value, onChange }: WidgetToolsPickerProps) =
         })}
       </div>
 
-      {value && value.length > 0 && value.length < chatTools.length ? (
+      {isNoneSelected ? (
+        <p className="text-xs text-amber-700 dark:text-amber-300">
+          No tools selected. The assistant will answer from the system prompt only.
+        </p>
+      ) : null}
+      {!isAllToolsMode && value.length > 0 && value.length < chatTools.length ? (
         <p className="text-xs text-muted-foreground">
           {value.length} of {chatTools.length} tools selected for this widget.
+        </p>
+      ) : null}
+      {isAllToolsMode ? (
+        <p className="text-xs text-muted-foreground">
+          All {chatTools.length} chat-enabled tools are available.
         </p>
       ) : null}
     </div>

@@ -16,6 +16,7 @@ import {
   buildToolAwareSystemPrompt,
   filterAssistantToolsByIds,
   getEnabledChatTools,
+  resolveChatToolsForWidget,
 } from "./assistantTools/getChatTools"
 import { getOpenAIChatModelFromSecretValue } from "../lib/openai"
 import { checkRateLimit } from "../lib/rateLimits"
@@ -674,14 +675,16 @@ export const handleIncomingUpdate: any = internalAction({
         integration.organizationId,
         enabledToolIds
       )
-      const chatTools =
-        Object.keys(dynamicTools).length > 0
-          ? dynamicTools
-          : {
-              escalateConversationTool: escalateConversation,
-              resolveConversationTool: resolveConversation,
-              searchTool: search,
-            }
+      const legacyTools = {
+        escalateConversationTool: escalateConversation,
+        resolveConversationTool: resolveConversation,
+        searchTool: search,
+      }
+      const chatTools = resolveChatToolsForWidget(
+        dynamicTools,
+        enabledToolIds,
+        legacyTools
+      )
       const toolAwareSystemPrompt = buildToolAwareSystemPrompt(
         systemPrompt,
         activeTools

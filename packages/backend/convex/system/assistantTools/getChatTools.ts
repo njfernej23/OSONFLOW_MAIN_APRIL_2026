@@ -7,12 +7,36 @@ export const filterAssistantToolsByIds = (
   tools: Doc<"assistantTools">[],
   enabledToolIds?: Id<"assistantTools">[]
 ) => {
-  if (!enabledToolIds || enabledToolIds.length === 0) {
+  if (enabledToolIds === undefined) {
     return tools
+  }
+
+  if (enabledToolIds.length === 0) {
+    return []
   }
 
   const allowed = new Set(enabledToolIds.map((toolId) => String(toolId)))
   return tools.filter((tool) => allowed.has(String(tool._id)))
+}
+
+export const resolveChatToolsForWidget = (
+  dynamicTools: Record<string, any>,
+  enabledToolIds: Id<"assistantTools">[] | undefined,
+  legacyTools: Record<string, any>
+): Record<string, any> => {
+  if (enabledToolIds !== undefined && enabledToolIds.length === 0) {
+    return {}
+  }
+
+  if (Object.keys(dynamicTools).length > 0) {
+    return dynamicTools
+  }
+
+  if (enabledToolIds === undefined) {
+    return legacyTools
+  }
+
+  return {}
 }
 
 export const getEnabledChatTools = async (
