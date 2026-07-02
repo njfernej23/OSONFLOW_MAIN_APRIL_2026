@@ -2,18 +2,81 @@
 
 import { v } from "convex/values"
 import { internalAction } from "../../_generated/server"
-import { internal } from "../../_generated/api"
+import { api, internal } from "../../_generated/api"
 import { Doc } from "../../_generated/dataModel"
 import { interpolateTemplate } from "../../lib/assistantTools"
 import { generateText } from "ai"
 import { getRagForOrganization } from "../ai/rag"
-import { SEARCH_INTERPRETER_PROMPT } from "../ai/constants"
-import { getOpenAIChatModelFromSecretValue } from "../../lib/openai"
+import {
+  SEARCH_INTERPRETER_PROMPT,
+  SHEETS_INTERPRETER_PROMPT,
+} from "../ai/constants"
+import {
+  OPENAI_CHAT_MODEL,
+  getOpenAIChatModelFromSecretValue,
+} from "../../lib/openai"
 import { resolveGoogleSheetsAuth } from "../../lib/googleSheetsAuth"
 import {
   executeGoogleSheetsOperation,
+  formatSheetLookupContext,
   type GoogleSheetsOperation,
 } from "../../lib/googleSheetsCrud"
+
+const parseSheetLookupMatches = (rawResult: string) => {
+  try {
+    const parsed = JSON.parse(rawResult) as unknown
+
+    if (!Array.isArray(parsed)) {
+      return null
+    }
+
+    return parsed.filter(
+      (entry): entry is Record<string, string> =>
+        typeof entry === "object" && entry !== null && !Array.isArray(entry)
+    )
+  } catch {
+    return null
+  }
+}
+
+const interpretSheetLookupResult = async (
+  ctx: any,
+  tool: Doc<"assistantTools">,
+  args: Record<string, unknown>,
+  matches: Array<Record<string, string>>
+): Promise<string> => {
+  const openAIPlugin = await ctx.runQuery(
+    internal.system.plugins.getByOrganizationIdAndService,
+    {
+      organizationId: tool.organizationId,
+      service: "openai_realtime",
+    }
+  )
+
+  const widgetSettings = await ctx.runQuery(
+    api.public.widgetSettings.getByOrganizationId,
+    { organizationId: tool.organizationId }
+  )
+
+  const chatModel =
+    widgetSettings?.chatSettings?.model?.trim() || OPENAI_CHAT_MODEL
+
+  const response = await generateText({
+    system: SHEETS_INTERPRETER_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: formatSheetLookupContext(matches, args),
+      },
+    ],
+    model: getOpenAIChatModelFromSecretValue(
+      openAIPlugin?.secretValue,
+      chatModel
+    ),
+  })
+
+  return response.text.trim()
+}
 
 const executeGoogleSheets = async (
   ctx: any,
@@ -35,7 +98,7 @@ const executeGoogleSheets = async (
   }
 
   try {
-    return await executeGoogleSheetsOperation({
+    const rawResult = await executeGoogleSheetsOperation({
       auth,
       spreadsheetId,
       range,
@@ -45,6 +108,18 @@ const executeGoogleSheets = async (
       updateColumns: tool.config?.updateColumns ?? [],
       args,
     })
+
+    if (operation !== "lookup") {
+      return rawResult
+    }
+
+    const matches = parseSheetLookupMatches(rawResult)
+
+    if (!matches) {
+      return rawResult
+    }
+
+    return await interpretSheetLookupResult(ctx, tool, args, matches)
   } catch (error) {
     return error instanceof Error
       ? error.message

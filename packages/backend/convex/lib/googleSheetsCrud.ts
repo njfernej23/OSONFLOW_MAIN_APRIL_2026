@@ -72,6 +72,27 @@ const normalizeArgMap = (args: Record<string, unknown>) =>
     Object.entries(args).map(([key, value]) => [key, String(value ?? "").trim()])
   )
 
+export const formatSheetLookupContext = (
+  matches: Array<Record<string, string>>,
+  args: Record<string, unknown>
+) => {
+  const criteria = Object.entries(normalizeArgMap(args))
+    .filter(([, value]) => value)
+    .map(([key, value]) => `${key}: ${value}`)
+    .join(", ")
+
+  const formattedRows = matches
+    .map((row, index) => {
+      const fields = Object.entries(row)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join(", ")
+      return `${index + 1}. ${fields}`
+    })
+    .join("\n")
+
+  return `Search criteria: ${criteria || "none provided"}\nMatching rows (${matches.length}):\n${formattedRows}`
+}
+
 export const findMatchingRows = (
   rows: SheetRowRecord[],
   searchColumns: string[],
@@ -222,7 +243,13 @@ export const executeGoogleSheetsOperation = async ({
       return "No matching rows were found in the Google Sheet."
     }
 
-    return JSON.stringify(matches, null, 2)
+    const uniqueMatches = [
+      ...new Map(
+        matches.map((row) => [JSON.stringify(row), row] as const)
+      ).values(),
+    ]
+
+    return JSON.stringify(uniqueMatches, null, 2)
   }
 
   if (headers.length === 0) {

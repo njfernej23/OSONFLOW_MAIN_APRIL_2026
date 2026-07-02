@@ -145,6 +145,7 @@ export const create = mutation({
     name: v.string(),
     description: v.string(),
     type: assistantToolTypeValidator,
+    isEnabled: v.optional(v.boolean()),
     enabledForChat: v.boolean(),
     enabledForVoice: v.boolean(),
     parameters: v.array(assistantToolParameterValidator),
@@ -165,7 +166,16 @@ export const create = mutation({
       })
     }
 
-    const name = sanitizeAssistantToolName(args.name)
+    let name: string
+    try {
+      name = sanitizeAssistantToolName(args.name)
+    } catch (error) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message:
+          error instanceof Error ? error.message : "Invalid tool name",
+      })
+    }
     const existing = await ctx.db
       .query("assistantTools")
       .withIndex("by_organization_id_and_name", (q) =>
@@ -193,7 +203,7 @@ export const create = mutation({
       description: args.description.trim(),
       type: args.type,
       isBuiltin: false,
-      isEnabled: true,
+      isEnabled: args.isEnabled ?? true,
       enabledForChat: args.enabledForChat,
       enabledForVoice: args.enabledForVoice,
       parameters: args.parameters,
@@ -256,7 +266,15 @@ export const update = mutation({
     }
 
     if (args.name !== undefined && !tool.isBuiltin) {
-      updates.name = sanitizeAssistantToolName(args.name)
+      try {
+        updates.name = sanitizeAssistantToolName(args.name)
+      } catch (error) {
+        throw new ConvexError({
+          code: "BAD_REQUEST",
+          message:
+            error instanceof Error ? error.message : "Invalid tool name",
+        })
+      }
     }
 
     await ctx.db.patch(args.toolId, updates)

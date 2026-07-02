@@ -78,5 +78,7 @@ export const buildToolAwareSystemPrompt = (
 ## Available tools
 ${toolLines}
 
-Use the appropriate tool when you need knowledge base data, external integrations, or conversation actions before answering.`
+Use the appropriate tool when you need knowledge base data, external integrations, or conversation actions before answering.
+
+After a tool returns data, reply in clear natural language. Never paste raw JSON or tool output directly to the user. Summarize the result conversationally.`
 }
