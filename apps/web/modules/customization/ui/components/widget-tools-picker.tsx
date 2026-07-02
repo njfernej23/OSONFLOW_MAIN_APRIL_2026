@@ -12,42 +12,43 @@ import { useMemo } from "react"
 
 type WidgetToolsPickerProps = {
   value: Id<"assistantTools">[] | undefined
-  onChange: (toolIds: Id<"assistantTools">[] | undefined) => void
+  onChange: (toolIds: Id<"assistantTools">[]) => void
 }
 
 export const WidgetToolsPicker = ({ value, onChange }: WidgetToolsPickerProps) => {
   const tools = useQuery(api.private.assistantTools.list)
 
-  const chatTools = (tools ?? []).filter(
-    (tool) => tool.isEnabled && tool.enabledForChat
+  const chatTools = useMemo(
+    () => (tools ?? []).filter((tool) => tool.isEnabled && tool.enabledForChat),
+    [tools]
   )
 
-  const isAllToolsMode = value === undefined
+  const allToolIds = useMemo(
+    () => chatTools.map((tool) => tool._id),
+    [chatTools]
+  )
 
-  const effectiveSelected = useMemo(() => {
-    if (isAllToolsMode) {
-      return new Set(chatTools.map((tool) => String(tool._id)))
+  // undefined in saved settings means "all tools" (legacy default)
+  const selectedIds = useMemo(() => {
+    if (value === undefined) {
+      return allToolIds
     }
 
-    return new Set((value ?? []).map((toolId) => String(toolId)))
-  }, [chatTools, isAllToolsMode, value])
+    return value
+  }, [allToolIds, value])
+
+  const selectedSet = useMemo(
+    () => new Set(selectedIds.map((toolId) => String(toolId))),
+    [selectedIds]
+  )
 
   const isAllSelected =
-    isAllToolsMode ||
-    (chatTools.length > 0 &&
-      chatTools.every((tool) => effectiveSelected.has(String(tool._id))))
+    chatTools.length > 0 &&
+    chatTools.every((tool) => selectedSet.has(String(tool._id)))
 
-  const isNoneSelected = value !== undefined && value.length === 0
+  const isNoneSelected = selectedIds.length === 0
 
   const emitSelection = (nextSelected: Set<string>) => {
-    const allIds = chatTools.map((tool) => String(tool._id))
-    const allSelected = allIds.every((toolId) => nextSelected.has(toolId))
-
-    if (allSelected) {
-      onChange(undefined)
-      return
-    }
-
     onChange(
       chatTools
         .filter((tool) => nextSelected.has(String(tool._id)))
@@ -56,7 +57,7 @@ export const WidgetToolsPicker = ({ value, onChange }: WidgetToolsPickerProps) =
   }
 
   const toggleTool = (toolId: Id<"assistantTools">, checked: boolean) => {
-    const next = new Set(effectiveSelected)
+    const next = new Set(selectedSet)
 
     if (checked) {
       next.add(String(toolId))
@@ -68,12 +69,7 @@ export const WidgetToolsPicker = ({ value, onChange }: WidgetToolsPickerProps) =
   }
 
   const toggleAll = (checked: boolean) => {
-    if (checked) {
-      onChange(undefined)
-      return
-    }
-
-    onChange([])
+    onChange(checked ? allToolIds : [])
   }
 
   if (tools === undefined) {
@@ -115,7 +111,7 @@ export const WidgetToolsPicker = ({ value, onChange }: WidgetToolsPickerProps) =
 
       <div className="grid gap-2 sm:grid-cols-2">
         {chatTools.map((tool) => {
-          const checked = effectiveSelected.has(String(tool._id))
+          const checked = selectedSet.has(String(tool._id))
 
           return (
             <label
@@ -155,12 +151,12 @@ export const WidgetToolsPicker = ({ value, onChange }: WidgetToolsPickerProps) =
           No tools selected. The assistant will answer from the system prompt only.
         </p>
       ) : null}
-      {!isAllToolsMode && value.length > 0 && value.length < chatTools.length ? (
+      {!isAllSelected && !isNoneSelected ? (
         <p className="text-xs text-muted-foreground">
-          {value.length} of {chatTools.length} tools selected for this widget.
+          {selectedIds.length} of {chatTools.length} tools selected for this widget.
         </p>
       ) : null}
-      {isAllToolsMode ? (
+      {isAllSelected ? (
         <p className="text-xs text-muted-foreground">
           All {chatTools.length} chat-enabled tools are available.
         </p>
