@@ -19,6 +19,16 @@ export const filterAssistantToolsByIds = (
   return tools.filter((tool) => allowed.has(String(tool._id)))
 }
 
+export const requiresLiveToolExecution = (tools: Doc<"assistantTools">[]) =>
+  tools.some(
+    (tool) =>
+      tool.isEnabled &&
+      tool.enabledForChat &&
+      (tool.type === "google_sheets" ||
+        tool.type === "api_request" ||
+        tool.type === "custom_webhook")
+  )
+
 export const resolveChatToolsForWidget = (
   dynamicTools: Record<string, any>,
   enabledToolIds: Id<"assistantTools">[] | undefined,

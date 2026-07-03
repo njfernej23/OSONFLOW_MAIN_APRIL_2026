@@ -11,6 +11,7 @@ import {
   buildToolAwareSystemPrompt,
   filterAssistantToolsByIds,
   getEnabledChatTools,
+  requiresLiveToolExecution,
   resolveChatToolsForWidget,
 } from "../system/assistantTools/getChatTools"
 import { SUPPORT_AGENT_PROMPT } from "../system/ai/constants"
@@ -415,27 +416,48 @@ export const create = action({
     const chatModel =
       widgetSettings?.chatSettings?.model?.trim() || OPENAI_CHAT_MODEL
 
+    const configuredTools = await ctx.runQuery(
+      internal.system.assistantTools.listEnabledForOrganization,
+      {
+        organizationId: conversation.organizationId,
+        channel: "chat",
+      }
+    )
+
+    const activeTools = filterAssistantToolsByIds(
+      configuredTools,
+      enabledToolIds
+    )
+    const bypassReplyCache = requiresLiveToolExecution(activeTools)
+
     let assistantReplyText: string | null = null
 
     if (shouldTriggerAgent) {
-      let cachedReply = await ctx.runQuery(
-        (internal as any).system.ai.replyCache.find,
-        {
-          organizationId: conversation.organizationId,
-          prompt: args.prompt,
-          model: chatModel,
-          systemPrompt,
-        }
-      )
+      let cachedReply: {
+        _id: string
+        answer: string
+      } | null = null
 
-      if (!cachedReply) {
-        cachedReply = await findSemanticCachedReply(ctx, {
-          organizationId: conversation.organizationId,
-          prompt: args.prompt,
-          model: chatModel,
-          systemPrompt,
-          openAISecretValue,
-        })
+      if (!bypassReplyCache) {
+        cachedReply = await ctx.runQuery(
+          (internal as any).system.ai.replyCache.find,
+          {
+            organizationId: conversation.organizationId,
+            prompt: args.prompt,
+            model: chatModel,
+            systemPrompt,
+          }
+        )
+
+        if (!cachedReply) {
+          cachedReply = await findSemanticCachedReply(ctx, {
+            organizationId: conversation.organizationId,
+            prompt: args.prompt,
+            model: chatModel,
+            systemPrompt,
+            openAISecretValue,
+          })
+        }
       }
 
       if (cachedReply?.answer) {
@@ -461,19 +483,6 @@ export const create = action({
         const previousAssistantMessage = await getLatestAssistantMessage(
           ctx,
           args.threadId
-        )
-
-        const configuredTools = await ctx.runQuery(
-          internal.system.assistantTools.listEnabledForOrganization,
-          {
-            organizationId: conversation.organizationId,
-            channel: "chat",
-          }
-        )
-
-        const activeTools = filterAssistantToolsByIds(
-          configuredTools,
-          enabledToolIds
         )
 
         const dynamicTools = await getEnabledChatTools(
@@ -537,7 +546,8 @@ export const create = action({
 
         if (
           assistantReplyText &&
-          updatedConversation?.status === conversation.status
+          updatedConversation?.status === conversation.status &&
+          !bypassReplyCache
         ) {
           const cacheResult = await ctx.runMutation(
             (internal as any).system.ai.replyCache.upsert,

@@ -1,6 +1,8 @@
 import { v, ConvexError } from "convex/values"
 import { internalQuery, internalMutation } from "../_generated/server"
 import { internal } from "../_generated/api"
+import { extractAgentMessageText } from "../lib/agentMessageText"
+import { supportAgent } from "./ai/agents/supportAgent"
 
 export const escalate = internalMutation({
   args: {
@@ -246,5 +248,38 @@ export const getByThreadId = internalQuery({
       .unique()
 
     return conversation
+  },
+})
+
+export const getLatestUserMessageByThreadId = internalQuery({
+  args: {
+    threadId: v.string(),
+  },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, args): Promise<string | null> => {
+    const messages = await supportAgent.listMessages(ctx, {
+      threadId: args.threadId,
+      excludeToolMessages: true,
+      paginationOpts: { numItems: 20, cursor: null },
+    })
+
+    for (const message of messages.page) {
+      const role =
+        typeof message?.message?.role === "string"
+          ? message.message.role
+          : "assistant"
+
+      if (role !== "user") {
+        continue
+      }
+
+      const text = extractAgentMessageText(message).trim()
+
+      if (text) {
+        return text
+      }
+    }
+
+    return null
   },
 })
