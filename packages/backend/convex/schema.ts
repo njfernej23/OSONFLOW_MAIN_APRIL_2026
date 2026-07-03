@@ -73,6 +73,13 @@ const geminiLiveSettingsValidator = v.object({
   voice: v.optional(v.string()),
 })
 
+const voiceCallSettingsValidator = v.object({
+  autoEndOnGoodbye: v.optional(v.boolean()),
+  customGoodbyePhrases: v.optional(v.array(v.string())),
+  idleTimeoutSeconds: v.optional(v.number()),
+  maxDurationSeconds: v.optional(v.number()),
+})
+
 const aiVoiceConversationProviderValidator = v.union(
   v.literal("openai_realtime"),
   v.literal("gemini_live"),
@@ -173,6 +180,7 @@ const widgetSettingsSnapshotValidator = v.object({
   vapiSettings: vapiSettingsValidator,
   openaiRealtimeSettings: v.optional(openaiRealtimeSettingsValidator),
   geminiLiveSettings: v.optional(geminiLiveSettingsValidator),
+  voiceCallSettings: v.optional(voiceCallSettingsValidator),
   theme: v.optional(themeValidator),
   appearance: v.optional(appearanceValidator),
 })
@@ -284,6 +292,7 @@ export default defineSchema({
     vapiSettings: vapiSettingsValidator,
     openaiRealtimeSettings: v.optional(openaiRealtimeSettingsValidator),
     geminiLiveSettings: v.optional(geminiLiveSettingsValidator),
+    voiceCallSettings: v.optional(voiceCallSettingsValidator),
     theme: v.optional(themeValidator),
     appearance: v.optional(appearanceValidator),
     draft: v.optional(widgetSettingsSnapshotValidator),

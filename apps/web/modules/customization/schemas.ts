@@ -71,6 +71,12 @@ export const widgetSettingsSchema = z.object({
     model: z.string().trim().min(1, "Model is required"),
     voice: z.string().trim().min(1, "Voice is required"),
   }),
+  voiceCallSettings: z.object({
+    autoEndOnGoodbye: z.boolean(),
+    idleTimeoutSeconds: z.coerce.number().min(0).max(3600),
+    maxDurationSeconds: z.coerce.number().min(0).max(7200),
+    customGoodbyePhrases: z.string(),
+  }),
   theme: z.object({
     primaryColor: hexColorField,
     headerGradientStart: hexColorField,

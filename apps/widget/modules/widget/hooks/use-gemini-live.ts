@@ -11,8 +11,10 @@ import { useEffect, useRef, useState } from "react"
 import {
   contactSessionIdAtomFamily,
   organizationIdAtom,
+  widgetSettingsAtom,
 } from "../atoms/widget-atoms"
 import { usePersistedVoiceConversation } from "./use-persisted-voice-conversation"
+import { useVoiceCallAutoEnd } from "./use-voice-call-auto-end"
 
 type TranscriptMessage =
   | {
@@ -105,6 +107,7 @@ const downsample = (
 
 export const useGeminiLive = () => {
   const organizationId = useAtomValue(organizationIdAtom)
+  const widgetSettings = useAtomValue(widgetSettingsAtom)
   const contactSessionId = useAtomValue(
     contactSessionIdAtomFamily(organizationId || "")
   )
@@ -134,6 +137,19 @@ export const useGeminiLive = () => {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [transcript, setTranscript] = useState<TranscriptMessage[]>([])
   const [error, setError] = useState<string | null>(null)
+  const endCallRef = useRef<() => void>(() => {})
+
+  const {
+    handleUserTranscript,
+    handleEndCallTool,
+    isEndCallTool,
+    recordActivity,
+  } = useVoiceCallAutoEnd({
+    isConnected,
+    isSpeaking,
+    settings: widgetSettings?.voiceCallSettings,
+    onEndCall: () => endCallRef.current(),
+  })
 
   const mergeTranscriptText = (currentText: string, incomingText: string) => {
     if (!currentText) {
@@ -169,6 +185,12 @@ export const useGeminiLive = () => {
 
     const normalizedMessage = { ...message, text }
     void persistTranscriptMessage(normalizedMessage)
+
+    if (message.role === "user") {
+      handleUserTranscript(text, true)
+    } else {
+      recordActivity()
+    }
   }
 
   const syncTranscript = (nextTranscript: TranscriptMessage[]) => {
@@ -345,6 +367,14 @@ export const useGeminiLive = () => {
 
     const functionResponses = await Promise.all(
       functionCalls.map(async (functionCall) => {
+        if (isEndCallTool(functionCall.name)) {
+          return {
+            id: functionCall.id,
+            name: functionCall.name,
+            response: { output: handleEndCallTool() },
+          }
+        }
+
         if (!organizationId) {
           return {
             id: functionCall.id,
@@ -399,12 +429,14 @@ export const useGeminiLive = () => {
     }
 
     if (serverContent?.inputTranscription?.text) {
+      recordActivity()
       updateTranscriptDraft("user", serverContent.inputTranscription.text, {
         isFinal: Boolean(serverContent.inputTranscription.finished),
       })
     }
 
     if (serverContent?.outputTranscription?.text) {
+      recordActivity()
       updateTranscriptDraft(
         "assistant",
         serverContent.outputTranscription.text,
@@ -421,6 +453,7 @@ export const useGeminiLive = () => {
     for (const part of parts) {
       if (part.inlineData?.data) {
         setIsSpeaking(true)
+        recordActivity()
         void playPcmAudio(part.inlineData.data, part.inlineData.mimeType)
       }
 
@@ -525,6 +558,8 @@ export const useGeminiLive = () => {
 
     void finishConversation()
   }
+
+  endCallRef.current = endCall
 
   const startCall = async () => {
     if (!organizationId) {

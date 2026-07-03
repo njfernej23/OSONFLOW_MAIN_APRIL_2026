@@ -24,6 +24,7 @@ import type * as lib_organizationIdentity from "../lib/organizationIdentity.js";
 import type * as lib_polarWebhook from "../lib/polarWebhook.js";
 import type * as lib_rateLimits from "../lib/rateLimits.js";
 import type * as lib_secrets from "../lib/secrets.js";
+import type * as lib_voiceCallSettings from "../lib/voiceCallSettings.js";
 import type * as lib_voiceToolDeclarations from "../lib/voiceToolDeclarations.js";
 import type * as lib_webhookBaseUrl from "../lib/webhookBaseUrl.js";
 import type * as private_aiConversations from "../private/aiConversations.js";
@@ -107,6 +108,7 @@ declare const fullApi: ApiFromModules<{
   "lib/polarWebhook": typeof lib_polarWebhook;
   "lib/rateLimits": typeof lib_rateLimits;
   "lib/secrets": typeof lib_secrets;
+  "lib/voiceCallSettings": typeof lib_voiceCallSettings;
   "lib/voiceToolDeclarations": typeof lib_voiceToolDeclarations;
   "lib/webhookBaseUrl": typeof lib_webhookBaseUrl;
   "private/aiConversations": typeof private_aiConversations;

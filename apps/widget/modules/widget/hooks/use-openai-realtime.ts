@@ -5,8 +5,10 @@ import { useEffect, useRef, useState } from "react"
 import {
   contactSessionIdAtomFamily,
   organizationIdAtom,
+  widgetSettingsAtom,
 } from "../atoms/widget-atoms"
 import { usePersistedVoiceConversation } from "./use-persisted-voice-conversation"
+import { useVoiceCallAutoEnd } from "./use-voice-call-auto-end"
 
 type TranscriptMessage =
   | {
@@ -61,6 +63,7 @@ const parseJsonResponse = async <T>(response: Response): Promise<T> => {
 
 export const useOpenAIRealtime = () => {
   const organizationId = useAtomValue(organizationIdAtom)
+  const widgetSettings = useAtomValue(widgetSettingsAtom)
   const contactSessionId = useAtomValue(
     contactSessionIdAtomFamily(organizationId || "")
   )
@@ -78,6 +81,40 @@ export const useOpenAIRealtime = () => {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [transcript, setTranscript] = useState<TranscriptMessage[]>([])
   const [error, setError] = useState<string | null>(null)
+  const endCallRef = useRef<() => void>(() => {})
+
+  const endCall = () => {
+    dataChannelRef.current?.close()
+    peerConnectionRef.current?.close()
+    localStreamRef.current?.getTracks().forEach((track) => track.stop())
+    audioRef.current?.remove()
+
+    dataChannelRef.current = null
+    peerConnectionRef.current = null
+    localStreamRef.current = null
+    audioRef.current = null
+
+    setIsConnected(false)
+    setIsConnecting(false)
+    setIsSpeaking(false)
+    lastTranscriptSignatureRef.current = null
+
+    void finishConversation()
+  }
+
+  endCallRef.current = endCall
+
+  const {
+    handleUserTranscript,
+    handleEndCallTool,
+    isEndCallTool,
+    recordActivity,
+  } = useVoiceCallAutoEnd({
+    isConnected,
+    isSpeaking,
+    settings: widgetSettings?.voiceCallSettings,
+    onEndCall: () => endCallRef.current(),
+  })
 
   useEffect(() => {
     if (isConnected || isConnecting || persistedTranscript.length === 0) {
@@ -104,25 +141,6 @@ export const useOpenAIRealtime = () => {
       isCancelled = true
     }
   }, [isConnected, isConnecting, persistedTranscript])
-
-  const endCall = () => {
-    dataChannelRef.current?.close()
-    peerConnectionRef.current?.close()
-    localStreamRef.current?.getTracks().forEach((track) => track.stop())
-    audioRef.current?.remove()
-
-    dataChannelRef.current = null
-    peerConnectionRef.current = null
-    localStreamRef.current = null
-    audioRef.current = null
-
-    setIsConnected(false)
-    setIsConnecting(false)
-    setIsSpeaking(false)
-    lastTranscriptSignatureRef.current = null
-
-    void finishConversation()
-  }
 
   const addCallSeparator = () => {
     setTranscript((prev) => {
@@ -153,6 +171,12 @@ export const useOpenAIRealtime = () => {
 
     setTranscript((prev) => [...prev, normalizedMessage])
     void persistTranscriptMessage(normalizedMessage)
+
+    if (message.role === "user") {
+      handleUserTranscript(text, true)
+    } else {
+      recordActivity()
+    }
   }
 
   const sendClientEvent = (event: Record<string, unknown>) => {
@@ -167,6 +191,19 @@ export const useOpenAIRealtime = () => {
     const rawArguments = event.arguments ?? event.item?.arguments ?? "{}"
 
     if (!callId || !name) return
+
+    if (isEndCallTool(name)) {
+      sendClientEvent({
+        type: "conversation.item.create",
+        item: {
+          type: "function_call_output",
+          call_id: callId,
+          output: handleEndCallTool(),
+        },
+      })
+      sendClientEvent({ type: "response.create" })
+      return
+    }
 
     if (!organizationId || !name) return
 
@@ -219,11 +256,13 @@ export const useOpenAIRealtime = () => {
 
     if (event.type === "input_audio_buffer.speech_started") {
       setIsSpeaking(false)
+      recordActivity()
       return
     }
 
     if (event.type === "response.audio.started") {
       setIsSpeaking(true)
+      recordActivity()
       return
     }
 

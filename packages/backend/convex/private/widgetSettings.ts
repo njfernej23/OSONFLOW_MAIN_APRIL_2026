@@ -89,6 +89,13 @@ const geminiLiveSettingsValidator = v.object({
   voice: v.optional(v.string()),
 })
 
+const voiceCallSettingsValidator = v.object({
+  autoEndOnGoodbye: v.optional(v.boolean()),
+  customGoodbyePhrases: v.optional(v.array(v.string())),
+  idleTimeoutSeconds: v.optional(v.number()),
+  maxDurationSeconds: v.optional(v.number()),
+})
+
 const themeValidator = v.object({
   primaryColor: v.optional(v.string()),
   headerGradientStart: v.optional(v.string()),
@@ -156,6 +163,7 @@ const widgetSettingsArgsValidator = {
   chatSettings: v.optional(chatSettingsValidator),
   openaiRealtimeSettings: v.optional(openaiRealtimeSettingsValidator),
   geminiLiveSettings: v.optional(geminiLiveSettingsValidator),
+  voiceCallSettings: v.optional(voiceCallSettingsValidator),
   theme: v.optional(themeValidator),
   appearance: v.optional(appearanceValidator),
 } as const
@@ -254,6 +262,12 @@ type WidgetSettingsSnapshot = {
     enabled?: boolean
     model?: string
     voice?: string
+  }
+  voiceCallSettings?: {
+    autoEndOnGoodbye?: boolean
+    customGoodbyePhrases?: string[]
+    idleTimeoutSeconds?: number
+    maxDurationSeconds?: number
   }
   theme?: WidgetTheme
   appearance?: WidgetAppearance
@@ -358,6 +372,12 @@ const createDefaultWidgetSettings = (): WidgetSettingsSnapshot => ({
     enabled: false,
     model: "gemini-2.5-flash-native-audio-preview-12-2025",
     voice: "Kore",
+  },
+  voiceCallSettings: {
+    autoEndOnGoodbye: true,
+    customGoodbyePhrases: [],
+    idleTimeoutSeconds: 120,
+    maxDurationSeconds: 600,
   },
   theme: { ...DEFAULT_THEME },
   appearance: { ...DEFAULT_APPEARANCE },
@@ -623,6 +643,24 @@ const normalizeSnapshot = (
         fallback.geminiLiveSettings?.voice ??
         "Kore",
     },
+    voiceCallSettings: {
+      autoEndOnGoodbye:
+        snapshot.voiceCallSettings?.autoEndOnGoodbye ??
+        fallback.voiceCallSettings?.autoEndOnGoodbye ??
+        true,
+      customGoodbyePhrases:
+        snapshot.voiceCallSettings?.customGoodbyePhrases ??
+        fallback.voiceCallSettings?.customGoodbyePhrases ??
+        [],
+      idleTimeoutSeconds:
+        snapshot.voiceCallSettings?.idleTimeoutSeconds ??
+        fallback.voiceCallSettings?.idleTimeoutSeconds ??
+        120,
+      maxDurationSeconds:
+        snapshot.voiceCallSettings?.maxDurationSeconds ??
+        fallback.voiceCallSettings?.maxDurationSeconds ??
+        600,
+    },
     theme: mergeTheme(fallback.theme, snapshot.theme),
     appearance: mergeAppearance(fallback.appearance, snapshot.appearance),
   }
@@ -654,6 +692,8 @@ const getPublishedSnapshot = (
         fallback.openaiRealtimeSettings,
       geminiLiveSettings:
         widgetSettings.geminiLiveSettings ?? fallback.geminiLiveSettings,
+      voiceCallSettings:
+        widgetSettings.voiceCallSettings ?? fallback.voiceCallSettings,
       theme: widgetSettings.theme,
       appearance: widgetSettings.appearance,
     },
@@ -722,6 +762,7 @@ const applyPublishedSnapshotPatch = (snapshot: WidgetSettingsSnapshot) => ({
   chatSettings: snapshot.chatSettings,
   openaiRealtimeSettings: snapshot.openaiRealtimeSettings,
   geminiLiveSettings: snapshot.geminiLiveSettings,
+  voiceCallSettings: snapshot.voiceCallSettings,
   theme: snapshot.theme,
   appearance: snapshot.appearance,
 })

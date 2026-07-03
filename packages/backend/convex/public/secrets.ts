@@ -10,6 +10,7 @@ import {
   buildOpenAIVoiceTools,
   buildVoiceToolInstructions,
 } from "../lib/voiceToolDeclarations"
+import type { VoiceCallSettings } from "../lib/voiceCallSettings"
 
 export const getVapiSecrets = action({
   args: { organizationId: v.string() },
@@ -49,15 +50,15 @@ type TokenActionResponse = {
 
 const openAIRealtimeInstructions = (
   prompt: string | undefined,
-  tools: Doc<"assistantTools">[]
-) =>
-  buildVoiceToolInstructions(prompt, tools)
+  tools: Doc<"assistantTools">[],
+  voiceCallSettings?: VoiceCallSettings
+) => buildVoiceToolInstructions(prompt, tools, voiceCallSettings)
 
 const geminiLiveInstructions = (
   prompt: string | undefined,
-  tools: Doc<"assistantTools">[]
-) =>
-  buildVoiceToolInstructions(prompt, tools)
+  tools: Doc<"assistantTools">[],
+  voiceCallSettings?: VoiceCallSettings
+) => buildVoiceToolInstructions(prompt, tools, voiceCallSettings)
 
 const defaultVoiceTools = (): Doc<"assistantTools">[] => [
   {
@@ -197,6 +198,7 @@ export const createOpenAIRealtimeSession = action({
       configuredVoiceTools.length > 0
         ? configuredVoiceTools
         : defaultVoiceTools()
+    const voiceCallSettings = widgetSettings?.voiceCallSettings
 
     const response: Response = await fetch(
       "https://api.openai.com/v1/realtime/client_secrets",
@@ -212,9 +214,10 @@ export const createOpenAIRealtimeSession = action({
             model: realtimeSettings.model || "gpt-realtime",
             instructions: openAIRealtimeInstructions(
               widgetSettings?.systemPrompt || widgetSettings?.greetMessage,
-              voiceTools
+              voiceTools,
+              voiceCallSettings
             ),
-            tools: buildOpenAIVoiceTools(voiceTools),
+            tools: buildOpenAIVoiceTools(voiceTools, voiceCallSettings),
             tool_choice: "auto",
             audio: {
               output: {
@@ -343,6 +346,7 @@ export const createGeminiLiveToken = action({
         configuredVoiceTools.length > 0
           ? configuredVoiceTools
           : defaultVoiceTools()
+      const voiceCallSettings = widgetSettings?.voiceCallSettings
       const ai = new GoogleGenAI({
         apiKey,
         httpOptions: { apiVersion: "v1alpha" },
@@ -359,7 +363,8 @@ export const createGeminiLiveToken = action({
               responseModalities: [Modality.AUDIO],
               systemInstruction: geminiLiveInstructions(
                 widgetSettings?.systemPrompt || widgetSettings?.greetMessage,
-                voiceTools
+                voiceTools,
+                voiceCallSettings
               ),
               speechConfig: {
                 voiceConfig: {
@@ -368,7 +373,7 @@ export const createGeminiLiveToken = action({
               },
               inputAudioTranscription: {},
               outputAudioTranscription: {},
-              tools: buildGeminiVoiceTools(voiceTools),
+              tools: buildGeminiVoiceTools(voiceTools, voiceCallSettings),
             },
           },
         },

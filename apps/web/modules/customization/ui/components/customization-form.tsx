@@ -88,6 +88,7 @@ import { useMutation } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
 import { VapiFormFields } from "./vapi-form-fields"
 import { OpenAIRealtimeFormFields } from "./openai-realtime-form-fields"
+import { VoiceCallSettingsFormFields } from "./voice-call-settings-form-fields"
 import { ThemeFormFields } from "./theme-form-fields"
 import { AppearanceFormFields } from "./appearance-form-fields"
 import { WidgetLivePreview } from "./widget-live-preview"
@@ -125,6 +126,12 @@ type WidgetSettingsSnapshot = Pick<
     enabled?: boolean
     model?: string
     voice?: string
+  }
+  voiceCallSettings?: {
+    autoEndOnGoodbye?: boolean
+    customGoodbyePhrases?: string[]
+    idleTimeoutSeconds?: number
+    maxDurationSeconds?: number
   }
 }
 
@@ -456,6 +463,14 @@ const buildFormDefaultValues = (
         snapshot.geminiLiveSettings?.model ||
         "gemini-2.5-flash-native-audio-preview-12-2025",
       voice: snapshot.geminiLiveSettings?.voice || "Kore",
+    },
+    voiceCallSettings: {
+      autoEndOnGoodbye: snapshot.voiceCallSettings?.autoEndOnGoodbye ?? true,
+      idleTimeoutSeconds: snapshot.voiceCallSettings?.idleTimeoutSeconds ?? 120,
+      maxDurationSeconds: snapshot.voiceCallSettings?.maxDurationSeconds ?? 600,
+      customGoodbyePhrases: (
+        snapshot.voiceCallSettings?.customGoodbyePhrases ?? []
+      ).join("\n"),
     },
     theme: defaultTheme,
     appearance: defaultAppearance,
@@ -1028,6 +1043,15 @@ export const CustomizationForm = ({
         "gemini-2.5-flash-native-audio-preview-12-2025",
       voice: values.geminiLiveSettings.voice.trim() || "Kore",
     }
+    const voiceCallSettings = {
+      autoEndOnGoodbye: Boolean(values.voiceCallSettings.autoEndOnGoodbye),
+      idleTimeoutSeconds: Number(values.voiceCallSettings.idleTimeoutSeconds),
+      maxDurationSeconds: Number(values.voiceCallSettings.maxDurationSeconds),
+      customGoodbyePhrases: values.voiceCallSettings.customGoodbyePhrases
+        .split("\n")
+        .map((phrase) => phrase.trim())
+        .filter(Boolean),
+    }
     return {
       greetMessage: values.greetMessage,
       systemPrompt: values.systemPrompt.trim(),
@@ -1043,6 +1067,7 @@ export const CustomizationForm = ({
       vapiSettings,
       openaiRealtimeSettings,
       geminiLiveSettings,
+      voiceCallSettings,
       theme,
       appearance,
     }
@@ -2054,6 +2079,7 @@ export const CustomizationForm = ({
                     )}
                   />
                   <OpenAIRealtimeFormFields form={form} />
+                  <VoiceCallSettingsFormFields form={form} />
                   {hasVapiPlugin ? (
                     <div className="space-y-4 rounded-2xl border border-border/70 bg-muted/10 p-4">
                       <div>
