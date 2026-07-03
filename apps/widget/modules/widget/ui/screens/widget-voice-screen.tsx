@@ -524,11 +524,11 @@ const VoiceCallUI = ({
           </section>
         )}
 
-        <div className="flex h-16 shrink-0 items-center justify-end px-5 pb-5">
+        <div className="flex shrink-0 items-center justify-end px-6 pb-6 pt-2">
           {isActive ? (
             <Button
               aria-label="End voice chat"
-              className="size-14 rounded-full bg-zinc-950 text-white shadow-[0_18px_32px_-20px_rgba(15,23,42,0.75)] hover:bg-zinc-800 hover:text-white"
+              className="size-14 -translate-x-1.5 translate-y-1 rounded-full bg-zinc-950 text-white shadow-[0_18px_32px_-20px_rgba(15,23,42,0.75)] hover:bg-zinc-800 hover:text-white"
               onClick={endCall}
               size="icon"
               type="button"
