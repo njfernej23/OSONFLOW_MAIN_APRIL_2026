@@ -371,39 +371,68 @@ const TranscriptView = ({
   transcript,
 }: {
   transcript: TranscriptMessage[]
-}) => (
-  <ScrollArea className="min-h-0 flex-1 px-5">
-    <div className="flex min-h-[20rem] flex-col gap-3 pt-2 pb-4">
-      {transcript.length > 0 ? (
-        transcript.map((message, index) =>
-          message.role === "separator" ? (
-            <div
-              aria-hidden="true"
-              className="my-5 h-px w-full bg-[radial-gradient(circle,currentColor_1.1px,transparent_1.3px)] bg-[length:7px_1px] text-zinc-300"
-              key={message.id}
-            />
+}) => {
+  const scrollRootRef = useRef<HTMLDivElement>(null)
+
+  const scrollToBottom = () => {
+    const viewport = scrollRootRef.current?.querySelector(
+      '[data-slot="scroll-area-viewport"]'
+    )
+
+    if (viewport instanceof HTMLElement) {
+      viewport.scrollTop = viewport.scrollHeight
+    }
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+
+    const frame = window.requestAnimationFrame(() => {
+      scrollToBottom()
+      window.requestAnimationFrame(scrollToBottom)
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+    }
+  }, [transcript])
+
+  return (
+    <div className="min-h-0 flex-1" ref={scrollRootRef}>
+      <ScrollArea className="h-full px-5">
+        <div className="flex min-h-[20rem] flex-col gap-3 pt-2 pb-4">
+          {transcript.length > 0 ? (
+            transcript.map((message, index) =>
+              message.role === "separator" ? (
+                <div
+                  aria-hidden="true"
+                  className="my-5 h-px w-full bg-[radial-gradient(circle,currentColor_1.1px,transparent_1.3px)] bg-[length:7px_1px] text-zinc-300"
+                  key={message.id}
+                />
+              ) : (
+                <div
+                  className={cn(
+                    "max-w-[86%] px-4 py-3 text-[15px] leading-relaxed text-zinc-950",
+                    message.role === "assistant"
+                      ? "self-start rounded-[24px] rounded-tl-[10px] bg-zinc-100/90"
+                      : "self-end rounded-[18px] rounded-tr-[10px] border border-zinc-200 bg-white shadow-[0_2px_8px_rgba(15,23,42,0.06)]"
+                  )}
+                  key={`${message.role}-${index}-${message.text}`}
+                >
+                  {message.text}
+                </div>
+              )
+            )
           ) : (
-            <div
-              className={cn(
-                "max-w-[86%] px-4 py-3 text-[15px] leading-relaxed text-zinc-950",
-                message.role === "assistant"
-                  ? "self-start rounded-[24px] rounded-tl-[10px] bg-zinc-100/90"
-                  : "self-end rounded-[18px] rounded-tr-[10px] border border-zinc-200 bg-white shadow-[0_2px_8px_rgba(15,23,42,0.06)]"
-              )}
-              key={`${message.role}-${index}-${message.text}`}
-            >
-              {message.text}
+            <div className="flex flex-1 items-center justify-center text-center text-sm text-zinc-500">
+              Transcript appears here after the voice agent returns final lines.
             </div>
-          )
-        )
-      ) : (
-        <div className="flex flex-1 items-center justify-center text-center text-sm text-zinc-500">
-          Transcript appears here after the voice agent returns final lines.
+          )}
         </div>
-      )}
+      </ScrollArea>
     </div>
-  </ScrollArea>
-)
+  )
+}
 
 const VoiceCallUI = ({
   assistantName,
