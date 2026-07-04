@@ -52,11 +52,6 @@ const homeCardValidator = v.object({
 
 const homeCardsValidator = v.array(homeCardValidator)
 
-const vapiSettingsValidator = v.object({
-  assistantId: v.optional(v.string()),
-  phoneNumber: v.optional(v.string()),
-})
-
 const chatSettingsValidator = v.object({
   model: v.optional(v.string()),
 })
@@ -82,8 +77,7 @@ const voiceCallSettingsValidator = v.object({
 
 const aiVoiceConversationProviderValidator = v.union(
   v.literal("openai_realtime"),
-  v.literal("gemini_live"),
-  v.literal("vapi")
+  v.literal("gemini_live")
 )
 
 const aiVoiceConversationRoleValidator = v.union(
@@ -177,7 +171,6 @@ const widgetSettingsSnapshotValidator = v.object({
   helpArticles: v.optional(legacyHelpArticlesValidator),
   helpTopics: v.optional(storedHelpTopicsValidator),
   homeCards: v.optional(homeCardsValidator),
-  vapiSettings: vapiSettingsValidator,
   openaiRealtimeSettings: v.optional(openaiRealtimeSettingsValidator),
   geminiLiveSettings: v.optional(geminiLiveSettingsValidator),
   voiceCallSettings: v.optional(voiceCallSettingsValidator),
@@ -222,11 +215,7 @@ const assistantToolTypeValidator = v.union(
 const assistantToolParameterValidator = v.object({
   name: v.string(),
   description: v.string(),
-  type: v.union(
-    v.literal("string"),
-    v.literal("number"),
-    v.literal("boolean")
-  ),
+  type: v.union(v.literal("string"), v.literal("number"), v.literal("boolean")),
   required: v.boolean(),
 })
 
@@ -289,7 +278,6 @@ export default defineSchema({
     helpArticles: v.optional(legacyHelpArticlesValidator),
     helpTopics: v.optional(storedHelpTopicsValidator),
     homeCards: v.optional(homeCardsValidator),
-    vapiSettings: vapiSettingsValidator,
     openaiRealtimeSettings: v.optional(openaiRealtimeSettingsValidator),
     geminiLiveSettings: v.optional(geminiLiveSettingsValidator),
     voiceCallSettings: v.optional(voiceCallSettingsValidator),
@@ -336,7 +324,6 @@ export default defineSchema({
   plugins: defineTable({
     organizationId: v.string(),
     service: v.union(
-      v.literal("vapi"),
       v.literal("openai_realtime"),
       v.literal("gemini_live"),
       v.literal("google_sheets")

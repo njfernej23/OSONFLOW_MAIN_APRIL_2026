@@ -1,6 +1,7 @@
 import { v } from "convex/values"
 import { internalQuery } from "../_generated/server"
 import { Doc } from "../_generated/dataModel"
+import { isVoiceCompatibleAssistantTool } from "../lib/assistantTools"
 
 export const listEnabledForOrganization = internalQuery({
   args: {
@@ -19,7 +20,9 @@ export const listEnabledForOrganization = internalQuery({
     return tools
       .filter((tool) => tool.isEnabled)
       .filter((tool) =>
-        args.channel === "chat" ? tool.enabledForChat : tool.enabledForVoice
+        args.channel === "chat"
+          ? tool.enabledForChat
+          : tool.enabledForVoice && isVoiceCompatibleAssistantTool(tool)
       )
       .sort((left, right) => left.sortOrder - right.sortOrder)
   },

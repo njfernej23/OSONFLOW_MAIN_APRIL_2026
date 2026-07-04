@@ -477,10 +477,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "API kalitlari",
     ru: "API-ключи",
   },
-  "Are you sure you want to disconnect the Vapi plugin?": {
-    uz: "Vapi plaginini uzmoqchimisiz?",
-    ru: "Вы уверены, что хотите отключить плагин Vapi?",
-  },
+
   "Ask a question your widget should answer. The result is grounded in indexed sources and scored by support strength.":
     {
       uz: "Vidjetingiz javob berishi kerak bo'lgan savolni yozing. Natija indekslangan manbalarga tayangan holda beriladi va yordam kuchi bo'yicha baholanadi.",
@@ -583,10 +580,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Telegram botni ulash",
     ru: "Подключить Telegram-бота",
   },
-  "Connect Vapi to enable AI voice calls and phone support": {
-    uz: "AI ovozli qo'ng'iroqlar va telefon yordamini yoqish uchun Vapini ulang",
-    ru: "Подключите Vapi, чтобы включить AI-звонки и телефонную поддержку",
-  },
+
   "Connect your": {
     uz: "Ulang:",
     ru: "Подключите",
@@ -671,10 +665,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Telegramni uzish",
     ru: "Отключить Telegram",
   },
-  "Disconnect Vapi": {
-    uz: "Vapini uzish",
-    ru: "Отключить Vapi",
-  },
+
   Done: {
     uz: "Tayyor",
     ru: "Готово",
@@ -707,10 +698,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "OpenAI ovozini yoqish",
     ru: "Включить голос OpenAI",
   },
-  "Enable Vapi": {
-    uz: "Vapini yoqish",
-    ru: "Включить Vapi",
-  },
+
   "Enter an API key first": {
     uz: "Avval API kalit kiriting",
     ru: "Сначала введите API-ключ",
@@ -885,11 +873,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Qoldirish",
     ru: "Оставить",
   },
-  "Keep using your existing Vapi assistant or phone number alongside OpenAI voice.":
-    {
-      uz: "Mavjud Vapi yordamchingiz yoki telefon raqamingizdan OpenAI ovozi bilan birga foydalanishda davom eting.",
-      ru: "Продолжайте использовать существующего помощника Vapi или номер телефона вместе с голосом OpenAI.",
-    },
+
   "Last activity": {
     uz: "Oxirgi faollik",
     ru: "Последняя активность",
@@ -1600,22 +1584,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "Foydalanuvchi nomi",
     ru: "Имя пользователя",
   },
-  "Vapi intergration": {
-    uz: "Vapi integratsiyasi",
-    ru: "Интеграция Vapi",
-  },
-  "Vapi Plugin": {
-    uz: "Vapi plagini",
-    ru: "Плагин Vapi",
-  },
-  "Vapi plugin removed": {
-    uz: "Vapi plagini olib tashlandi",
-    ru: "Плагин Vapi удален",
-  },
-  "Vapi secret created": {
-    uz: "Vapi siri yaratildi",
-    ru: "Секрет Vapi создан",
-  },
+
   Vendor: {
     uz: "Vendor",
     ru: "Поставщик",
@@ -2508,10 +2477,7 @@ export const supplementalTranslations: Record<string, TranslationValue> = {
     uz: "OpenAI kaliti",
     ru: "Ключ OpenAI",
   },
-  "The Vapi assistant to use for voice calls": {
-    uz: "Ovozli qo'ng'iroqlar uchun ishlatiladigan Vapi yordamchisi",
-    ru: "Помощник Vapi для голосовых звонков",
-  },
+
   "The widget Help button stays disabled until you add a topic with at least one article.":
     {
       uz: "Kamida bitta maqolali mavzu qo'shmaguningizcha vidjet Help tugmasi o'chiq qoladi.",

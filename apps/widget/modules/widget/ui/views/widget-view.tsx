@@ -12,7 +12,6 @@ import { WidgetSelectionScreen } from "../screens/widget-selection-screen"
 import { WidgetChatScreen } from "../screens/widget-chat-screen"
 import { WidgetInboxScreen } from "../screens/widget-inbox-screen"
 import { WidgetVoiceScreen } from "../screens/widget-voice-screen"
-import { WidgetContactScreen } from "../screens/widget-contact-screen"
 import { WidgetHelpScreen } from "../screens/widget-help-screen"
 import { WidgetArticleScreen } from "../screens/widget-article-screen"
 import { WidgetTopicScreen } from "../screens/widget-topic-screen"
@@ -78,7 +77,6 @@ export const WidgetView = ({
     chat: <WidgetChatScreen />,
     voice: <WidgetVoiceScreen mode={widgetMode} />,
     inbox: <WidgetInboxScreen />,
-    contact: <WidgetContactScreen />,
   }
 
   return (

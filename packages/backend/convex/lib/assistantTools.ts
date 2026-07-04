@@ -54,6 +54,13 @@ export const ASSISTANT_TOOL_TYPE_LABELS: Record<AssistantToolType, string> = {
   custom_webhook: "Custom Tool",
 }
 
+export const VOICE_UNSUPPORTED_ASSISTANT_TOOL_TYPES =
+  new Set<AssistantToolType>(["handoff", "resolve"])
+
+export const isVoiceCompatibleAssistantTool = (
+  tool: Pick<Doc<"assistantTools">, "type">
+) => !VOICE_UNSUPPORTED_ASSISTANT_TOOL_TYPES.has(tool.type)
+
 export const sanitizeAssistantToolName = (rawName: string) => {
   const normalized = rawName
     .trim()

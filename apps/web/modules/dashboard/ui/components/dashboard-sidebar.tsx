@@ -16,7 +16,6 @@ import {
   WrenchIcon,
 } from "lucide-react"
 
-import Image from "next/image"
 import Link from "next/link"
 
 import { usePathname } from "next/navigation"
@@ -103,12 +102,6 @@ const configurationItems = [
     title: "Data transfer",
     url: "/org-transfer",
     icon: ArrowLeftRightIcon,
-  },
-  {
-    title: "Vapi voice",
-    url: "/plugins/vapi",
-    icon: null, // Will use custom image
-    customIcon: "/vapi.jpg",
   },
 ]
 
@@ -310,17 +303,7 @@ export const DashboardSidebar = () => {
                     )}
                   >
                     <Link href={item.url}>
-                      {item.customIcon ? (
-                        <Image
-                          src={item.customIcon}
-                          alt={item.title}
-                          width={16}
-                          height={16}
-                          className="size-4 rounded-sm object-cover"
-                        />
-                      ) : item.icon ? (
-                        <item.icon className="size-4" />
-                      ) : null}
+                      <item.icon className="size-4" />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>

@@ -3,13 +3,7 @@
 import { type CSSProperties, type ReactNode, useEffect, useState } from "react"
 import { formatDistanceToNow } from "date-fns"
 import { useAtomValue, useSetAtom } from "jotai"
-import {
-  ChevronRightIcon,
-  MicIcon,
-  PhoneIcon,
-  SparklesIcon,
-  XIcon,
-} from "lucide-react"
+import { ChevronRightIcon, SparklesIcon, XIcon } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 import { mergeWidgetTheme } from "@workspace/ui/lib/widget-customization"
@@ -24,7 +18,6 @@ import {
   helpSearchQueryAtom,
   hasGeminiLiveVoiceAtom,
   hasOpenAIRealtimeVoiceAtom,
-  hasVapiSecretsAtom,
   organizationIdAtom,
   screenAtom,
   selectedHelpArticleAtom,
@@ -197,7 +190,6 @@ export const WidgetSelectionScreen = () => {
   const setScreen = useSetAtom(screenAtom)
   const widgetSettings = useAtomValue(widgetSettingsAtom)
   const theme = mergeWidgetTheme(widgetSettings?.theme)
-  const hasVapiSecrets = useAtomValue(hasVapiSecretsAtom)
   const hasOpenAIRealtimeVoice = useAtomValue(hasOpenAIRealtimeVoiceAtom)
   const hasGeminiLiveVoice = useAtomValue(hasGeminiLiveVoiceAtom)
   const organizationId = useAtomValue(organizationIdAtom)
@@ -276,7 +268,7 @@ export const WidgetSelectionScreen = () => {
     setScreen("article")
   }
 
-  const handleVoiceClick = (provider: "gemini" | "openai" | "vapi") => {
+  const handleVoiceClick = (provider: "gemini" | "openai") => {
     if (!contactSessionId) {
       setScreen("auth")
       return
@@ -284,15 +276,6 @@ export const WidgetSelectionScreen = () => {
 
     setActiveVoiceProvider(provider)
     setScreen("voice")
-  }
-
-  const handleContactClick = () => {
-    if (!contactSessionId) {
-      setScreen("auth")
-      return
-    }
-
-    setScreen("contact")
   }
 
   const openRecentConversation = (conversationId: Id<"conversations">) => {
@@ -403,11 +386,7 @@ export const WidgetSelectionScreen = () => {
           <div
             className={cn(
               "relative flex flex-1 flex-col gap-3 px-4 pb-4",
-              recentConversation
-                ? "pt-3"
-                : hasHomeHelpCards
-                  ? "pt-3"
-                  : "pt-4"
+              recentConversation ? "pt-3" : hasHomeHelpCards ? "pt-3" : "pt-4"
             )}
           >
             {hasHelpContent ? (
@@ -437,24 +416,7 @@ export const WidgetSelectionScreen = () => {
                   onClick={() => handleVoiceClick("gemini")}
                 />
               )}
-              {hasVapiSecrets && widgetSettings?.vapiSettings?.assistantId && (
-                <ActionCard
-                  disabled={isPending}
-                  icon={<MicIcon className="size-5" />}
-                  label="Voice Call"
-                  onClick={() => handleVoiceClick("vapi")}
-                />
-              )}
-              {hasVapiSecrets && widgetSettings?.vapiSettings?.phoneNumber && (
-                <ActionCard
-                  disabled={isPending}
-                  icon={<PhoneIcon className="size-5" />}
-                  label="Call us"
-                  onClick={handleContactClick}
-                />
-              )}
             </div>
-
           </div>
         </div>
       </div>

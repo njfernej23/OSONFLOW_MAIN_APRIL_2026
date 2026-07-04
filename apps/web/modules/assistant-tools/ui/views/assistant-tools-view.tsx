@@ -52,6 +52,11 @@ type ToolEditorState = {
   config: NonNullable<AssistantTool["config"]>
 }
 
+const VOICE_UNSUPPORTED_TOOL_TYPES = new Set<AssistantTool["type"]>([
+  "handoff",
+  "resolve",
+])
+
 const defaultEditorState = (): ToolEditorState => ({
   name: "",
   description: "",
@@ -68,23 +73,34 @@ const toolToEditorState = (tool: AssistantTool): ToolEditorState => ({
   enabledForChat: tool.enabledForChat,
   enabledForVoice: tool.enabledForVoice,
   isEnabled: tool.isEnabled,
-  parameters: tool.parameters.length > 0 ? tool.parameters : [createEmptyParameter()],
+  parameters:
+    tool.parameters.length > 0 ? tool.parameters : [createEmptyParameter()],
   config: tool.config ?? {},
 })
 
 export const AssistantToolsView = () => {
   const tools = useQuery(api.private.assistantTools.list)
-  const googleSheetsStatus = useQuery(api.private.googleSheets.getConnectionStatus)
-  const getGoogleOAuthUrl = useAction(api.private.googleSheets.getOAuthAuthorizationUrl)
-  const listSpreadsheets = useAction(api.private.googleSheetsActions.listSpreadsheets)
+  const googleSheetsStatus = useQuery(
+    api.private.googleSheets.getConnectionStatus
+  )
+  const getGoogleOAuthUrl = useAction(
+    api.private.googleSheets.getOAuthAuthorizationUrl
+  )
+  const listSpreadsheets = useAction(
+    api.private.googleSheetsActions.listSpreadsheets
+  )
   const listSpreadsheetTabs = useAction(
     api.private.googleSheetsActions.listSpreadsheetTabsForPicker
   )
   const listSpreadsheetColumnHeaders = useAction(
     api.private.googleSheetsActions.listSpreadsheetColumnHeadersForPicker
   )
-  const disconnectGoogleSheets = useMutation(api.private.googleSheets.disconnect)
-  const upsertGoogleSheetsApiKey = useMutation(api.private.googleSheets.upsertApiKey)
+  const disconnectGoogleSheets = useMutation(
+    api.private.googleSheets.disconnect
+  )
+  const upsertGoogleSheetsApiKey = useMutation(
+    api.private.googleSheets.upsertApiKey
+  )
   const bootstrapBuiltinTools = useMutation(
     api.private.assistantTools.bootstrapBuiltinTools
   )
@@ -92,10 +108,12 @@ export const AssistantToolsView = () => {
   const updateTool = useMutation(api.private.assistantTools.update)
   const removeTool = useMutation(api.private.assistantTools.remove)
 
-  const [selectedToolId, setSelectedToolId] = useState<Id<"assistantTools"> | "new" | null>(
+  const [selectedToolId, setSelectedToolId] = useState<
+    Id<"assistantTools"> | "new" | null
+  >(null)
+  const [newToolType, setNewToolType] = useState<IntegrationToolType | null>(
     null
   )
-  const [newToolType, setNewToolType] = useState<IntegrationToolType | null>(null)
   const [editor, setEditor] = useState<ToolEditorState>(defaultEditorState())
   const [googleApiKey, setGoogleApiKey] = useState("")
   const [showApiKeyFallback, setShowApiKeyFallback] = useState(false)
@@ -112,7 +130,9 @@ export const AssistantToolsView = () => {
   const [isLoadingSheetTabs, setIsLoadingSheetTabs] = useState(false)
   const [isLoadingSheetColumns, setIsLoadingSheetColumns] = useState(false)
   const [useManualSpreadsheetId, setUseManualSpreadsheetId] = useState(false)
-  const [spreadsheetLoadError, setSpreadsheetLoadError] = useState<string | null>(null)
+  const [spreadsheetLoadError, setSpreadsheetLoadError] = useState<
+    string | null
+  >(null)
   const hasBootstrappedRef = useRef(false)
 
   useEffect(() => {
@@ -151,6 +171,10 @@ export const AssistantToolsView = () => {
 
   const isGoogleSheetsEditor =
     selectedTool?.type === "google_sheets" || newToolType === "google_sheets"
+  const selectedToolType = selectedTool?.type ?? newToolType
+  const isVoiceUnsupportedTool = selectedToolType
+    ? VOICE_UNSUPPORTED_TOOL_TYPES.has(selectedToolType)
+    : false
 
   const loadSpreadsheetOptions = async () => {
     if (!isGoogleSheetsEditor || googleSheetsStatus?.authMethod !== "oauth") {
@@ -299,10 +323,15 @@ export const AssistantToolsView = () => {
     }
 
     const matchColumns = (requested: string[] = [], fallbackCount = 1) => {
-      const matched = requested.filter((column) => sheetColumnOptions.includes(column))
+      const matched = requested.filter((column) =>
+        sheetColumnOptions.includes(column)
+      )
       return matched.length > 0
         ? matched
-        : sheetColumnOptions.slice(0, Math.min(fallbackCount, sheetColumnOptions.length))
+        : sheetColumnOptions.slice(
+            0,
+            Math.min(fallbackCount, sheetColumnOptions.length)
+          )
     }
 
     setEditor((current) => {
@@ -318,9 +347,12 @@ export const AssistantToolsView = () => {
       )
 
       const columnsUnchanged =
-        JSON.stringify(searchColumns) === JSON.stringify(current.config.searchColumns) &&
-        JSON.stringify(valueColumns) === JSON.stringify(current.config.valueColumns) &&
-        JSON.stringify(updateColumns) === JSON.stringify(current.config.updateColumns)
+        JSON.stringify(searchColumns) ===
+          JSON.stringify(current.config.searchColumns) &&
+        JSON.stringify(valueColumns) ===
+          JSON.stringify(current.config.valueColumns) &&
+        JSON.stringify(updateColumns) ===
+          JSON.stringify(current.config.updateColumns)
 
       if (columnsUnchanged) {
         return current
@@ -449,12 +481,18 @@ export const AssistantToolsView = () => {
         return
       }
 
-      if (operation === "append" && (editor.config.valueColumns ?? []).length === 0) {
+      if (
+        operation === "append" &&
+        (editor.config.valueColumns ?? []).length === 0
+      ) {
         toast.error("Select at least one value column")
         return
       }
 
-      if (operation === "update" && (editor.config.updateColumns ?? []).length === 0) {
+      if (
+        operation === "update" &&
+        (editor.config.updateColumns ?? []).length === 0
+      ) {
         toast.error("Select at least one update column")
         return
       }
@@ -467,9 +505,13 @@ export const AssistantToolsView = () => {
         name: editor.name,
         description: editor.description,
         enabledForChat: editor.enabledForChat,
-        enabledForVoice: editor.enabledForVoice,
+        enabledForVoice: isVoiceUnsupportedTool
+          ? false
+          : editor.enabledForVoice,
         isEnabled: editor.isEnabled,
-        parameters: editor.parameters.filter((parameter) => parameter.name.trim()),
+        parameters: editor.parameters.filter((parameter) =>
+          parameter.name.trim()
+        ),
         config: editor.config,
       }
 
@@ -506,7 +548,9 @@ export const AssistantToolsView = () => {
       toast.success("Tool deleted")
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Unable to delete assistant tool"
+        error instanceof Error
+          ? error.message
+          : "Unable to delete assistant tool"
       )
     }
   }
@@ -519,7 +563,9 @@ export const AssistantToolsView = () => {
       window.location.assign(authorizationUrl)
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Unable to start Google sign-in"
+        error instanceof Error
+          ? error.message
+          : "Unable to start Google sign-in"
       )
       setIsConnectingGoogle(false)
     }
@@ -536,7 +582,9 @@ export const AssistantToolsView = () => {
       toast.success("Google account disconnected")
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Unable to disconnect Google account"
+        error instanceof Error
+          ? error.message
+          : "Unable to disconnect Google account"
       )
     } finally {
       setIsDisconnectingGoogle(false)
@@ -557,7 +605,9 @@ export const AssistantToolsView = () => {
       toast.success("Google Sheets API key saved")
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Unable to save Google Sheets key"
+        error instanceof Error
+          ? error.message
+          : "Unable to save Google Sheets key"
       )
     } finally {
       setIsSavingGoogleKey(false)
@@ -577,7 +627,11 @@ export const AssistantToolsView = () => {
     }))
   }
 
-  const renderToolButton = (tool: AssistantTool, icon: string, iconClassName: string) => (
+  const renderToolButton = (
+    tool: AssistantTool,
+    icon: string,
+    iconClassName: string
+  ) => (
     <button
       key={tool._id}
       type="button"
@@ -606,27 +660,28 @@ export const AssistantToolsView = () => {
             </Badge>
           )}
         </div>
-        <p className="line-clamp-2 text-xs text-muted-foreground">{tool.description}</p>
+        <p className="line-clamp-2 text-xs text-muted-foreground">
+          {tool.description}
+        </p>
       </div>
     </button>
   )
 
-  const editorTitle =
-    selectedTool?.isBuiltin
-      ? BUILTIN_TOOL_OPTIONS.find((entry) => entry.type === selectedTool.type)?.title ??
-        "Tool"
-      : selectedTool?.type === "google_sheets"
-        ? GOOGLE_SHEETS_OPERATION_LABELS[
-            selectedTool.config?.operation ?? "lookup"
-          ]
-        : newToolType === "google_sheets"
-          ? GOOGLE_SHEETS_OPERATION_LABELS[editor.config.operation ?? "lookup"]
-          : newToolType
-            ? INTEGRATION_TOOL_OPTIONS.find((entry) => entry.type === newToolType)
-                ?.title
-            : selectedTool
-              ? "Integration Tool"
-              : "Tool"
+  const editorTitle = selectedTool?.isBuiltin
+    ? (BUILTIN_TOOL_OPTIONS.find((entry) => entry.type === selectedTool.type)
+        ?.title ?? "Tool")
+    : selectedTool?.type === "google_sheets"
+      ? GOOGLE_SHEETS_OPERATION_LABELS[
+          selectedTool.config?.operation ?? "lookup"
+        ]
+      : newToolType === "google_sheets"
+        ? GOOGLE_SHEETS_OPERATION_LABELS[editor.config.operation ?? "lookup"]
+        : newToolType
+          ? INTEGRATION_TOOL_OPTIONS.find((entry) => entry.type === newToolType)
+              ?.title
+          : selectedTool
+            ? "Integration Tool"
+            : "Tool"
 
   const showEditor = selectedTool !== null || selectedToolId === "new"
 
@@ -635,7 +690,9 @@ export const AssistantToolsView = () => {
       <div className="flex h-full min-h-0 items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-center">
           <Loader2Icon className="size-6 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Loading assistant tools...</p>
+          <p className="text-sm text-muted-foreground">
+            Loading assistant tools...
+          </p>
         </div>
       </div>
     )
@@ -653,7 +710,9 @@ export const AssistantToolsView = () => {
               <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
                 Configuration
               </p>
-              <h1 className="mt-1 text-xl font-semibold tracking-tight">Assistant Tools</h1>
+              <h1 className="mt-1 text-xl font-semibold tracking-tight">
+                Assistant Tools
+              </h1>
               <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
                 Configure tool calling for chat and voice assistants.
               </p>
@@ -671,7 +730,7 @@ export const AssistantToolsView = () => {
       </div>
 
       <div className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6 lg:flex-row">
-        <aside className="surface-panel flex max-h-[min(380px,42vh)] w-full shrink-0 flex-col overflow-hidden rounded-[22px] lg:max-h-none lg:h-full lg:w-[300px] lg:max-w-[300px]">
+        <aside className="surface-panel flex max-h-[min(380px,42vh)] w-full shrink-0 flex-col overflow-hidden rounded-[22px] lg:h-full lg:max-h-none lg:w-[300px] lg:max-w-[300px]">
           <div className="shrink-0 border-b border-border/60 px-4 py-3">
             <p className="text-sm font-medium">Tool library</p>
             <p className="text-xs text-muted-foreground">
@@ -681,7 +740,7 @@ export const AssistantToolsView = () => {
           <ScrollArea className="min-h-0 flex-1 lg:max-h-none">
             <div className="space-y-5 p-4">
               <div>
-                <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                <p className="mb-2 text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
                   Assistant Tools
                 </p>
                 <div className="space-y-2">
@@ -705,7 +764,7 @@ export const AssistantToolsView = () => {
               </div>
 
               <div>
-                <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                <p className="mb-2 text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
                   Integrations
                 </p>
                 <div className="space-y-2">
@@ -767,7 +826,9 @@ export const AssistantToolsView = () => {
                 </div>
 
                 <div className="mt-3 space-y-2">
-                  <p className="text-[11px] font-medium text-muted-foreground">Add new</p>
+                  <p className="text-[11px] font-medium text-muted-foreground">
+                    Add new
+                  </p>
                   {INTEGRATION_TOOL_OPTIONS.map((option) => (
                     <button
                       key={option.type}
@@ -812,8 +873,8 @@ export const AssistantToolsView = () => {
               <div>
                 <p className="font-medium">Select a tool to configure</p>
                 <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                  Choose a built-in assistant tool or add an integration like Google
-                  Sheets.
+                  Choose a built-in assistant tool or add an integration like
+                  Google Sheets.
                 </p>
               </div>
             </div>
@@ -824,7 +885,8 @@ export const AssistantToolsView = () => {
                   <div className="min-w-0">
                     <h2 className="text-lg font-semibold">{editorTitle}</h2>
                     <p className="text-sm text-muted-foreground">
-                      Tool settings used by the assistant when deciding what to call.
+                      Tool settings used by the assistant when deciding what to
+                      call.
                     </p>
                   </div>
                   {selectedTool && !selectedTool.isBuiltin && (
@@ -859,8 +921,8 @@ export const AssistantToolsView = () => {
                         placeholder="lookup_account"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Must start with a letter and contain only letters, numbers, and
-                        underscores.
+                        Must start with a letter and contain only letters,
+                        numbers, and underscores.
                       </p>
                     </div>
                     <div className="space-y-3 rounded-2xl border border-border/60 bg-muted/20 p-4">
@@ -874,14 +936,19 @@ export const AssistantToolsView = () => {
                         <Switch
                           checked={editor.isEnabled}
                           onCheckedChange={(checked) =>
-                            setEditor((current) => ({ ...current, isEnabled: checked }))
+                            setEditor((current) => ({
+                              ...current,
+                              isEnabled: checked,
+                            }))
                           }
                         />
                       </div>
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <p className="text-sm font-medium">Chat</p>
-                          <p className="text-xs text-muted-foreground">Widget and channels</p>
+                          <p className="text-xs text-muted-foreground">
+                            Widget and channels
+                          </p>
                         </div>
                         <Switch
                           checked={editor.enabledForChat}
@@ -897,11 +964,18 @@ export const AssistantToolsView = () => {
                         <div>
                           <p className="text-sm font-medium">Voice</p>
                           <p className="text-xs text-muted-foreground">
-                            OpenAI Realtime and Gemini Live
+                            {isVoiceUnsupportedTool
+                              ? "Voice cannot hand off or resolve conversations"
+                              : "OpenAI Realtime and Gemini Live"}
                           </p>
                         </div>
                         <Switch
-                          checked={editor.enabledForVoice}
+                          checked={
+                            isVoiceUnsupportedTool
+                              ? false
+                              : editor.enabledForVoice
+                          }
+                          disabled={isVoiceUnsupportedTool}
                           onCheckedChange={(checked) =>
                             setEditor((current) => ({
                               ...current,
@@ -914,582 +988,654 @@ export const AssistantToolsView = () => {
                   </div>
 
                   <div className="space-y-2">
-                <Label htmlFor="tool-description">Description</Label>
-                <Textarea
-                  id="tool-description"
-                  value={editor.description}
-                  onChange={(event) =>
-                    setEditor((current) => ({
-                      ...current,
-                      description: event.target.value,
-                    }))
-                  }
-                  rows={3}
-                  placeholder="Look up account based on provided name and last 4 digits of the phone number."
-                />
-                <p className="text-xs text-muted-foreground">
-                  {editor.description.length}/1000
-                </p>
-              </div>
-
-              {selectedTool?.type === "query" && (
-                <div className="space-y-2">
-                  <Label>Knowledge Base Model</Label>
-                  <Select
-                    value={editor.config.knowledgeBaseModel ?? "gpt-4o-mini"}
-                    onValueChange={(value) =>
-                      setEditor((current) => ({
-                        ...current,
-                        config: { ...current.config, knowledgeBaseModel: value },
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select model" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CHAT_MODEL_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    The model used to interpret knowledge base search results.
-                  </p>
-                </div>
-              )}
-
-              {(selectedTool?.type === "google_sheets" ||
-                newToolType === "google_sheets") && (
-                <div className="space-y-4 rounded-2xl border border-border/60 p-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="secondary">
-                      {GOOGLE_SHEETS_OPERATION_LABELS[
-                        editor.config.operation ?? "lookup"
-                      ]}
-                    </Badge>
-                    {(editor.config.operation ?? "lookup") !== "lookup" ? (
-                      <p className="text-xs text-muted-foreground">
-                        Requires Google account (OAuth). API keys only support lookups.
-                      </p>
-                    ) : null}
+                    <Label htmlFor="tool-description">Description</Label>
+                    <Textarea
+                      id="tool-description"
+                      value={editor.description}
+                      onChange={(event) =>
+                        setEditor((current) => ({
+                          ...current,
+                          description: event.target.value,
+                        }))
+                      }
+                      rows={3}
+                      placeholder="Look up account based on provided name and last 4 digits of the phone number."
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {editor.description.length}/1000
+                    </p>
                   </div>
 
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="text-sm font-medium">Google account</p>
+                  {selectedTool?.type === "query" && (
+                    <div className="space-y-2">
+                      <Label>Knowledge Base Model</Label>
+                      <Select
+                        value={
+                          editor.config.knowledgeBaseModel ?? "gpt-4o-mini"
+                        }
+                        onValueChange={(value) =>
+                          setEditor((current) => ({
+                            ...current,
+                            config: {
+                              ...current.config,
+                              knowledgeBaseModel: value,
+                            },
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select model" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CHAT_MODEL_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <p className="text-xs text-muted-foreground">
-                        Connect the Google account that owns or can access your spreadsheet.
-                        After connecting, your spreadsheets and tabs load automatically.
+                        The model used to interpret knowledge base search
+                        results.
                       </p>
                     </div>
-                    <Badge
-                      variant={googleSheetsStatus?.isConfigured ? "default" : "outline"}
-                    >
-                      {googleSheetsStatus?.authMethod === "oauth" && googleSheetsStatus.email
-                        ? googleSheetsStatus.email
-                        : googleSheetsStatus?.isConfigured
-                          ? "Connected"
-                          : "Not connected"}
-                    </Badge>
-                  </div>
-
-                  {!googleSheetsStatus?.oauthAvailable ? (
-                    <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-                      Google sign-in is not configured on the server yet. Ask your admin to
-                      set the Google OAuth environment variables in Convex, or use an API key
-                      below.
-                    </p>
-                  ) : googleSheetsStatus?.authMethod !== "oauth" ? (
-                    <p className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-700 dark:text-sky-300">
-                      Connect Google to browse your spreadsheets and sheet tabs here.
-                    </p>
-                  ) : (
-                    <p className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-700 dark:text-sky-300">
-                      If spreadsheets do not appear, remove Osonflow from your{" "}
-                      <a
-                        href="https://myaccount.google.com/permissions"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="underline"
-                      >
-                        Google account permissions
-                      </a>
-                      , then disconnect and reconnect here so Drive access is granted.
-                      Also enable the Google Drive API in Google Cloud Console for your OAuth
-                      project.
-                    </p>
                   )}
 
-                  <div className="flex flex-wrap gap-2">
-                    {googleSheetsStatus?.authMethod === "oauth" ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={isDisconnectingGoogle}
-                        onClick={handleDisconnectGoogle}
-                        className="gap-2"
-                      >
-                        {isDisconnectingGoogle ? (
-                          <Loader2Icon className="size-4 animate-spin" />
-                        ) : (
-                          <LogOutIcon className="size-4" />
-                        )}
-                        Disconnect
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        disabled={isConnectingGoogle || !googleSheetsStatus?.oauthAvailable}
-                        onClick={handleConnectGoogle}
-                        className="gap-2"
-                      >
-                        {isConnectingGoogle ? (
-                          <Loader2Icon className="size-4 animate-spin" />
+                  {(selectedTool?.type === "google_sheets" ||
+                    newToolType === "google_sheets") && (
+                    <div className="space-y-4 rounded-2xl border border-border/60 p-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="secondary">
+                          {
+                            GOOGLE_SHEETS_OPERATION_LABELS[
+                              editor.config.operation ?? "lookup"
+                            ]
+                          }
+                        </Badge>
+                        {(editor.config.operation ?? "lookup") !== "lookup" ? (
+                          <p className="text-xs text-muted-foreground">
+                            Requires Google account (OAuth). API keys only
+                            support lookups.
+                          </p>
                         ) : null}
-                        Connect Google account
-                      </Button>
-                    )}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowApiKeyFallback((current) => !current)}
-                    >
-                      {showApiKeyFallback ? "Hide API key option" : "Use API key instead"}
-                    </Button>
-                  </div>
+                      </div>
 
-                  {showApiKeyFallback ? (
-                    <div className="space-y-2 rounded-xl border border-dashed border-border/70 bg-muted/20 p-3">
-                      <p className="text-xs text-muted-foreground">
-                        Advanced: API key works only for public sheets or sheets shared with
-                        your Google Cloud project.
-                      </p>
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <Input
-                          type="password"
-                          value={googleApiKey}
-                          onChange={(event) => setGoogleApiKey(event.target.value)}
-                          placeholder="AIza..."
-                        />
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-sm font-medium">Google account</p>
+                          <p className="text-xs text-muted-foreground">
+                            Connect the Google account that owns or can access
+                            your spreadsheet. After connecting, your
+                            spreadsheets and tabs load automatically.
+                          </p>
+                        </div>
+                        <Badge
+                          variant={
+                            googleSheetsStatus?.isConfigured
+                              ? "default"
+                              : "outline"
+                          }
+                        >
+                          {googleSheetsStatus?.authMethod === "oauth" &&
+                          googleSheetsStatus.email
+                            ? googleSheetsStatus.email
+                            : googleSheetsStatus?.isConfigured
+                              ? "Connected"
+                              : "Not connected"}
+                        </Badge>
+                      </div>
+
+                      {!googleSheetsStatus?.oauthAvailable ? (
+                        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                          Google sign-in is not configured on the server yet.
+                          Ask your admin to set the Google OAuth environment
+                          variables in Convex, or use an API key below.
+                        </p>
+                      ) : googleSheetsStatus?.authMethod !== "oauth" ? (
+                        <p className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-700 dark:text-sky-300">
+                          Connect Google to browse your spreadsheets and sheet
+                          tabs here.
+                        </p>
+                      ) : (
+                        <p className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-700 dark:text-sky-300">
+                          If spreadsheets do not appear, remove Osonflow from
+                          your{" "}
+                          <a
+                            href="https://myaccount.google.com/permissions"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="underline"
+                          >
+                            Google account permissions
+                          </a>
+                          , then disconnect and reconnect here so Drive access
+                          is granted. Also enable the Google Drive API in Google
+                          Cloud Console for your OAuth project.
+                        </p>
+                      )}
+
+                      <div className="flex flex-wrap gap-2">
+                        {googleSheetsStatus?.authMethod === "oauth" ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={isDisconnectingGoogle}
+                            onClick={handleDisconnectGoogle}
+                            className="gap-2"
+                          >
+                            {isDisconnectingGoogle ? (
+                              <Loader2Icon className="size-4 animate-spin" />
+                            ) : (
+                              <LogOutIcon className="size-4" />
+                            )}
+                            Disconnect
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            disabled={
+                              isConnectingGoogle ||
+                              !googleSheetsStatus?.oauthAvailable
+                            }
+                            onClick={handleConnectGoogle}
+                            className="gap-2"
+                          >
+                            {isConnectingGoogle ? (
+                              <Loader2Icon className="size-4 animate-spin" />
+                            ) : null}
+                            Connect Google account
+                          </Button>
+                        )}
                         <Button
                           type="button"
-                          variant="outline"
-                          disabled={isSavingGoogleKey}
-                          onClick={handleSaveGoogleKey}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setShowApiKeyFallback((current) => !current)
+                          }
                         >
-                          {isSavingGoogleKey ? (
-                            <Loader2Icon className="size-4 animate-spin" />
-                          ) : (
-                            "Save key"
-                          )}
+                          {showApiKeyFallback
+                            ? "Hide API key option"
+                            : "Use API key instead"}
                         </Button>
                       </div>
-                    </div>
-                  ) : null}
 
-                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
-                    <div className="space-y-2">
-                      <Label>Spreadsheet</Label>
-                      {googleSheetsStatus?.authMethod === "oauth" &&
-                      !useManualSpreadsheetId ? (
-                        <>
-                          <Select
-                            value={editor.config.spreadsheetId || undefined}
-                            onValueChange={(value) =>
-                              setEditor((current) => ({
-                                ...current,
-                                config: {
-                                  ...current.config,
-                                  spreadsheetId: value,
-                                },
-                              }))
-                            }
-                            disabled={isLoadingSpreadsheets}
-                          >
-                            <SelectTrigger>
-                              <SelectValue
-                                placeholder={
-                                  isLoadingSpreadsheets
-                                    ? "Loading your spreadsheets..."
-                                    : "Choose a spreadsheet"
-                                }
-                              />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {spreadsheetOptions.map((option) => (
-                                <SelectItem key={option.id} value={option.id}>
-                                  {option.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {spreadsheetLoadError ? (
-                            <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-                              {spreadsheetLoadError}
-                            </p>
-                          ) : spreadsheetOptions.length === 0 && !isLoadingSpreadsheets ? (
-                            <p className="text-xs text-muted-foreground">
-                              No spreadsheets found in this Google account.
-                            </p>
-                          ) : null}
-                          <div className="flex flex-wrap gap-3">
+                      {showApiKeyFallback ? (
+                        <div className="space-y-2 rounded-xl border border-dashed border-border/70 bg-muted/20 p-3">
+                          <p className="text-xs text-muted-foreground">
+                            Advanced: API key works only for public sheets or
+                            sheets shared with your Google Cloud project.
+                          </p>
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <Input
+                              type="password"
+                              value={googleApiKey}
+                              onChange={(event) =>
+                                setGoogleApiKey(event.target.value)
+                              }
+                              placeholder="AIza..."
+                            />
                             <Button
                               type="button"
-                              variant="link"
-                              size="sm"
-                              className="h-auto px-0"
-                              onClick={() => setUseManualSpreadsheetId(true)}
+                              variant="outline"
+                              disabled={isSavingGoogleKey}
+                              onClick={handleSaveGoogleKey}
                             >
-                              Enter spreadsheet ID manually
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="link"
-                              size="sm"
-                              className="h-auto px-0"
-                              disabled={isLoadingSpreadsheets}
-                              onClick={() => void loadSpreadsheetOptions()}
-                            >
-                              {isLoadingSpreadsheets ? "Refreshing..." : "Refresh list"}
+                              {isSavingGoogleKey ? (
+                                <Loader2Icon className="size-4 animate-spin" />
+                              ) : (
+                                "Save key"
+                              )}
                             </Button>
                           </div>
-                        </>
-                      ) : (
-                        <>
+                        </div>
+                      ) : null}
+
+                      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+                        <div className="space-y-2">
+                          <Label>Spreadsheet</Label>
+                          {googleSheetsStatus?.authMethod === "oauth" &&
+                          !useManualSpreadsheetId ? (
+                            <>
+                              <Select
+                                value={editor.config.spreadsheetId || undefined}
+                                onValueChange={(value) =>
+                                  setEditor((current) => ({
+                                    ...current,
+                                    config: {
+                                      ...current.config,
+                                      spreadsheetId: value,
+                                    },
+                                  }))
+                                }
+                                disabled={isLoadingSpreadsheets}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue
+                                    placeholder={
+                                      isLoadingSpreadsheets
+                                        ? "Loading your spreadsheets..."
+                                        : "Choose a spreadsheet"
+                                    }
+                                  />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {spreadsheetOptions.map((option) => (
+                                    <SelectItem
+                                      key={option.id}
+                                      value={option.id}
+                                    >
+                                      {option.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {spreadsheetLoadError ? (
+                                <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                                  {spreadsheetLoadError}
+                                </p>
+                              ) : spreadsheetOptions.length === 0 &&
+                                !isLoadingSpreadsheets ? (
+                                <p className="text-xs text-muted-foreground">
+                                  No spreadsheets found in this Google account.
+                                </p>
+                              ) : null}
+                              <div className="flex flex-wrap gap-3">
+                                <Button
+                                  type="button"
+                                  variant="link"
+                                  size="sm"
+                                  className="h-auto px-0"
+                                  onClick={() =>
+                                    setUseManualSpreadsheetId(true)
+                                  }
+                                >
+                                  Enter spreadsheet ID manually
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="link"
+                                  size="sm"
+                                  className="h-auto px-0"
+                                  disabled={isLoadingSpreadsheets}
+                                  onClick={() => void loadSpreadsheetOptions()}
+                                >
+                                  {isLoadingSpreadsheets
+                                    ? "Refreshing..."
+                                    : "Refresh list"}
+                                </Button>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <Input
+                                value={editor.config.spreadsheetId ?? ""}
+                                onChange={(event) =>
+                                  setEditor((current) => ({
+                                    ...current,
+                                    config: {
+                                      ...current.config,
+                                      spreadsheetId: event.target.value,
+                                    },
+                                  }))
+                                }
+                                placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                              />
+                              {googleSheetsStatus?.authMethod === "oauth" ? (
+                                <Button
+                                  type="button"
+                                  variant="link"
+                                  size="sm"
+                                  className="h-auto px-0"
+                                  onClick={() =>
+                                    setUseManualSpreadsheetId(false)
+                                  }
+                                >
+                                  Choose from my Google Drive
+                                </Button>
+                              ) : (
+                                <p className="text-xs text-muted-foreground">
+                                  Connect Google account to browse your
+                                  spreadsheets.
+                                </p>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Sheet tab</Label>
+                          {googleSheetsStatus?.isConfigured &&
+                          sheetTabOptions.length > 0 ? (
+                            <Select
+                              value={editor.config.range || undefined}
+                              onValueChange={(value) =>
+                                setEditor((current) => ({
+                                  ...current,
+                                  config: { ...current.config, range: value },
+                                }))
+                              }
+                              disabled={isLoadingSheetTabs}
+                            >
+                              <SelectTrigger>
+                                <SelectValue
+                                  placeholder={
+                                    isLoadingSheetTabs
+                                      ? "Loading tabs..."
+                                      : "Choose a tab"
+                                  }
+                                />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {sheetTabOptions.map((tab) => (
+                                  <SelectItem key={tab} value={tab}>
+                                    {tab}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Input
+                              value={editor.config.range ?? ""}
+                              onChange={(event) =>
+                                setEditor((current) => ({
+                                  ...current,
+                                  config: {
+                                    ...current.config,
+                                    range: event.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder="Sheet1"
+                              disabled={!editor.config.spreadsheetId?.trim()}
+                            />
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            The tab inside your spreadsheet. Column headers load
+                            automatically from the first row.
+                          </p>
+                        </div>
+                      </div>
+                      {(editor.config.operation ?? "lookup") === "lookup" ||
+                      (editor.config.operation ?? "lookup") === "update" ||
+                      (editor.config.operation ?? "lookup") === "delete" ? (
+                        <SheetColumnPicker
+                          label="Search columns"
+                          description="Columns used to find the matching row. Tool parameters are generated from your selection."
+                          columns={sheetColumnOptions}
+                          selected={editor.config.searchColumns ?? []}
+                          isLoading={isLoadingSheetColumns}
+                          onChange={(columns) =>
+                            handleSheetColumnsChange("searchColumns", columns)
+                          }
+                        />
+                      ) : null}
+                      {(editor.config.operation ?? "lookup") === "append" ? (
+                        <SheetColumnPicker
+                          label="Value columns"
+                          description="Columns the assistant can fill when adding a new row."
+                          columns={sheetColumnOptions}
+                          selected={editor.config.valueColumns ?? []}
+                          isLoading={isLoadingSheetColumns}
+                          onChange={(columns) =>
+                            handleSheetColumnsChange("valueColumns", columns)
+                          }
+                        />
+                      ) : null}
+                      {(editor.config.operation ?? "lookup") === "update" ? (
+                        <SheetColumnPicker
+                          label="Update columns"
+                          description="Columns the assistant can change after finding a row."
+                          columns={sheetColumnOptions}
+                          selected={editor.config.updateColumns ?? []}
+                          isLoading={isLoadingSheetColumns}
+                          onChange={(columns) =>
+                            handleSheetColumnsChange("updateColumns", columns)
+                          }
+                        />
+                      ) : null}
+                    </div>
+                  )}
+
+                  {(selectedTool?.type === "api_request" ||
+                    newToolType === "api_request") && (
+                    <div className="space-y-4 rounded-2xl border border-border/60 p-4">
+                      <div className="grid gap-4 md:grid-cols-[1fr_140px]">
+                        <div className="space-y-2">
+                          <Label>URL</Label>
                           <Input
-                            value={editor.config.spreadsheetId ?? ""}
+                            value={editor.config.url ?? ""}
                             onChange={(event) =>
                               setEditor((current) => ({
                                 ...current,
                                 config: {
                                   ...current.config,
-                                  spreadsheetId: event.target.value,
+                                  url: event.target.value,
                                 },
                               }))
                             }
-                            placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                            placeholder="https://api.example.com/lookup"
                           />
-                          {googleSheetsStatus?.authMethod === "oauth" ? (
-                            <Button
-                              type="button"
-                              variant="link"
-                              size="sm"
-                              className="h-auto px-0"
-                              onClick={() => setUseManualSpreadsheetId(false)}
-                            >
-                              Choose from my Google Drive
-                            </Button>
-                          ) : (
-                            <p className="text-xs text-muted-foreground">
-                              Connect Google account to browse your spreadsheets.
-                            </p>
-                          )}
-                        </>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Sheet tab</Label>
-                      {googleSheetsStatus?.isConfigured && sheetTabOptions.length > 0 ? (
-                        <Select
-                          value={editor.config.range || undefined}
-                          onValueChange={(value) =>
-                            setEditor((current) => ({
-                              ...current,
-                              config: { ...current.config, range: value },
-                            }))
-                          }
-                          disabled={isLoadingSheetTabs}
-                        >
-                          <SelectTrigger>
-                            <SelectValue
-                              placeholder={
-                                isLoadingSheetTabs ? "Loading tabs..." : "Choose a tab"
-                              }
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {sheetTabOptions.map((tab) => (
-                              <SelectItem key={tab} value={tab}>
-                                {tab}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Input
-                          value={editor.config.range ?? ""}
-                          onChange={(event) =>
-                            setEditor((current) => ({
-                              ...current,
-                              config: { ...current.config, range: event.target.value },
-                            }))
-                          }
-                          placeholder="Sheet1"
-                          disabled={!editor.config.spreadsheetId?.trim()}
-                        />
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        The tab inside your spreadsheet. Column headers load automatically
-                        from the first row.
-                      </p>
-                    </div>
-                  </div>
-                  {(editor.config.operation ?? "lookup") === "lookup" ||
-                  (editor.config.operation ?? "lookup") === "update" ||
-                  (editor.config.operation ?? "lookup") === "delete" ? (
-                    <SheetColumnPicker
-                      label="Search columns"
-                      description="Columns used to find the matching row. Tool parameters are generated from your selection."
-                      columns={sheetColumnOptions}
-                      selected={editor.config.searchColumns ?? []}
-                      isLoading={isLoadingSheetColumns}
-                      onChange={(columns) =>
-                        handleSheetColumnsChange("searchColumns", columns)
-                      }
-                    />
-                  ) : null}
-                  {(editor.config.operation ?? "lookup") === "append" ? (
-                    <SheetColumnPicker
-                      label="Value columns"
-                      description="Columns the assistant can fill when adding a new row."
-                      columns={sheetColumnOptions}
-                      selected={editor.config.valueColumns ?? []}
-                      isLoading={isLoadingSheetColumns}
-                      onChange={(columns) =>
-                        handleSheetColumnsChange("valueColumns", columns)
-                      }
-                    />
-                  ) : null}
-                  {(editor.config.operation ?? "lookup") === "update" ? (
-                    <SheetColumnPicker
-                      label="Update columns"
-                      description="Columns the assistant can change after finding a row."
-                      columns={sheetColumnOptions}
-                      selected={editor.config.updateColumns ?? []}
-                      isLoading={isLoadingSheetColumns}
-                      onChange={(columns) =>
-                        handleSheetColumnsChange("updateColumns", columns)
-                      }
-                    />
-                  ) : null}
-                </div>
-              )}
-
-              {(selectedTool?.type === "api_request" ||
-                newToolType === "api_request") && (
-                <div className="space-y-4 rounded-2xl border border-border/60 p-4">
-                  <div className="grid gap-4 md:grid-cols-[1fr_140px]">
-                    <div className="space-y-2">
-                      <Label>URL</Label>
-                      <Input
-                        value={editor.config.url ?? ""}
-                        onChange={(event) =>
-                          setEditor((current) => ({
-                            ...current,
-                            config: { ...current.config, url: event.target.value },
-                          }))
-                        }
-                        placeholder="https://api.example.com/lookup"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Method</Label>
-                      <Select
-                        value={editor.config.method ?? "POST"}
-                        onValueChange={(value: "GET" | "POST") =>
-                          setEditor((current) => ({
-                            ...current,
-                            config: { ...current.config, method: value },
-                          }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="GET">GET</SelectItem>
-                          <SelectItem value="POST">POST</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Headers JSON</Label>
-                    <Textarea
-                      value={editor.config.headersJson ?? "{}"}
-                      onChange={(event) =>
-                        setEditor((current) => ({
-                          ...current,
-                          config: {
-                            ...current.config,
-                            headersJson: event.target.value,
-                          },
-                        }))
-                      }
-                      rows={3}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Body template</Label>
-                    <Textarea
-                      value={editor.config.bodyTemplate ?? ""}
-                      onChange={(event) =>
-                        setEditor((current) => ({
-                          ...current,
-                          config: {
-                            ...current.config,
-                            bodyTemplate: event.target.value,
-                          },
-                        }))
-                      }
-                      rows={5}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Use {"{{parameter_name}}"} placeholders for tool arguments.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {(selectedTool?.type === "custom_webhook" ||
-                newToolType === "custom_webhook") && (
-                <div className="space-y-4 rounded-2xl border border-border/60 p-4">
-                  <div className="space-y-2">
-                    <Label>Webhook URL</Label>
-                    <Input
-                      value={editor.config.webhookUrl ?? ""}
-                      onChange={(event) =>
-                        setEditor((current) => ({
-                          ...current,
-                          config: {
-                            ...current.config,
-                            webhookUrl: event.target.value,
-                          },
-                        }))
-                      }
-                      placeholder="https://hooks.example.com/assistant-tool"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {!selectedTool?.isBuiltin && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">Parameters</p>
-                      <p className="text-xs text-muted-foreground">
-                        Define the inputs the assistant can send to this tool.
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setEditor((current) => ({
-                          ...current,
-                          parameters: [...current.parameters, createEmptyParameter()],
-                        }))
-                      }
-                    >
-                      <PlusIcon className="size-4" />
-                      Add parameter
-                    </Button>
-                  </div>
-
-                  <div className="space-y-3">
-                    {editor.parameters.map((parameter, index) => (
-                      <div
-                        key={`${parameter.name}-${index}`}
-                        className="space-y-3 rounded-2xl border border-border/60 bg-background/50 p-4"
-                      >
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">Name</Label>
-                            <Input
-                              value={parameter.name}
-                              onChange={(event) =>
-                                updateParameter(index, "name", event.target.value)
-                              }
-                              placeholder="name"
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">
-                              Description
-                            </Label>
-                            <Input
-                              value={parameter.description}
-                              onChange={(event) =>
-                                updateParameter(index, "description", event.target.value)
-                              }
-                              placeholder="What this input represents"
-                            />
-                          </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-3">
-                          <div className="min-w-[140px] flex-1 space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">Type</Label>
-                            <Select
-                              value={parameter.type}
-                              onValueChange={(value: "string" | "number" | "boolean") =>
-                                updateParameter(index, "type", value)
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="string">String</SelectItem>
-                                <SelectItem value="number">Number</SelectItem>
-                                <SelectItem value="boolean">Boolean</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2">
-                            <Switch
-                              checked={parameter.required}
-                              onCheckedChange={(checked) =>
-                                updateParameter(index, "required", checked)
-                              }
-                            />
-                            <span className="text-xs text-muted-foreground">Required</span>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="ml-auto shrink-0"
-                            onClick={() =>
+                        <div className="space-y-2">
+                          <Label>Method</Label>
+                          <Select
+                            value={editor.config.method ?? "POST"}
+                            onValueChange={(value: "GET" | "POST") =>
                               setEditor((current) => ({
                                 ...current,
-                                parameters: current.parameters.filter(
-                                  (_, parameterIndex) => parameterIndex !== index
-                                ),
+                                config: { ...current.config, method: value },
                               }))
                             }
                           >
-                            <Trash2Icon className="size-4" />
-                          </Button>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="GET">GET</SelectItem>
+                              <SelectItem value="POST">POST</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                      <div className="space-y-2">
+                        <Label>Headers JSON</Label>
+                        <Textarea
+                          value={editor.config.headersJson ?? "{}"}
+                          onChange={(event) =>
+                            setEditor((current) => ({
+                              ...current,
+                              config: {
+                                ...current.config,
+                                headersJson: event.target.value,
+                              },
+                            }))
+                          }
+                          rows={3}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Body template</Label>
+                        <Textarea
+                          value={editor.config.bodyTemplate ?? ""}
+                          onChange={(event) =>
+                            setEditor((current) => ({
+                              ...current,
+                              config: {
+                                ...current.config,
+                                bodyTemplate: event.target.value,
+                              },
+                            }))
+                          }
+                          rows={5}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Use {"{{parameter_name}}"} placeholders for tool
+                          arguments.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
+                  {(selectedTool?.type === "custom_webhook" ||
+                    newToolType === "custom_webhook") && (
+                    <div className="space-y-4 rounded-2xl border border-border/60 p-4">
+                      <div className="space-y-2">
+                        <Label>Webhook URL</Label>
+                        <Input
+                          value={editor.config.webhookUrl ?? ""}
+                          onChange={(event) =>
+                            setEditor((current) => ({
+                              ...current,
+                              config: {
+                                ...current.config,
+                                webhookUrl: event.target.value,
+                              },
+                            }))
+                          }
+                          placeholder="https://hooks.example.com/assistant-tool"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {!selectedTool?.isBuiltin && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">Parameters</p>
+                          <p className="text-xs text-muted-foreground">
+                            Define the inputs the assistant can send to this
+                            tool.
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setEditor((current) => ({
+                              ...current,
+                              parameters: [
+                                ...current.parameters,
+                                createEmptyParameter(),
+                              ],
+                            }))
+                          }
+                        >
+                          <PlusIcon className="size-4" />
+                          Add parameter
+                        </Button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {editor.parameters.map((parameter, index) => (
+                          <div
+                            key={`${parameter.name}-${index}`}
+                            className="space-y-3 rounded-2xl border border-border/60 bg-background/50 p-4"
+                          >
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <div className="space-y-1.5">
+                                <Label className="text-xs text-muted-foreground">
+                                  Name
+                                </Label>
+                                <Input
+                                  value={parameter.name}
+                                  onChange={(event) =>
+                                    updateParameter(
+                                      index,
+                                      "name",
+                                      event.target.value
+                                    )
+                                  }
+                                  placeholder="name"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-xs text-muted-foreground">
+                                  Description
+                                </Label>
+                                <Input
+                                  value={parameter.description}
+                                  onChange={(event) =>
+                                    updateParameter(
+                                      index,
+                                      "description",
+                                      event.target.value
+                                    )
+                                  }
+                                  placeholder="What this input represents"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <div className="min-w-[140px] flex-1 space-y-1.5">
+                                <Label className="text-xs text-muted-foreground">
+                                  Type
+                                </Label>
+                                <Select
+                                  value={parameter.type}
+                                  onValueChange={(
+                                    value: "string" | "number" | "boolean"
+                                  ) => updateParameter(index, "type", value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="string">
+                                      String
+                                    </SelectItem>
+                                    <SelectItem value="number">
+                                      Number
+                                    </SelectItem>
+                                    <SelectItem value="boolean">
+                                      Boolean
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2">
+                                <Switch
+                                  checked={parameter.required}
+                                  onCheckedChange={(checked) =>
+                                    updateParameter(index, "required", checked)
+                                  }
+                                />
+                                <span className="text-xs text-muted-foreground">
+                                  Required
+                                </span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="ml-auto shrink-0"
+                                onClick={() =>
+                                  setEditor((current) => ({
+                                    ...current,
+                                    parameters: current.parameters.filter(
+                                      (_, parameterIndex) =>
+                                        parameterIndex !== index
+                                    ),
+                                  }))
+                                }
+                              >
+                                <Trash2Icon className="size-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
 
               <div className="shrink-0 border-t border-border/60 bg-background/80 px-5 py-4 backdrop-blur-sm sm:px-6">
                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
                   <p className="text-center text-xs text-muted-foreground sm:mr-auto sm:text-left">
-                    Changes apply to chat and voice when the corresponding channel toggle is on.
+                    Changes apply to chat and voice when the corresponding
+                    channel toggle is on.
                   </p>
                   <Button
                     type="button"

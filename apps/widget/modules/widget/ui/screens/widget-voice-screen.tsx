@@ -1,7 +1,6 @@
 import { ArrowLeftIcon } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { ScrollArea } from "@workspace/ui/components/scroll-area"
-import { useVapi } from "@/modules/widget/hooks/use-vapi"
 import { useOpenAIRealtime } from "@/modules/widget/hooks/use-openai-realtime"
 import { useGeminiLive } from "@/modules/widget/hooks/use-gemini-live"
 import { useAtomValue, useSetAtom } from "jotai"
@@ -220,7 +219,7 @@ const VoiceOrb = ({
       />
       <span
         className={cn(
-          "absolute inset-0 aspect-square overflow-hidden rounded-full ring-1 ring-black/5 [clip-path:circle(50%)] [-webkit-clip-path:circle(50%)] will-change-transform",
+          "absolute inset-0 aspect-square overflow-hidden rounded-full ring-1 ring-black/5 will-change-transform [-webkit-clip-path:circle(50%)] [clip-path:circle(50%)]",
           "[animation:voice-orb-idle_7s_ease-in-out_infinite]",
           isActive &&
             "[animation:voice-orb-listening_2.1s_ease-in-out_infinite]",
@@ -254,11 +253,7 @@ const VoiceOrb = ({
   )
 }
 
-const TranscriptBackControl = ({
-  onClick,
-}: {
-  onClick: () => void
-}) => {
+const TranscriptBackControl = ({ onClick }: { onClick: () => void }) => {
   const [isPressed, setIsPressed] = useState(false)
   const timeoutRef = useRef<number | null>(null)
 
@@ -286,13 +281,13 @@ const TranscriptBackControl = ({
       <span
         aria-hidden="true"
         className={cn(
-          "pointer-events-none absolute inset-0 aspect-square overflow-hidden rounded-full ring-1 ring-black/5 [clip-path:circle(50%)] [-webkit-clip-path:circle(50%)] [animation:voice-orb-idle_5.5s_ease-in-out_infinite]",
+          "pointer-events-none absolute inset-0 aspect-square [animation:voice-orb-idle_5.5s_ease-in-out_infinite] overflow-hidden rounded-full ring-1 ring-black/5 [-webkit-clip-path:circle(50%)] [clip-path:circle(50%)]",
           isPressed &&
             "[animation:voice-back-orb-press_170ms_cubic-bezier(0.16,1,0.3,1)_both]"
         )}
         style={{ "--voice-orb-activity": "1" } as CSSProperties}
       >
-        <span className="absolute -inset-5 bg-[radial-gradient(circle_at_28%_22%,rgba(238,247,126,0.82),transparent_28%),radial-gradient(circle_at_72%_24%,rgba(139,211,255,0.95),transparent_34%),radial-gradient(circle_at_48%_82%,rgba(0,120,224,0.95),transparent_40%),radial-gradient(circle_at_84%_70%,rgba(4,31,43,0.86),transparent_42%),radial-gradient(circle_at_20%_70%,rgba(96,169,129,0.7),transparent_34%)] [animation:voice-orb-gradient_7s_linear_infinite]" />
+        <span className="absolute -inset-5 [animation:voice-orb-gradient_7s_linear_infinite] bg-[radial-gradient(circle_at_28%_22%,rgba(238,247,126,0.82),transparent_28%),radial-gradient(circle_at_72%_24%,rgba(139,211,255,0.95),transparent_34%),radial-gradient(circle_at_48%_82%,rgba(0,120,224,0.95),transparent_40%),radial-gradient(circle_at_84%_70%,rgba(4,31,43,0.86),transparent_42%),radial-gradient(circle_at_20%_70%,rgba(96,169,129,0.7),transparent_34%)]" />
         <span className="absolute inset-0 [animation:voice-orb-spin_5s_linear_infinite] bg-[conic-gradient(from_120deg,rgba(255,255,255,0.16),rgba(255,255,255,0),rgba(255,255,255,0.22),rgba(255,255,255,0))] opacity-80 mix-blend-overlay" />
       </span>
       <Button
@@ -324,11 +319,7 @@ const TranscriptBackControl = ({
   )
 }
 
-const TranscriptOpenControl = ({
-  onClick,
-}: {
-  onClick: () => void
-}) => {
+const TranscriptOpenControl = ({ onClick }: { onClick: () => void }) => {
   const [isPressed, setIsPressed] = useState(false)
   const timeoutRef = useRef<number | null>(null)
 
@@ -524,7 +515,7 @@ const VoiceCallUI = ({
           </section>
         )}
 
-        <div className="flex shrink-0 items-center justify-end px-6 pb-6 pt-2">
+        <div className="flex shrink-0 items-center justify-end px-6 pt-2 pb-6">
           {isActive ? (
             <Button
               aria-label="End voice chat"
@@ -539,36 +530,6 @@ const VoiceCallUI = ({
         </div>
       </div>
     </div>
-  )
-}
-
-const VapiVoice = ({
-  assistantName,
-  mode,
-}: {
-  assistantName: string
-  mode: WidgetMode
-}) => {
-  const {
-    isConnected,
-    isSpeaking,
-    startCall,
-    endCall,
-    isConnecting,
-    transcript,
-  } = useVapi()
-
-  return (
-    <VoiceCallUI
-      assistantName={assistantName}
-      isConnected={isConnected}
-      isConnecting={isConnecting}
-      isSpeaking={isSpeaking}
-      mode={mode}
-      transcript={transcript}
-      startCall={startCall}
-      endCall={endCall}
-    />
   )
 }
 
@@ -645,10 +606,6 @@ export const WidgetVoiceScreen = ({
   const activeVoiceProvider = useAtomValue(activeVoiceProviderAtom)
   const theme = mergeWidgetTheme(widgetSettings?.theme)
   const provider = activeVoiceProvider ?? "openai"
-
-  if (provider === "vapi") {
-    return <VapiVoice assistantName={theme.assistantName} mode={mode} />
-  }
 
   if (provider === "gemini") {
     return <GeminiLiveVoice assistantName={theme.assistantName} mode={mode} />

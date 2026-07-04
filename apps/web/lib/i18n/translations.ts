@@ -728,10 +728,7 @@ export const translations: Record<string, TranslationValue> = {
     uz: "Workflowni sozlash",
     ru: "Workflow",
   },
-  "Vapi voice": {
-    uz: "Vapi ovozi",
-    ru: "Голос Vapi",
-  },
+
   Billing: {
     uz: "Billing",
     ru: "Биллинг",
@@ -1127,7 +1124,7 @@ export const translations: Record<string, TranslationValue> = {
     uz: "Pastki chap",
     ru: "Снизу слева",
   },
-  "HTML5": {
+  HTML5: {
     uz: "HTML5",
     ru: "HTML5",
   },
@@ -1577,10 +1574,10 @@ export const translations: Record<string, TranslationValue> = {
     uz: "Tablar tartibsizligisiz integratsiyalar",
     ru: "Интеграции без хаоса вкладок",
   },
-  "Bring website chat, WhatsApp, Telegram, ChatGPT, Gemini, Vapi, and future channels into one support layer.":
+  "Bring website chat, WhatsApp, Telegram, ChatGPT, Gemini, and future channels into one support layer.":
     {
-      uz: "Sayt chati, WhatsApp, Telegram, ChatGPT, Gemini, Vapi va kelajak kanallarini bitta qo'llab-quvvatlash qatlamiga olib keling.",
-      ru: "Объедините чат сайта, WhatsApp, Telegram, ChatGPT, Gemini, Vapi и будущие каналы в один слой поддержки.",
+      uz: "Sayt chati, WhatsApp, Telegram, ChatGPT, Gemini va kelajak kanallarini bitta qo'llab-quvvatlash qatlamiga olib keling.",
+      ru: "Объедините чат сайта, WhatsApp, Telegram, ChatGPT, Gemini и будущие каналы в один слой поддержки.",
     },
   "The right channel, one operating view": {
     uz: "To'g'ri kanal, bitta ish ko'rinishi",
@@ -1622,10 +1619,10 @@ export const translations: Record<string, TranslationValue> = {
     uz: "Ovoz steki",
     ru: "Голосовой стек",
   },
-  "Connect Vapi and voice assistants for high-urgency support where typing slows the customer down.":
+  "Connect realtime voice assistants for high-urgency support where typing slows the customer down.":
     {
-      uz: "Yozish mijozni sekinlashtiradigan shoshilinch yordam uchun Vapi va ovozli yordamchilarni ulang.",
-      ru: "Подключайте Vapi и голосовых помощников для срочной поддержки, где набор текста замедляет клиента.",
+      uz: "Yozish mijozni sekinlashtiradigan shoshilinch yordam uchun real vaqt ovozli yordamchilarini ulang.",
+      ru: "Подключайте голосовых помощников реального времени для срочной поддержки, где набор текста замедляет клиента.",
     },
   "Pricing for calm support growth": {
     uz: "Sokin qo'llab-quvvatlash o'sishi uchun narxlar",
@@ -1736,9 +1733,9 @@ export const translations: Record<string, TranslationValue> = {
     uz: "AI javob loyihasini tayyorlaydi",
     ru: "AI готовит черновик ответа",
   },
-  "Vapi assistant": {
-    uz: "Vapi yordamchisi",
-    ru: "Помощник Vapi",
+  "Realtime assistant": {
+    uz: "Real vaqt yordamchisi",
+    ru: "Помощник реального времени",
   },
   "More via API": {
     uz: "API orqali ko'proq",

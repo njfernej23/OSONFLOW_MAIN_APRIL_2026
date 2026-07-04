@@ -46,7 +46,6 @@ import type * as private_savedReplies from "../private/savedReplies.js";
 import type * as private_secrets from "../private/secrets.js";
 import type * as private_subscriptions from "../private/subscriptions.js";
 import type * as private_telegram from "../private/telegram.js";
-import type * as private_vapi from "../private/vapi.js";
 import type * as private_whatsapp from "../private/whatsapp.js";
 import type * as private_widgetSettings from "../private/widgetSettings.js";
 import type * as private_workflows from "../private/workflows.js";
@@ -130,7 +129,6 @@ declare const fullApi: ApiFromModules<{
   "private/secrets": typeof private_secrets;
   "private/subscriptions": typeof private_subscriptions;
   "private/telegram": typeof private_telegram;
-  "private/vapi": typeof private_vapi;
   "private/whatsapp": typeof private_whatsapp;
   "private/widgetSettings": typeof private_widgetSettings;
   "private/workflows": typeof private_workflows;

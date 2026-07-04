@@ -8,8 +8,7 @@ import { enforceRateLimit } from "../lib/rateLimits"
 
 const providerValidator = v.union(
   v.literal("openai_realtime"),
-  v.literal("gemini_live"),
-  v.literal("vapi")
+  v.literal("gemini_live")
 )
 
 const roleValidator = v.union(v.literal("user"), v.literal("assistant"))

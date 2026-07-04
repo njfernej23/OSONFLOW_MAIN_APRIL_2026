@@ -5,7 +5,7 @@ import { CONTACT_SESSION_KEY } from "../constants"
 import { Doc, Id } from "@workspace/backend/_generated/dataModel"
 import { atom } from "jotai"
 
-export type VoiceProvider = "gemini" | "openai" | "vapi"
+export type VoiceProvider = "gemini" | "openai"
 export type ChatReturnScreen = "selection" | "help" | "inbox"
 export type WidgetMode = "standard" | "voice"
 export type WidgetHelpArticle = {
@@ -52,13 +52,7 @@ export const helpSearchQueryAtom = atom("")
 
 export const widgetSettingsAtom = atom<Doc<"widgetSettings"> | null>(null)
 
-export const vapiSecretsAtom = atom<{
-  publicApiKey: string
-} | null>(null)
-
 export const activeVoiceProviderAtom = atom<VoiceProvider | null>(null)
-
-export const hasVapiSecretsAtom = atom((get) => get(vapiSecretsAtom) !== null)
 
 export const hasOpenAIRealtimeVoiceAtom = atom((get) => {
   const settings = get(widgetSettingsAtom)
@@ -71,8 +65,5 @@ export const hasGeminiLiveVoiceAtom = atom((get) => {
 })
 
 export const hasAnyVoiceAtom = atom(
-  (get) =>
-    get(hasVapiSecretsAtom) ||
-    get(hasOpenAIRealtimeVoiceAtom) ||
-    get(hasGeminiLiveVoiceAtom)
+  (get) => get(hasOpenAIRealtimeVoiceAtom) || get(hasGeminiLiveVoiceAtom)
 )

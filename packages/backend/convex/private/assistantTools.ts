@@ -1,10 +1,16 @@
 import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
 import { ConvexError, v } from "convex/values"
-import { mutation, query, type MutationCtx, type QueryCtx } from "../_generated/server"
+import {
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "../_generated/server"
 import { Doc, Id } from "../_generated/dataModel"
 import {
   ASSISTANT_TOOL_TYPE_LABELS,
   BUILTIN_ASSISTANT_TOOLS,
+  isVoiceCompatibleAssistantTool,
   sanitizeAssistantToolName,
 } from "../lib/assistantTools"
 
@@ -20,11 +26,7 @@ const assistantToolTypeValidator = v.union(
 const assistantToolParameterValidator = v.object({
   name: v.string(),
   description: v.string(),
-  type: v.union(
-    v.literal("string"),
-    v.literal("number"),
-    v.literal("boolean")
-  ),
+  type: v.union(v.literal("string"), v.literal("number"), v.literal("boolean")),
   required: v.boolean(),
 })
 
@@ -81,7 +83,9 @@ const listOrganizationTools = async (
 ): Promise<Doc<"assistantTools">[]> => {
   return ctx.db
     .query("assistantTools")
-    .withIndex("by_organization_id", (q) => q.eq("organizationId", organizationId))
+    .withIndex("by_organization_id", (q) =>
+      q.eq("organizationId", organizationId)
+    )
     .collect()
 }
 
@@ -113,7 +117,9 @@ const seedBuiltinTools = async (
       enabledForVoice: builtin.type === "query",
       parameters: builtin.parameters,
       config:
-        builtin.type === "query" ? { knowledgeBaseModel: "gpt-4o-mini" } : undefined,
+        builtin.type === "query"
+          ? { knowledgeBaseModel: "gpt-4o-mini" }
+          : undefined,
       sortOrder: builtin.sortOrder,
       updatedAt: now,
     })
@@ -172,8 +178,7 @@ export const create = mutation({
     } catch (error) {
       throw new ConvexError({
         code: "BAD_REQUEST",
-        message:
-          error instanceof Error ? error.message : "Invalid tool name",
+        message: error instanceof Error ? error.message : "Invalid tool name",
       })
     }
     const existing = await ctx.db
@@ -205,7 +210,9 @@ export const create = mutation({
       isBuiltin: false,
       isEnabled: args.isEnabled ?? true,
       enabledForChat: args.enabledForChat,
-      enabledForVoice: args.enabledForVoice,
+      enabledForVoice:
+        args.enabledForVoice &&
+        isVoiceCompatibleAssistantTool({ type: args.type }),
       parameters: args.parameters,
       config: args.config,
       sortOrder: tools.length,
@@ -254,7 +261,8 @@ export const update = mutation({
     }
 
     if (args.enabledForVoice !== undefined) {
-      updates.enabledForVoice = args.enabledForVoice
+      updates.enabledForVoice =
+        args.enabledForVoice && isVoiceCompatibleAssistantTool(tool)
     }
 
     if (args.parameters !== undefined) {
@@ -271,8 +279,7 @@ export const update = mutation({
       } catch (error) {
         throw new ConvexError({
           code: "BAD_REQUEST",
-          message:
-            error instanceof Error ? error.message : "Invalid tool name",
+          message: error instanceof Error ? error.message : "Invalid tool name",
         })
       }
     }

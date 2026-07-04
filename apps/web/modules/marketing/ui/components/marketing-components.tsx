@@ -63,7 +63,6 @@ export const channelLogos = [
   { label: "Telegram", src: "/telegram.png" },
   { label: "ChatGPT", src: "/logos/chatgpt-logo.png" },
   { label: "Gemini", src: "/logos/gemini-logo.png" },
-  { label: "Vapi", src: "/vapi.jpg" },
 ]
 
 export const featureCards: MarketingFeature[] = [
@@ -156,7 +155,7 @@ export const integrationHighlights: MarketingFeature[] = [
   {
     title: "Voice stack",
     description:
-      "Connect Vapi and voice assistants for high-urgency support where typing slows the customer down.",
+      "Connect realtime voice assistants for high-urgency support where typing slows the customer down.",
     icon: RadioTowerIcon,
     accent: "bg-[#fff3c4] text-[#8a5b00]",
   },
@@ -606,7 +605,7 @@ export const AutomationFlowPanel = () => (
         {[
           ["New billing question", "AI drafts answer", "94% confidence"],
           ["Payment failure", "Human priority", "Escalated"],
-          ["Voice request", "Vapi assistant", "In call"],
+          ["Voice request", "Realtime assistant", "In call"],
         ].map(([input, action, state]) => (
           <div
             className="osonflow-flow-row grid gap-3 rounded-[14px] bg-white/[0.08] p-4 text-sm sm:grid-cols-[1fr_auto_1fr_auto]"

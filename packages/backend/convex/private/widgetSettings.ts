@@ -68,11 +68,6 @@ const homeCardValidator = v.object({
 
 const homeCardsValidator = v.array(homeCardValidator)
 
-const vapiSettingsValidator = v.object({
-  assistantId: v.optional(v.string()),
-  phoneNumber: v.optional(v.string()),
-})
-
 const chatSettingsValidator = v.object({
   model: v.optional(v.string()),
 })
@@ -159,7 +154,6 @@ const widgetSettingsArgsValidator = {
   helpArticles: v.optional(legacyHelpArticlesValidator),
   helpTopics: helpTopicsValidator,
   homeCards: homeCardsValidator,
-  vapiSettings: vapiSettingsValidator,
   chatSettings: v.optional(chatSettingsValidator),
   openaiRealtimeSettings: v.optional(openaiRealtimeSettingsValidator),
   geminiLiveSettings: v.optional(geminiLiveSettingsValidator),
@@ -249,10 +243,6 @@ type WidgetSettingsSnapshot = {
   helpArticles?: HelpArticles
   helpTopics?: HelpTopics | LegacyHelpTopics
   homeCards?: HomeCard[]
-  vapiSettings: {
-    assistantId?: string
-    phoneNumber?: string
-  }
   openaiRealtimeSettings?: {
     enabled?: boolean
     model?: string
@@ -356,10 +346,6 @@ const createDefaultWidgetSettings = (): WidgetSettingsSnapshot => ({
     { type: "article", topicIndex: 1, articleIndex: 0 },
     { type: "article", topicIndex: 2, articleIndex: 0 },
   ],
-  vapiSettings: {
-    assistantId: "",
-    phoneNumber: "",
-  },
   chatSettings: {
     model: "gpt-4o-mini",
   },
@@ -599,16 +585,6 @@ const normalizeSnapshot = (
       helpTopics,
       fallback.homeCards
     ),
-    vapiSettings: {
-      assistantId:
-        snapshot.vapiSettings.assistantId ??
-        fallback.vapiSettings.assistantId ??
-        "",
-      phoneNumber:
-        snapshot.vapiSettings.phoneNumber ??
-        fallback.vapiSettings.phoneNumber ??
-        "",
-    },
     chatSettings: {
       model:
         snapshot.chatSettings?.model ??
@@ -685,7 +661,6 @@ const getPublishedSnapshot = (
       helpArticles: widgetSettings.helpArticles ?? fallback.helpArticles,
       helpTopics: widgetSettings.helpTopics ?? fallback.helpTopics,
       homeCards: widgetSettings.homeCards ?? fallback.homeCards,
-      vapiSettings: widgetSettings.vapiSettings ?? fallback.vapiSettings,
       chatSettings: widgetSettings.chatSettings ?? fallback.chatSettings,
       openaiRealtimeSettings:
         widgetSettings.openaiRealtimeSettings ??
@@ -758,7 +733,6 @@ const applyPublishedSnapshotPatch = (snapshot: WidgetSettingsSnapshot) => ({
   helpArticles: snapshot.helpArticles,
   helpTopics: snapshot.helpTopics,
   homeCards: snapshot.homeCards,
-  vapiSettings: snapshot.vapiSettings,
   chatSettings: snapshot.chatSettings,
   openaiRealtimeSettings: snapshot.openaiRealtimeSettings,
   geminiLiveSettings: snapshot.geminiLiveSettings,

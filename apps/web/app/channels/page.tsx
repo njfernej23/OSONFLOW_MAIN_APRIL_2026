@@ -21,7 +21,7 @@ export default function ChannelsPage() {
   return (
     <PageShell>
       <PageHero
-        description="Bring website chat, WhatsApp, Telegram, ChatGPT, Gemini, Vapi, and future channels into one support layer."
+        description="Bring website chat, WhatsApp, Telegram, ChatGPT, Gemini, and future channels into one support layer."
         title="Integrations without tab chaos"
       >
         <IntegrationConstellation />

@@ -8,7 +8,7 @@ import {
   organizationIdAtom,
 } from "../atoms/widget-atoms"
 
-type VoiceConversationProvider = "openai_realtime" | "gemini_live" | "vapi"
+type VoiceConversationProvider = "openai_realtime" | "gemini_live"
 
 type TranscriptMessage = {
   role: "user" | "assistant"

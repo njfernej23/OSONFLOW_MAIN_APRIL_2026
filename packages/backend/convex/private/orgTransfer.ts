@@ -55,7 +55,7 @@ type OrgBundle = {
   //   isActive?: boolean
   // }>
   plugins?: Array<{
-    service: "vapi" | "openai_realtime" | "gemini_live" | "google_sheets"
+    service: "openai_realtime" | "gemini_live" | "google_sheets"
     secretName: string
     value: unknown
   }>
@@ -81,7 +81,10 @@ const parseOrgBundle = (parsed: unknown): OrgBundle => {
     })
   }
 
-  if (parsed.type !== ORG_BUNDLE_TYPE || parsed.version !== ORG_BUNDLE_VERSION) {
+  if (
+    parsed.type !== ORG_BUNDLE_TYPE ||
+    parsed.version !== ORG_BUNDLE_VERSION
+  ) {
     throw new ConvexError({
       code: "BAD_REQUEST",
       message: "Bundle format is invalid or unsupported",
@@ -110,7 +113,6 @@ const buildWidgetSnapshotFromRow = (row: any) => ({
   defaultSuggestions: row.defaultSuggestions,
   helpTopics: Array.isArray(row.helpTopics) ? row.helpTopics : [],
   homeCards: Array.isArray(row.homeCards) ? row.homeCards : [],
-  vapiSettings: row.vapiSettings,
   openaiRealtimeSettings: row.openaiRealtimeSettings,
   geminiLiveSettings: row.geminiLiveSettings,
   theme: row.theme,
@@ -143,7 +145,9 @@ const extractKnowledgeText = async (
         ["txt", "csv", "md", "json", "html", "xml"].includes(extension)
 
       if (isTextLike) {
-        const rawText = new TextDecoder().decode(await storageBlob.arrayBuffer())
+        const rawText = new TextDecoder().decode(
+          await storageBlob.arrayBuffer()
+        )
         return rawText.slice(0, MAX_EXPORT_TEXT_LENGTH)
       }
 
@@ -314,7 +318,9 @@ const importKnowledgeEntry = async (
 
 export const exportBundle = action({
   args: {},
-  handler: async (ctx): Promise<{
+  handler: async (
+    ctx
+  ): Promise<{
     bundle: OrgBundle
     summary: {
       widgetSettings: boolean
@@ -343,9 +349,12 @@ export const exportBundle = action({
       })
     }
 
-    const tableData = await ctx.runQuery(internal.system.orgTransfer.collectTableData, {
-      organizationId: orgId,
-    })
+    const tableData = await ctx.runQuery(
+      internal.system.orgTransfer.collectTableData,
+      {
+        organizationId: orgId,
+      }
+    )
 
     const knowledgeBase = await exportKnowledgeBase(ctx, orgId)
 
@@ -436,7 +445,10 @@ export const importBundle = action({
         bundle.widgetSettings.draft ?? bundle.widgetSettings.published
 
       if (snapshot) {
-        await ctx.runMutation(api.private.widgetSettings.saveDraft, snapshot as never)
+        await ctx.runMutation(
+          api.private.widgetSettings.saveDraft,
+          snapshot as never
+        )
         summary.widgetSettings = true
 
         if (options.publishWidgetSettings) {
@@ -508,7 +520,9 @@ export const importBundle = action({
           organizationId: orgId,
           service: plugin.service,
           secretName: plugin.secretName,
-          secretValue: serializeSecretValue(plugin.value as Record<string, unknown>),
+          secretValue: serializeSecretValue(
+            plugin.value as Record<string, unknown>
+          ),
         })
         summary.plugins += 1
       }
@@ -516,29 +530,32 @@ export const importBundle = action({
 
     if (bundle.integrationWebhooks?.length) {
       for (const webhook of bundle.integrationWebhooks) {
-        await ctx.runMutation(internal.system.orgTransfer.importIntegrationWebhook, {
-          organizationId: orgId,
-          actorId: identity.subject,
-          url: webhook.url,
-          description: webhook.description,
-          provider:
-            webhook.provider === "webhook" ||
-            webhook.provider === "discord" ||
-            webhook.provider === "telegram" ||
-            webhook.provider === "whatsapp"
-              ? webhook.provider
-              : undefined,
-          providerConfig: webhook.providerConfig as never,
-          isEnabled: webhook.isEnabled,
-          eventTypes: webhook.eventTypes as Array<
-            | "contact_session.created"
-            | "conversation.created"
-            | "conversation.status_changed"
-            | "message.received"
-            | "message.sent"
-          >,
-          signingSecret: webhook.signingSecret,
-        })
+        await ctx.runMutation(
+          internal.system.orgTransfer.importIntegrationWebhook,
+          {
+            organizationId: orgId,
+            actorId: identity.subject,
+            url: webhook.url,
+            description: webhook.description,
+            provider:
+              webhook.provider === "webhook" ||
+              webhook.provider === "discord" ||
+              webhook.provider === "telegram" ||
+              webhook.provider === "whatsapp"
+                ? webhook.provider
+                : undefined,
+            providerConfig: webhook.providerConfig as never,
+            isEnabled: webhook.isEnabled,
+            eventTypes: webhook.eventTypes as Array<
+              | "contact_session.created"
+              | "conversation.created"
+              | "conversation.status_changed"
+              | "message.received"
+              | "message.sent"
+            >,
+            signingSecret: webhook.signingSecret,
+          }
+        )
         summary.integrationWebhooks += 1
       }
     }

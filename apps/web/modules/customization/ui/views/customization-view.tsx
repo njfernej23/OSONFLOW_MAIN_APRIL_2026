@@ -9,8 +9,7 @@ export const CustomizationView = () => {
   const customizationState = useQuery(
     api.private.widgetSettings.getCustomizationState
   )
-  const vapiPlugin = useQuery(api.private.plugins.getOne, { service: "vapi" })
-  const isLoading = customizationState === undefined || vapiPlugin === undefined
+  const isLoading = customizationState === undefined
 
   if (isLoading) {
     return (
@@ -79,7 +78,6 @@ export const CustomizationView = () => {
             customizationState.isDraftDifferentFromPublished
           }
           versions={customizationState.versions}
-          hasVapiPlugin={!!vapiPlugin}
         />
       </div>
     </div>

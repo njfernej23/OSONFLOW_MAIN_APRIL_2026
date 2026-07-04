@@ -57,10 +57,6 @@ export const widgetSettingsSchema = z.object({
     .array(helpTopicSchema)
     .max(30, "Help center can have at most 30 topics"),
   homeCards: z.array(homeCardSchema).max(12, "Home can show at most 12 cards"),
-  vapiSettings: z.object({
-    assistantId: z.string().optional(),
-    phoneNumber: z.string().optional(),
-  }),
   openaiRealtimeSettings: z.object({
     enabled: z.boolean().optional(),
     model: z.string().trim().min(1, "Model is required"),

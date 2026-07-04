@@ -9,7 +9,6 @@ import {
   contactSessionIdAtomFamily,
   widgetSettingsAtom,
   widgetModeAtom,
-  vapiSecretsAtom,
   type WidgetMode,
   type VoiceProvider,
 } from "@/modules/widget/atoms/widget-atoms"
@@ -84,13 +83,13 @@ export const WidgetLoadingScreen = ({
   parentPageUrl?: string
 }) => {
   const [step, setStep] = useState<InitStep>("org")
-  const [validatedContactSessionIsAnonymous, setValidatedContactSessionIsAnonymous] =
-    useState(false)
+  const [
+    validatedContactSessionIsAnonymous,
+    setValidatedContactSessionIsAnonymous,
+  ] = useState(false)
   const setWidgetSettings = useSetAtom(widgetSettingsAtom)
   const setErrorMessage = useSetAtom(errorMessageAtom)
   const setOrganizationId = useSetAtom(organizationIdAtom)
-  const setVapiSecrets = useSetAtom(vapiSecretsAtom)
-  const vapiSecrets = useAtomValue(vapiSecretsAtom)
   const setActiveVoiceProvider = useSetAtom(activeVoiceProviderAtom)
   const setWidgetMode = useSetAtom(widgetModeAtom)
 
@@ -214,32 +213,11 @@ export const WidgetLoadingScreen = ({
     )
   }, [mode, widgetSettings])
 
-  // Step 4: load voice config
-  const getVapiSecrets = useAction(api.public.secrets.getVapiSecrets)
-
+  // Step 4: finish voice config
   useEffect(() => {
     if (step !== "voice") return
-    if (!organizationId) {
-      setErrorMessage("Organization ID is required")
-      setScreen("error")
-      return
-    }
-
-    getVapiSecrets({ organizationId })
-      .catch(() => null)
-      .then((vapiSecrets) => {
-        setVapiSecrets(vapiSecrets)
-        setStep("done")
-      })
-  }, [
-    step,
-    organizationId,
-    getVapiSecrets,
-    setVapiSecrets,
-    setStep,
-    setErrorMessage,
-    setScreen,
-  ])
+    setStep("done")
+  }, [setStep, step])
 
   // Step 5: navigate
   useEffect(() => {
@@ -276,11 +254,7 @@ export const WidgetLoadingScreen = ({
         ? "openai"
         : widgetSettings?.geminiLiveSettings?.enabled
           ? "gemini"
-          : mode === "voice" &&
-              widgetSettings?.vapiSettings?.assistantId &&
-              vapiSecrets
-            ? "vapi"
-            : null
+          : null
 
       if (!nextVoiceProvider) {
         setErrorMessage("Voice AI is not enabled for this widget.")
@@ -323,7 +297,6 @@ export const WidgetLoadingScreen = ({
     setWidgetMode,
     step,
     validatedContactSessionIsAnonymous,
-    vapiSecrets,
     widgetSettings,
   ])
 

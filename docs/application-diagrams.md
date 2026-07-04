@@ -243,7 +243,7 @@ flowchart LR
   Customer[Customer contact]
   Clerk[Clerk auth]
   Polar[Polar billing]
-  AI[AI providers<br/>OpenAI, Gemini, Vapi]
+  AI[AI providers<br/>OpenAI, Gemini]
   Channels[Channel providers<br/>Telegram, Instagram]
   Webhooks[External webhook receivers]
 
@@ -400,7 +400,6 @@ erDiagram
     object defaultSuggestions
     object helpTopics
     object homeCards
-    object vapiSettings
     object openaiRealtimeSettings
     object geminiLiveSettings
     object theme
@@ -427,7 +426,7 @@ erDiagram
   PLUGIN {
     id _id PK
     string organizationId FK
-    string service "vapi|openai_realtime|gemini_live"
+    string service "openai_realtime|gemini_live"
     string secretName
     string secretValue
   }
@@ -636,7 +635,7 @@ erDiagram
     id _id PK
     string organizationId FK
     id contactSessionId FK
-    string provider "openai_realtime|gemini_live|vapi"
+    string provider "openai_realtime|gemini_live"
     string status "unresolved|escalated|resolved"
     id linkedConversationId FK
     number lastActivityAt

@@ -111,7 +111,6 @@ const formatConversationDayLabel = (timestamp: number) => {
 }
 
 const getProviderLabel = (provider: string) => {
-  if (provider === "vapi") return "Vapi"
   return (
     AI_CONVERSATION_PROVIDER_LABELS[
       provider as keyof typeof AI_CONVERSATION_PROVIDER_LABELS
@@ -120,10 +119,6 @@ const getProviderLabel = (provider: string) => {
 }
 
 const getProviderBadgeClassName = (provider: string) => {
-  if (provider === "vapi") {
-    return "border-violet-500/25 bg-violet-500/10 text-violet-700 dark:text-violet-300"
-  }
-
   return (
     AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES[
       provider as keyof typeof AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES

@@ -86,7 +86,7 @@ import { cn } from "@workspace/ui/lib/utils"
 import { Doc, Id } from "@workspace/backend/_generated/dataModel"
 import { useMutation } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
-import { VapiFormFields } from "./vapi-form-fields"
+
 import { OpenAIRealtimeFormFields } from "./openai-realtime-form-fields"
 import { VoiceCallSettingsFormFields } from "./voice-call-settings-form-fields"
 import { ThemeFormFields } from "./theme-form-fields"
@@ -110,7 +110,6 @@ type WidgetSettingsSnapshot = Pick<
   | "defaultSuggestions"
   | "helpTopics"
   | "homeCards"
-  | "vapiSettings"
   | "theme"
   | "appearance"
 > & {
@@ -150,7 +149,6 @@ interface CustomizationFormProps {
   draftUpdatedAt?: number
   isDraftDifferentFromPublished: boolean
   versions: WidgetSettingsVersionSummary[]
-  hasVapiPlugin: boolean
 }
 
 const defaultHelpTopics: FormSchema["helpTopics"] = [
@@ -448,10 +446,6 @@ const buildFormDefaultValues = (
     },
     helpTopics,
     homeCards: normalizeHomeCardsForForm(snapshot.homeCards, helpTopics),
-    vapiSettings: {
-      assistantId: snapshot.vapiSettings.assistantId || "",
-      phoneNumber: snapshot.vapiSettings.phoneNumber || "",
-    },
     openaiRealtimeSettings: {
       enabled: snapshot.openaiRealtimeSettings?.enabled ?? false,
       model: snapshot.openaiRealtimeSettings?.model || "gpt-realtime",
@@ -928,7 +922,6 @@ export const CustomizationForm = ({
   draftUpdatedAt,
   isDraftDifferentFromPublished,
   versions,
-  hasVapiPlugin,
 }: CustomizationFormProps) => {
   const saveDraftWidgetSettings = useMutation(
     api.private.widgetSettings.saveDraft
@@ -995,16 +988,6 @@ export const CustomizationForm = ({
   const tokenEstimate = Math.ceil(systemPromptLen / 4)
 
   const buildMutationPayload = useCallback((values: FormSchema) => {
-    const vapiSettings: WidgetSettings["vapiSettings"] = {
-      assistantId:
-        values.vapiSettings.assistantId === "none"
-          ? ""
-          : values.vapiSettings.assistantId,
-      phoneNumber:
-        values.vapiSettings.phoneNumber === "none"
-          ? ""
-          : values.vapiSettings.phoneNumber,
-    }
     const theme: NonNullable<WidgetSettings["theme"]> = {
       ...values.theme,
       borderRadius: clampBorderRadius(Number(values.theme.borderRadius)),
@@ -1064,7 +1047,6 @@ export const CustomizationForm = ({
       defaultSuggestions: values.defaultSuggestions,
       helpTopics: cleanHelpTopicsForSave(values.helpTopics),
       homeCards: cleanHomeCardsForSave(values.homeCards, values.helpTopics),
-      vapiSettings,
       openaiRealtimeSettings,
       geminiLiveSettings,
       voiceCallSettings,
@@ -1710,13 +1692,15 @@ export const CustomizationForm = ({
                         </FormLabel>
                         <FormControl>
                           <WidgetToolsPicker
-                            value={field.value as Id<"assistantTools">[] | undefined}
+                            value={
+                              field.value as Id<"assistantTools">[] | undefined
+                            }
                             onChange={field.onChange}
                           />
                         </FormControl>
                         <FormDescription className="text-xs">
-                          Saved with your widget draft when you publish. Configure tool
-                          definitions in Assistant Tools first.
+                          Saved with your widget draft when you publish.
+                          Configure tool definitions in Assistant Tools first.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -2080,18 +2064,6 @@ export const CustomizationForm = ({
                   />
                   <OpenAIRealtimeFormFields form={form} />
                   <VoiceCallSettingsFormFields form={form} />
-                  {hasVapiPlugin ? (
-                    <div className="space-y-4 rounded-2xl border border-border/70 bg-muted/10 p-4">
-                      <div>
-                        <p className="text-sm font-semibold">Vapi voice</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Keep using your existing Vapi assistant or phone
-                          number alongside OpenAI voice.
-                        </p>
-                      </div>
-                      <VapiFormFields form={form} />
-                    </div>
-                  ) : null}
                 </TabsContent>
               </div>
             </section>

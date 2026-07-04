@@ -9,8 +9,19 @@ export const DEFAULT_GOODBYE_PHRASES = [
   "that's all",
   "that is all",
   "no more questions",
+  "no more question",
   "no other questions",
+  "no questions",
+  "i don't have any questions",
+  "i dont have any questions",
+  "i don't have any question",
+  "i dont have any question",
+  "i have no questions",
+  "i have no question",
   "nothing else",
+  "i'm done",
+  "im done",
+  "i am done",
   "i'm good",
   "im good",
   "i am good",
@@ -61,14 +72,11 @@ export const mergeVoiceCallSettings = (
   const base = resolveVoiceCallSettings(fallback)
 
   return {
-    autoEndOnGoodbye:
-      snapshot?.autoEndOnGoodbye ?? base.autoEndOnGoodbye,
+    autoEndOnGoodbye: snapshot?.autoEndOnGoodbye ?? base.autoEndOnGoodbye,
     customGoodbyePhrases:
       snapshot?.customGoodbyePhrases ?? base.customGoodbyePhrases,
-    idleTimeoutSeconds:
-      snapshot?.idleTimeoutSeconds ?? base.idleTimeoutSeconds,
-    maxDurationSeconds:
-      snapshot?.maxDurationSeconds ?? base.maxDurationSeconds,
+    idleTimeoutSeconds: snapshot?.idleTimeoutSeconds ?? base.idleTimeoutSeconds,
+    maxDurationSeconds: snapshot?.maxDurationSeconds ?? base.maxDurationSeconds,
   }
 }
 
@@ -101,7 +109,10 @@ export const matchesGoodbyeIntent = (
       return true
     }
 
-    if (normalized.endsWith(phrase) && normalized.length <= phrase.length + 40) {
+    if (
+      normalized.endsWith(phrase) &&
+      normalized.length <= phrase.length + 40
+    ) {
       return true
     }
 
@@ -110,6 +121,12 @@ export const matchesGoodbyeIntent = (
       normalized.length < 90 &&
       (phrase.includes("no more") ||
         phrase.includes("nothing else") ||
+        phrase.includes("no questions") ||
+        phrase.includes("have no question") ||
+        phrase.includes("have any question") ||
+        phrase.includes("i'm done") ||
+        phrase.includes("im done") ||
+        phrase.includes("i am done") ||
         phrase.includes("that's all") ||
         phrase.includes("that is all") ||
         phrase.includes("goodbye"))
@@ -118,8 +135,10 @@ export const matchesGoodbyeIntent = (
     }
   }
 
-  return /^(thanks|thank you|thx)( so much| anyway| for helping| for your help)?$/i.test(
-    normalized
+  return (
+    /^(thanks|thank you|thx)( so much| anyway| for helping| for your help)?$/i.test(
+      normalized
+    ) || /\bno more qu?j?estions?\b/i.test(normalized)
   )
 }
 
