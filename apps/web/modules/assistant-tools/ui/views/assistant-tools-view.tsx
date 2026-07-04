@@ -501,6 +501,16 @@ export const AssistantToolsView = () => {
     setIsSaving(true)
 
     try {
+      const operation = editor.config.operation ?? "lookup"
+      const parameters = isGoogleSheetsEditor
+        ? buildGoogleSheetsParameters({
+            operation,
+            searchColumns: editor.config.searchColumns ?? [],
+            valueColumns: editor.config.valueColumns ?? [],
+            updateColumns: editor.config.updateColumns ?? [],
+          })
+        : editor.parameters.filter((parameter) => parameter.name.trim())
+
       const payload = {
         name: editor.name,
         description: editor.description,
@@ -509,9 +519,7 @@ export const AssistantToolsView = () => {
           ? false
           : editor.enabledForVoice,
         isEnabled: editor.isEnabled,
-        parameters: editor.parameters.filter((parameter) =>
-          parameter.name.trim()
-        ),
+        parameters,
         config: editor.config,
       }
 

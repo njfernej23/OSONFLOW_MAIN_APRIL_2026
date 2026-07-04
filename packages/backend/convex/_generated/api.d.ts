@@ -27,6 +27,7 @@ import type * as lib_secrets from "../lib/secrets.js";
 import type * as lib_voiceCallSettings from "../lib/voiceCallSettings.js";
 import type * as lib_voiceToolDeclarations from "../lib/voiceToolDeclarations.js";
 import type * as lib_webhookBaseUrl from "../lib/webhookBaseUrl.js";
+import type * as migrations_stripVapiSettings from "../migrations/stripVapiSettings.js";
 import type * as private_aiConversations from "../private/aiConversations.js";
 import type * as private_analytics from "../private/analytics.js";
 import type * as private_assistantTools from "../private/assistantTools.js";
@@ -110,6 +111,7 @@ declare const fullApi: ApiFromModules<{
   "lib/voiceCallSettings": typeof lib_voiceCallSettings;
   "lib/voiceToolDeclarations": typeof lib_voiceToolDeclarations;
   "lib/webhookBaseUrl": typeof lib_webhookBaseUrl;
+  "migrations/stripVapiSettings": typeof migrations_stripVapiSettings;
   "private/aiConversations": typeof private_aiConversations;
   "private/analytics": typeof private_analytics;
   "private/assistantTools": typeof private_assistantTools;

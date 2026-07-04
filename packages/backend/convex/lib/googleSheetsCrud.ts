@@ -84,13 +84,20 @@ export const formatSheetLookupContext = (
   const formattedRows = matches
     .map((row, index) => {
       const fields = Object.entries(row)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join(", ")
-      return `${index + 1}. ${fields}`
+        .map(([key, value]) => `  - ${key}: ${value}`)
+        .join("\n")
+      return `Row ${index + 1}:\n${fields}`
     })
-    .join("\n")
+    .join("\n\n")
 
-  return `Search criteria: ${criteria || "none provided"}\nMatching rows (${matches.length}):\n${formattedRows}`
+  return [
+    `Sheet lookup found ${matches.length} matching row(s).`,
+    "Use every field listed below when answering — do not omit fields or claim data is missing when it appears here.",
+    "",
+    `Search criteria: ${criteria || "none provided"}`,
+    "",
+    formattedRows,
+  ].join("\n")
 }
 
 export const findMatchingRows = (

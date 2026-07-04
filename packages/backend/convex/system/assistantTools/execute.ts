@@ -2,17 +2,13 @@
 
 import { v } from "convex/values"
 import { internalAction } from "../../_generated/server"
-import { api, internal } from "../../_generated/api"
+import { internal } from "../../_generated/api"
 import { Doc } from "../../_generated/dataModel"
 import { interpolateTemplate } from "../../lib/assistantTools"
 import { generateText } from "ai"
 import { getRagForOrganization } from "../ai/rag"
+import { SEARCH_INTERPRETER_PROMPT } from "../ai/constants"
 import {
-  SEARCH_INTERPRETER_PROMPT,
-  SHEETS_INTERPRETER_PROMPT,
-} from "../ai/constants"
-import {
-  OPENAI_CHAT_MODEL,
   getOpenAIChatModelFromSecretValue,
 } from "../../lib/openai"
 import { resolveGoogleSheetsAuth } from "../../lib/googleSheetsAuth"
@@ -39,55 +35,10 @@ const parseSheetLookupMatches = (rawResult: string) => {
   }
 }
 
-const interpretSheetLookupResult = async (
-  ctx: any,
-  tool: Doc<"assistantTools">,
-  args: Record<string, unknown>,
-  matches: Array<Record<string, string>>,
-  userQuestion?: string | null
-): Promise<string> => {
-  const openAIPlugin = await ctx.runQuery(
-    internal.system.plugins.getByOrganizationIdAndService,
-    {
-      organizationId: tool.organizationId,
-      service: "openai_realtime",
-    }
-  )
-
-  const widgetSettings = await ctx.runQuery(
-    api.public.widgetSettings.getByOrganizationId,
-    { organizationId: tool.organizationId }
-  )
-
-  const chatModel =
-    widgetSettings?.chatSettings?.model?.trim() || OPENAI_CHAT_MODEL
-
-  const userPrompt = userQuestion?.trim()
-    ? `User asked: "${userQuestion.trim()}"\n\n`
-    : ""
-
-  const response = await generateText({
-    system: SHEETS_INTERPRETER_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: `${userPrompt}${formatSheetLookupContext(matches, args)}`,
-      },
-    ],
-    model: getOpenAIChatModelFromSecretValue(
-      openAIPlugin?.secretValue,
-      chatModel
-    ),
-  })
-
-  return response.text.trim()
-}
-
 const executeGoogleSheets = async (
   ctx: any,
   tool: Doc<"assistantTools">,
-  args: Record<string, unknown>,
-  threadId?: string
+  args: Record<string, unknown>
 ): Promise<string> => {
   const spreadsheetId = tool.config?.spreadsheetId?.trim()
   const range = tool.config?.range?.trim() || "Sheet1"
@@ -125,20 +76,7 @@ const executeGoogleSheets = async (
       return rawResult
     }
 
-    const userQuestion = threadId
-      ? await ctx.runQuery(
-          internal.system.conversations.getLatestUserMessageByThreadId,
-          { threadId }
-        )
-      : null
-
-    return await interpretSheetLookupResult(
-      ctx,
-      tool,
-      args,
-      matches,
-      userQuestion
-    )
+    return formatSheetLookupContext(matches, args)
   } catch (error) {
     return error instanceof Error
       ? error.message
@@ -335,7 +273,7 @@ export const executeTool = internalAction({
         return "Conversation marked as resolved."
       }
       case "google_sheets":
-        return executeGoogleSheets(ctx, tool, toolArgs, args.threadId)
+        return executeGoogleSheets(ctx, tool, toolArgs)
       case "api_request":
         return executeApiRequest(tool, toolArgs)
       case "custom_webhook":
