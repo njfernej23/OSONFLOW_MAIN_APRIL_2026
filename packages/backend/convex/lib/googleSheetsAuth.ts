@@ -6,6 +6,7 @@ import {
   serializeGoogleSheetsSecret,
   type GoogleSheetsSecretPayload,
 } from "./googleSheetsOAuth"
+import { fetchWithRetry } from "./googleSheetsQuery"
 import { parseSecretValue } from "./secrets"
 import { internal } from "../_generated/api"
 
@@ -104,20 +105,10 @@ export const fetchGoogleSheetValues = async ({
       ? `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedRange}?key=${auth.apiKey}`
       : `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedRange}`
 
-  const response = await fetch(url, {
-    headers:
-      auth.method === "oauth"
-        ? { Authorization: `Bearer ${auth.accessToken}` }
-        : undefined,
-  })
+  const response = await fetchWithRetry(url, undefined, auth)
+  const payload = (await response.json().catch(() => null)) as {
+    values?: string[][]
+  } | null
 
-  const payload = await response.json().catch(() => null)
-
-  if (!response.ok) {
-    const message =
-      payload?.error?.message || "Unable to read the configured Google Sheet."
-    throw new Error(message)
-  }
-
-  return (payload?.values as string[][]) ?? []
+  return payload?.values ?? []
 }

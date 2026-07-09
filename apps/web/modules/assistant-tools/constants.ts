@@ -56,6 +56,44 @@ export const BUILTIN_TOOL_OPTIONS: Array<{
     icon: "⌕",
     iconClassName: "bg-sky-500/15 text-sky-400",
   },
+  {
+    type: "resolve",
+    title: "Resolve",
+    description: "Mark the conversation as resolved",
+    icon: "✓",
+    iconClassName: "bg-emerald-500/15 text-emerald-400",
+  },
+]
+
+export const GOOGLE_SHEETS_MATCH_MODE_OPTIONS = [
+  {
+    value: "exact" as const,
+    label: "Exact match",
+    description: "Case-insensitive full cell match (best for email, ID, role)",
+  },
+  {
+    value: "contains" as const,
+    label: "Contains",
+    description: "Substring match (legacy fuzzy behavior)",
+  },
+  {
+    value: "equals" as const,
+    label: "Equals (case-sensitive)",
+    description: "Exact characters including case",
+  },
+]
+
+export const GOOGLE_SHEETS_QUERY_STRATEGY_OPTIONS = [
+  {
+    value: "gviz" as const,
+    label: "Server query (recommended)",
+    description: "Ask Google for matching rows only — best for large sheets",
+  },
+  {
+    value: "scan" as const,
+    label: "Bounded scan",
+    description: "Download a capped range and filter locally",
+  },
 ]
 
 export const INTEGRATION_TOOL_OPTIONS: Array<{
@@ -117,6 +155,10 @@ export const GOOGLE_SHEETS_TEMPLATES: Array<{
       operation: "lookup",
       range: "Sheet1",
       searchColumns: ["name", "phone"],
+      matchMode: "exact",
+      queryStrategy: "gviz",
+      maxLookupRows: 25,
+      requireUniqueMatch: true,
     },
   },
   {
@@ -151,6 +193,7 @@ export const GOOGLE_SHEETS_TEMPLATES: Array<{
       operation: "append",
       range: "Sheet1",
       valueColumns: ["name", "phone", "email"],
+      queryStrategy: "gviz",
     },
   },
   {
@@ -198,6 +241,9 @@ export const GOOGLE_SHEETS_TEMPLATES: Array<{
       range: "Sheet1",
       searchColumns: ["name", "phone"],
       updateColumns: ["phone", "email", "status"],
+      matchMode: "exact",
+      queryStrategy: "gviz",
+      requireUniqueMatch: true,
     },
   },
   {
@@ -226,6 +272,9 @@ export const GOOGLE_SHEETS_TEMPLATES: Array<{
       operation: "delete",
       range: "Sheet1",
       searchColumns: ["name", "phone"],
+      matchMode: "exact",
+      queryStrategy: "gviz",
+      requireUniqueMatch: true,
     },
   },
 ]

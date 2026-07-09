@@ -63,6 +63,14 @@ const executeGoogleSheets = async (
       searchColumns: tool.config?.searchColumns ?? [],
       valueColumns: tool.config?.valueColumns ?? [],
       updateColumns: tool.config?.updateColumns ?? [],
+      returnColumns: tool.config?.returnColumns ?? [],
+      matchMode: tool.config?.matchMode ?? "contains",
+      queryStrategy: tool.config?.queryStrategy ?? "gviz",
+      headerRow: tool.config?.headerRow ?? 1,
+      dataRange: tool.config?.dataRange,
+      maxLookupRows: tool.config?.maxLookupRows ?? 25,
+      maxScanRows: tool.config?.maxScanRows ?? 5000,
+      requireUniqueMatch: tool.config?.requireUniqueMatch ?? true,
       args,
     })
 

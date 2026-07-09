@@ -234,6 +234,16 @@ const assistantToolConfigValidator = v.object({
   searchColumns: v.optional(v.array(v.string())),
   valueColumns: v.optional(v.array(v.string())),
   updateColumns: v.optional(v.array(v.string())),
+  returnColumns: v.optional(v.array(v.string())),
+  matchMode: v.optional(
+    v.union(v.literal("contains"), v.literal("exact"), v.literal("equals"))
+  ),
+  queryStrategy: v.optional(v.union(v.literal("gviz"), v.literal("scan"))),
+  headerRow: v.optional(v.number()),
+  dataRange: v.optional(v.string()),
+  maxLookupRows: v.optional(v.number()),
+  maxScanRows: v.optional(v.number()),
+  requireUniqueMatch: v.optional(v.boolean()),
   url: v.optional(v.string()),
   method: v.optional(v.union(v.literal("GET"), v.literal("POST"))),
   headersJson: v.optional(v.string()),

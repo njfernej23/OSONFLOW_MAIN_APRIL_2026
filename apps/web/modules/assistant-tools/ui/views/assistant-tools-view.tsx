@@ -33,7 +33,9 @@ import {
   BUILTIN_TOOL_OPTIONS,
   CHAT_MODEL_OPTIONS,
   createEmptyParameter,
+  GOOGLE_SHEETS_MATCH_MODE_OPTIONS,
   GOOGLE_SHEETS_OPERATION_LABELS,
+  GOOGLE_SHEETS_QUERY_STRATEGY_OPTIONS,
   GOOGLE_SHEETS_TEMPLATES,
   INTEGRATION_TOOL_OPTIONS,
   type AssistantTool,
@@ -107,6 +109,7 @@ export const AssistantToolsView = () => {
   const createTool = useMutation(api.private.assistantTools.create)
   const updateTool = useMutation(api.private.assistantTools.update)
   const removeTool = useMutation(api.private.assistantTools.remove)
+  const testExecute = useAction(api.private.assistantTools.testExecute)
 
   const [selectedToolId, setSelectedToolId] = useState<
     Id<"assistantTools"> | "new" | null
@@ -115,6 +118,13 @@ export const AssistantToolsView = () => {
     null
   )
   const [editor, setEditor] = useState<ToolEditorState>(defaultEditorState())
+  const [libraryQuery, setLibraryQuery] = useState("")
+  const [spreadsheetFilter, setSpreadsheetFilter] = useState("")
+  const [showAdvancedSheets, setShowAdvancedSheets] = useState(false)
+  const [testArgsJson, setTestArgsJson] = useState("{}")
+  const [testResult, setTestResult] = useState<string | null>(null)
+  const [isTesting, setIsTesting] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
   const [googleApiKey, setGoogleApiKey] = useState("")
   const [showApiKeyFallback, setShowApiKeyFallback] = useState(false)
   const [isConnectingGoogle, setIsConnectingGoogle] = useState(false)
@@ -168,6 +178,38 @@ export const AssistantToolsView = () => {
     () => (tools ?? []).filter((tool) => !tool.isBuiltin),
     [tools]
   )
+
+  const filteredBuiltinTools = useMemo(() => {
+    const query = libraryQuery.trim().toLowerCase()
+    if (!query) return builtinTools
+    return builtinTools.filter(
+      (tool) =>
+        tool.name.toLowerCase().includes(query) ||
+        tool.description.toLowerCase().includes(query) ||
+        tool.type.toLowerCase().includes(query)
+    )
+  }, [builtinTools, libraryQuery])
+
+  const filteredIntegrationTools = useMemo(() => {
+    const query = libraryQuery.trim().toLowerCase()
+    if (!query) return integrationTools
+    return integrationTools.filter(
+      (tool) =>
+        tool.name.toLowerCase().includes(query) ||
+        tool.description.toLowerCase().includes(query) ||
+        tool.type.toLowerCase().includes(query)
+    )
+  }, [integrationTools, libraryQuery])
+
+  const filteredSpreadsheetOptions = useMemo(() => {
+    const query = spreadsheetFilter.trim().toLowerCase()
+    if (!query) return spreadsheetOptions
+    return spreadsheetOptions.filter(
+      (option) =>
+        option.name.toLowerCase().includes(query) ||
+        option.id.toLowerCase().includes(query)
+    )
+  }, [spreadsheetFilter, spreadsheetOptions])
 
   const isGoogleSheetsEditor =
     selectedTool?.type === "google_sheets" || newToolType === "google_sheets"
@@ -379,14 +421,30 @@ export const AssistantToolsView = () => {
   }, [isGoogleSheetsEditor, sheetColumnOptions])
 
   const selectTool = (tool: AssistantTool) => {
+    if (
+      isDirty &&
+      !window.confirm("You have unsaved changes. Discard them?")
+    ) {
+      return
+    }
     setSelectedToolId(tool._id)
     setNewToolType(null)
-    setEditor(toolToEditorState(tool))
+    const next = toolToEditorState(tool)
+    setEditor(next)
+    setIsDirty(false)
+    setTestResult(null)
+    setTestArgsJson("{}")
   }
 
   const startNewGoogleSheetsTool = (
     template: (typeof GOOGLE_SHEETS_TEMPLATES)[number]
   ) => {
+    if (
+      isDirty &&
+      !window.confirm("You have unsaved changes. Discard them?")
+    ) {
+      return
+    }
     setSelectedToolId("new")
     setNewToolType("google_sheets")
     setEditor({
@@ -401,9 +459,18 @@ export const AssistantToolsView = () => {
         ...template.config,
       },
     })
+    setIsDirty(true)
+    setShowAdvancedSheets(true)
+    setTestResult(null)
   }
 
   const startNewIntegration = (type: IntegrationToolType) => {
+    if (
+      isDirty &&
+      !window.confirm("You have unsaved changes. Discard them?")
+    ) {
+      return
+    }
     setSelectedToolId("new")
     setNewToolType(type)
     setEditor({
@@ -426,12 +493,15 @@ export const AssistantToolsView = () => {
               webhookMethod: "POST",
             },
     })
+    setIsDirty(true)
+    setTestResult(null)
   }
 
   const handleSheetColumnsChange = (
     field: "searchColumns" | "valueColumns" | "updateColumns",
     columns: string[]
   ) => {
+    setIsDirty(true)
     setEditor((current) => {
       const nextConfig = {
         ...current.config,
@@ -530,12 +600,14 @@ export const AssistantToolsView = () => {
         })
         setSelectedToolId(toolId)
         toast.success("Tool created")
+        setIsDirty(false)
       } else if (selectedTool) {
         await updateTool({
           toolId: selectedTool._id,
           ...payload,
         })
         toast.success("Tool updated")
+        setIsDirty(false)
       }
     } catch (error) {
       toast.error(
@@ -553,6 +625,7 @@ export const AssistantToolsView = () => {
       await removeTool({ toolId: selectedTool._id })
       setSelectedToolId(null)
       setEditor(defaultEditorState())
+      setIsDirty(false)
       toast.success("Tool deleted")
     } catch (error) {
       toast.error(
@@ -739,11 +812,22 @@ export const AssistantToolsView = () => {
 
       <div className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6 lg:flex-row">
         <aside className="surface-panel flex max-h-[min(380px,42vh)] w-full shrink-0 flex-col overflow-hidden rounded-[22px] lg:h-full lg:max-h-none lg:w-[300px] lg:max-w-[300px]">
-          <div className="shrink-0 border-b border-border/60 px-4 py-3">
-            <p className="text-sm font-medium">Tool library</p>
-            <p className="text-xs text-muted-foreground">
-              Built-ins and integrations available to your assistant.
-            </p>
+          <div className="shrink-0 space-y-3 border-b border-border/60 px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">Tool library</p>
+              <p className="text-xs text-muted-foreground">
+                Built-ins and integrations available to your assistant.
+              </p>
+            </div>
+            <div className="relative">
+              <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={libraryQuery}
+                onChange={(event) => setLibraryQuery(event.target.value)}
+                placeholder="Search tools..."
+                className="h-9 pl-9"
+              />
+            </div>
           </div>
           <ScrollArea className="min-h-0 flex-1 lg:max-h-none">
             <div className="space-y-5 p-4">
@@ -752,12 +836,14 @@ export const AssistantToolsView = () => {
                   Assistant Tools
                 </p>
                 <div className="space-y-2">
-                  {builtinTools.length === 0 ? (
+                  {filteredBuiltinTools.length === 0 ? (
                     <p className="rounded-xl border border-dashed border-border/70 px-3 py-4 text-center text-xs text-muted-foreground">
-                      Default tools are being prepared...
+                      {builtinTools.length === 0
+                        ? "Default tools are being prepared..."
+                        : "No built-in tools match your search."}
                     </p>
                   ) : (
-                    builtinTools.map((tool) => {
+                    filteredBuiltinTools.map((tool) => {
                       const option = BUILTIN_TOOL_OPTIONS.find(
                         (entry) => entry.type === tool.type
                       )
@@ -776,7 +862,7 @@ export const AssistantToolsView = () => {
                   Integrations
                 </p>
                 <div className="space-y-2">
-                  {integrationTools.map((tool) => {
+                  {filteredIntegrationTools.map((tool) => {
                     if (tool.type === "google_sheets") {
                       const operation = tool.config?.operation ?? "lookup"
                       const template = GOOGLE_SHEETS_TEMPLATES.find(
@@ -799,6 +885,12 @@ export const AssistantToolsView = () => {
                       option?.iconClassName ?? "bg-muted text-foreground"
                     )
                   })}
+                  {filteredIntegrationTools.length === 0 &&
+                  libraryQuery.trim() ? (
+                    <p className="rounded-xl border border-dashed border-border/70 px-3 py-4 text-center text-xs text-muted-foreground">
+                      No integrations match your search.
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="mt-3 space-y-2">
@@ -1205,16 +1297,27 @@ export const AssistantToolsView = () => {
                           {googleSheetsStatus?.authMethod === "oauth" &&
                           !useManualSpreadsheetId ? (
                             <>
+                              <Input
+                                value={spreadsheetFilter}
+                                onChange={(event) =>
+                                  setSpreadsheetFilter(event.target.value)
+                                }
+                                placeholder="Filter spreadsheets..."
+                                className="h-9"
+                              />
                               <Select
                                 value={editor.config.spreadsheetId || undefined}
                                 onValueChange={(value) =>
-                                  setEditor((current) => ({
-                                    ...current,
-                                    config: {
-                                      ...current.config,
-                                      spreadsheetId: value,
-                                    },
-                                  }))
+                                  setEditor((current) => {
+                                    setIsDirty(true)
+                                    return {
+                                      ...current,
+                                      config: {
+                                        ...current.config,
+                                        spreadsheetId: value,
+                                      },
+                                    }
+                                  })
                                 }
                                 disabled={isLoadingSpreadsheets}
                               >
@@ -1228,7 +1331,7 @@ export const AssistantToolsView = () => {
                                   />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {spreadsheetOptions.map((option) => (
+                                  {filteredSpreadsheetOptions.map((option) => (
                                     <SelectItem
                                       key={option.id}
                                       value={option.id}
@@ -1401,6 +1504,322 @@ export const AssistantToolsView = () => {
                           }
                         />
                       ) : null}
+                      {(editor.config.operation ?? "lookup") === "lookup" ? (
+                        <SheetColumnPicker
+                          label="Return columns (optional)"
+                          description="Only these columns are sent back to the assistant. Leave empty to return all."
+                          columns={sheetColumnOptions}
+                          selected={editor.config.returnColumns ?? []}
+                          isLoading={isLoadingSheetColumns}
+                          onChange={(columns) =>
+                            setEditor((current) => {
+                              setIsDirty(true)
+                              return {
+                                ...current,
+                                config: {
+                                  ...current.config,
+                                  returnColumns: columns,
+                                },
+                              }
+                            })
+                          }
+                        />
+                      ) : null}
+
+                      <div className="space-y-3 rounded-xl border border-border/50 bg-muted/15 p-3">
+                        <button
+                          type="button"
+                          className="flex w-full items-center justify-between text-left text-sm font-medium"
+                          onClick={() =>
+                            setShowAdvancedSheets((current) => !current)
+                          }
+                        >
+                          <span>Advanced matching & scale</span>
+                          <span className="text-xs text-muted-foreground">
+                            {showAdvancedSheets ? "Hide" : "Show"}
+                          </span>
+                        </button>
+                        {showAdvancedSheets ? (
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <div className="space-y-2">
+                              <Label>Match mode</Label>
+                              <Select
+                                value={editor.config.matchMode ?? "exact"}
+                                onValueChange={(
+                                  value: "contains" | "exact" | "equals"
+                                ) =>
+                                  setEditor((current) => {
+                                    setIsDirty(true)
+                                    return {
+                                      ...current,
+                                      config: {
+                                        ...current.config,
+                                        matchMode: value,
+                                      },
+                                    }
+                                  })
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {GOOGLE_SHEETS_MATCH_MODE_OPTIONS.map(
+                                    (option) => (
+                                      <SelectItem
+                                        key={option.value}
+                                        value={option.value}
+                                      >
+                                        {option.label}
+                                      </SelectItem>
+                                    )
+                                  )}
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-muted-foreground">
+                                {
+                                  GOOGLE_SHEETS_MATCH_MODE_OPTIONS.find(
+                                    (option) =>
+                                      option.value ===
+                                      (editor.config.matchMode ?? "exact")
+                                  )?.description
+                                }
+                              </p>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Query strategy</Label>
+                              <Select
+                                value={editor.config.queryStrategy ?? "gviz"}
+                                onValueChange={(value: "gviz" | "scan") =>
+                                  setEditor((current) => {
+                                    setIsDirty(true)
+                                    return {
+                                      ...current,
+                                      config: {
+                                        ...current.config,
+                                        queryStrategy: value,
+                                      },
+                                    }
+                                  })
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {GOOGLE_SHEETS_QUERY_STRATEGY_OPTIONS.map(
+                                    (option) => (
+                                      <SelectItem
+                                        key={option.value}
+                                        value={option.value}
+                                      >
+                                        {option.label}
+                                      </SelectItem>
+                                    )
+                                  )}
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-muted-foreground">
+                                {
+                                  GOOGLE_SHEETS_QUERY_STRATEGY_OPTIONS.find(
+                                    (option) =>
+                                      option.value ===
+                                      (editor.config.queryStrategy ?? "gviz")
+                                  )?.description
+                                }
+                              </p>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Max rows returned</Label>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={200}
+                                value={editor.config.maxLookupRows ?? 25}
+                                onChange={(event) =>
+                                  setEditor((current) => {
+                                    setIsDirty(true)
+                                    return {
+                                      ...current,
+                                      config: {
+                                        ...current.config,
+                                        maxLookupRows: Number(
+                                          event.target.value
+                                        ),
+                                      },
+                                    }
+                                  })
+                                }
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Max scan rows (fallback)</Label>
+                              <Input
+                                type="number"
+                                min={100}
+                                max={50000}
+                                value={editor.config.maxScanRows ?? 5000}
+                                onChange={(event) =>
+                                  setEditor((current) => {
+                                    setIsDirty(true)
+                                    return {
+                                      ...current,
+                                      config: {
+                                        ...current.config,
+                                        maxScanRows: Number(event.target.value),
+                                      },
+                                    }
+                                  })
+                                }
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Header row</Label>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={100}
+                                value={editor.config.headerRow ?? 1}
+                                onChange={(event) =>
+                                  setEditor((current) => {
+                                    setIsDirty(true)
+                                    return {
+                                      ...current,
+                                      config: {
+                                        ...current.config,
+                                        headerRow: Number(event.target.value),
+                                      },
+                                    }
+                                  })
+                                }
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Data range (optional)</Label>
+                              <Input
+                                value={editor.config.dataRange ?? ""}
+                                onChange={(event) =>
+                                  setEditor((current) => {
+                                    setIsDirty(true)
+                                    return {
+                                      ...current,
+                                      config: {
+                                        ...current.config,
+                                        dataRange: event.target.value,
+                                      },
+                                    }
+                                  })
+                                }
+                                placeholder="A1:Z5000"
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Bounds fallback scans. Leave empty for auto
+                                cap.
+                              </p>
+                            </div>
+                            {(editor.config.operation ?? "lookup") ===
+                              "update" ||
+                            (editor.config.operation ?? "lookup") ===
+                              "delete" ? (
+                              <div className="flex items-center justify-between rounded-xl border border-border/60 px-3 py-2 md:col-span-2">
+                                <div>
+                                  <p className="text-sm font-medium">
+                                    Require unique match
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Block update/delete when more than one row
+                                    matches.
+                                  </p>
+                                </div>
+                                <Switch
+                                  checked={
+                                    editor.config.requireUniqueMatch ?? true
+                                  }
+                                  onCheckedChange={(checked) =>
+                                    setEditor((current) => {
+                                      setIsDirty(true)
+                                      return {
+                                        ...current,
+                                        config: {
+                                          ...current.config,
+                                          requireUniqueMatch: checked,
+                                        },
+                                      }
+                                    })
+                                  }
+                                />
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {selectedTool && selectedToolId !== "new" ? (
+                        <div className="space-y-3 rounded-xl border border-border/50 p-3">
+                          <div>
+                            <p className="text-sm font-medium">Test tool</p>
+                            <p className="text-xs text-muted-foreground">
+                              Run with sample JSON args against the live sheet
+                              (uses saved tool config).
+                            </p>
+                          </div>
+                          <Textarea
+                            value={testArgsJson}
+                            onChange={(event) =>
+                              setTestArgsJson(event.target.value)
+                            }
+                            rows={4}
+                            placeholder='{"Email":"jane@example.com"}'
+                            className="font-mono text-xs"
+                          />
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={isTesting || isDirty}
+                              onClick={async () => {
+                                setIsTesting(true)
+                                setTestResult(null)
+                                try {
+                                  const parsed = JSON.parse(
+                                    testArgsJson || "{}"
+                                  ) as Record<string, unknown>
+                                  const result = await testExecute({
+                                    toolId: selectedTool._id,
+                                    args: parsed,
+                                  })
+                                  setTestResult(result)
+                                } catch (error) {
+                                  const message =
+                                    error instanceof Error
+                                      ? error.message
+                                      : "Test failed"
+                                  setTestResult(message)
+                                  toast.error(message)
+                                } finally {
+                                  setIsTesting(false)
+                                }
+                              }}
+                            >
+                              {isTesting ? (
+                                <Loader2Icon className="size-4 animate-spin" />
+                              ) : (
+                                "Run test"
+                              )}
+                            </Button>
+                            {isDirty ? (
+                              <p className="text-xs text-amber-600">
+                                Save changes before testing.
+                              </p>
+                            ) : null}
+                          </div>
+                          {testResult ? (
+                            <pre className="max-h-48 overflow-auto rounded-lg border border-border/60 bg-muted/30 p-3 text-xs whitespace-pre-wrap">
+                              {testResult}
+                            </pre>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
                   )}
 
@@ -1487,26 +1906,59 @@ export const AssistantToolsView = () => {
                   {(selectedTool?.type === "custom_webhook" ||
                     newToolType === "custom_webhook") && (
                     <div className="space-y-4 rounded-2xl border border-border/60 p-4">
-                      <div className="space-y-2">
-                        <Label>Webhook URL</Label>
-                        <Input
-                          value={editor.config.webhookUrl ?? ""}
-                          onChange={(event) =>
-                            setEditor((current) => ({
-                              ...current,
-                              config: {
-                                ...current.config,
-                                webhookUrl: event.target.value,
-                              },
-                            }))
-                          }
-                          placeholder="https://hooks.example.com/assistant-tool"
-                        />
+                      <div className="grid gap-4 md:grid-cols-[1fr_140px]">
+                        <div className="space-y-2">
+                          <Label>Webhook URL</Label>
+                          <Input
+                            value={editor.config.webhookUrl ?? ""}
+                            onChange={(event) =>
+                              setEditor((current) => {
+                                setIsDirty(true)
+                                return {
+                                  ...current,
+                                  config: {
+                                    ...current.config,
+                                    webhookUrl: event.target.value,
+                                  },
+                                }
+                              })
+                            }
+                            placeholder="https://hooks.example.com/assistant-tool"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Method</Label>
+                          <Select
+                            value={editor.config.webhookMethod ?? "POST"}
+                            onValueChange={(value: "GET" | "POST") =>
+                              setEditor((current) => {
+                                setIsDirty(true)
+                                return {
+                                  ...current,
+                                  config: {
+                                    ...current.config,
+                                    webhookMethod: value,
+                                  },
+                                }
+                              })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="GET">GET</SelectItem>
+                              <SelectItem value="POST">POST</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                     </div>
                   )}
 
-                  {!selectedTool?.isBuiltin && (
+                  {!selectedTool?.isBuiltin &&
+                    selectedTool?.type !== "google_sheets" &&
+                    newToolType !== "google_sheets" && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <div>

@@ -1,18 +1,22 @@
 import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
 import { ConvexError, v } from "convex/values"
 import {
+  action,
   mutation,
   query,
   type MutationCtx,
   type QueryCtx,
 } from "../_generated/server"
 import { Doc, Id } from "../_generated/dataModel"
+import { internal } from "../_generated/api"
 import {
   ASSISTANT_TOOL_TYPE_LABELS,
   BUILTIN_ASSISTANT_TOOLS,
   isVoiceCompatibleAssistantTool,
   sanitizeAssistantToolName,
 } from "../lib/assistantTools"
+import { validateAssistantToolConfig } from "../lib/validateAssistantToolConfig"
+import { serializeGoogleSheetsSecret } from "../lib/googleSheetsOAuth"
 
 const assistantToolTypeValidator = v.union(
   v.literal("query"),
@@ -45,6 +49,16 @@ const assistantToolConfigValidator = v.object({
   searchColumns: v.optional(v.array(v.string())),
   valueColumns: v.optional(v.array(v.string())),
   updateColumns: v.optional(v.array(v.string())),
+  returnColumns: v.optional(v.array(v.string())),
+  matchMode: v.optional(
+    v.union(v.literal("contains"), v.literal("exact"), v.literal("equals"))
+  ),
+  queryStrategy: v.optional(v.union(v.literal("gviz"), v.literal("scan"))),
+  headerRow: v.optional(v.number()),
+  dataRange: v.optional(v.string()),
+  maxLookupRows: v.optional(v.number()),
+  maxScanRows: v.optional(v.number()),
+  requireUniqueMatch: v.optional(v.boolean()),
   url: v.optional(v.string()),
   method: v.optional(v.union(v.literal("GET"), v.literal("POST"))),
   headersJson: v.optional(v.string()),
@@ -195,6 +209,8 @@ export const create = mutation({
       })
     }
 
+    validateAssistantToolConfig(args.type, args.config)
+
     const tools = await ctx.db
       .query("assistantTools")
       .withIndex("by_organization_id", (q) =>
@@ -270,6 +286,7 @@ export const update = mutation({
     }
 
     if (args.config !== undefined) {
+      validateAssistantToolConfig(tool.type, args.config)
       updates.config = args.config
     }
 
@@ -285,6 +302,39 @@ export const update = mutation({
     }
 
     await ctx.db.patch(args.toolId, updates)
+    return null
+  },
+})
+
+export const reorder = mutation({
+  args: {
+    toolIds: v.array(v.id("assistantTools")),
+  },
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
+    const organizationId = await requireOrganizationId(ctx)
+    const tools = await listOrganizationTools(ctx, organizationId)
+    const toolById = new Map(tools.map((tool) => [tool._id, tool]))
+
+    for (const toolId of args.toolIds) {
+      const tool = toolById.get(toolId)
+      if (!tool) {
+        throw new ConvexError({
+          code: "NOT_FOUND",
+          message: "Assistant tool not found",
+        })
+      }
+    }
+
+    const now = Date.now()
+    for (let index = 0; index < args.toolIds.length; index += 1) {
+      const toolId = args.toolIds[index]!
+      await ctx.db.patch(toolId, {
+        sortOrder: index,
+        updatedAt: now,
+      })
+    }
+
     return null
   },
 })
@@ -340,7 +390,10 @@ export const upsertGoogleSheetsCredentials = mutation({
       )
       .unique()
 
-    const secretValue = JSON.stringify({ apiKey })
+    const secretValue = serializeGoogleSheetsSecret({
+      authMethod: "api_key",
+      apiKey,
+    })
 
     if (existing) {
       await ctx.db.patch(existing._id, {
@@ -387,5 +440,57 @@ export const getToolTypeLabels = query({
   returns: v.any(),
   handler: async (): Promise<typeof ASSISTANT_TOOL_TYPE_LABELS> => {
     return ASSISTANT_TOOL_TYPE_LABELS
+  },
+})
+
+export const testExecute = action({
+  args: {
+    toolId: v.id("assistantTools"),
+    args: v.any(),
+  },
+  returns: v.string(),
+  handler: async (ctx, args): Promise<string> => {
+    const identity = await ctx.auth.getUserIdentity()
+
+    if (!identity) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Identity not found",
+      })
+    }
+
+    const organizationId = getOrganizationIdFromIdentity(identity) as string
+
+    if (!organizationId) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Organization not found",
+      })
+    }
+
+    const tool = await ctx.runQuery(internal.system.assistantTools.getById, {
+      toolId: args.toolId,
+      organizationId,
+    })
+
+    if (!tool) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "Assistant tool not found",
+      })
+    }
+
+    return await ctx.runAction(
+      internal.system.assistantTools.execute.executeTool,
+      {
+        organizationId,
+        toolName: tool.name,
+        args:
+          typeof args.args === "object" && args.args !== null
+            ? args.args
+            : {},
+        channel: "chat",
+      }
+    )
   },
 })

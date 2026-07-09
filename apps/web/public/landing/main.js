@@ -53,7 +53,7 @@ const $ = (s, c) => (c || document).querySelector(s);
     { id: "k-3", title: "Real-time Voice Support", type: "file", source: "voice_capabilities.txt",
       content: "Osonflow includes bidirectional real-time streaming voice support. Visitors tap the voice button inside the widget to speak with the AI. It matches the same central queue as chat. If a voice interaction needs a person, it rings the active support team and hands off mid-call with an automated transcript prepared instantly in their shared inbox.", date: "2026-06-10" },
     { id: "k-4", title: "Integrations & Script Setup", type: "url", source: "https://docs.osonflow.ai/setup",
-      content: "Osonflow installs with a single script tag in your head: <script src='https://embed.osonflow.ai/widget.js' data-id='oson-demo'></script>. It supports smooth state syncs, lets you customize theme presets like Japandi linen, and connects cleanly with CMS/CRM tools such as Shopify, WordPress, and HubSpot.", date: "2026-06-12" }
+      content: "Osonflow installs with a single script tag in your head: <script src='https://widget.osonflow.uz/widget.js' data-id='oson-demo'></script>. It supports smooth state syncs, lets you customize theme presets like Japandi linen, and connects cleanly with CMS/CRM tools such as Shopify, WordPress, and HubSpot.", date: "2026-06-12" }
   ];
 
   function generateAiResponse(query) {
@@ -424,8 +424,8 @@ const $ = (s, c) => (c || document).querySelector(s);
 
   /* ---------------- Embed modal ---------------- */
   const modal = $("#embedModal");
-  const snippet = () => '<span class="c-com">&lt;!-- Osonflow calm portal --&gt;</span>\n<span class="c-tag">&lt;script&gt;</span>\n  window.osonflowConfig = {\n    portalId: <span class="c-str">"' + esc($("#modalCompany").value || "your-company") + '"</span>,\n    theme: <span class="c-str">"' + $("#modalTheme").value + '"</span>\n  };\n<span class="c-tag">&lt;/script&gt;</span>\n<span class="c-tag">&lt;script</span> <span class="c-attr">src</span>=<span class="c-str">"https://embed.osonflow.ai/widget.js"</span> async<span class="c-tag">&gt;&lt;/script&gt;</span>';
-  function plainSnippet() { return '<!-- Osonflow calm portal -->\n<script>\n  window.osonflowConfig = {\n    portalId: "' + ($("#modalCompany").value || "your-company") + '",\n    theme: "' + $("#modalTheme").value + '"\n  };\n</' + 'script>\n<script src="https://embed.osonflow.ai/widget.js" async></' + "script>"; }
+  const snippet = () => '<span class="c-com">&lt;!-- Osonflow calm portal --&gt;</span>\n<span class="c-tag">&lt;script&gt;</span>\n  window.osonflowConfig = {\n    portalId: <span class="c-str">"' + esc($("#modalCompany").value || "your-company") + '"</span>,\n    theme: <span class="c-str">"' + $("#modalTheme").value + '"</span>\n  };\n<span class="c-tag">&lt;/script&gt;</span>\n<span class="c-tag">&lt;script</span> <span class="c-attr">src</span>=<span class="c-str">"https://widget.osonflow.uz/widget.js"</span> async<span class="c-tag">&gt;&lt;/script&gt;</span>';
+  function plainSnippet() { return '<!-- Osonflow calm portal -->\n<script>\n  window.osonflowConfig = {\n    portalId: "' + ($("#modalCompany").value || "your-company") + '",\n    theme: "' + $("#modalTheme").value + '"\n  };\n</' + 'script>\n<script src="https://widget.osonflow.uz/widget.js" async></' + "script>"; }
   function renderSnippet() { $("#modalSnippet").innerHTML = snippet(); }
   function openModal() { renderSnippet(); modal.hidden = false; document.body.style.overflow = "hidden"; }
   function closeModal() { modal.hidden = true; document.body.style.overflow = ""; }
@@ -443,7 +443,7 @@ const $ = (s, c) => (c || document).querySelector(s);
 
   /* ---------------- Embed code copy (channels) ---------------- */
   const copyBtn = $("#copyBtn");
-  if (copyBtn) copyBtn.addEventListener("click", () => copyText('<!-- Osonflow widget -->\n<script src="https://embed.osonflow.ai/widget.js"\n        data-id="osf_live_7f3a9c"></' + "script>", copyBtn), { signal });
+  if (copyBtn) copyBtn.addEventListener("click", () => copyText('<!-- Osonflow widget -->\n<script src="https://widget.osonflow.uz/widget.js"\n        data-id="osf_live_7f3a9c"></' + "script>", copyBtn), { signal });
 
   /* ---------------- Card tilt micro-interaction ---------------- */
   if (!reduceMotion && window.matchMedia("(pointer:fine)").matches) {

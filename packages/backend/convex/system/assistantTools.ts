@@ -27,3 +27,18 @@ export const listEnabledForOrganization = internalQuery({
       .sort((left, right) => left.sortOrder - right.sortOrder)
   },
 })
+
+export const getById = internalQuery({
+  args: {
+    toolId: v.id("assistantTools"),
+    organizationId: v.string(),
+  },
+  returns: v.union(v.any(), v.null()),
+  handler: async (ctx, args): Promise<Doc<"assistantTools"> | null> => {
+    const tool = await ctx.db.get(args.toolId)
+    if (!tool || tool.organizationId !== args.organizationId) {
+      return null
+    }
+    return tool
+  },
+})
