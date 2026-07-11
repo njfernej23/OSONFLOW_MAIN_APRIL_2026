@@ -237,7 +237,7 @@ function bindCardHover(root: Element) {
  * Premium Framer Motion scroll choreography for the landing page.
  * Hero is intentionally left alone.
  */
-export function LandingScrollMotion() {
+export function LandingScrollMotion({ resetKey = 0 }: { resetKey?: number }) {
   useEffect(() => {
     const root = document.querySelector(".japandi-landing")
     if (!root) return
@@ -293,7 +293,7 @@ export function LandingScrollMotion() {
       root.classList.remove("fm-on")
       cleanups.forEach((fn) => fn())
     }
-  }, [])
+  }, [resetKey])
 
   return null
 }

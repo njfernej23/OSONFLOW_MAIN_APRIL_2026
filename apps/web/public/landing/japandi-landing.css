@@ -667,12 +667,10 @@ html:has(.japandi-landing) { scroll-behavior: smooth; -webkit-text-size-adjust: 
 }
 .japandi-landing .fm-ready {
   opacity: 0;
-  pointer-events: none;
 }
 .japandi-landing .fm-ready.fm-in,
 .japandi-landing .fm-in {
   opacity: 1;
-  pointer-events: auto;
   transform: none;
   filter: none;
 }
@@ -681,7 +679,6 @@ html:has(.japandi-landing) { scroll-behavior: smooth; -webkit-text-size-adjust: 
     opacity: 1 !important;
     transform: none !important;
     filter: none !important;
-    pointer-events: auto !important;
   }
 }
 

@@ -1,6 +1,7 @@
 "use client"
 
-import { useLayoutEffect, useEffect } from "react"
+import { useUser } from "@clerk/nextjs"
+import { useCallback, useLayoutEffect, useEffect, useRef, useState } from "react"
 
 import { JapandiLandingNav } from "./japandi-landing-nav"
 import { LandingScrollMotion } from "./landing-scroll-motion"
@@ -16,8 +17,6 @@ declare global {
 const LANDING_SCRIPT_ID = "osonflow-landing-main"
 const LANDING_STYLES_ID = "osonflow-landing-styles"
 const LANDING_STYLES_HREF = "/landing/japandi-landing.css"
-
-let landingMountCount = 0
 
 function ensureLandingStyles() {
   const existing = document.getElementById(LANDING_STYLES_ID)
@@ -52,9 +51,10 @@ function removeLandingStyles() {
     })
 }
 
-function initLandingScript() {
+function runLandingInit(onReady: () => void) {
   const initLanding = () => {
     window.__initOsonflowLanding?.()
+    onReady()
   }
 
   const existingScript = document.getElementById(LANDING_SCRIPT_ID)
@@ -80,7 +80,34 @@ function revealHeroOnly() {
     })
 }
 
+function hasLandingMarkup(markupRoot: HTMLDivElement | null) {
+  return Boolean(markupRoot?.querySelector("#main"))
+}
+
 export const HomeLandingPage = () => {
+  const markupRef = useRef<HTMLDivElement>(null)
+  const [motionKey, setMotionKey] = useState(0)
+  const { isLoaded: isAuthLoaded, isSignedIn } = useUser()
+  const previousSignedIn = useRef<boolean | undefined>(undefined)
+
+  const bootstrapLanding = useCallback(() => {
+    const start = (attempt = 0) => {
+      if (!hasLandingMarkup(markupRef.current)) {
+        if (attempt < 8) {
+          requestAnimationFrame(() => start(attempt + 1))
+        }
+        return
+      }
+
+      runLandingInit(() => {
+        revealHeroOnly()
+        setMotionKey((key) => key + 1)
+      })
+    }
+
+    start()
+  }, [])
+
   // Inject styles before paint so client-side navigations (e.g. sign-out → /)
   // never render an unstyled landing page.
   useLayoutEffect(() => {
@@ -98,40 +125,47 @@ export const HomeLandingPage = () => {
       document.body.scrollTop = 0
     }
 
+    bootstrapLanding()
+
     return () => {
+      window.__destroyOsonflowLanding?.()
+      document.body.style.overflow = ""
       removeLandingStyles()
       if ("scrollRestoration" in history) {
         history.scrollRestoration = previousRestoration || "auto"
       }
     }
-  }, [])
+  }, [bootstrapLanding])
 
   useEffect(() => {
-    landingMountCount += 1
-
     if (!window.location.hash) {
       window.scrollTo(0, 0)
     }
-
-    revealHeroOnly()
-    initLandingScript()
-
-    return () => {
-      landingMountCount -= 1
-      if (landingMountCount <= 0) {
-        landingMountCount = 0
-        window.__destroyOsonflowLanding?.()
-        document.body.style.overflow = ""
-      }
-    }
   }, [])
+
+  // Clerk sign-out on the landing page can refresh client state without a full
+  // reload, leaving stale listeners on replaced markup. Re-bind interactivity.
+  useEffect(() => {
+    if (!isAuthLoaded) return
+
+    if (
+      previousSignedIn.current !== undefined &&
+      previousSignedIn.current !== isSignedIn
+    ) {
+      bootstrapLanding()
+    }
+
+    previousSignedIn.current = isSignedIn
+  }, [bootstrapLanding, isAuthLoaded, isSignedIn])
 
   return (
     <div className="japandi-landing">
       <JapandiLandingNav />
-      <LandingScrollMotion />
-      <div dangerouslySetInnerHTML={{ __html: landingPageBodyMarkup }} />
+      {motionKey > 0 ? <LandingScrollMotion resetKey={motionKey} /> : null}
+      <div
+        ref={markupRef}
+        dangerouslySetInnerHTML={{ __html: landingPageBodyMarkup }}
+      />
     </div>
   )
 }
-
