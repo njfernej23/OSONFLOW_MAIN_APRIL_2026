@@ -90,17 +90,7 @@ export const organizationHasActivePolarSubscription = async (
   }
 }
 
-export const getAppUrl = (origin?: string | null) => {
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    return process.env.NEXT_PUBLIC_APP_URL
-  }
-
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
-    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-  }
-
-  return origin ?? "http://localhost:3000"
-}
+export { getAppOrigin as getAppUrl } from "@/lib/urls"
 
 export const getClientIp = (headers: Headers) => {
   const forwardedFor = headers.get("x-forwarded-for")

@@ -38,6 +38,7 @@ import {
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
+import { appPath } from "@/lib/urls"
 import { LandingNav } from "./landing-nav"
 import { navItems } from "./marketing-nav-data"
 
@@ -693,7 +694,7 @@ export const PricingCards = ({ compact = false }: { compact?: boolean }) => (
             compact && "lg:w-auto"
           )}
         >
-          <Link href="/sign-up">{tier.cta}</Link>
+          <Link href={appPath("/sign-up")}>{tier.cta}</Link>
         </Button>
       </article>
     ))}
@@ -765,7 +766,7 @@ export const CtaSection = () => (
               asChild
               className="h-13 rounded-[4px] bg-[#df37a7] px-6 text-base font-bold text-white hover:bg-[#d0339c]"
             >
-              <Link href="/sign-up">
+              <Link href={appPath("/sign-up")}>
                 Start free
                 <ArrowRightIcon data-icon="inline-end" />
               </Link>
@@ -807,7 +808,7 @@ export const MarketingFooter = () => (
         ))}
         <Link
           className="rounded-full px-3 py-2 hover:bg-white/8 hover:text-white"
-          href="/sign-in"
+          href={appPath("/sign-in")}
         >
           Login
         </Link>
@@ -844,7 +845,7 @@ export const PageHero = ({
             asChild
             className="h-13 rounded-[4px] bg-[#df37a7] px-6 text-base font-bold text-white shadow-[rgba(255,255,255,0.18)_0_0_0_1px_inset,rgba(0,0,0,0.12)_0_10px_26px_-18px] hover:bg-[#d0339c]"
           >
-            <Link href="/sign-up">
+            <Link href={appPath("/sign-up")}>
               Start free
               <ArrowRightIcon data-icon="inline-end" />
             </Link>

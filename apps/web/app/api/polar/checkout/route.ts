@@ -3,25 +3,24 @@ import { NextResponse, type NextRequest } from "next/server"
 
 import {
   ensurePolarCustomerForOrganization,
-  getAppUrl,
   getClientIp,
   getPolar,
   organizationHasActivePolarSubscription,
   polarProductIds,
 } from "@/lib/polar"
-
+import { getAppOrigin } from "@/lib/urls"
 export const GET = async (request: NextRequest) => {
   const { orgId, userId } = await auth()
 
   if (!userId) {
-    const signInUrl = new URL("/sign-in", request.nextUrl.origin)
+    const signInUrl = new URL("/sign-in", getAppOrigin(request.nextUrl.origin))
     signInUrl.searchParams.set("redirect_url", "/billing")
     return NextResponse.redirect(signInUrl)
   }
 
   if (!orgId) {
     return NextResponse.redirect(
-      new URL("/org-selection", request.nextUrl.origin)
+      new URL("/org-selection", getAppOrigin(request.nextUrl.origin))
     )
   }
 
@@ -40,7 +39,7 @@ export const GET = async (request: NextRequest) => {
   }
 
   const polar = getPolar()
-  const appUrl = getAppUrl(request.nextUrl.origin)
+  const appUrl = getAppOrigin(request.nextUrl.origin)
 
   if (await organizationHasActivePolarSubscription(polar, orgId)) {
     return NextResponse.redirect(new URL("/billing", appUrl))

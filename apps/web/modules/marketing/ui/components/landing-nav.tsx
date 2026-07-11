@@ -9,6 +9,7 @@ import { ArrowRightIcon } from "lucide-react"
 import { cn } from "@workspace/ui/lib/utils"
 
 import { LanguageSwitcher } from "@/components/i18n/language-switcher"
+import { appPath } from "@/lib/urls"
 import { navItems } from "./marketing-nav-data"
 
 const SCROLLED_THRESHOLD = 4
@@ -93,19 +94,19 @@ export const LandingNav = () => {
             <LanguageSwitcher compact />
             <Link
               className="hidden rounded-full px-4 py-2.5 font-bold whitespace-nowrap text-[#6d526d] transition hover:bg-[#29002908] hover:text-[#240029] sm:inline-flex"
-              href="/sign-in"
+              href={appPath("/sign-in")}
             >
               Login
             </Link>
             <Link
               className="hidden rounded-full px-4 py-2.5 font-bold whitespace-nowrap text-[#240029] transition hover:bg-[#29002908] md:inline-flex"
-              href="/sign-up"
+              href={appPath("/sign-up")}
             >
               Sign up
             </Link>
             <Link
               className="group inline-flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-[4px] bg-[#df37a7] px-0 font-bold whitespace-nowrap text-white shadow-[rgba(255,255,255,0.2)_0_0_0_1px_inset,rgba(0,0,0,0.05)_0_1px_2px_0] transition hover:-translate-y-0.5 hover:bg-[#d0339c] sm:h-11 sm:w-auto sm:px-5"
-              href="/sign-up"
+              href={appPath("/sign-up")}
             >
               <span className="hidden sm:inline">Book a demo</span>
               <ArrowRightIcon className="size-4 transition group-hover:translate-x-0.5" />
@@ -120,8 +121,8 @@ export const LandingNav = () => {
               className="inline-flex h-10 shrink-0 items-center rounded-[4px] bg-[#240029] px-4 text-sm font-bold whitespace-nowrap text-white shadow-[rgba(255,255,255,0.2)_0_0_0_1px_inset,rgba(0,0,0,0.05)_0_1px_2px_0] transition hover:-translate-y-0.5 hover:bg-[#3a083f] sm:h-11 sm:px-5"
               href={
                 isOrganizationLoaded && !organization
-                  ? "/org-selection"
-                  : "/analytics"
+                  ? appPath("/org-selection")
+                  : appPath("/analytics")
               }
             >
               Dashboard

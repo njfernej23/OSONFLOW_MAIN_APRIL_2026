@@ -5,6 +5,7 @@ import localFont from "next/font/local"
 import "@workspace/ui/styles/globals.css"
 import "./globals.css"
 import { Providers } from "@/components/theme-provider"
+import { appPath } from "@/lib/urls"
 import { cn } from "@workspace/ui/lib/utils"
 import { Toaster } from "@workspace/ui/components/sonner"
 
@@ -53,8 +54,8 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <ClerkProvider
-          signInFallbackRedirectUrl="/analytics"
-          signUpFallbackRedirectUrl="/org-selection"
+          signInFallbackRedirectUrl={appPath("/analytics")}
+          signUpFallbackRedirectUrl={appPath("/org-selection")}
         >
           <Providers>
             <Toaster />

@@ -7,6 +7,7 @@ import Image from "next/image"
 import Link from "next/link"
 
 import { LanguageSwitcher } from "@/components/i18n/language-switcher"
+import { appPath } from "@/lib/urls"
 
 const NAV_LINKS = [
   { href: "#product", label: "Platform" },
@@ -27,7 +28,7 @@ function SignedOutNav({
     <>
       <Link
         className={mobile ? "nav__mobile-auth-link" : "link-quiet"}
-        href="/sign-in"
+        href={appPath("/sign-in")}
         onClick={onNavigate}
       >
         Sign in
@@ -38,7 +39,7 @@ function SignedOutNav({
             ? "btn btn--primary btn--block nav__mobile-cta"
             : "btn btn--primary btn--sm"
         }
-        href="/sign-up"
+        href={appPath("/sign-up")}
         onClick={onNavigate}
       >
         Sign up
@@ -56,7 +57,9 @@ function SignedInNav({
 }) {
   const { isLoaded: isOrgLoaded, organization } = useOrganization()
   const dashboardHref =
-    isOrgLoaded && !organization ? "/org-selection" : "/analytics"
+    isOrgLoaded && !organization
+      ? appPath("/org-selection")
+      : appPath("/analytics")
 
   if (mobile) {
     return (
