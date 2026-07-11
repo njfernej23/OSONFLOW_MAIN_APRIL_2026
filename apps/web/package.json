@@ -28,6 +28,7 @@
     "convex": "1.40.0",
     "countries-and-timezones": "^3.9.0",
     "date-fns": "^4.4.0",
+    "framer-motion": "^12.42.2",
     "jotai": "^2.20.0",
     "lucide-react": "^1.17.0",
     "next": "16.2.7",

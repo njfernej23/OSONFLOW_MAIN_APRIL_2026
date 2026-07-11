@@ -79,12 +79,13 @@ const $ = (s, c) => (c || document).querySelector(s);
     return "Sandbox interaction";
   }
 
-  /* ---------------- Reveal on scroll (staggered) ---------------- */
+  /* ---------------- Reveal on scroll (hero only; rest uses Framer Motion) ---------------- */
   const reveals = $$("[data-reveal]");
   if ("IntersectionObserver" in window && !reduceMotion) {
     const io = trackObserver(new IntersectionObserver((entries) => {
       entries.forEach((e) => {
         if (e.isIntersecting) {
+          if (!e.target.closest(".hero")) return;
           const sibs = $$("[data-reveal]", e.target.closest("section") || document).filter((n) => !n.classList.contains("is-in"));
           const i = sibs.indexOf(e.target);
           e.target.style.transitionDelay = Math.min(i, 4) * 80 + "ms";
@@ -93,7 +94,10 @@ const $ = (s, c) => (c || document).querySelector(s);
         }
       });
     }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }));
-    reveals.forEach((el) => io.observe(el));
+    reveals.forEach((el) => {
+      if (el.closest(".hero")) io.observe(el);
+      else el.classList.add("fm-pending");
+    });
   } else { reveals.forEach((el) => el.classList.add("is-in")); }
 
   /* ---------------- Count-up stats ---------------- */
@@ -118,9 +122,16 @@ const $ = (s, c) => (c || document).querySelector(s);
   if (stage && !reduceMotion && window.matchMedia("(pointer:fine)").matches) {
     stage.addEventListener("mousemove", (e) => {
       const r = stage.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
-      $$("[data-float]", stage).forEach((p, i) => { const d = (i + 1) * 6; p.style.transform = "translate(" + (-x * d) + "px," + (-y * d) + "px)"; });
+      $$("[data-float]", stage).forEach((p, i) => {
+        const d = (i + 1) * 4;
+        p.style.setProperty("--fx", (-x * d).toFixed(2) + "px");
+        p.style.setProperty("--fy", (-y * d).toFixed(2) + "px");
+      });
     }, { signal });
-    stage.addEventListener("mouseleave", () => $$("[data-float]", stage).forEach((p) => (p.style.transform = "")), { signal });
+    stage.addEventListener("mouseleave", () => $$("[data-float]", stage).forEach((p) => {
+      p.style.setProperty("--fx", "0px");
+      p.style.setProperty("--fy", "0px");
+    }), { signal });
   }
 
   /* ---------------- Hero typewriter ---------------- */

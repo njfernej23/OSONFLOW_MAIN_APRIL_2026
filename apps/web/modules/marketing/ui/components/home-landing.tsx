@@ -3,6 +3,7 @@
 import { useLayoutEffect, useEffect } from "react"
 
 import { JapandiLandingNav } from "./japandi-landing-nav"
+import { LandingScrollMotion } from "./landing-scroll-motion"
 import { landingPageBodyMarkup } from "./landing-page-markup"
 
 declare global {
@@ -69,10 +70,12 @@ function initLandingScript() {
   document.body.appendChild(script)
 }
 
-function revealLandingContent() {
-  document.querySelectorAll(".japandi-landing [data-reveal]").forEach((element) => {
-    element.classList.add("is-in")
-  })
+function revealHeroOnly() {
+  document
+    .querySelectorAll(".japandi-landing .hero [data-reveal], .japandi-landing .hero .reveal")
+    .forEach((element) => {
+      element.classList.add("is-in")
+    })
 }
 
 export const HomeLandingPage = () => {
@@ -81,13 +84,32 @@ export const HomeLandingPage = () => {
   useLayoutEffect(() => {
     ensureLandingStyles()
 
+    const previousRestoration = history.scrollRestoration
+    if ("scrollRestoration" in history) {
+      history.scrollRestoration = "manual"
+    }
+
+    // Refresh / remount should start at the top unless the URL has a section hash.
+    if (!window.location.hash) {
+      window.scrollTo(0, 0)
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    }
+
     return () => {
       removeLandingStyles()
+      if ("scrollRestoration" in history) {
+        history.scrollRestoration = previousRestoration || "auto"
+      }
     }
   }, [])
 
   useEffect(() => {
-    revealLandingContent()
+    if (!window.location.hash) {
+      window.scrollTo(0, 0)
+    }
+
+    revealHeroOnly()
     initLandingScript()
 
     return () => {
@@ -99,7 +121,9 @@ export const HomeLandingPage = () => {
   return (
     <div className="japandi-landing">
       <JapandiLandingNav />
+      <LandingScrollMotion />
       <div dangerouslySetInnerHTML={{ __html: landingPageBodyMarkup }} />
     </div>
   )
 }
+
