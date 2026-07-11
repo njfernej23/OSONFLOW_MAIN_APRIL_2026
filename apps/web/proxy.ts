@@ -35,6 +35,8 @@ const isOrgFreeRoute = createRouteMatcher([
   "/org-selection(.*)",
 ])
 
+const isAuthEntryRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"])
+
 const redirectToOrigin = (
   req: NextRequest,
   origin: string,
@@ -78,8 +80,24 @@ export const proxy = clerkMiddleware(async (auth, req) => {
 
   const { userId, orgId } = await auth()
 
+  if (req.nextUrl.pathname.startsWith("/sign-in/tasks/")) {
+    const orgSelection = new URL("/org-selection", req.url)
+    orgSelection.search = req.nextUrl.search
+    return NextResponse.redirect(orgSelection)
+  }
+
   if (!isPublicRoute(req)) {
     await auth.protect()
+  }
+
+  if (userId && isAuthEntryRoute(req)) {
+    if (!orgId) {
+      return NextResponse.redirect(new URL("/org-selection", req.url))
+    }
+
+    const redirectUrl =
+      req.nextUrl.searchParams.get("redirect_url") ?? "/analytics"
+    return NextResponse.redirect(new URL(redirectUrl, req.url))
   }
 
   if (userId && !orgId && !isOrgFreeRoute(req)) {

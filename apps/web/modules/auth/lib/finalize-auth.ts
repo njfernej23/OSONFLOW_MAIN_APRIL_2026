@@ -21,6 +21,17 @@ export function navigateAfterAuth(
   router.push(url)
 }
 
+function getPostAuthDestination(
+  session: { currentTask?: { key: string } | null } | undefined,
+  fallbackUrl: string
+) {
+  if (session?.currentTask?.key === "choose-organization") {
+    return "/org-selection"
+  }
+
+  return fallbackUrl
+}
+
 export async function finalizeAuthSession(
   resource: Finalizable,
   router: AppRouterInstance,
@@ -32,9 +43,7 @@ export async function finalizeAuthSession(
 
   await resource.finalize({
     navigate: ({ session, decorateUrl }) => {
-      const destination = session?.currentTask
-        ? `/sign-in/tasks/${session.currentTask.key}`
-        : fallbackUrl
+      const destination = getPostAuthDestination(session, fallbackUrl)
       navigateAfterAuth(router, decorateUrl(destination))
     },
   })
