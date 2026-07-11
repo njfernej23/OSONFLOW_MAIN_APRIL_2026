@@ -265,9 +265,10 @@ export function LandingScrollMotion() {
       const stop = inView(
         section,
         () => {
+          stop()
           void runAnimation(kind, targets)
         },
-        { amount: 0.22, margin: "0px 0px -12% 0px", once: true }
+        { amount: 0.22, margin: "0px 0px -12% 0px" }
       )
 
       cleanups.push(stop)
