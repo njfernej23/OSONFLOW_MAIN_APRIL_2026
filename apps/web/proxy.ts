@@ -53,16 +53,16 @@ const maybeRedirectByHost = (req: NextRequest) => {
   }
 
   if (isMarketingHost(hostname) && !isMarketingRoute(req)) {
-    return redirectToOrigin(req, getAppOrigin(req.nextUrl.origin))
+    return redirectToOrigin(req, getAppOrigin())
   }
 
   if (isAppHost(hostname)) {
     if (req.nextUrl.pathname === "/") {
-      return redirectToOrigin(req, getAppOrigin(req.nextUrl.origin), "/analytics")
+      return redirectToOrigin(req, getAppOrigin(), "/analytics")
     }
 
     if (isMarketingRoute(req)) {
-      return redirectToOrigin(req, getMarketingOrigin(req.nextUrl.origin))
+      return redirectToOrigin(req, getMarketingOrigin())
     }
   }
 

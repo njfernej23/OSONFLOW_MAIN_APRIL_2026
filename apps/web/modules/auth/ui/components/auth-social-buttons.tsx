@@ -71,7 +71,7 @@ export const AuthSocialButtons = ({ mode, redirectUrl }: AuthSocialButtonsProps)
     <div className="grid gap-2.5">
       {providers.map((provider) => (
         <Button
-          className="auth-social-btn h-11 w-full justify-center gap-2.5 rounded-xl border-border/80 bg-background/90 text-[0.95rem] font-medium shadow-sm"
+          className="auth-social-btn w-full"
           disabled={loadingStrategy !== null}
           key={provider.strategy}
           onClick={() => handleOAuth(provider.strategy)}

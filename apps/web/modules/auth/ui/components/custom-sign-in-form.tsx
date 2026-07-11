@@ -21,9 +21,12 @@ import { useState } from "react"
 
 import { finalizeAuthSession } from "@/modules/auth/lib/finalize-auth"
 import { AuthDivider } from "./auth-divider"
+import { AuthFormHeader } from "./auth-form-header"
 import { AuthSocialButtons } from "./auth-social-buttons"
 
 type SignInStep = "credentials" | "mfa" | "forgot" | "reset-code" | "new-password"
+
+const otpSlots = Array.from({ length: 6 }, (_, index) => index)
 
 export const CustomSignInForm = () => {
   const { signIn, errors, fetchStatus } = useSignIn()
@@ -116,14 +119,11 @@ export const CustomSignInForm = () => {
   if (step === "mfa") {
     return (
       <div className="auth-form-stack">
-        <header className="space-y-2 text-center lg:text-left">
-          <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight">
-            Verify it&apos;s you
-          </h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Enter the verification code we sent to continue signing in.
-          </p>
-        </header>
+        <AuthFormHeader
+          eyebrow="Security check"
+          title="Verify it's you"
+          description="Enter the verification code we sent to continue signing in."
+        />
 
         <form className="space-y-5" onSubmit={handleMfa}>
           <FieldGroup>
@@ -136,8 +136,8 @@ export const CustomSignInForm = () => {
                 value={mfaCode}
               >
                 <InputOTPGroup className="w-full justify-between">
-                  {Array.from({ length: 6 }).map((_, index) => (
-                    <InputOTPSlot className="size-11 rounded-xl border-border/90" index={index} key={index} />
+                  {otpSlots.map((index) => (
+                    <InputOTPSlot className="auth-otp-slot" index={index} key={index} />
                   ))}
                 </InputOTPGroup>
               </InputOTP>
@@ -145,12 +145,12 @@ export const CustomSignInForm = () => {
             </Field>
           </FieldGroup>
 
-          <Button className="auth-primary-btn h-11 w-full rounded-xl" disabled={isLoading || mfaCode.length < 6} type="submit">
+          <Button className="auth-primary-btn w-full" disabled={isLoading || mfaCode.length < 6} type="submit">
             {isLoading ? <Spinner /> : "Verify and continue"}
           </Button>
 
           <button
-            className="w-full text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="auth-link-muted w-full"
             onClick={() => {
               signIn?.reset()
               setStep("credentials")
@@ -168,14 +168,11 @@ export const CustomSignInForm = () => {
   if (step === "forgot") {
     return (
       <div className="auth-form-stack">
-        <header className="space-y-2 text-center lg:text-left">
-          <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight">
-            Reset your password
-          </h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            We&apos;ll email you a code to choose a new password.
-          </p>
-        </header>
+        <AuthFormHeader
+          eyebrow="Account recovery"
+          title="Reset your password"
+          description="We'll email you a code to choose a new password."
+        />
 
         <form className="space-y-5" onSubmit={handleForgotPassword}>
           <FieldGroup>
@@ -183,7 +180,7 @@ export const CustomSignInForm = () => {
               <FieldLabel htmlFor="reset-email">Email</FieldLabel>
               <Input
                 autoComplete="email"
-                className="auth-input h-11 rounded-xl"
+                className="auth-input"
                 id="reset-email"
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@company.com"
@@ -195,15 +192,11 @@ export const CustomSignInForm = () => {
             </Field>
           </FieldGroup>
 
-          <Button className="auth-primary-btn h-11 w-full rounded-xl" disabled={isLoading || !email} type="submit">
+          <Button className="auth-primary-btn w-full" disabled={isLoading || !email} type="submit">
             {isLoading ? <Spinner /> : "Send reset code"}
           </Button>
 
-          <button
-            className="w-full text-sm text-muted-foreground transition-colors hover:text-foreground"
-            onClick={() => setStep("credentials")}
-            type="button"
-          >
+          <button className="auth-link-muted w-full" onClick={() => setStep("credentials")} type="button">
             Back to sign in
           </button>
         </form>
@@ -214,14 +207,15 @@ export const CustomSignInForm = () => {
   if (step === "reset-code") {
     return (
       <div className="auth-form-stack">
-        <header className="space-y-2 text-center lg:text-left">
-          <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight">
-            Check your inbox
-          </h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Enter the 6-digit code we sent to <span className="font-medium text-foreground">{email}</span>.
-          </p>
-        </header>
+        <AuthFormHeader
+          eyebrow="Check your inbox"
+          title="Enter your reset code"
+          description={
+            <>
+              We sent a 6-digit code to <span className="font-medium text-[var(--auth-ink)]">{email}</span>.
+            </>
+          }
+        />
 
         <form className="space-y-5" onSubmit={handleVerifyResetCode}>
           <FieldGroup>
@@ -234,8 +228,8 @@ export const CustomSignInForm = () => {
                 value={resetCode}
               >
                 <InputOTPGroup className="w-full justify-between">
-                  {Array.from({ length: 6 }).map((_, index) => (
-                    <InputOTPSlot className="size-11 rounded-xl border-border/90" index={index} key={index} />
+                  {otpSlots.map((index) => (
+                    <InputOTPSlot className="auth-otp-slot" index={index} key={index} />
                   ))}
                 </InputOTPGroup>
               </InputOTP>
@@ -243,7 +237,7 @@ export const CustomSignInForm = () => {
             </Field>
           </FieldGroup>
 
-          <Button className="auth-primary-btn h-11 w-full rounded-xl" disabled={isLoading || resetCode.length < 6} type="submit">
+          <Button className="auth-primary-btn w-full" disabled={isLoading || resetCode.length < 6} type="submit">
             {isLoading ? <Spinner /> : "Continue"}
           </Button>
         </form>
@@ -254,14 +248,11 @@ export const CustomSignInForm = () => {
   if (step === "new-password") {
     return (
       <div className="auth-form-stack">
-        <header className="space-y-2 text-center lg:text-left">
-          <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight">
-            Choose a new password
-          </h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Use at least 8 characters with a mix of letters and numbers.
-          </p>
-        </header>
+        <AuthFormHeader
+          eyebrow="Almost there"
+          title="Choose a new password"
+          description="Use at least 8 characters with a mix of letters and numbers."
+        />
 
         <form className="space-y-5" onSubmit={handleNewPassword}>
           <FieldGroup>
@@ -269,7 +260,7 @@ export const CustomSignInForm = () => {
               <FieldLabel htmlFor="new-password">New password</FieldLabel>
               <Input
                 autoComplete="new-password"
-                className="auth-input h-11 rounded-xl"
+                className="auth-input"
                 id="new-password"
                 minLength={8}
                 onChange={(event) => setNewPassword(event.target.value)}
@@ -281,7 +272,7 @@ export const CustomSignInForm = () => {
             </Field>
           </FieldGroup>
 
-          <Button className="auth-primary-btn h-11 w-full rounded-xl" disabled={isLoading || newPassword.length < 8} type="submit">
+          <Button className="auth-primary-btn w-full" disabled={isLoading || newPassword.length < 8} type="submit">
             {isLoading ? <Spinner /> : "Update password"}
           </Button>
         </form>
@@ -291,19 +282,11 @@ export const CustomSignInForm = () => {
 
   return (
     <div className="auth-form-stack">
-      <header className="space-y-2 text-center lg:text-left">
-        <p className="auth-mobile-logo mb-4 flex items-center justify-center gap-2 lg:hidden">
-          <span className="font-[family-name:var(--font-display)] text-xl font-semibold text-[#240029]">
-            Osonflow
-          </span>
-        </p>
-        <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight">
-          Welcome back
-        </h2>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Sign in to your workspace and pick up where you left off.
-        </p>
-      </header>
+      <AuthFormHeader
+        eyebrow="Welcome back"
+        title="Sign in to Osonflow"
+        description="Pick up where you left off — inbox, AI, and analytics in one workspace."
+      />
 
       <AuthSocialButtons mode="sign-in" redirectUrl={redirectUrl} />
       <AuthDivider />
@@ -314,7 +297,7 @@ export const CustomSignInForm = () => {
             <FieldLabel htmlFor="email">Email</FieldLabel>
             <Input
               autoComplete="email"
-              className="auth-input h-11 rounded-xl"
+              className="auth-input"
               id="email"
               onChange={(event) => setEmail(event.target.value)}
               placeholder="you@company.com"
@@ -328,17 +311,13 @@ export const CustomSignInForm = () => {
           <Field data-invalid={!!errors?.fields?.password}>
             <div className="flex items-center justify-between gap-3">
               <FieldLabel htmlFor="password">Password</FieldLabel>
-              <button
-                className="text-xs font-medium text-[#635bff] transition-colors hover:text-[#4f48d9]"
-                onClick={() => setStep("forgot")}
-                type="button"
-              >
+              <button className="auth-link text-xs" onClick={() => setStep("forgot")} type="button">
                 Forgot password?
               </button>
             </div>
             <Input
               autoComplete="current-password"
-              className="auth-input h-11 rounded-xl"
+              className="auth-input"
               id="password"
               onChange={(event) => setPassword(event.target.value)}
               placeholder="••••••••"
@@ -351,19 +330,19 @@ export const CustomSignInForm = () => {
         </FieldGroup>
 
         {errors?.global?.map((error) => (
-          <p className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive" key={error.message}>
+          <p className="auth-error" key={error.message}>
             {error.message}
           </p>
         ))}
 
-        <Button className="auth-primary-btn h-11 w-full rounded-xl" disabled={isLoading} type="submit">
+        <Button className="auth-primary-btn w-full" disabled={isLoading} type="submit">
           {isLoading ? <Spinner /> : "Sign in"}
         </Button>
       </form>
 
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="text-center text-sm text-[var(--auth-ink-soft)]">
         Don&apos;t have an account?{" "}
-        <Link className="font-semibold text-[#240029] underline-offset-4 hover:underline" href="/sign-up">
+        <Link className="auth-link" href="/sign-up">
           Create one
         </Link>
       </p>

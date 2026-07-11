@@ -21,9 +21,12 @@ import { useState } from "react"
 
 import { finalizeAuthSession } from "@/modules/auth/lib/finalize-auth"
 import { AuthDivider } from "./auth-divider"
+import { AuthFormHeader } from "./auth-form-header"
 import { AuthSocialButtons } from "./auth-social-buttons"
 
 type SignUpStep = "details" | "verify"
+
+const otpSlots = Array.from({ length: 6 }, (_, index) => index)
 
 export const CustomSignUpForm = () => {
   const { signUp, errors, fetchStatus } = useSignUp()
@@ -83,16 +86,13 @@ export const CustomSignUpForm = () => {
   if (signUp?.isTransferable) {
     return (
       <div className="auth-form-stack">
-        <header className="space-y-2 text-center lg:text-left">
-          <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight">
-            You already have an account
-          </h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            This email is already registered. Sign in instead to continue.
-          </p>
-        </header>
+        <AuthFormHeader
+          eyebrow="Already registered"
+          title="You already have an account"
+          description="This email is already registered. Sign in instead to continue."
+        />
 
-        <Button asChild className="auth-primary-btn h-11 w-full rounded-xl">
+        <Button asChild className="auth-primary-btn w-full">
           <Link href="/sign-in">Go to sign in</Link>
         </Button>
       </div>
@@ -102,14 +102,15 @@ export const CustomSignUpForm = () => {
   if (step === "verify") {
     return (
       <div className="auth-form-stack">
-        <header className="space-y-2 text-center lg:text-left">
-          <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight">
-            Verify your email
-          </h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            We sent a 6-digit code to <span className="font-medium text-foreground">{email}</span>.
-          </p>
-        </header>
+        <AuthFormHeader
+          eyebrow="One last step"
+          title="Verify your email"
+          description={
+            <>
+              We sent a 6-digit code to <span className="font-medium text-[var(--auth-ink)]">{email}</span>.
+            </>
+          }
+        />
 
         <form className="space-y-5" onSubmit={handleVerify}>
           <FieldGroup>
@@ -122,8 +123,8 @@ export const CustomSignUpForm = () => {
                 value={verificationCode}
               >
                 <InputOTPGroup className="w-full justify-between">
-                  {Array.from({ length: 6 }).map((_, index) => (
-                    <InputOTPSlot className="size-11 rounded-xl border-border/90" index={index} key={index} />
+                  {otpSlots.map((index) => (
+                    <InputOTPSlot className="auth-otp-slot" index={index} key={index} />
                   ))}
                 </InputOTPGroup>
               </InputOTP>
@@ -132,7 +133,7 @@ export const CustomSignUpForm = () => {
           </FieldGroup>
 
           <Button
-            className="auth-primary-btn h-11 w-full rounded-xl"
+            className="auth-primary-btn w-full"
             disabled={isLoading || verificationCode.length < 6}
             type="submit"
           >
@@ -140,7 +141,7 @@ export const CustomSignUpForm = () => {
           </Button>
 
           <button
-            className="w-full text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="auth-link-muted w-full"
             disabled={isLoading}
             onClick={() => signUp?.verifications.sendEmailCode()}
             type="button"
@@ -154,19 +155,11 @@ export const CustomSignUpForm = () => {
 
   return (
     <div className="auth-form-stack">
-      <header className="space-y-2 text-center lg:text-left">
-        <p className="auth-mobile-logo mb-4 flex items-center justify-center gap-2 lg:hidden">
-          <span className="font-[family-name:var(--font-display)] text-xl font-semibold text-[#240029]">
-            Osonflow
-          </span>
-        </p>
-        <h2 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight">
-          Create your account
-        </h2>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Start unifying customer conversations in minutes.
-        </p>
-      </header>
+      <AuthFormHeader
+        eyebrow="Get started"
+        title="Create your account"
+        description="Start unifying customer conversations in minutes — no credit card required."
+      />
 
       <AuthSocialButtons mode="sign-up" redirectUrl={redirectUrl} />
       <AuthDivider />
@@ -178,7 +171,7 @@ export const CustomSignUpForm = () => {
               <FieldLabel htmlFor="first-name">First name</FieldLabel>
               <Input
                 autoComplete="given-name"
-                className="auth-input h-11 rounded-xl"
+                className="auth-input"
                 id="first-name"
                 onChange={(event) => setFirstName(event.target.value)}
                 placeholder="Jane"
@@ -191,7 +184,7 @@ export const CustomSignUpForm = () => {
               <FieldLabel htmlFor="last-name">Last name</FieldLabel>
               <Input
                 autoComplete="family-name"
-                className="auth-input h-11 rounded-xl"
+                className="auth-input"
                 id="last-name"
                 onChange={(event) => setLastName(event.target.value)}
                 placeholder="Doe"
@@ -205,7 +198,7 @@ export const CustomSignUpForm = () => {
             <FieldLabel htmlFor="signup-email">Work email</FieldLabel>
             <Input
               autoComplete="email"
-              className="auth-input h-11 rounded-xl"
+              className="auth-input"
               id="signup-email"
               onChange={(event) => setEmail(event.target.value)}
               placeholder="you@company.com"
@@ -220,7 +213,7 @@ export const CustomSignUpForm = () => {
             <FieldLabel htmlFor="signup-password">Password</FieldLabel>
             <Input
               autoComplete="new-password"
-              className="auth-input h-11 rounded-xl"
+              className="auth-input"
               id="signup-password"
               minLength={8}
               onChange={(event) => setPassword(event.target.value)}
@@ -234,26 +227,26 @@ export const CustomSignUpForm = () => {
         </FieldGroup>
 
         {errors?.global?.map((error) => (
-          <p className="rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive" key={error.message}>
+          <p className="auth-error" key={error.message}>
             {error.message}
           </p>
         ))}
 
-        <Button className="auth-primary-btn h-11 w-full rounded-xl" disabled={isLoading} type="submit">
+        <Button className="auth-primary-btn w-full" disabled={isLoading} type="submit">
           {isLoading ? <Spinner /> : "Continue"}
         </Button>
 
         <div id="clerk-captcha" />
       </form>
 
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="text-center text-sm text-[var(--auth-ink-soft)]">
         Already have an account?{" "}
-        <Link className="font-semibold text-[#240029] underline-offset-4 hover:underline" href="/sign-in">
+        <Link className="auth-link" href="/sign-in">
           Sign in
         </Link>
       </p>
 
-      <p className="text-center text-xs leading-relaxed text-muted-foreground/80">
+      <p className="auth-footnote">
         By continuing, you agree to our terms of service and privacy policy.
       </p>
     </div>
