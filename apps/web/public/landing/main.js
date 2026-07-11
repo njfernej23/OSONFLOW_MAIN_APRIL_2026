@@ -95,8 +95,11 @@ const $ = (s, c) => (c || document).querySelector(s);
       });
     }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }));
     reveals.forEach((el) => {
-      if (el.closest(".hero")) io.observe(el);
-      else el.classList.add("fm-pending");
+      if (el.closest(".hero")) {
+        if (!el.classList.contains("is-in")) io.observe(el);
+      } else {
+        el.classList.add("fm-pending");
+      }
     });
   } else { reveals.forEach((el) => el.classList.add("is-in")); }
 

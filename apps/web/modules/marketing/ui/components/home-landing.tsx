@@ -17,6 +17,8 @@ const LANDING_SCRIPT_ID = "osonflow-landing-main"
 const LANDING_STYLES_ID = "osonflow-landing-styles"
 const LANDING_STYLES_HREF = "/landing/japandi-landing.css"
 
+let landingMountCount = 0
+
 function ensureLandingStyles() {
   const existing = document.getElementById(LANDING_STYLES_ID)
 
@@ -105,6 +107,8 @@ export const HomeLandingPage = () => {
   }, [])
 
   useEffect(() => {
+    landingMountCount += 1
+
     if (!window.location.hash) {
       window.scrollTo(0, 0)
     }
@@ -113,8 +117,12 @@ export const HomeLandingPage = () => {
     initLandingScript()
 
     return () => {
-      window.__destroyOsonflowLanding?.()
-      document.body.style.overflow = ""
+      landingMountCount -= 1
+      if (landingMountCount <= 0) {
+        landingMountCount = 0
+        window.__destroyOsonflowLanding?.()
+        document.body.style.overflow = ""
+      }
     }
   }, [])
 

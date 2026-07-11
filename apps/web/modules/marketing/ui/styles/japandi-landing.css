@@ -661,6 +661,10 @@ html:has(.japandi-landing) { scroll-behavior: smooth; -webkit-text-size-adjust: 
 .reveal.is-in { opacity: 1; transform: none; }
 
 /* Framer Motion scroll targets (non-hero) */
+.japandi-landing .fm-ready.reveal,
+.japandi-landing .fm-in.reveal {
+  transition: none;
+}
 .japandi-landing .fm-ready {
   opacity: 0;
   pointer-events: none;
