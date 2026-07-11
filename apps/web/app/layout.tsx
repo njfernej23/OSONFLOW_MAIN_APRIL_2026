@@ -56,6 +56,9 @@ export default function RootLayout({
         <ClerkProvider
           signInFallbackRedirectUrl={appPath("/analytics")}
           signUpFallbackRedirectUrl={appPath("/org-selection")}
+          taskUrls={{
+            "choose-organization": "/org-selection",
+          }}
         >
           <Providers>
             <Toaster />

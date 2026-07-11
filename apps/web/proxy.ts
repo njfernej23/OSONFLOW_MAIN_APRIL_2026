@@ -26,6 +26,7 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/sso-callback(.*)",
+  "/org-selection(.*)",
 ])
 
 const isOrgFreeRoute = createRouteMatcher([
@@ -78,7 +79,7 @@ export const proxy = clerkMiddleware(async (auth, req) => {
     return hostRedirect
   }
 
-  const { userId, orgId } = await auth()
+  const { userId, orgId, sessionStatus } = await auth()
 
   if (req.nextUrl.pathname.startsWith("/sign-in/tasks/")) {
     const orgSelection = new URL("/org-selection", req.url)
@@ -87,6 +88,12 @@ export const proxy = clerkMiddleware(async (auth, req) => {
   }
 
   if (!isPublicRoute(req)) {
+    if (sessionStatus === "pending") {
+      const orgSelection = new URL("/org-selection", req.url)
+      orgSelection.search = req.nextUrl.search
+      return NextResponse.redirect(orgSelection)
+    }
+
     await auth.protect()
   }
 
