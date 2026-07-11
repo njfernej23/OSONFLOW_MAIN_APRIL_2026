@@ -91,18 +91,22 @@ export const HomeLandingPage = () => {
   const previousSignedIn = useRef<boolean | undefined>(undefined)
 
   const bootstrapLanding = useCallback(() => {
+    const finishBootstrap = () => {
+      revealHeroOnly()
+      setMotionKey((key) => key + 1)
+    }
+
     const start = (attempt = 0) => {
       if (!hasLandingMarkup(markupRef.current)) {
-        if (attempt < 8) {
+        if (attempt < 12) {
           requestAnimationFrame(() => start(attempt + 1))
+        } else {
+          finishBootstrap()
         }
         return
       }
 
-      runLandingInit(() => {
-        revealHeroOnly()
-        setMotionKey((key) => key + 1)
-      })
+      runLandingInit(finishBootstrap)
     }
 
     start()
@@ -161,11 +165,11 @@ export const HomeLandingPage = () => {
   return (
     <div className="japandi-landing">
       <JapandiLandingNav />
-      {motionKey > 0 ? <LandingScrollMotion resetKey={motionKey} /> : null}
       <div
         ref={markupRef}
         dangerouslySetInnerHTML={{ __html: landingPageBodyMarkup }}
       />
+      <LandingScrollMotion resetKey={motionKey} />
     </div>
   )
 }

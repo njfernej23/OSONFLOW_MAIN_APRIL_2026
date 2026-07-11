@@ -18,9 +18,6 @@ type MotionKind =
 const EASE = [0.22, 1, 0.36, 1] as const
 const SPRING = { type: "spring" as const, stiffness: 120, damping: 20, mass: 0.85 }
 
-/** Survives React Strict Mode remounts so sections never animate twice. */
-const animatedSections = new WeakSet<Element>()
-
 const KIND_SELECTORS: Record<MotionKind, string[]> = {
   cards: [".case-studies__header", ".case-card"],
   pillars: [".pillar"],
@@ -259,26 +256,23 @@ export function LandingScrollMotion({ resetKey = 0 }: { resetKey?: number }) {
     }
 
     const cleanups: Array<() => void> = []
+    const startedSections = new Set<Element>()
 
     sections.forEach((section) => {
-      if (animatedSections.has(section)) return
-
       const kind = kindFor(section)
       const targets = pickTargets(section, kind).filter(
         (el) => !el.classList.contains("fm-in")
       )
-      if (!targets.length) {
-        animatedSections.add(section)
-        return
-      }
+      if (!targets.length) return
 
       targets.forEach((el) => prepare(el))
 
       const stop = inView(
         section,
         () => {
+          if (startedSections.has(section)) return
+          startedSections.add(section)
           stop()
-          animatedSections.add(section)
           void runAnimation(kind, targets)
         },
         { amount: 0.22, margin: "0px 0px -12% 0px" }
