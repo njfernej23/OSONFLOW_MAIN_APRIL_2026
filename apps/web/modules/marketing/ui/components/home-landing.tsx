@@ -119,14 +119,19 @@ export const HomeLandingPage = () => {
     }
   }, [])
 
-  // Re-bind vanilla JS widgets after Clerk sign-out/sign-in on the same page.
+  // Re-bind vanilla JS widgets whenever Clerk's auth state resolves or changes
+  // on the same page. Clerk's UserButton/SignedIn markup mounting lazily (once
+  // isLoaded flips true) causes React to replace the dangerouslySetInnerHTML
+  // subtree, wiping the imperatively-injected pipeline/chat/etc. state — so we
+  // must always re-run init on that first resolution, not just on later
+  // sign-in/sign-out toggles.
   useEffect(() => {
     if (!isAuthLoaded) return
 
-    if (
-      previousSignedIn.current !== undefined &&
-      previousSignedIn.current !== isSignedIn
-    ) {
+    const isFirstResolution = previousSignedIn.current === undefined
+    const didSignInStateChange = previousSignedIn.current !== isSignedIn
+
+    if (isFirstResolution || didSignInStateChange) {
       revealHeroOnly()
       initLandingScript()
     }

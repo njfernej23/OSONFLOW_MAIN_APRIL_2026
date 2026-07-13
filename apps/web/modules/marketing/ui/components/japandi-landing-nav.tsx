@@ -174,7 +174,7 @@ export const JapandiLandingNav = () => {
 
             <div className="nav__actions">
               <div className="nav__lang">
-                <LanguageSwitcher className="nav__lang-switch" compact />
+                <LanguageSwitcher className="nav__lang-switch" compact display="code" />
               </div>
               <div className="nav__auth">
                 <NavAuthActions />
@@ -225,7 +225,7 @@ export const JapandiLandingNav = () => {
                 </Link>
               ))}
               <div className="nav__mobile-lang">
-                <LanguageSwitcher compact />
+                <LanguageSwitcher compact display="code" />
               </div>
               <div className="nav__mobile-actions">
                 <NavAuthActions mobile onNavigate={() => setIsOpen(false)} />

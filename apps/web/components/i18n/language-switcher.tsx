@@ -14,6 +14,7 @@ import { cn } from "@workspace/ui/lib/utils"
 type LanguageSwitcherProps = {
   className?: string
   compact?: boolean
+  display?: "flags" | "code" | "name"
   surface?: "light" | "dark" | "sidebar"
 }
 
@@ -23,9 +24,16 @@ const LANGUAGE_ICONS: Record<Language, string> = {
   ru: "🇷🇺",
 }
 
+const LANGUAGE_CODES: Record<Language, string> = {
+  en: "EN",
+  uz: "UZ",
+  ru: "RU",
+}
+
 export function LanguageSwitcher({
   className,
   compact = false,
+  display = "flags",
   surface = "light",
 }: LanguageSwitcherProps) {
   const { language, setLanguage, t } = useLanguage()
@@ -66,10 +74,18 @@ export function LanguageSwitcher({
   }
 
   if (compact) {
+    const compactLabel =
+      display === "name"
+        ? LANGUAGE_LABELS[language]
+        : display === "code"
+          ? LANGUAGE_CODES[language]
+          : LANGUAGE_ICONS[language]
+
     return (
       <label
         className={cn(
-          "relative inline-flex size-10 shrink-0 items-center justify-center rounded-full border text-lg transition",
+          "relative inline-flex shrink-0 items-center justify-center rounded-full border text-lg transition",
+          display === "flags" ? "size-10" : "h-9 min-w-9 px-2.5 text-xs font-semibold tracking-[0.06em]",
           surface === "dark" &&
             "border-white/18 bg-white/8 text-white hover:bg-white/14",
           surface === "light" &&
@@ -78,7 +94,12 @@ export function LanguageSwitcher({
         )}
         title={`${t("Language")}: ${LANGUAGE_LABELS[language]}`}
       >
-        <span aria-hidden="true">{LANGUAGE_ICONS[language]}</span>
+        <span
+          aria-hidden="true"
+          className={display === "flags" ? undefined : "leading-none"}
+        >
+          {compactLabel}
+        </span>
         <select
           aria-label={t("Language")}
           className="absolute inset-0 size-full cursor-pointer appearance-none opacity-0 outline-none"

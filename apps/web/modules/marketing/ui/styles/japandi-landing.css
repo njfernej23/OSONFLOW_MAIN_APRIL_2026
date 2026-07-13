@@ -233,20 +233,13 @@ html:has(.japandi-landing) { scroll-behavior: smooth; -webkit-text-size-adjust: 
   justify-self: start;
   flex: 0 0 auto;
   width: max-content;
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: var(--shadow-sm);
-  padding: 10px 18px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 10px 0;
 }
 .nav.is-scrolled .nav__brand-chip {
-  background: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  border-color: transparent;
-  box-shadow: none;
-  padding: 6px 12px;
+  padding: 6px 0;
 }
 
 .brand { display: inline-flex; align-items: center; gap: 10px; }
@@ -338,23 +331,39 @@ html:has(.japandi-landing) { scroll-behavior: smooth; -webkit-text-size-adjust: 
 .japandi-landing .nav__lang-switch,
 .japandi-landing .nav__mobile-lang label {
   position: relative;
-  width: 36px;
-  height: 36px;
+  width: auto;
+  min-width: 30px;
+  height: 26px;
   margin: 0;
-  padding: 0;
+  padding: 0 7px;
   border-radius: 999px;
   border: 1px solid var(--linen-200);
   background: rgba(255, 255, 255, 0.9);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   line-height: 1;
+  color: var(--ink-soft);
   cursor: pointer;
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease;
+}
+.japandi-landing .nav__lang-switch:hover,
+.japandi-landing .nav__mobile-lang label:hover {
+  color: var(--ink);
+  border-color: var(--linen-300);
+  background: #ffffff;
 }
 .japandi-landing .nav.is-scrolled .nav__lang-switch {
-  width: 34px;
-  height: 34px;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 6px;
   background: rgba(255, 255, 255, 0.72);
 }
 .japandi-landing .nav__lang-switch select,

@@ -104,15 +104,35 @@ const $ = (s, c) => (c || document).querySelector(s);
   } else { reveals.forEach((el) => el.classList.add("is-in")); }
 
   /* ---------------- Count-up stats ---------------- */
+  const formatCountValue = (value, el) => {
+    const decimals = el.dataset.countDecimals ? parseInt(el.dataset.countDecimals, 10) : 0;
+    const prefix = el.dataset.countPrefix || "";
+    const suffix = el.dataset.countSuffix || "";
+    const numeric = decimals > 0 ? value.toFixed(decimals) : String(Math.round(value));
+    return prefix + numeric + suffix;
+  };
   const runCount = (el) => {
-    const target = parseFloat(el.dataset.count), dur = 1500, start = performance.now();
-    const step = (now) => { const p = Math.min((now - start) / dur, 1), eased = 1 - Math.pow(1 - p, 3); el.textContent = Math.round(eased * target).toString(); if (p < 1) requestAnimationFrame(step); };
+    const target = parseFloat(el.dataset.count);
+    if (!Number.isFinite(target)) return;
+    if (reduceMotion) {
+      el.textContent = formatCountValue(target, el);
+      return;
+    }
+    const dur = parseInt(el.dataset.countDuration || "1500", 10);
+    const start = performance.now();
+    const step = (now) => {
+      const p = Math.min((now - start) / dur, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = formatCountValue(eased * target, el);
+      if (p < 1) requestAnimationFrame(step);
+      else el.textContent = formatCountValue(target, el);
+    };
     requestAnimationFrame(step);
   };
   if ("IntersectionObserver" in window) {
-    const co = trackObserver(new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { runCount(e.target); co.unobserve(e.target); } }), { threshold: 0.6 }));
+    const co = trackObserver(new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { runCount(e.target); co.unobserve(e.target); } }), { threshold: 0.35, rootMargin: "0px 0px -8% 0px" }));
     $$("[data-count]").forEach((el) => co.observe(el));
-  } else { $$("[data-count]").forEach((el) => (el.textContent = el.dataset.count)); }
+  } else { $$("[data-count]").forEach((el) => (el.textContent = formatCountValue(parseFloat(el.dataset.count), el))); }
 
   /* ---------------- Animate intent bars when revealed ---------------- */
   if ("IntersectionObserver" in window) {
