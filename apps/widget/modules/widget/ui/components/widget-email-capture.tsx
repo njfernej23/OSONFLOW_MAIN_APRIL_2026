@@ -8,21 +8,28 @@ import { cn } from "@workspace/ui/lib/utils"
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 export const WidgetEmailCapture = ({
-  onSubmitEmail,
-  receivedEmail,
+  onSubmitDetails,
+  receivedDetails,
 }: {
-  onSubmitEmail: (email: string) => Promise<void>
-  receivedEmail: string | null
+  onSubmitDetails: (details: { name: string; email: string }) => Promise<void>
+  receivedDetails: { name: string; email: string } | null
 }) => {
+  const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
 
-  const isReceived = receivedEmail !== null
+  const isReceived = receivedDetails !== null
 
   const handleSubmit = async () => {
+    const trimmedName = name.trim()
     const trimmedEmail = email.trim().toLowerCase()
+
+    if (!trimmedName) {
+      setError("Enter your name")
+      return
+    }
 
     if (!EMAIL_PATTERN.test(trimmedEmail)) {
       setError("Enter a valid email address")
@@ -33,7 +40,7 @@ export const WidgetEmailCapture = ({
     setIsSubmitting(true)
 
     try {
-      await onSubmitEmail(trimmedEmail)
+      await onSubmitDetails({ name: trimmedName, email: trimmedEmail })
     } catch {
       setError("Enter a real email address that can receive mail")
     } finally {
@@ -41,17 +48,19 @@ export const WidgetEmailCapture = ({
     }
   }
 
+  const canSubmit = name.trim().length > 0 && email.trim().length > 0
+
   return (
     <div className="w-full py-2">
       <div className="flex items-center gap-x-2 px-1 text-[var(--widget-bot-bubble-foreground,inherit)]">
         <MailIcon aria-hidden="true" className="size-4 shrink-0 opacity-80" />
         <p className="text-sm font-medium">
-          {isReceived ? "Email received" : "Enter your email to continue"}
+          {isReceived ? "Details received" : "Enter your details to continue"}
         </p>
         {isReceived ? (
           <button
             aria-expanded={!isCollapsed}
-            aria-label={isCollapsed ? "Show email" : "Hide email"}
+            aria-label={isCollapsed ? "Show details" : "Hide details"}
             className="flex size-6 items-center justify-center rounded-full bg-muted transition-colors hover:bg-muted/70"
             onClick={() => setIsCollapsed((previous) => !previous)}
             type="button"
@@ -68,10 +77,35 @@ export const WidgetEmailCapture = ({
 
       {isReceived && isCollapsed ? null : (
         <div className="mt-3 rounded-3xl border bg-background px-4 py-3 shadow-sm">
+          <p className="text-sm font-semibold text-foreground">Name</p>
+          {isReceived ? (
+            <p className="mt-1 pb-1 text-base text-foreground">
+              {receivedDetails.name}
+            </p>
+          ) : (
+            <input
+              autoComplete="name"
+              className="mt-1 w-full border-0 bg-transparent pb-1 text-base text-foreground outline-none placeholder:text-muted-foreground/60"
+              disabled={isSubmitting}
+              onChange={(event) => setName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault()
+                  void handleSubmit()
+                }
+              }}
+              placeholder="Your name"
+              type="text"
+              value={name}
+            />
+          )}
+
+          <div className="my-2 border-t" />
+
           <p className="text-sm font-semibold text-foreground">Email</p>
           {isReceived ? (
             <p className="mt-1 pb-1 text-base text-foreground">
-              {receivedEmail}
+              {receivedDetails.email}
             </p>
           ) : (
             <input
@@ -104,7 +138,7 @@ export const WidgetEmailCapture = ({
           ) : null}
           <Button
             className="mt-3 h-10 rounded-full px-6 text-sm font-semibold"
-            disabled={isSubmitting || !email.trim()}
+            disabled={isSubmitting || !canSubmit}
             onClick={() => void handleSubmit()}
             type="button"
           >

@@ -332,7 +332,10 @@ export const WidgetChatScreen = () => {
     baseCount: number
     messages: string[]
   } | null>(null)
-  const [receivedEmail, setReceivedEmail] = useState<string | null>(null)
+  const [receivedDetails, setReceivedDetails] = useState<{
+    name: string
+    email: string
+  } | null>(null)
   const isFlushingHeldMessagesRef = useRef(false)
   const visibleHeldMessages = useMemo(() => {
     if (!heldMessages) {
@@ -347,7 +350,11 @@ export const WidgetChatScreen = () => {
   const showEmailCapture =
     (needsEmail === true &&
       (visibleHeldMessages.length > 0 || userMessageCount > 0)) ||
-    receivedEmail !== null
+    receivedDetails !== null
+  // After the first message, block the composer until a valid email is submitted.
+  const isInputLockedForEmail =
+    needsEmail === true &&
+    ((heldMessages?.messages.length ?? 0) > 0 || userMessageCount > 0)
   const isAwaitingResponse =
     conversation?.status !== "resolved" &&
     pendingAssistantMessageCount !== null &&
@@ -417,7 +424,13 @@ export const WidgetChatScreen = () => {
     )
   }
 
-  const onSubmitEmail = async (email: string) => {
+  const onSubmitDetails = async ({
+    name,
+    email,
+  }: {
+    name: string
+    email: string
+  }) => {
     if (!contactSessionId || !organizationId) {
       throw new Error("Missing session")
     }
@@ -426,9 +439,10 @@ export const WidgetChatScreen = () => {
       contactSessionId,
       organizationId,
       email,
+      name,
     })
 
-    setReceivedEmail(result.email)
+    setReceivedDetails({ name: result.name, email: result.email })
   }
 
   // Once the visitor is identified, deliver any messages typed beforehand.
@@ -500,7 +514,9 @@ export const WidgetChatScreen = () => {
     setPendingInitialMessage(null)
 
     if (needsEmail !== false) {
-      holdMessage(prompt)
+      if (!isInputLockedForEmail) {
+        holdMessage(prompt)
+      }
       return
     }
 
@@ -527,6 +543,7 @@ export const WidgetChatScreen = () => {
     conversation?.threadId,
     createMessage,
     form,
+    isInputLockedForEmail,
     needsEmail,
     pendingInitialMessage,
     setPendingInitialMessage,
@@ -541,6 +558,10 @@ export const WidgetChatScreen = () => {
     const prompt = values.message.trim()
 
     if (!prompt) {
+      return
+    }
+
+    if (isInputLockedForEmail) {
       return
     }
 
@@ -721,8 +742,8 @@ export const WidgetChatScreen = () => {
           ))}
           {showEmailCapture ? (
             <WidgetEmailCapture
-              onSubmitEmail={onSubmitEmail}
-              receivedEmail={receivedEmail}
+              onSubmitDetails={onSubmitDetails}
+              receivedDetails={receivedDetails}
             />
           ) : null}
           {isAwaitingResponse && (
@@ -778,11 +799,15 @@ export const WidgetChatScreen = () => {
         >
           <FormField
             control={form.control}
-            disabled={conversation?.status === "resolved"}
+            disabled={
+              conversation?.status === "resolved" || isInputLockedForEmail
+            }
             name="message"
             render={({ field }) => (
               <AIInputTextarea
-                disabled={conversation?.status === "resolved"}
+                disabled={
+                  conversation?.status === "resolved" || isInputLockedForEmail
+                }
                 onChange={field.onChange}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
@@ -793,7 +818,9 @@ export const WidgetChatScreen = () => {
                 placeholder={
                   conversation?.status === "resolved"
                     ? "This conversation has been resolved."
-                    : "Type your message..."
+                    : isInputLockedForEmail
+                      ? "Enter your email above to continue..."
+                      : "Type your message..."
                 }
                 value={field.value}
               />
@@ -803,7 +830,9 @@ export const WidgetChatScreen = () => {
             <AIInputTools />
             <AIInputSubmit
               disabled={
-                conversation?.status === "resolved" || !form.formState.isValid
+                conversation?.status === "resolved" ||
+                isInputLockedForEmail ||
+                !form.formState.isValid
               }
               status={isAwaitingResponse ? "submitted" : "ready"}
               type="submit"
