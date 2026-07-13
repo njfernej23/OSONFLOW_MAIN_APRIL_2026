@@ -19,14 +19,14 @@ const EASE = [0.22, 1, 0.36, 1] as const
 const SPRING = { type: "spring" as const, stiffness: 120, damping: 20, mass: 0.85 }
 
 const KIND_SELECTORS: Record<MotionKind, string[]> = {
-  cards: [".case-studies__header", ".case-card"],
+  cards: [],
   pillars: [".pillar"],
   metrics: [".lede", ".metric"],
   features: [".lede", ".feature"],
   plans: [".lede", ".plan"],
   faq: [".lede", ".acc"],
   cta: [".cta__card", ".lede", ".cta__inner", ".cta__copy"],
-  logos: [".trust__label", ".logo-img", ".trustband .logo-img"],
+  logos: [".trust__label", ".case-logo-btn", ".logo-img", ".trustband .logo-img"],
   channels: [".lede", ".channel", ".channels__grid > *", ".int-grid > *"],
   default: [
     ".lede",
@@ -43,7 +43,6 @@ const KIND_SELECTORS: Record<MotionKind, string[]> = {
 }
 
 function kindFor(section: Element): MotionKind {
-  if (section.classList.contains("case-studies")) return "cards"
   if (section.classList.contains("pillars")) return "pillars"
   if (section.classList.contains("platform-band")) return "metrics"
   if (section.classList.contains("features")) return "features"
@@ -205,7 +204,7 @@ async function runAnimation(kind: MotionKind, targets: HTMLElement[]) {
 
 function bindCardHover(root: Element) {
   const cards = root.querySelectorAll(
-    ".case-card, .plan, .metric, .channel, .int-grid > *, .pillar"
+    ".plan, .metric, .channel, .int-grid > *, .pillar"
   )
   const cleanups: Array<() => void> = []
 

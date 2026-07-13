@@ -1,0 +1,16 @@
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - button [ref=e36] [cursor=pointer]
+          - paragraph [ref=e37]: Support Assistant
+        - button "Download chat history" [disabled]
+      - log [ref=e38]:
+        - generic [ref=e41]:
+          - button "Beginning of chat" [disabled]
+      - generic [ref=e42]:
+        - textbox "Type your message..." [ref=e43]
+        - generic [ref=e44]:
+          - button [disabled]
+  - alert [ref=e8]

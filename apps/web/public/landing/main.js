@@ -140,6 +140,68 @@ const $ = (s, c) => (c || document).querySelector(s);
     $$(".ibars").forEach((el) => bo.observe(el));
   }
 
+  /* ---------------- Case study video switcher ---------------- */
+  const caseVideo = $("#caseStudyVideo");
+  const caseLogos = $$(".case-logo-btn");
+  const caseCard = $("#caseStudyCard");
+  const caseCardNum = $("#caseStudyStatNum");
+  const caseCardLabel = $("#caseStudyStatLabel");
+  const caseCardText = $("#caseStudyCardText");
+  const caseCardLink = $("#caseStudyCardLink");
+
+  const updateCaseStudyCard = (btn) => {
+    if (!btn) return;
+    const applyCard = () => {
+      if (caseCardNum && btn.dataset.statNum) caseCardNum.textContent = btn.dataset.statNum;
+      if (caseCardLabel && btn.dataset.statLabel) caseCardLabel.textContent = btn.dataset.statLabel;
+      if (caseCardText && btn.dataset.cardText) caseCardText.textContent = btn.dataset.cardText;
+      if (caseCardLink && btn.dataset.cardHref) caseCardLink.setAttribute("href", btn.dataset.cardHref);
+      caseCard?.classList.remove("is-switching");
+    };
+
+    if (!caseCard || reduceMotion) {
+      applyCard();
+      return;
+    }
+
+    caseCard.classList.add("is-switching");
+    window.setTimeout(applyCard, 160);
+  };
+
+  if (caseVideo && caseLogos.length) {
+    const playCaseStudy = async (btn) => {
+      const src = btn.dataset.video;
+      const poster = btn.dataset.poster;
+      if (!src) return;
+
+      caseLogos.forEach((logo) => {
+        const active = logo === btn;
+        logo.classList.toggle("is-active", active);
+        logo.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+
+      updateCaseStudyCard(btn);
+
+      if (poster) caseVideo.setAttribute("poster", poster);
+      caseVideo.muted = false;
+      if (caseVideo.getAttribute("src") !== src) {
+        caseVideo.src = src;
+        caseVideo.load();
+      }
+
+      try {
+        await caseVideo.play();
+      } catch (_) {
+        caseVideo.muted = true;
+        try { await caseVideo.play(); } catch (_) {}
+      }
+    };
+
+    caseLogos.forEach((btn) => {
+      btn.addEventListener("click", () => { void playCaseStudy(btn); }, { signal });
+    });
+  }
+
   /* ---------------- Hero parallax + tilt ---------------- */
   const stage = $(".hero__stage");
   if (stage && !reduceMotion && window.matchMedia("(pointer:fine)").matches) {

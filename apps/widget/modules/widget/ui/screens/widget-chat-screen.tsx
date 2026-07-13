@@ -50,6 +50,7 @@ import {
   mergeWidgetAppearance,
   mergeWidgetTheme,
 } from "@workspace/ui/lib/widget-customization"
+import { WidgetEmailCapture } from "../components/widget-email-capture"
 
 const formSchema = z.object({
   message: z.string().min(1, "Message is required"),
@@ -211,6 +212,23 @@ export const WidgetChatScreen = () => {
     contactSessionIdAtomFamily(organizationId || "")
   )
 
+  const contactSessionDetails = useQuery(
+    api.public.contactSessions.getDetails,
+    contactSessionId && organizationId
+      ? {
+          contactSessionId,
+          organizationId,
+        }
+      : "skip"
+  )
+  // undefined = still loading; hold messages until we know the session is identified.
+  const needsEmail =
+    contactSessionDetails === undefined
+      ? undefined
+      : contactSessionDetails === null
+        ? false
+        : contactSessionDetails.isAnonymous
+
   const onBack = () => {
     setConversationId(null)
     setScreen(chatReturnScreen)
@@ -309,6 +327,27 @@ export const WidgetChatScreen = () => {
     optimisticUserMessage !== null &&
     userMessageCount <= optimisticUserMessage.baseCount
   const submittedInitialMessageRef = useRef<string | null>(null)
+  // Messages typed before the visitor shares their email; sent once identified.
+  const [heldMessages, setHeldMessages] = useState<{
+    baseCount: number
+    messages: string[]
+  } | null>(null)
+  const [receivedEmail, setReceivedEmail] = useState<string | null>(null)
+  const isFlushingHeldMessagesRef = useRef(false)
+  const visibleHeldMessages = useMemo(() => {
+    if (!heldMessages) {
+      return []
+    }
+
+    // Hide held bubbles as the server confirms them to avoid duplicates.
+    return heldMessages.messages.slice(
+      Math.max(0, userMessageCount - heldMessages.baseCount)
+    )
+  }, [heldMessages, userMessageCount])
+  const showEmailCapture =
+    (needsEmail === true &&
+      (visibleHeldMessages.length > 0 || userMessageCount > 0)) ||
+    receivedEmail !== null
   const isAwaitingResponse =
     conversation?.status !== "resolved" &&
     pendingAssistantMessageCount !== null &&
@@ -365,9 +404,86 @@ export const WidgetChatScreen = () => {
   })
 
   const createMessage = useAction(api.public.messages.create)
+  const identifyContactSession = useAction(api.public.contactSessions.identify)
   const markConversationAsRead = useMutation(
     api.public.conversations.markAsRead
   )
+
+  const holdMessage = (prompt: string) => {
+    setHeldMessages((previous) =>
+      previous
+        ? { ...previous, messages: [...previous.messages, prompt] }
+        : { baseCount: userMessageCount, messages: [prompt] }
+    )
+  }
+
+  const onSubmitEmail = async (email: string) => {
+    if (!contactSessionId || !organizationId) {
+      throw new Error("Missing session")
+    }
+
+    const result = await identifyContactSession({
+      contactSessionId,
+      organizationId,
+      email,
+    })
+
+    setReceivedEmail(result.email)
+  }
+
+  // Once the visitor is identified, deliver any messages typed beforehand.
+  useEffect(() => {
+    const threadId = conversation?.threadId
+    if (
+      needsEmail !== false ||
+      !heldMessages ||
+      heldMessages.messages.length === 0 ||
+      !threadId ||
+      !contactSessionId ||
+      isFlushingHeldMessagesRef.current
+    ) {
+      return
+    }
+
+    isFlushingHeldMessagesRef.current = true
+    setPendingAssistantMessageCount(assistantMessageCount + 1)
+
+    const flush = async () => {
+      for (const prompt of heldMessages.messages) {
+        await createMessage({
+          threadId,
+          prompt,
+          contactSessionId,
+        })
+      }
+    }
+
+    void flush()
+      .catch(() => {
+        setPendingAssistantMessageCount(null)
+        setHeldMessages(null)
+      })
+      .finally(() => {
+        isFlushingHeldMessagesRef.current = false
+      })
+  }, [
+    assistantMessageCount,
+    contactSessionId,
+    conversation?.threadId,
+    createMessage,
+    heldMessages,
+    needsEmail,
+  ])
+
+  // Drop held state once every held message is confirmed by the server.
+  useEffect(() => {
+    if (
+      heldMessages &&
+      userMessageCount - heldMessages.baseCount >= heldMessages.messages.length
+    ) {
+      setHeldMessages(null)
+    }
+  }, [heldMessages, userMessageCount])
 
   useEffect(() => {
     const prompt = pendingInitialMessage?.trim()
@@ -382,6 +498,12 @@ export const WidgetChatScreen = () => {
 
     submittedInitialMessageRef.current = prompt
     setPendingInitialMessage(null)
+
+    if (needsEmail !== false) {
+      holdMessage(prompt)
+      return
+    }
+
     setOptimisticUserMessage({ text: prompt, baseCount: userMessageCount })
     setPendingAssistantMessageCount(assistantMessageCount + 1)
 
@@ -405,6 +527,7 @@ export const WidgetChatScreen = () => {
     conversation?.threadId,
     createMessage,
     form,
+    needsEmail,
     pendingInitialMessage,
     setPendingInitialMessage,
   ])
@@ -422,6 +545,12 @@ export const WidgetChatScreen = () => {
     }
 
     form.reset()
+
+    if (needsEmail !== false) {
+      holdMessage(prompt)
+      return
+    }
+
     setOptimisticUserMessage({ text: prompt, baseCount: userMessageCount })
     setPendingAssistantMessageCount(assistantMessageCount + 1)
 
@@ -583,12 +712,25 @@ export const WidgetChatScreen = () => {
               </AIMessageContent>
             </AIMessage>
           )}
+          {visibleHeldMessages.map((heldMessage, index) => (
+            <AIMessage from="user" key={`held-message-${index}`}>
+              <AIMessageContent className="bg-[var(--widget-bot-bubble)] text-[var(--widget-bot-bubble-foreground)] group-[.is-user]:bg-[var(--widget-user-bubble)] group-[.is-user]:text-[var(--widget-user-bubble-foreground)]">
+                <AIResponse>{heldMessage}</AIResponse>
+              </AIMessageContent>
+            </AIMessage>
+          ))}
+          {showEmailCapture ? (
+            <WidgetEmailCapture
+              onSubmitEmail={onSubmitEmail}
+              receivedEmail={receivedEmail}
+            />
+          ) : null}
           {isAwaitingResponse && (
             <AssistantLoadingBubble logoUrl={theme.logoUrl} />
           )}
         </AIConversationContent>
       </AIConversation>
-      {visibleMessages.length === 1 ? (
+      {visibleMessages.length === 1 && visibleHeldMessages.length === 0 ? (
         <AISuggestions className="flex w-full flex-col items-end p-2">
           {suggestions.map((suggestion) => {
             if (!suggestion) {

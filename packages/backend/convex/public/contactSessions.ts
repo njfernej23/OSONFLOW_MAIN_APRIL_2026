@@ -1,6 +1,6 @@
 import { v } from "convex/values"
 
-import { action, internalMutation, mutation } from "../_generated/server"
+import { action, internalMutation, mutation, query } from "../_generated/server"
 import { SESSION_DURATION_MS } from "../constants"
 import { internal } from "../_generated/api"
 import type { Id } from "../_generated/dataModel"
@@ -291,6 +291,143 @@ export const createAnonymousRecord = internalMutation({
     )
 
     return contactSessionId
+  },
+})
+
+export const identify = action({
+  args: {
+    contactSessionId: v.id("contactSessions"),
+    organizationId: v.string(),
+    email: v.string(),
+    name: v.optional(v.string()),
+  },
+  returns: v.object({
+    name: v.string(),
+    email: v.string(),
+  }),
+  handler: async (ctx, args): Promise<{ name: string; email: string }> => {
+    const email = args.email.trim().toLowerCase()
+    const domain = getEmailDomain(email)
+
+    if (!domain || !EMAIL_PATTERN.test(email)) {
+      throw new Error("Invalid contact details")
+    }
+
+    await enforceRateLimit(ctx, "contactSessionCreateByEmail", {
+      key: `${args.organizationId}:${email}`,
+      message:
+        "Too many attempts for this email. Please wait before trying again.",
+    })
+
+    const acceptsEmail = await domainAcceptsEmail(domain)
+
+    if (!acceptsEmail) {
+      throw new Error("Email domain does not accept mail")
+    }
+
+    return await ctx.runMutation(
+      (internal as any).public.contactSessions.identifyRecord,
+      {
+        contactSessionId: args.contactSessionId,
+        organizationId: args.organizationId,
+        email,
+        name: args.name,
+      }
+    )
+  },
+})
+
+export const identifyRecord = internalMutation({
+  args: {
+    contactSessionId: v.id("contactSessions"),
+    organizationId: v.string(),
+    email: v.string(),
+    name: v.optional(v.string()),
+  },
+  returns: v.object({
+    name: v.string(),
+    email: v.string(),
+  }),
+  handler: async (ctx, args): Promise<{ name: string; email: string }> => {
+    const session = await ctx.db.get(args.contactSessionId)
+
+    if (!session || session.expiresAt < Date.now()) {
+      throw new Error("Invalid session")
+    }
+
+    if (session.organizationId !== args.organizationId) {
+      throw new Error("Invalid organization")
+    }
+
+    const email = args.email.trim().toLowerCase()
+
+    if (!EMAIL_PATTERN.test(email)) {
+      throw new Error("Invalid contact details")
+    }
+
+    const providedName = args.name?.trim()
+    // Keep a previously supplied real name; otherwise derive one from the email.
+    const name =
+      providedName ||
+      (session.isAnonymous
+        ? email.split("@")[0] || session.name
+        : session.name)
+
+    await ctx.db.patch(args.contactSessionId, {
+      name,
+      email,
+      isAnonymous: false,
+    })
+
+    await ctx.runMutation(
+      (internal as any).system.integrationWebhooks.dispatchEvent,
+      {
+        organizationId: args.organizationId,
+        eventType: "contact_session.created",
+        payload: {
+          contactSessionId: args.contactSessionId,
+          name,
+          email,
+          expiresAt: session.expiresAt,
+          identified: true,
+          metadata: session.metadata,
+        },
+      }
+    )
+
+    return { name, email }
+  },
+})
+
+export const getDetails = query({
+  args: {
+    contactSessionId: v.id("contactSessions"),
+    organizationId: v.string(),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      name: v.string(),
+      email: v.string(),
+      isAnonymous: v.boolean(),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const session = await ctx.db.get(args.contactSessionId)
+
+    if (
+      !session ||
+      session.expiresAt < Date.now() ||
+      session.organizationId !== args.organizationId
+    ) {
+      return null
+    }
+
+    return {
+      name: session.name,
+      email: session.email,
+      isAnonymous: session.isAnonymous === true,
+    }
   },
 })
 

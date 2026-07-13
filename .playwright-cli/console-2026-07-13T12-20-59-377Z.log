@@ -1,0 +1,541 @@
+[  718054ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  718605ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[  718710ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[  718727ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  718923ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[  718969ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  725964ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  725972ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[  735692ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[  735705ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  736321ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[  736324ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  736715ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[  736726ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  740376ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[  740382ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  745230ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[  745235ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  746821ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  746860ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[  747106ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[  747136ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  747354ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[  747374ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  747878ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[  747892ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  750771ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[  750778ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  761629ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[  761634ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  793863ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  793868ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[  800503ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  800505ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[  810202ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[  810220ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  818028ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[  818039ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 1263340ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[ 1263441ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 1263948ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[ 1264049ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 1264268ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[ 1264470ms] [ERROR] ./apps/web/modules/marketing/ui/components/landing-page-markup.ts:1:38
+Unterminated string constant
+> 1 | ...dingPageBodyMarkup = "dingpage/index.html
+    |                         ^^^^^^^^^^^^^^^^^^^^
+  2 | ...dingPageBodyMarkup = "<main id=\"main\">\n    <!-- ===========...
+  3 | ...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component Browser]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./apps/web/modules/marketing/ui/components/landing-page-markup.ts [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Client Component SSR]
+    ./apps/web/modules/marketing/ui/components/home-landing.tsx [Server Component]
+    ./apps/web/app/page.tsx [Server Component] @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:3318
+[ 1264517ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 1281052ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 1281102ms] [LOG] [Fast Refresh] done in 106ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 1710234ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 1710316ms] [LOG] [Fast Refresh] done in 158ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 1735287ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 1735314ms] [LOG] [Fast Refresh] done in 64ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 1991546ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 1991547ms] [LOG] [Fast Refresh] done in 101ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 1992617ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 1992618ms] [LOG] [Fast Refresh] done in 102ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2216979ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2217002ms] [LOG] [Fast Refresh] done in 123ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2219695ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2219695ms] [LOG] [Fast Refresh] done in 102ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2224349ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2224370ms] [LOG] [Fast Refresh] done in 122ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2255876ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2255926ms] [LOG] [Fast Refresh] done in 111ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2359031ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2359055ms] [LOG] [Fast Refresh] done in 84ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2396760ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2396783ms] [LOG] [Fast Refresh] done in 124ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2575301ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2575372ms] [LOG] [Fast Refresh] done in 172ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2670160ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2670164ms] [LOG] [Fast Refresh] done in 105ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2936111ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2936154ms] [LOG] [Fast Refresh] done in 145ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2955667ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2955693ms] [LOG] [Fast Refresh] done in 88ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2968761ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 2968856ms] [LOG] [Fast Refresh] done in 196ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 3127571ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 3127666ms] [LOG] [Fast Refresh] done in 86ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 3138750ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[ 3138754ms] [LOG] [Fast Refresh] done in 104ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477

@@ -46,11 +46,12 @@ const getVoiceVisitorId = (organizationId: string) => {
 
 const getBrowserMetadata = (
   organizationId: string,
-  parentPageUrl?: string
+  parentPageUrl?: string,
+  source: "voice_widget" | "widget" = "voice_widget"
 ): Doc<"contactSessions">["metadata"] => {
   if (typeof window === "undefined") {
     return {
-      source: "voice_widget",
+      source,
       visitorId: `voice_${Date.now().toString(36)}`,
     }
   }
@@ -68,7 +69,7 @@ const getBrowserMetadata = (
     cookieEnabled: navigator.cookieEnabled,
     referrer: document.referrer || "direct",
     currentUrl: parentPageUrl || document.referrer || window.location.href,
-    source: "voice_widget",
+    source,
     visitorId: getVoiceVisitorId(organizationId),
   }
 }
@@ -83,10 +84,6 @@ export const WidgetLoadingScreen = ({
   parentPageUrl?: string
 }) => {
   const [step, setStep] = useState<InitStep>("org")
-  const [
-    validatedContactSessionIsAnonymous,
-    setValidatedContactSessionIsAnonymous,
-  ] = useState(false)
   const setWidgetSettings = useSetAtom(widgetSettingsAtom)
   const setErrorMessage = useSetAtom(errorMessageAtom)
   const setOrganizationId = useSetAtom(organizationIdAtom)
@@ -147,7 +144,6 @@ export const WidgetLoadingScreen = ({
     if (step !== "session") return
     if (!contactSessionId) {
       queueMicrotask(() => {
-        setValidatedContactSessionIsAnonymous(false)
         setStep("settings")
       })
       return
@@ -159,17 +155,11 @@ export const WidgetLoadingScreen = ({
       .then((result) => {
         if (!result.valid) {
           setContactSessionId(null)
-          setValidatedContactSessionIsAnonymous(false)
-        } else {
-          setValidatedContactSessionIsAnonymous(
-            Boolean(result.contactSession?.isAnonymous)
-          )
         }
         setStep("settings")
       })
       .catch(() => {
         setContactSessionId(null)
-        setValidatedContactSessionIsAnonymous(false)
         setStep("settings")
       })
   }, [
@@ -231,12 +221,40 @@ export const WidgetLoadingScreen = ({
 
     if (!shouldOpenVoiceOnly) {
       setWidgetMode("standard")
-      if (validatedContactSessionIsAnonymous) {
-        setContactSessionId(null)
-        setScreen("auth")
+
+      if (contactSessionId) {
+        setScreen("selection")
         return
       }
-      setScreen(contactSessionId ? "selection" : "auth")
+
+      // No session yet: start anonymously so the visitor can chat right away.
+      // Their email is collected inline in the chat thread instead of a gate screen.
+      const openStandardScreen = async () => {
+        if (!organizationId) {
+          setErrorMessage("Organization ID is required")
+          setScreen("error")
+          return
+        }
+
+        try {
+          const anonymousContactSessionId =
+            await createAnonymousContactSession({
+              organizationId,
+              metadata: getBrowserMetadata(
+                organizationId,
+                parentPageUrl,
+                "widget"
+              ),
+            })
+
+          setContactSessionId(anonymousContactSessionId)
+          setScreen("selection")
+        } catch {
+          setScreen("auth")
+        }
+      }
+
+      void openStandardScreen()
       return
     }
 
@@ -296,7 +314,6 @@ export const WidgetLoadingScreen = ({
     setScreen,
     setWidgetMode,
     step,
-    validatedContactSessionIsAnonymous,
     widgetSettings,
   ])
 

@@ -1,0 +1,24 @@
+[    1403ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[    1473ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[    1552ms] [WARNING] Image with src "/landing/assets/logo-mark.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio. @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[    2051ms] [WARNING] Clerk: Clerk has been loaded with development keys. Development instances have strict usage limits and should not be used when deploying your application to production. Learn more: https://clerk.com/docs/deployments/overview @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  178913ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  178942ms] [LOG] [Fast Refresh] done in 89ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  182142ms] [WARNING] The resource http://localhost:3000/_next/static/media/23b7a97ae3b5c134-s.p.226pwps5o-gq_.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/:0
+[  182142ms] [WARNING] The resource http://localhost:3000/_next/static/media/99e609270109b47d-s.p.40sczeszzbjw1.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/:0
+[  182142ms] [WARNING] The resource http://localhost:3000/_next/static/media/effe91970fc4db64-s.p.0oace-s_gkfks.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/:0
+[  182142ms] [WARNING] The resource http://localhost:3000/_next/static/media/ClashDisplay_Variable-s.p.32x5rqpdt5hru.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/:0
+[  182142ms] [WARNING] The resource http://localhost:3000/_next/static/media/a7e15459c1805da0-s.p.3y9b8znjr2455.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/:0
+[  182142ms] [WARNING] The resource http://localhost:3000/_next/static/media/8c2eb9ceedecfc8e-s.p.23aeddxv5enbo.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/:0
+[  334449ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  334526ms] [LOG] [Fast Refresh] done in 178ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  414649ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  414659ms] [LOG] [Fast Refresh] done in 111ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  418447ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  418542ms] [LOG] [Fast Refresh] done in 196ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  432310ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  433753ms] [LOG] [Fast Refresh] done in 1542ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  435426ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  435712ms] [LOG] [Fast Refresh] done in 387ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  443840ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[  444242ms] [LOG] [Fast Refresh] done in 503ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
