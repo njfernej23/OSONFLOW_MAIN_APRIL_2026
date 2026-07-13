@@ -1,8 +1,9 @@
 "use client"
 
-import { useUser } from "@clerk/nextjs"
-import { useLayoutEffect, useEffect, useRef } from "react"
+import { useLayoutEffect, useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 
+import { LandingCaseStudyShowcase } from "./landing-case-study-showcase"
 import { JapandiLandingNav } from "./japandi-landing-nav"
 import { LandingScrollMotion } from "./landing-scroll-motion"
 import { landingPageBodyMarkup } from "./landing-page-markup"
@@ -79,12 +80,30 @@ function revealHeroOnly() {
     })
 }
 
+function mountLandingMarkup(host: HTMLDivElement | null) {
+  if (!host || host.dataset.landingMarkupMounted === "true") return
+  host.innerHTML = landingPageBodyMarkup
+  host.dataset.landingMarkupMounted = "true"
+}
+
+function landingMarkupIsReady() {
+  return Boolean(document.getElementById("main"))
+}
+
+function runLandingInit() {
+  if (!landingMarkupIsReady()) return
+  revealHeroOnly()
+  initLandingScript()
+}
+
 export const HomeLandingPage = () => {
-  const { isLoaded: isAuthLoaded, isSignedIn } = useUser()
-  const previousSignedIn = useRef<boolean | undefined>(undefined)
+  const landingContentRef = useRef<HTMLDivElement>(null)
+  const [caseStudyHost, setCaseStudyHost] = useState<HTMLElement | null>(null)
 
   useLayoutEffect(() => {
     ensureLandingStyles()
+    mountLandingMarkup(landingContentRef.current)
+    setCaseStudyHost(document.getElementById("osonflow-case-study-root"))
 
     const previousRestoration = history.scrollRestoration
     if ("scrollRestoration" in history) {
@@ -110,8 +129,7 @@ export const HomeLandingPage = () => {
       window.scrollTo(0, 0)
     }
 
-    revealHeroOnly()
-    initLandingScript()
+    runLandingInit()
 
     return () => {
       window.__destroyOsonflowLanding?.()
@@ -119,30 +137,13 @@ export const HomeLandingPage = () => {
     }
   }, [])
 
-  // Re-bind vanilla JS widgets whenever Clerk's auth state resolves or changes
-  // on the same page. Clerk's UserButton/SignedIn markup mounting lazily (once
-  // isLoaded flips true) causes React to replace the dangerouslySetInnerHTML
-  // subtree, wiping the imperatively-injected pipeline/chat/etc. state — so we
-  // must always re-run init on that first resolution, not just on later
-  // sign-in/sign-out toggles.
-  useEffect(() => {
-    if (!isAuthLoaded) return
-
-    const isFirstResolution = previousSignedIn.current === undefined
-    const didSignInStateChange = previousSignedIn.current !== isSignedIn
-
-    if (isFirstResolution || didSignInStateChange) {
-      revealHeroOnly()
-      initLandingScript()
-    }
-
-    previousSignedIn.current = isSignedIn
-  }, [isAuthLoaded, isSignedIn])
-
   return (
     <div className="japandi-landing">
       <JapandiLandingNav />
-      <div dangerouslySetInnerHTML={{ __html: landingPageBodyMarkup }} />
+      <div ref={landingContentRef} />
+      {caseStudyHost
+        ? createPortal(<LandingCaseStudyShowcase />, caseStudyHost)
+        : null}
       <LandingScrollMotion />
     </div>
   )

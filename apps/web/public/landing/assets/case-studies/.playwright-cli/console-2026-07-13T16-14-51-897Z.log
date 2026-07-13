@@ -1,0 +1,6 @@
+[    2259ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[    2304ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[    2391ms] [WARNING] Image with src "/landing/assets/logo-mark.png" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio. @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[    2727ms] [WARNING] Clerk: Clerk has been loaded with development keys. Development instances have strict usage limits and should not be used when deploying your application to production. Learn more: https://clerk.com/docs/deployments/overview @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[   35877ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477
+[   35916ms] [LOG] [Fast Refresh] done in 140ms @ http://localhost:3000/_next/static/chunks/0_0k_next_dist_0iwiq2y._.js:2477

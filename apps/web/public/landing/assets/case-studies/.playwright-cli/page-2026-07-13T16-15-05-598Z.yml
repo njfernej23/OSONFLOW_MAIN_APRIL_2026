@@ -1,0 +1,643 @@
+- generic [ref=e1]:
+  - region "Notifications alt+T"
+  - generic [ref=e2]:
+    - banner:
+      - generic [ref=e3]:
+        - link "Osonflow home" [ref=e5] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e7]: Osonflow
+        - navigation "Primary" [ref=e8]:
+          - generic [ref=e9]:
+            - link "Platform" [ref=e10] [cursor=pointer]:
+              - /url: "#product"
+            - link "How it works" [ref=e11] [cursor=pointer]:
+              - /url: "#loop"
+            - link "Live demo" [ref=e12] [cursor=pointer]:
+              - /url: "#experience"
+            - link "Pricing" [ref=e13] [cursor=pointer]:
+              - /url: "#pricing"
+            - link "Resources" [ref=e14] [cursor=pointer]:
+              - /url: "#faq"
+        - generic [ref=e15]:
+          - 'generic "Language: English" [ref=e17] [cursor=pointer]':
+            - generic [ref=e18]: EN
+            - combobox "Language" [ref=e19]:
+              - option "English" [selected]
+              - option "O'zbek"
+              - option "Русский"
+          - generic [ref=e20]:
+            - link "Sign in" [ref=e21] [cursor=pointer]:
+              - /url: http://localhost:3000/sign-in
+            - link "Sign up" [ref=e22] [cursor=pointer]:
+              - /url: http://localhost:3000/sign-up
+    - generic [ref=e23]:
+      - main [ref=e24]:
+        - generic [ref=e26]:
+          - generic [ref=e27]:
+            - heading "The control plane for AI customer experience" [level=1] [ref=e28]
+            - paragraph [ref=e29]: Ship, scale, and refine intelligent agents for support, lead generation, and more — grounded in your business context, with a clear handoff to your team when it matters.
+            - generic [ref=e30]:
+              - link "Book a demo" [ref=e31] [cursor=pointer]:
+                - /url: "#experience"
+              - link "Sign up for free" [ref=e37] [cursor=pointer]:
+                - /url: /sign-up
+          - generic [ref=e38]:
+            - generic [ref=e39]:
+              - generic [ref=e40]: Choose case study
+              - generic [ref=e41]:
+                - button "Play Sanlam case study" [ref=e42] [cursor=pointer]:
+                  - img "Sanlam" [ref=e43]
+                - button "Play StubHub case study" [active] [pressed] [ref=e44] [cursor=pointer]:
+                  - img "StubHub" [ref=e45]
+                - button "Play Superloop case study" [ref=e46] [cursor=pointer]:
+                  - img "Superloop" [ref=e47]
+                - button "Play Turo case study" [ref=e48] [cursor=pointer]:
+                  - img "Stark Solutions" [ref=e49]
+            - article [ref=e52]:
+              - generic [ref=e53]:
+                - generic [ref=e54]: "3"
+                - generic [ref=e55]: Month development
+              - paragraph [ref=e56]: StubHub International built and launched a powerful AI customer support agent in 90 days using Osonflow, empowering non-technical teams and transforming their support operations.
+              - link "See case study" [ref=e57] [cursor=pointer]:
+                - /url: "#"
+                - text: See case study
+                - generic [ref=e58]: ›
+        - generic [ref=e62]:
+          - heading [level=3] [ref=e64]:
+            - strong [ref=e65]: Build.
+            - text: Design intelligent workflows that deliver experiences worth returning to.
+          - heading [level=3] [ref=e67]:
+            - strong [ref=e68]: Launch.
+            - text: Deploy integrated agents that solve support issues and reduce operational strain.
+          - heading [level=3] [ref=e70]:
+            - strong [ref=e71]: Iterate.
+            - text: Improve agents that stay compatible as you scale, no rebuilds required.
+        - generic [ref=e73]:
+          - heading "Powered by Osonflow's context engine, turning complex conversations into enriched customer experiences." [level=2] [ref=e75]
+          - generic [ref=e76]:
+            - generic [ref=e77]:
+              - generic [ref=e78]:
+                - text: "0"
+                - generic [ref=e79]: ms
+              - generic [ref=e80]: Latency for voice
+            - generic [ref=e81]:
+              - generic [ref=e82]: "0"
+              - generic [ref=e83]: Messages per minute
+            - generic [ref=e84]:
+              - generic [ref=e85]: "0"
+              - generic [ref=e86]: Live agents in production
+        - generic [ref=e88]:
+          - generic [ref=e89]:
+            - generic [ref=e90]: Why Osonflow
+            - heading "AI agents without blackbox limitations." [level=2] [ref=e91]
+            - paragraph [ref=e92]: Most bots answer until they can't, then drop the customer into a cold queue with no context. Osonflow is the whole support layer — a fast widget out front, a shared agent workspace behind it, and AI that knows exactly when to step back.
+          - generic [ref=e93]:
+            - generic [ref=e94]:
+              - generic [ref=e95]:
+                - generic [ref=e96]: "0"
+                - generic [ref=e97]: "%"
+              - generic [ref=e98]: of grounded questions resolved before a human is needed
+            - generic [ref=e99]:
+              - generic [ref=e100]:
+                - generic [ref=e101]: "0"
+                - generic [ref=e102]: ×
+              - generic [ref=e103]: faster first response across chat and voice
+            - generic [ref=e104]:
+              - generic [ref=e105]:
+                - generic [ref=e106]: "0"
+                - generic [ref=e107]: "%"
+              - generic [ref=e108]: of escalations arrive with full conversation history
+        - generic [ref=e110]:
+          - generic [ref=e111]:
+            - generic [ref=e112]: Interactive walkthrough
+            - heading "How a calm request resolves itself." [level=2] [ref=e113]
+            - paragraph [ref=e114]: Follow the chronological path from grounding, through confidence checks, to a smooth human hand-off. Tap a step to inspect the live architecture.
+          - generic [ref=e115]:
+            - generic [ref=e116]:
+              - button "01 Data grounding & ingestion Train Osonflow simply by hosting PDFs, text files, or dynamic website URLs." [ref=e117] [cursor=pointer]:
+                - generic [ref=e118]: "01"
+                - generic [ref=e119]:
+                  - generic [ref=e120]: Data grounding & ingestion
+                  - generic [ref=e121]: Train Osonflow simply by hosting PDFs, text files, or dynamic website URLs.
+              - button "02 Vector mapping & indexing Unstructured customer information transforms instantly into stable reference caches." [ref=e122] [cursor=pointer]:
+                - generic [ref=e123]: "02"
+                - generic [ref=e124]:
+                  - generic [ref=e125]: Vector mapping & indexing
+                  - generic [ref=e126]: Unstructured customer information transforms instantly into stable reference caches.
+              - button "03 Confident inference bounds The engine measures confidence scoring. If low, it skips the standard auto-reply." [ref=e127] [cursor=pointer]:
+                - generic [ref=e128]: "03"
+                - generic [ref=e129]:
+                  - generic [ref=e130]: Confident inference bounds
+                  - generic [ref=e131]: The engine measures confidence scoring. If low, it skips the standard auto-reply.
+              - button "04 Human integration handover Instantly sign waiting agents into the thread with full historic context preserved." [ref=e132] [cursor=pointer]:
+                - generic [ref=e133]: "04"
+                - generic [ref=e134]:
+                  - generic [ref=e135]: Human integration handover
+                  - generic [ref=e136]: Instantly sign waiting agents into the thread with full historic context preserved.
+            - generic [ref=e137]:
+              - generic [ref=e138]: Active architecture view
+              - generic [ref=e140]:
+                - heading "Ingest raw organizational data" [level=4] [ref=e141]
+                - paragraph [ref=e142]: Rather than configuring static chatbots with keyphrase logic, Osonflow crawls public directories or matches local PDF context files. Every grounding variable is strictly indexed.
+                - generic [ref=e143]:
+                  - generic [ref=e144]: === OSONFLOW VECTOR GROUNDING ENGINE ===
+                  - generic [ref=e145]: "[RAW INDEX CHANNELS] ─────(oson index)─────▶ [SECURE CACHE MAPS] ├─ billing_faqs.txt ├─ Fragment A [■■■■■■■■□□] 92ms └─ setup_guides.pdf └─ Fragment B [■■■■■■■■■■] 130ms"
+                  - generic [ref=e146]: "✔ SUCCESS: Generated vector segments automatically."
+              - generic [ref=e147]:
+                - generic [ref=e148]: "latency: 180ms"
+                - generic [ref=e149]: ·
+                - generic [ref=e150]: "compliance: ISO-READY"
+                - generic [ref=e151]: ·
+                - generic [ref=e152]: "fallback: HUMAN ENVELOPE"
+        - generic [ref=e154]:
+          - generic [ref=e155]:
+            - generic [ref=e156]:
+              - generic [ref=e157]: AI assistance
+              - heading "Answers grounded in your trusted context." [level=2] [ref=e158]
+              - paragraph [ref=e159]: Connect help docs, upload files, point at URLs, and save customer details. Osonflow answers from what's true for your business — and cites where each answer came from, so your team can trust it.
+              - list [ref=e160]:
+                - listitem [ref=e161]: Files, URLs, and help center as a single knowledge source
+                - listitem [ref=e162]: Customer memory carried across every conversation
+                - listitem [ref=e163]: Every reply shows its source for review
+            - generic [ref=e165]:
+              - generic [ref=e166]: Knowledge sources
+              - generic [ref=e171]:
+                - generic [ref=e172]:
+                  - generic [ref=e173]: 📄
+                  - text: shipping-policy.pdf
+                  - generic [ref=e174]: Indexed
+                - generic [ref=e175]:
+                  - generic [ref=e176]: 🔗
+                  - text: help.acme.com/returns
+                  - generic [ref=e177]: Indexed
+                - generic [ref=e178]:
+                  - generic [ref=e179]: 📄
+                  - text: warranty-terms.docx
+                  - generic [ref=e180]: Indexed
+                - generic [ref=e181]:
+                  - generic [ref=e182]: ★
+                  - text: "Customer: Maria — Premium since 2023"
+          - generic [ref=e183]:
+            - generic [ref=e184]:
+              - generic [ref=e185]: Agent workspace
+              - heading "A shared inbox your team actually wants to live in." [level=2] [ref=e186]
+              - paragraph [ref=e187]: Threads, assignments, and escalations in one place. See what AI handled, claim what needs a person, and hand work between teammates without losing the plot.
+              - list [ref=e188]:
+                - listitem [ref=e189]: Assign, claim, and escalate in a click
+                - listitem [ref=e190]: AI-handled and human-needed clearly separated
+                - listitem [ref=e191]: Internal notes and full history on every thread
+            - generic [ref=e193]:
+              - generic [ref=e194]:
+                - generic [ref=e198]: Thread · James P.
+                - generic [ref=e199]: Escalated
+              - generic [ref=e200]:
+                - generic [ref=e201]:
+                  - generic [ref=e202]: AI
+                  - paragraph [ref=e203]: Handled refund FAQ. Customer still unhappy with timing.
+                - generic [ref=e204]: "Internal · Dana: VIP, expedite this one"
+                - generic [ref=e205]:
+                  - generic [ref=e206]: Dana
+                  - paragraph [ref=e207]: Hi James — I've pushed your refund through today. Apologies for the wait.
+                - generic [ref=e208]: Assigned to Dana · Priority High
+          - generic [ref=e209]:
+            - generic [ref=e210]:
+              - generic [ref=e211]: Automation & routing
+              - heading "Repetitive work handled — without losing control." [level=2] [ref=e212]
+              - paragraph [ref=e213]: Route by intent, confidence, urgency, and customer context. Let AI close the easy loops automatically, and set the exact thresholds where a human must step in.
+              - list [ref=e214]:
+                - listitem [ref=e215]: Confidence thresholds you control
+                - listitem [ref=e216]: Urgency & VIP rules for instant escalation
+                - listitem [ref=e217]: Audit trail on every automated decision
+            - generic [ref=e219]:
+              - generic [ref=e220]: Routing rules
+              - generic [ref=e225]:
+                - generic [ref=e226]:
+                  - generic [ref=e227]: IF
+                  - text: confidence < 60%
+                  - generic [ref=e228]: → route to human
+                - generic [ref=e229]:
+                  - generic [ref=e230]: IF
+                  - text: intent = billing dispute
+                  - generic [ref=e231]: → route to human
+                - generic [ref=e232]:
+                  - generic [ref=e233]: IF
+                  - text: customer = VIP
+                  - generic [ref=e234]: → priority queue
+                - generic [ref=e235]:
+                  - generic [ref=e236]: ELSE
+                  - generic [ref=e237]: → AI resolves & logs
+        - generic [ref=e239]:
+          - generic [ref=e240]:
+            - generic [ref=e241]: Live experience room
+            - heading "Don't take our word for it. Play with the loop." [level=2] [ref=e242]
+            - paragraph [ref=e243]: Ask the grounded assistant a question, teach it a new fact, then watch the same thread surface inside the shared agent inbox — all live, right here.
+          - tablist "Experience room" [ref=e244]:
+            - tab "Customer chat" [ref=e245] [cursor=pointer]
+            - tab "Train knowledge" [ref=e246] [cursor=pointer]
+            - tab "Agent inbox" [ref=e247] [cursor=pointer]
+          - generic [ref=e251]:
+            - generic [ref=e252]:
+              - generic [ref=e253]:
+                - generic [ref=e256]:
+                  - generic [ref=e257]: Osonflow Support Portal
+                  - generic [ref=e258]: Grounded AI assistant · Chat live
+                - generic [ref=e259]:
+                  - button "Toggle voice channel" [ref=e260] [cursor=pointer]
+                  - button "Sign human" [ref=e263] [cursor=pointer]
+              - generic [ref=e266]:
+                - text: "Osonflow Assistant: Welcome. Try"
+                - emphasis [ref=e267]: "\"What are your price plans?\""
+                - text: or
+                - emphasis [ref=e268]: "\"How do I set up the script?\""
+                - text: to witness real grounding on the custom knowledge corpus.
+              - generic [ref=e269]:
+                - textbox "Type a structured support query…" [ref=e270]
+                - button "Send" [ref=e271] [cursor=pointer]
+            - generic [ref=e274]:
+              - generic [ref=e275]:
+                - generic [ref=e276]: Try asking about
+                - generic [ref=e277]:
+                  - button "What are your pricing plans?" [ref=e278] [cursor=pointer]
+                  - button "How do I embed the widget?" [ref=e279] [cursor=pointer]
+                  - button "Tell me about voice support" [ref=e280] [cursor=pointer]
+                  - button "Can I talk to a human?" [ref=e281] [cursor=pointer]
+              - generic [ref=e282]:
+                - generic [ref=e283]: Model grounding
+                - generic [ref=e284]:
+                  - generic [ref=e285]: Active intent
+                  - generic [ref=e286]: Sandbox interaction
+                - generic [ref=e287]:
+                  - generic [ref=e288]: AI confidence
+                  - generic [ref=e291]: 95%
+                - paragraph [ref=e292]: Confidence threshold is 80%. Any score below triggers transparent queueing for a specialist.
+        - generic [ref=e294]:
+          - generic [ref=e295]:
+            - generic [ref=e296]: Chat & voice
+            - heading "Same calm loop. Now it can speak." [level=2] [ref=e297]
+            - paragraph [ref=e298]: Realtime voice runs through the same queue, routing, and human handoff as chat. One serene inbox for everything your customers say.
+          - generic [ref=e299]:
+            - generic [ref=e300]:
+              - heading "Chat widget" [level=3] [ref=e304]
+              - paragraph [ref=e305]: A fast, embeddable widget that drops onto any page with one script.
+            - generic [ref=e306]:
+              - heading "Realtime voice" [level=3] [ref=e310]
+              - paragraph [ref=e311]: Customers talk, AI responds live, and calls escalate to a person on the same queue.
+            - generic [ref=e325]:
+              - heading "One shared queue" [level=3] [ref=e329]
+              - paragraph [ref=e330]: Chat and voice land in the same workspace, with the same routing and history.
+          - generic [ref=e331]:
+            - generic [ref=e332]:
+              - generic [ref=e333]: Embed script
+              - heading "Live on your site in two lines." [level=3] [ref=e334]
+              - paragraph [ref=e335]:
+                - text: Paste the snippet before
+                - code [ref=e336]: </body>
+                - text: . No framework required.
+              - button "Generate custom snippet" [ref=e337] [cursor=pointer]
+            - generic [ref=e338]:
+              - generic [ref=e339]:
+                - generic [ref=e343]: index.html
+                - button "Copy" [ref=e344] [cursor=pointer]
+              - code [ref=e346]: <!-- Osonflow widget --> <script src="https://widget.osonflow.uz/widget.js" data-id="osf_live_7f3a9c"></script>
+        - generic [ref=e349]:
+          - generic [ref=e350]:
+            - generic [ref=e351]:
+              - generic [ref=e352]: Interactive physics
+              - heading "Neural grounding & latency synthesizer" [level=3] [ref=e353]
+            - generic [ref=e354]: ● Hygge aligned (optimal)
+          - generic [ref=e355]:
+            - generic [ref=e356]:
+              - paragraph [ref=e357]: Tune the grounding matrices inside the translation container. Watch how high-integrity references isolate and align raw machine response frequencies.
+              - generic [ref=e358]:
+                - generic [ref=e359]:
+                  - generic [ref=e360]: Grounding integrity
+                  - generic [ref=e361]: 85%
+                - slider [ref=e362] [cursor=pointer]: "85"
+                - generic [ref=e363]:
+                  - generic [ref=e364]: Broad
+                  - generic [ref=e365]: Balanced
+                  - generic [ref=e366]: Absolute
+              - generic [ref=e367]:
+                - generic [ref=e368]:
+                  - generic [ref=e369]: Neural calibration speed
+                  - generic [ref=e370]: 70%
+                - slider [ref=e371] [cursor=pointer]: "70"
+                - generic [ref=e372]:
+                  - generic [ref=e373]: Deep (720ms)
+                  - generic [ref=e374]: Neutral
+                  - generic [ref=e375]: Instant (140ms)
+            - generic [ref=e376]:
+              - generic [ref=e377]:
+                - generic [ref=e378]: ◈ Wave synchronization
+                - generic [ref=e379]: "FPS: 18 · SAMPLE STATE"
+              - generic [ref=e380]: ░▒██▓▓▓▓▓██▓░ ░▓█ ░▓██▓▒░░░▒▒▓█▓▒ ▒▓██ ░▓█▓▒░ ░▒▓█▓▒ ░▒▓█▓▒ ░▒▓█▓▒ ░▓█▓▒░ ░▒██▓░ ▒░ ░░▒▓█▓░ ░▒██▒░ ░▒▓██▒░ █▓▒▒▒▒▒▓██▓░ ░▒██▓▒░░░▒▒▓█▓▒░
+              - generic [ref=e381]:
+                - generic [ref=e382]:
+                  - generic [ref=e383]: BOUNDS
+                  - generic [ref=e384]: ALIGNED
+                - generic [ref=e385]:
+                  - generic [ref=e386]: CALIBRATION
+                  - generic [ref=e387]: 3.0s
+                - generic [ref=e388]:
+                  - generic [ref=e389]: STABILITY
+                  - generic [ref=e390]: 83dB
+        - generic [ref=e392]:
+          - generic [ref=e393]:
+            - generic [ref=e394]: Interactive calculator
+            - heading "Calculate your support cost savings." [level=2] [ref=e395]
+            - paragraph [ref=e396]: Adjust the conversational metrics to see how automating resolution loops reduces live-agent strain.
+          - generic [ref=e397]:
+            - generic [ref=e398]:
+              - generic [ref=e399]:
+                - generic [ref=e400]:
+                  - generic [ref=e401]: Monthly support tickets
+                  - generic [ref=e402]: 6,000
+                - slider [ref=e403] [cursor=pointer]: "6000"
+                - generic [ref=e404]:
+                  - generic [ref=e405]: "500"
+                  - generic [ref=e406]: 15,000
+                  - generic [ref=e407]: 30,000
+              - generic [ref=e408]:
+                - generic [ref=e409]:
+                  - generic [ref=e410]: Est. manual cost per inquiry
+                  - generic [ref=e411]: $5.50
+                - slider [ref=e412] [cursor=pointer]: "5.5"
+                - generic [ref=e413]:
+                  - generic [ref=e414]: $1.50
+                  - generic [ref=e415]: $8.00
+                  - generic [ref=e416]: $15.00
+              - paragraph [ref=e417]: "*Assumes Osonflow auto-resolves 82% of grounded queries, and manual handling averages 6 minutes per inquiry."
+            - generic [ref=e418]:
+              - generic [ref=e419]:
+                - generic [ref=e420]: Grounded auto-resolution
+                - generic [ref=e421]: 82%
+                - generic [ref=e422]: Average automated resolution loop rate.
+              - generic [ref=e423]:
+                - generic [ref=e424]: Auto-resolved queries
+                - generic [ref=e425]: 4,920
+                - generic [ref=e426]: Closed with zero agent wait time.
+              - generic [ref=e427]:
+                - generic [ref=e428]: Estimated monthly savings
+                - generic [ref=e429]: $25,092
+                - generic [ref=e430]: Net support cost returned per month after Osonflow processing cost.
+        - generic [ref=e432]:
+          - generic [ref=e433]:
+            - generic [ref=e434]: Operations & intelligence
+            - heading "See what AI handled, what needed a person, and where support breaks." [level=2] [ref=e435]
+          - generic [ref=e436]:
+            - generic [ref=e437]:
+              - generic [ref=e438]:
+                - generic [ref=e439]: Autonomous resolution
+                - generic [ref=e440]: ◈
+              - generic [ref=e441]: 88.4%↑ 3.2%
+              - paragraph [ref=e442]: Resolved fully by grounded AI context without agent intervention.
+            - generic [ref=e443]:
+              - generic [ref=e444]:
+                - generic [ref=e445]: Average AI latency
+                - generic [ref=e446]: ⚡
+              - generic [ref=e447]: 0.42s↓ 0.08s
+              - paragraph [ref=e448]: Response generation and speech synthesis latency under streaming.
+            - generic [ref=e449]:
+              - generic [ref=e450]:
+                - generic [ref=e451]: Customer CSAT
+                - generic [ref=e452]: ♥
+              - generic [ref=e453]: 96.8%↑ 0.5%
+              - paragraph [ref=e454]: Aggregated five-star reviews for both voice and chat.
+            - generic [ref=e455]:
+              - generic [ref=e456]:
+                - generic [ref=e457]: Conversations guided
+                - generic [ref=e458]: Active
+              - generic [ref=e459]: 14,204
+              - paragraph [ref=e460]: Real-time tracking of active chat threads and voice queues.
+          - generic [ref=e461]:
+            - generic [ref=e462]:
+              - generic [ref=e463]:
+                - generic [ref=e464]:
+                  - heading "Support volume kinetics" [level=3] [ref=e465]
+                  - paragraph [ref=e466]: Autonomous AI answers versus escalations over a 24-hr layout.
+                - generic [ref=e467]:
+                  - generic [ref=e468]: AI resolved
+                  - generic [ref=e470]: Human hand-off
+              - generic [ref=e479]:
+                - generic [ref=e480]: 08:00
+                - generic [ref=e481]: 12:00 (peak)
+                - generic [ref=e482]: 16:00
+                - generic [ref=e483]: 20:00
+                - generic [ref=e484]: 00:00
+            - generic [ref=e485]:
+              - generic [ref=e487]:
+                - heading "Intent analysis" [level=3] [ref=e488]
+                - paragraph [ref=e489]: Distribution of detected support categories.
+              - generic [ref=e490]:
+                - generic [ref=e492]:
+                  - generic [ref=e493]: Deployment & embed setup
+                  - generic [ref=e494]: 42%
+                - generic [ref=e497]:
+                  - generic [ref=e498]: Pricing & SLA quotes
+                  - generic [ref=e499]: 28%
+                - generic [ref=e502]:
+                  - generic [ref=e503]: Voice quality / latency
+                  - generic [ref=e504]: 18%
+                - generic [ref=e507]:
+                  - generic [ref=e508]: Shopify / Wix syncing
+                  - generic [ref=e509]: 12%
+              - generic [ref=e511]:
+                - generic [ref=e512]: ✓
+                - generic [ref=e513]:
+                  - text: Grounding reliability check
+                  - paragraph [ref=e514]: No hallucinations flagged by internal guardrails over the last 120 hours.
+        - generic [ref=e516]:
+          - generic [ref=e517]:
+            - generic [ref=e518]: Security
+            - heading "Purpose-built for enterprise scale." [level=2] [ref=e519]
+            - paragraph [ref=e520]: Delivering a powerful platform that keeps customer data safe and end-user interactions secure.
+          - generic [ref=e521]:
+            - generic [ref=e522]:
+              - generic [ref=e523]: ⊘
+              - heading "Complete local isolation" [level=4] [ref=e524]
+              - paragraph [ref=e525]: Your index databases are segmented. Context entries are never shared with public model networks.
+            - generic [ref=e526]:
+              - generic [ref=e527]: ◷
+              - heading "Human response SLA" [level=4] [ref=e528]
+              - paragraph [ref=e529]: Guaranteed escalation thresholds route key dialogues to human agents in under 3 minutes.
+            - generic [ref=e530]:
+              - generic [ref=e531]: ⛉
+              - heading "Role-based access" [level=4] [ref=e532]
+              - paragraph [ref=e533]: Granular limits separate training managers from staff responding to open support queues.
+            - generic [ref=e534]:
+              - generic [ref=e535]: ❏
+              - heading "Historical dialogue logs" [level=4] [ref=e536]
+              - paragraph [ref=e537]: Comprehensive log archiving supports deep audit transparency of past AI interventions.
+        - generic [ref=e539]:
+          - generic [ref=e540]:
+            - generic [ref=e541]: Integrations
+            - heading "Plugged into where support already happens." [level=2] [ref=e542]
+          - generic [ref=e543]:
+            - generic [ref=e544]:
+              - img "Slack" [ref=e545]
+              - generic [ref=e546]: Slack
+            - generic [ref=e547]:
+              - img "Zendesk" [ref=e548]
+              - generic [ref=e549]: Zendesk
+            - generic [ref=e550]:
+              - img "Shopify" [ref=e551]
+              - generic [ref=e552]: Shopify
+            - generic [ref=e553]:
+              - img "HubSpot" [ref=e554]
+              - generic [ref=e555]: HubSpot
+            - generic [ref=e556]:
+              - img "Stripe" [ref=e557]
+              - generic [ref=e558]: Stripe
+            - generic [ref=e559]:
+              - img "Salesforce" [ref=e560]
+              - generic [ref=e561]: Salesforce
+            - generic [ref=e562]:
+              - img "Notion" [ref=e563]
+              - generic [ref=e564]: Notion
+            - generic [ref=e565]:
+              - img "Linear" [ref=e566]
+              - generic [ref=e567]: Linear
+            - generic [ref=e568]:
+              - img "Intercom" [ref=e569]
+              - generic [ref=e570]: Intercom
+            - generic [ref=e571]:
+              - img "Gmail" [ref=e572]
+              - generic [ref=e573]: Gmail
+            - generic [ref=e574]:
+              - img "WhatsApp" [ref=e575]
+              - generic [ref=e576]: WhatsApp
+            - generic [ref=e577]:
+              - img "Webhooks" [ref=e578]
+              - generic [ref=e579]: Webhooks
+        - generic [ref=e581]:
+          - generic [ref=e582]:
+            - generic [ref=e583]: Pricing
+            - heading "Start free. Scale when AI is carrying real load." [level=2] [ref=e584]
+            - paragraph [ref=e585]: Every plan includes the full support loop — widget, inbox, routing, and human handoff.
+          - generic [ref=e586]:
+            - generic [ref=e587]:
+              - generic [ref=e588]: Starter
+              - generic [ref=e589]: $0/mo
+              - paragraph [ref=e590]: For small teams putting AI at the front door.
+              - link "Start free" [ref=e591] [cursor=pointer]:
+                - /url: /sign-up
+              - list [ref=e592]:
+                - listitem [ref=e593]: 1 widget & embed
+                - listitem [ref=e594]: 2 agent seats
+                - listitem [ref=e595]: Chat support loop
+                - listitem [ref=e596]: Files & URL knowledge
+                - listitem [ref=e597]: Basic analytics
+            - generic [ref=e598]:
+              - generic [ref=e599]: Most popular
+              - generic [ref=e600]: Growth
+              - generic [ref=e601]: 299.000 soms/mo
+              - paragraph [ref=e602]: For teams running AI plus humans at scale.
+              - link "Start free trial" [ref=e603] [cursor=pointer]:
+                - /url: /sign-up
+              - list [ref=e604]:
+                - listitem [ref=e605]: Everything in Starter
+                - listitem [ref=e606]: Up to 10 agent seats
+                - listitem [ref=e607]: Realtime voice support
+                - listitem [ref=e608]: Intent & confidence routing
+                - listitem [ref=e609]: Customer memory
+                - listitem [ref=e610]: Full analytics suite
+            - generic [ref=e611]:
+              - generic [ref=e612]: Enterprise
+              - generic [ref=e613]: Custom
+              - paragraph [ref=e614]: For high-volume support with security needs.
+              - link "Talk to sales" [ref=e615] [cursor=pointer]:
+                - /url: /sign-in
+              - list [ref=e616]:
+                - listitem [ref=e617]: Everything in Growth
+                - listitem [ref=e618]: SSO & advanced roles
+                - listitem [ref=e619]: Custom integrations
+                - listitem [ref=e620]: Dedicated routing review
+                - listitem [ref=e621]: SLA & priority support
+        - generic [ref=e623]:
+          - generic [ref=e624]:
+            - generic [ref=e625]: FAQ
+            - heading "Keeping humans in control." [level=2] [ref=e626]
+            - paragraph [ref=e627]: The questions support leaders ask before trusting AI with customers.
+          - generic [ref=e628]:
+            - generic [ref=e629]:
+              - button "How does Osonflow achieve zero hallucinations? +" [ref=e630] [cursor=pointer]:
+                - text: How does Osonflow achieve zero hallucinations?
+                - generic [ref=e631]: +
+              - paragraph [ref=e633]: Osonflow intercepts conversation prompts and appends your custom knowledge as text variables. If an inquiry can't be answered from that grounded text, it gracefully flags the thread for human hand-off instead of guessing.
+            - generic [ref=e634]:
+              - button "What is bidirectional voice routing? +" [ref=e635] [cursor=pointer]:
+                - text: What is bidirectional voice routing?
+                - generic [ref=e636]: +
+              - paragraph [ref=e637]: Voice queries undergo real-time speech-to-text translation and are routed identically to chat. The AI forms a grounded textual answer that's translated back into natural synthesized audio in under 380ms.
+            - generic [ref=e638]:
+              - button "Are my workspace files shared or leaked? +" [ref=e639] [cursor=pointer]:
+                - text: Are my workspace files shared or leaked?
+                - generic [ref=e640]: +
+              - paragraph [ref=e641]: Never. All indexed files and uploads are sandboxed inside partitioned local storage vectors. Your data is isolated and never used to train global public LLM models.
+            - generic [ref=e642]:
+              - button "How does manual takeover / escalation work? +" [ref=e643] [cursor=pointer]:
+                - text: How does manual takeover / escalation work?
+                - generic [ref=e644]: +
+              - paragraph [ref=e645]: Every thread tracks confidence scoring. If a visitor requests a human, or Osonflow registers a low-confidence answer, it dispatches a persistent notification. Agents assume control instantly with the complete context.
+            - generic [ref=e646]:
+              - button "Is there a limit on support conversations? +" [ref=e647] [cursor=pointer]:
+                - text: Is there a limit on support conversations?
+                - generic [ref=e648]: +
+              - paragraph [ref=e649]: We only limit seats and concurrency, not absolute volume. Starter includes 2 agent seats; Growth supports up to 10 active agent workspace seats.
+        - generic [ref=e652]:
+          - heading "Start curating your AI customer experiences." [level=2] [ref=e653]
+          - paragraph [ref=e654]: Put AI at the front, your team right behind it, and never lose context in a handoff again.
+          - generic [ref=e655]:
+            - link "Book a demo" [ref=e656] [cursor=pointer]:
+              - /url: "#experience"
+            - link "Sign up for free" [ref=e662] [cursor=pointer]:
+              - /url: /sign-up
+          - paragraph [ref=e663]: Free to start · No card required · Live in minutes
+      - contentinfo [ref=e664]:
+        - generic [ref=e665]:
+          - generic [ref=e666]:
+            - link "Osonflow home" [ref=e667] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e669]: Osonflow
+            - paragraph [ref=e670]: The enterprise conversational AI platform for support teams. Build, launch, and scale AI agents with full context and human handoff.
+          - generic [ref=e671]:
+            - generic [ref=e672]:
+              - heading "Product" [level=4] [ref=e673]
+              - link "AI assistance" [ref=e674] [cursor=pointer]:
+                - /url: "#feature-ai"
+              - link "Agent workspace" [ref=e675] [cursor=pointer]:
+                - /url: "#feature-inbox"
+              - link "Automation" [ref=e676] [cursor=pointer]:
+                - /url: "#feature-routing"
+              - link "Voice & chat" [ref=e677] [cursor=pointer]:
+                - /url: "#channels"
+            - generic [ref=e678]:
+              - heading "Company" [level=4] [ref=e679]
+              - link "About" [ref=e680] [cursor=pointer]:
+                - /url: "#"
+              - link "Customers" [ref=e681] [cursor=pointer]:
+                - /url: "#"
+              - link "Careers" [ref=e682] [cursor=pointer]:
+                - /url: "#"
+              - link "Blog" [ref=e683] [cursor=pointer]:
+                - /url: "#"
+            - generic [ref=e684]:
+              - heading "Resources" [level=4] [ref=e685]
+              - link "Docs" [ref=e686] [cursor=pointer]:
+                - /url: "#"
+              - link "Integrations" [ref=e687] [cursor=pointer]:
+                - /url: "#"
+              - link "Pricing" [ref=e688] [cursor=pointer]:
+                - /url: "#pricing"
+              - link "Status" [ref=e689] [cursor=pointer]:
+                - /url: "#"
+        - generic [ref=e690]:
+          - generic [ref=e691]: © 2026 Osonflow, Inc. · SLA uptime 99.99%
+          - generic [ref=e692]:
+            - link "Privacy" [ref=e693] [cursor=pointer]:
+              - /url: "#"
+            - link "Terms" [ref=e694] [cursor=pointer]:
+              - /url: "#"
+            - link "Security" [ref=e695] [cursor=pointer]:
+              - /url: "#"
+  - alert [ref=e696]
