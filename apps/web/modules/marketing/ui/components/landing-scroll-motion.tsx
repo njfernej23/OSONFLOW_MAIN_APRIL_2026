@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useLayoutEffect } from "react"
 import { animate, inView, stagger } from "framer-motion"
 
 type MotionKind =
@@ -71,14 +71,13 @@ function pickTargets(section: Element, kind: MotionKind): HTMLElement[] {
     })
   }
 
-  // Drop nested duplicates (keep outer only when both selected)
   return nodes.filter(
     (node) => !nodes.some((other) => other !== node && other.contains(node))
   )
 }
 
 function prepare(el: HTMLElement) {
-  if (el.classList.contains("fm-in")) return
+  if (el.classList.contains("fm-in") || el.classList.contains("fm-ready")) return
 
   el.classList.add("fm-ready")
   el.style.opacity = "0"
@@ -92,6 +91,16 @@ function clearInline(el: HTMLElement) {
   el.style.willChange = ""
   el.classList.add("is-in", "fm-in")
   el.classList.remove("fm-ready")
+}
+
+function resetPrepared(el: HTMLElement) {
+  if (el.classList.contains("fm-in")) return
+
+  el.classList.remove("fm-ready")
+  el.style.opacity = ""
+  el.style.transform = ""
+  el.style.filter = ""
+  el.style.willChange = ""
 }
 
 async function runAnimation(kind: MotionKind, targets: HTMLElement[]) {
@@ -234,8 +243,8 @@ function bindCardHover(root: Element) {
  * Premium Framer Motion scroll choreography for the landing page.
  * Hero is intentionally left alone.
  */
-export function LandingScrollMotion({ resetKey = 0 }: { resetKey?: number }) {
-  useEffect(() => {
+export function LandingScrollMotion() {
+  useLayoutEffect(() => {
     const root = document.querySelector(".japandi-landing")
     if (!root) return
 
@@ -256,7 +265,7 @@ export function LandingScrollMotion({ resetKey = 0 }: { resetKey?: number }) {
     }
 
     const cleanups: Array<() => void> = []
-    const startedSections = new Set<Element>()
+    const preparedTargets: HTMLElement[] = []
 
     sections.forEach((section) => {
       const kind = kindFor(section)
@@ -265,13 +274,14 @@ export function LandingScrollMotion({ resetKey = 0 }: { resetKey?: number }) {
       )
       if (!targets.length) return
 
-      targets.forEach((el) => prepare(el))
+      targets.forEach((el) => {
+        prepare(el)
+        preparedTargets.push(el)
+      })
 
       const stop = inView(
         section,
         () => {
-          if (startedSections.has(section)) return
-          startedSections.add(section)
           stop()
           void runAnimation(kind, targets)
         },
@@ -284,10 +294,11 @@ export function LandingScrollMotion({ resetKey = 0 }: { resetKey?: number }) {
     cleanups.push(bindCardHover(root))
 
     return () => {
+      preparedTargets.forEach(resetPrepared)
       root.classList.remove("fm-on")
       cleanups.forEach((fn) => fn())
     }
-  }, [resetKey])
+  }, [])
 
   return null
 }
