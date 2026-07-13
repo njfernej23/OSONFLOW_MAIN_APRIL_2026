@@ -18,7 +18,9 @@ export const WidgetEmailCapture = ({
   const [email, setEmail] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(
+    () => receivedDetails !== null
+  )
 
   const isReceived = receivedDetails !== null
 
@@ -41,6 +43,7 @@ export const WidgetEmailCapture = ({
 
     try {
       await onSubmitDetails({ name: trimmedName, email: trimmedEmail })
+      setIsCollapsed(true)
     } catch {
       setError("Enter a real email address that can receive mail")
     } finally {
