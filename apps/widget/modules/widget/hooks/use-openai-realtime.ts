@@ -75,6 +75,9 @@ export const useOpenAIRealtime = () => {
   const localStreamRef = useRef<MediaStream | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const lastTranscriptSignatureRef = useRef<string | null>(null)
+  const handledCallIdsRef = useRef<Set<string>>(new Set())
+  const responseActiveRef = useRef(false)
+  const pendingResponseCreateRef = useRef(false)
 
   const [isConnected, setIsConnected] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
@@ -98,6 +101,9 @@ export const useOpenAIRealtime = () => {
     setIsConnecting(false)
     setIsSpeaking(false)
     lastTranscriptSignatureRef.current = null
+    handledCallIdsRef.current.clear()
+    responseActiveRef.current = false
+    pendingResponseCreateRef.current = false
 
     void finishConversation()
   }
@@ -185,12 +191,26 @@ export const useOpenAIRealtime = () => {
     dataChannel.send(JSON.stringify(event))
   }
 
+  const requestResponseCreate = () => {
+    if (responseActiveRef.current) {
+      pendingResponseCreateRef.current = true
+      return
+    }
+
+    pendingResponseCreateRef.current = false
+    sendClientEvent({ type: "response.create" })
+  }
+
   const handleFunctionCall = async (event: RealtimeEvent) => {
     const callId = event.call_id ?? event.item?.call_id
     const name = event.name ?? event.item?.name
     const rawArguments = event.arguments ?? event.item?.arguments ?? "{}"
 
     if (!callId || !name) return
+
+    // Same tool call can arrive on multiple Realtime events — only handle once.
+    if (handledCallIdsRef.current.has(callId)) return
+    handledCallIdsRef.current.add(callId)
 
     if (isEndCallTool(name)) {
       sendClientEvent({
@@ -201,7 +221,7 @@ export const useOpenAIRealtime = () => {
           output: handleEndCallTool(),
         },
       })
-      sendClientEvent({ type: "response.create" })
+      requestResponseCreate()
       return
     }
 
@@ -241,15 +261,48 @@ export const useOpenAIRealtime = () => {
       })
     }
 
-    sendClientEvent({ type: "response.create" })
+    requestResponseCreate()
   }
 
   const handleRealtimeEvent = (event: RealtimeEvent) => {
+    // Never surface in-session Realtime warnings in the voice UI.
+    if (event.type === "error") {
+      return
+    }
+
+    if (event.type === "response.created") {
+      responseActiveRef.current = true
+      return
+    }
+
     if (
-      event.type === "response.function_call_arguments.done" ||
-      (event.type === "response.output_item.done" &&
-        event.item?.type === "function_call")
+      event.type === "response.done" ||
+      event.type === "response.cancelled"
     ) {
+      responseActiveRef.current = false
+      setIsSpeaking(false)
+
+      if (event.type === "response.done") {
+        const assistantText = event.response?.output
+          ?.flatMap((output) => output.content ?? [])
+          .map((content) => content.transcript || content.text || "")
+          .filter(Boolean)
+          .join(" ")
+
+        if (assistantText) {
+          appendTranscript({ role: "assistant", text: assistantText })
+        }
+      }
+
+      if (pendingResponseCreateRef.current) {
+        pendingResponseCreateRef.current = false
+        sendClientEvent({ type: "response.create" })
+      }
+      return
+    }
+
+    // Only one event type — output_item.done also fires for the same call.
+    if (event.type === "response.function_call_arguments.done") {
       void handleFunctionCall(event)
       return
     }
@@ -266,11 +319,9 @@ export const useOpenAIRealtime = () => {
       return
     }
 
-    if (
-      event.type === "response.audio.done" ||
-      event.type === "response.done"
-    ) {
+    if (event.type === "response.audio.done") {
       setIsSpeaking(false)
+      return
     }
 
     if (
@@ -283,24 +334,6 @@ export const useOpenAIRealtime = () => {
 
     if (event.type === "response.audio_transcript.done" && event.transcript) {
       appendTranscript({ role: "assistant", text: event.transcript })
-      return
-    }
-
-    if (event.type === "response.done") {
-      const assistantText = event.response?.output
-        ?.flatMap((output) => output.content ?? [])
-        .map((content) => content.transcript || content.text || "")
-        .filter(Boolean)
-        .join(" ")
-
-      if (assistantText)
-        appendTranscript({ role: "assistant", text: assistantText })
-    }
-
-    // Ignore in-session Realtime warnings (e.g. "active response in progress").
-    // Connection/setup failures are still surfaced via startCall.
-    if (event.type === "error") {
-      return
     }
   }
 
@@ -319,6 +352,9 @@ export const useOpenAIRealtime = () => {
     setError(null)
     addCallSeparator()
     lastTranscriptSignatureRef.current = null
+    handledCallIdsRef.current.clear()
+    responseActiveRef.current = false
+    pendingResponseCreateRef.current = false
 
     try {
       const tokenResponse = await fetch("/api/openai-realtime-token", {

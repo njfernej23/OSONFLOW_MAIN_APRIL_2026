@@ -536,7 +536,7 @@ const VoiceCallUI = ({
                 {description}
               </p>
             ) : null}
-            {error ? (
+            {error && !/active response in progress/i.test(error) ? (
               <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
                 {error}
               </p>
