@@ -297,8 +297,10 @@ export const useOpenAIRealtime = () => {
         appendTranscript({ role: "assistant", text: assistantText })
     }
 
+    // Ignore in-session Realtime warnings (e.g. "active response in progress").
+    // Connection/setup failures are still surfaced via startCall.
     if (event.type === "error") {
-      setError(event.error?.message || "OpenAI realtime session error.")
+      return
     }
   }
 
