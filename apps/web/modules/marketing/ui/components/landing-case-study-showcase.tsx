@@ -9,6 +9,7 @@ type CaseStudy = {
   logoAlt: string
   logoClass?: string
   video: string
+  videoHevc?: string
   poster?: string
   statNum: string
   statLabel: string
@@ -23,8 +24,9 @@ const CASE_STUDIES: CaseStudy[] = [
     logoSrc: "/landing/assets/trust/coreweave.png",
     logoAlt: "Sanlam",
     logoClass: "logo-img--90",
-    video: "/landing/assets/case-studies/sanlam-case-study-h265-alpha.mp4",
-    poster: "/landing/assets/trust/sanlam-bg.png",
+    video: "/landing/assets/case-studies/sanlam-case-study-h264.mp4",
+    videoHevc: "/landing/assets/case-studies/sanlam-case-study-h265-alpha.mp4",
+    poster: "/landing/assets/case-studies/sanlam-poster.jpg",
     statNum: "6",
     statLabel: "Week rollout",
     cardText:
@@ -37,8 +39,9 @@ const CASE_STUDIES: CaseStudy[] = [
     logoSrc: "/landing/assets/trust/beacon.png",
     logoAlt: "StubHub",
     logoClass: "logo-img--90",
-    video: "/landing/assets/case-studies/stubhub-case-study-h265-alpha.mp4",
-    poster: "/landing/assets/trust/stubhub-bg.png",
+    video: "/landing/assets/case-studies/stubhub-case-study-h264.mp4",
+    videoHevc: "/landing/assets/case-studies/stubhub-case-study-h265-alpha.mp4",
+    poster: "/landing/assets/case-studies/stubhub-poster.jpg",
     statNum: "3",
     statLabel: "Month development",
     cardText:
@@ -50,8 +53,9 @@ const CASE_STUDIES: CaseStudy[] = [
     label: "Play Superloop case study",
     logoSrc: "/landing/assets/trust/northwind.png",
     logoAlt: "Superloop",
-    video: "/landing/assets/case-studies/superloop-case-study-h265-alpha.mp4",
-    poster: "/landing/assets/trust/superloop-bg.png",
+    video: "/landing/assets/case-studies/superloop-case-study-h264.mp4",
+    videoHevc: "/landing/assets/case-studies/superloop-case-study-h265-alpha.mp4",
+    poster: "/landing/assets/case-studies/superloop-poster.jpg",
     statNum: "42%",
     statLabel: "Faster resolution",
     cardText:
@@ -64,7 +68,9 @@ const CASE_STUDIES: CaseStudy[] = [
     logoSrc: "/landing/assets/trust/stark-solutions.png",
     logoAlt: "Stark Solutions",
     logoClass: "logo-img--90",
-    video: "/landing/assets/case-studies/turo-case-study-h265-alpha.mp4",
+    video: "/landing/assets/case-studies/turo-case-study-h264.mp4",
+    videoHevc: "/landing/assets/case-studies/turo-case-study-h265-alpha.mp4",
+    poster: "/landing/assets/case-studies/turo-poster.jpg",
     statNum: "2×",
     statLabel: "Agent efficiency",
     cardText:
@@ -96,6 +102,7 @@ export function LandingCaseStudyShowcase() {
   const preferUnmutedRef = useRef(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
   const labelTextRef = useRef<HTMLSpanElement | null>(null)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
   const [activeId, setActiveId] = useState(CASE_STUDIES[0]?.id ?? "sanlam")
   const [isSwitching, setIsSwitching] = useState(false)
   const active =
@@ -122,14 +129,18 @@ export function LandingCaseStudyShowcase() {
   }, [])
 
   const attachVideo = useCallback((video: HTMLVideoElement | null) => {
+    videoRef.current = video
     if (!video) return
 
     const preferUnmuted = preferUnmutedRef.current
     preferUnmutedRef.current = false
 
     video.muted = true
+    video.defaultMuted = true
     video.loop = true
     video.playsInline = true
+    video.setAttribute("playsinline", "")
+    video.setAttribute("webkit-playsinline", "")
 
     const startPlayback = () => {
       void playVideo(video, preferUnmuted)
@@ -144,6 +155,26 @@ export function LandingCaseStudyShowcase() {
     }
 
     video.load()
+  }, [active?.video])
+
+  // Resume playback when the showcase scrolls back into view (iOS often pauses offscreen).
+  useLayoutEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        if (!entry) return
+        if (entry.isIntersecting && video.paused) {
+          void playVideo(video, false)
+        }
+      },
+      { threshold: 0.35 },
+    )
+
+    observer.observe(video)
+    return () => observer.disconnect()
   }, [active?.video])
 
   if (!active) return null
@@ -225,8 +256,13 @@ export function LandingCaseStudyShowcase() {
               autoPlay
               preload="auto"
               poster={active.poster}
-              src={active.video}
-            />
+            >
+              {/* H.264 first for universal mobile support; HEVC is Safari-only fallback. */}
+              <source src={active.video} type="video/mp4" />
+              {active.videoHevc ? (
+                <source src={active.videoHevc} type='video/mp4; codecs="hvc1"' />
+              ) : null}
+            </video>
           </div>
         </div>
       </div>

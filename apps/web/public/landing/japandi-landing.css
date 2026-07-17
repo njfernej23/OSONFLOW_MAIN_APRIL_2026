@@ -667,8 +667,9 @@ html:has(.japandi-landing) { scroll-behavior: smooth; -webkit-text-size-adjust: 
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-panel);
-  border: 1px solid var(--linen-200);
-  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(18, 18, 20, 0.08);
+  /* Match the dark product UI so load/poster gaps never flash white */
+  background: #0a0a0a;
 }
 .case-study-video {
   display: block;
@@ -676,7 +677,7 @@ html:has(.japandi-landing) { scroll-behavior: smooth; -webkit-text-size-adjust: 
   height: 100%;
   object-fit: cover;
   object-position: center top;
-  background: rgba(255, 255, 255, 0.6);
+  background: #0a0a0a;
 }
 
 .pill { display: inline-flex; align-items: center; gap: 9px; padding: 6px 14px 6px 12px; border: 1px solid var(--moss-100); border-radius: 999px; font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em; color: var(--moss-700); background: var(--moss-50); }
@@ -1401,42 +1402,83 @@ html:has(.japandi-landing) { scroll-behavior: smooth; -webkit-text-size-adjust: 
   .pillars__grid { grid-template-columns: 1fr; gap: 32px; }
   .metrics { grid-template-columns: 1fr; }
   .hero__showcase {
-    min-height: clamp(380px, 50vh, 520px);
-    padding-block: clamp(20px, 3vh, 32px);
+    min-height: 0;
+    padding: clamp(28px, 4vh, 40px) var(--pad) clamp(36px, 5vh, 52px);
   }
   .hero__showcase-layout {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20px;
-    max-width: min(360px, 100%);
+    gap: 18px;
+    width: 100%;
+    max-width: 420px;
     margin-inline: auto;
+    padding-inline: 0;
   }
-  .case-study-card {
+  /* Product first on mobile — video is the proof, card is the caption */
+  .hero__video {
+    order: 1;
     grid-column: auto;
     justify-self: auto;
-    align-self: auto;
+    top: auto;
+    width: min(72vw, 300px);
+    height: auto;
+    max-height: none;
+    max-width: min(72vw, 300px);
+    border-radius: 22px;
+    box-shadow:
+      0 28px 60px -28px rgba(12, 18, 12, 0.45),
+      0 0 0 1px rgba(255, 255, 255, 0.18);
+  }
+  .case-study-card {
+    order: 2;
+    grid-column: auto;
+    justify-self: auto;
+    align-self: stretch;
     position: static;
     top: auto;
     margin-left: 0;
     margin-right: 0;
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     width: 100%;
     max-width: none;
+    padding: 18px 18px 16px;
+    background: rgba(250, 250, 250, 0.94);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.88);
+    border-radius: 18px;
+    box-shadow: 0 14px 36px -18px rgba(18, 18, 20, 0.22);
+  }
+  .case-study-card__num {
+    font-size: clamp(40px, 10vw, 48px);
+  }
+  .case-study-card__unit {
+    font-size: 13px;
+  }
+  .case-study-card__text {
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+  .case-study-card__link {
+    font-size: 14px;
   }
   .hero__showcase-bg {
     width: 100vw;
     top: 0;
     border-radius: 0;
   }
-  .hero__video {
-    grid-column: auto;
-    justify-self: auto;
-    top: auto;
-    width: min(62vw, 270px);
-    height: auto;
-    max-height: min(54vh, 410px);
-    max-width: min(62vw, 270px);
+  /* Soft fade into the next section so the landscape cut feels intentional */
+  .hero__showcase-bg::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 72px;
+    background: linear-gradient(to bottom, transparent, var(--linen-100));
+    pointer-events: none;
   }
   .hero__stack {
     width: 100%;
@@ -1519,18 +1561,58 @@ html:has(.japandi-landing) { scroll-behavior: smooth; -webkit-text-size-adjust: 
     flex-direction: column;
     align-items: stretch;
     gap: 0;
-    padding: 0;
+    padding: 12px 0 14px;
     text-align: left;
     border-radius: 0;
+    background: var(--linen-100);
+    border-block: 0;
+    border-bottom: 1px solid var(--linen-200);
   }
-  .trust__label { white-space: normal; padding-block: 0; padding-inline: clamp(16px, 4vw, 24px); }
-  .trust__logos { flex-wrap: wrap; width: 100%; }
-  .case-logo-btn { flex: 1 1 50%; padding: 0 10px; height: 48px; max-height: 48px; min-height: 0; border-top: 1px solid var(--linen-200); }
-  .case-logo-btn:nth-child(odd) { border-left: 0; }
-  .logo-img { height: 14px; max-width: 34vw; }
-  .logo-img--lg { height: 30px; max-width: 36vw; }
-  .logo-img--90 { height: 60px; max-width: 48vw; }
-  .logo-img--xl { height: 34px; max-width: 38vw; }
+  .trust__label {
+    white-space: nowrap;
+    padding: 10px var(--pad) 0;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  /* Single-row horizontal scroller — avoids the oversized 2×2 logo grid */
+  .trust__logos {
+    flex-wrap: nowrap;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    border-top: 0;
+    padding: 0 var(--pad) 2px;
+    gap: 8px;
+  }
+  .trust__logos::-webkit-scrollbar { display: none; }
+  .case-logo-btn {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 112px;
+    padding: 0 14px;
+    height: 44px;
+    max-height: 44px;
+    min-height: 0;
+    border: 1px solid var(--linen-200);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.55);
+    scroll-snap-align: start;
+  }
+  .case-logo-btn:nth-child(odd) { border-left: 1px solid var(--linen-200); }
+  .case-logo-btn.is-active {
+    background: #ffffff;
+    border-color: var(--linen-300);
+    box-shadow: 0 1px 0 rgba(18, 18, 20, 0.04);
+  }
+  .logo-img { height: 14px; max-width: 88px; }
+  .logo-img--lg { height: 18px; max-width: 96px; }
+  .logo-img--90 { height: 22px; max-width: 104px; }
+  .logo-img--xl { height: 20px; max-width: 100px; }
   .pstep { padding: 14px 16px; }
   .pstep:hover, .pstep.is-active { transform: none; }
 }
