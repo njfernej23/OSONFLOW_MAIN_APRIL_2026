@@ -36,7 +36,6 @@ const KIND_SELECTORS: Record<MotionKind, string[]> = {
     ".workspace",
     ".xroom__pane",
     ".roicard > *",
-    ".synth__grid > *",
     ".safeguard",
     "[data-reveal]",
   ],

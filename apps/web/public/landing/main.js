@@ -1,7 +1,7 @@
 /* ============================================================
    Osonflow — Japandi landing interactivity (zero-build, vanilla)
    Live grounded chat + voice, knowledge training, agent inbox,
-   interactive pipeline, ROI calculator, ASCII wave synthesizer,
+   interactive pipeline, ROI calculator,
    animated FAQ, embed modal, and calm scroll choreography.
    ============================================================ */
 (function () {
@@ -201,66 +201,6 @@ const $ = (s, c) => (c || document).querySelector(s);
     $("#roiSavings").textContent = "$" + fmt(conv * 0.82 * (cost - 0.4));
   }
   if (roiConv && roiCost) { roiConv.addEventListener("input", updateRoi, { signal }); roiCost.addEventListener("input", updateRoi, { signal }); updateRoi(); }
-
-  /* ---------------- Calm wave synthesizer (ASCII) ---------------- */
-  const waveEl = $("#synthWave");
-  if (waveEl) {
-    const groundSlider = $("#groundSlider"), speedSlider = $("#speedSlider");
-    let phase = 0, ground = 85, speed = 70;
-    let waveCols = 44;
-    const chars = ["█", "▓", "▒", "░", " "];
-    function waveColumnCount() {
-      const stage = waveEl.parentElement;
-      if (!stage) return 44;
-      const style = window.getComputedStyle(waveEl);
-      const probe = document.createElement("span");
-      probe.textContent = "█";
-      probe.style.cssText = "position:absolute;visibility:hidden;white-space:pre;font-family:" + style.fontFamily + ";font-size:" + style.fontSize + ";letter-spacing:" + style.letterSpacing + ";";
-      stage.appendChild(probe);
-      const charWidth = probe.getBoundingClientRect().width || 10;
-      stage.removeChild(probe);
-      return Math.max(24, Math.min(44, Math.floor((stage.clientWidth - 8) / charWidth)));
-    }
-    function statusFor() {
-      const total = ground + speed;
-      if (ground < 40) return { label: "● Heuristic drift (risky)", drift: true };
-      if (total > 165) return { label: "● Preternatural harmony", drift: false };
-      if (total > 130) return { label: "● Hygge aligned (optimal)", drift: false };
-      return { label: "● Stable infrastructure", drift: false };
-    }
-    function paramsChanged() {
-      ground = parseInt(groundSlider.value, 10); speed = parseInt(speedSlider.value, 10);
-      $("#groundVal").textContent = ground + "%";
-      $("#speedVal").textContent = speed + "%";
-      $("#mBounds").textContent = ground > 75 ? "ALIGNED" : "DRIFT";
-      $("#mCalib").textContent = (6.5 - speed / 20).toFixed(1) + "s";
-      $("#mStab").textContent = Math.round(ground * 0.98) + "dB";
-      const s = statusFor(); const st = $("#synthStatus"); st.textContent = s.label; st.classList.toggle("drift", s.drift);
-    }
-    function draw() {
-      const w = waveCols, h = 6; let out = "";
-      const f1 = 0.12 + ground / 1000, f2 = 0.25, spd = 1 + speed / 50;
-      for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-          const v1 = Math.sin(x * f1 + phase * spd) * (h / 2.2), v2 = Math.cos(x * f2 - phase * 0.5) * (h / 4.4);
-          const dy = h / 2 + v1 + v2, dist = Math.abs(y - dy);
-          out += dist < 0.6 ? chars[0] : dist < 1.2 ? chars[1] : dist < 1.8 ? chars[2] : dist < 2.4 ? chars[3] : chars[4];
-        }
-        out += "\n";
-      }
-      waveEl.textContent = out;
-    }
-    function resizeWave() {
-      waveCols = waveColumnCount();
-      draw();
-    }
-    groundSlider.addEventListener("input", paramsChanged, { signal });
-    speedSlider.addEventListener("input", paramsChanged, { signal });
-    paramsChanged();
-    resizeWave();
-    window.addEventListener("resize", resizeWave, { signal });
-    if (!reduceMotion) { trackInterval(() => { phase = (phase + 0.15) % (Math.PI * 2); draw(); }, 60); }
-  }
 
   /* ---------------- Experience room tabs ---------------- */
   const glider = $("#xtabGlider");

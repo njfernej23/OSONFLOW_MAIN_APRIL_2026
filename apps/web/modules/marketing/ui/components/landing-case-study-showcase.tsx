@@ -9,7 +9,6 @@ type CaseStudy = {
   logoAlt: string
   logoClass?: string
   video: string
-  videoHevc?: string
   poster?: string
   statNum: string
   statLabel: string
@@ -25,7 +24,6 @@ const CASE_STUDIES: CaseStudy[] = [
     logoAlt: "Sanlam",
     logoClass: "logo-img--90",
     video: "/landing/assets/case-studies/sanlam-case-study-h264.mp4",
-    videoHevc: "/landing/assets/case-studies/sanlam-case-study-h265-alpha.mp4",
     poster: "/landing/assets/case-studies/sanlam-poster.jpg",
     statNum: "6",
     statLabel: "Week rollout",
@@ -40,7 +38,6 @@ const CASE_STUDIES: CaseStudy[] = [
     logoAlt: "StubHub",
     logoClass: "logo-img--90",
     video: "/landing/assets/case-studies/stubhub-case-study-h264.mp4",
-    videoHevc: "/landing/assets/case-studies/stubhub-case-study-h265-alpha.mp4",
     poster: "/landing/assets/case-studies/stubhub-poster.jpg",
     statNum: "3",
     statLabel: "Month development",
@@ -54,7 +51,6 @@ const CASE_STUDIES: CaseStudy[] = [
     logoSrc: "/landing/assets/trust/northwind.png",
     logoAlt: "Superloop",
     video: "/landing/assets/case-studies/superloop-case-study-h264.mp4",
-    videoHevc: "/landing/assets/case-studies/superloop-case-study-h265-alpha.mp4",
     poster: "/landing/assets/case-studies/superloop-poster.jpg",
     statNum: "42%",
     statLabel: "Faster resolution",
@@ -69,7 +65,6 @@ const CASE_STUDIES: CaseStudy[] = [
     logoAlt: "Stark Solutions",
     logoClass: "logo-img--90",
     video: "/landing/assets/case-studies/turo-case-study-h264.mp4",
-    videoHevc: "/landing/assets/case-studies/turo-case-study-h265-alpha.mp4",
     poster: "/landing/assets/case-studies/turo-poster.jpg",
     statNum: "2×",
     statLabel: "Agent efficiency",
@@ -256,13 +251,8 @@ export function LandingCaseStudyShowcase() {
               autoPlay
               preload="auto"
               poster={active.poster}
-            >
-              {/* H.264 first for universal mobile support; HEVC is Safari-only fallback. */}
-              <source src={active.video} type="video/mp4" />
-              {active.videoHevc ? (
-                <source src={active.videoHevc} type='video/mp4; codecs="hvc1"' />
-              ) : null}
-            </video>
+              src={active.video}
+            />
           </div>
         </div>
       </div>
