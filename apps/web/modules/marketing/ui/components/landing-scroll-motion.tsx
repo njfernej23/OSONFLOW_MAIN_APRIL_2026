@@ -5,14 +5,17 @@ import { animate, inView, stagger } from "framer-motion"
 
 type MotionKind =
   | "cards"
-  | "pillars"
-  | "metrics"
+  | "method"
+  | "signal"
   | "features"
   | "plans"
   | "faq"
   | "cta"
   | "logos"
   | "channels"
+  | "xroom"
+  | "analytics"
+  | "tenancy"
   | "default"
 
 const EASE = [0.22, 1, 0.36, 1] as const
@@ -20,14 +23,17 @@ const SPRING = { type: "spring" as const, stiffness: 120, damping: 20, mass: 0.8
 
 const KIND_SELECTORS: Record<MotionKind, string[]> = {
   cards: [],
-  pillars: [".pillar"],
-  metrics: [".lede", ".metric"],
+  method: [".method__intro", ".method__step"],
+  signal: [".signal__claim", ".signal__stat"],
   features: [".lede", ".feature"],
   plans: [".lede", ".plan"],
   faq: [".lede", ".acc"],
-  cta: [".cta__card", ".lede", ".cta__inner", ".cta__copy"],
+  cta: [".site-end__panel"],
   logos: [".trust__label", ".case-logo-btn", ".logo-img", ".trustband .logo-img"],
-  channels: [".lede", ".channel", ".channels__grid > *", ".int-grid > *"],
+  channels: [".lede", ".channel", ".channels__grid > *", ".int-marquee"],
+  xroom: [".lede", ".xstage"],
+  analytics: [".lede", ".opsboard"],
+  tenancy: [".tenancy__intro", ".tenancy__board"],
   default: [
     ".lede",
     ".pipeline__stage",
@@ -42,16 +48,18 @@ const KIND_SELECTORS: Record<MotionKind, string[]> = {
 }
 
 function kindFor(section: Element): MotionKind {
-  if (section.classList.contains("pillars")) return "pillars"
-  if (section.classList.contains("platform-band")) return "metrics"
+  if (section.classList.contains("method")) return "method"
+  if (section.classList.contains("signal")) return "signal"
   if (section.classList.contains("features")) return "features"
   if (section.classList.contains("pricing")) return "plans"
   if (section.classList.contains("faq")) return "faq"
   if (section.classList.contains("cta")) return "cta"
-  if (section.classList.contains("trustband") || section.classList.contains("trust"))
-    return "logos"
+  if (section.classList.contains("trustband")) return "tenancy"
+  if (section.classList.contains("trust")) return "logos"
   if (section.classList.contains("channels") || section.classList.contains("integrations"))
     return "channels"
+  if (section.classList.contains("xroom")) return "xroom"
+  if (section.classList.contains("analytics")) return "analytics"
   return "default"
 }
 
@@ -114,28 +122,56 @@ async function runAnimation(kind: MotionKind, targets: HTMLElement[]) {
         { ...SPRING, delay: stagger(0.07, { startDelay: 0.05 }) }
       )
       break
-    case "pillars":
-      await animate(
-        targets,
-        { opacity: [0, 1], y: [36, 0] },
-        {
-          duration: 0.85,
-          ease: EASE,
-          delay: stagger(0.12, { startDelay: 0.04 }),
-        }
-      )
+    case "method": {
+      const intro = targets.filter((el) => el.classList.contains("method__intro"))
+      const steps = targets.filter((el) => el.classList.contains("method__step"))
+      await Promise.all([
+        intro.length
+          ? animate(
+              intro,
+              { opacity: [0, 1], y: [28, 0], filter: ["blur(8px)", "blur(0px)"] },
+              { duration: 0.85, ease: EASE }
+            )
+          : Promise.resolve(),
+        steps.length
+          ? animate(
+              steps,
+              { opacity: [0, 1], y: [40, 0], x: [28, 0] },
+              {
+                duration: 0.8,
+                ease: EASE,
+                delay: stagger(0.14, { startDelay: 0.18 }),
+              }
+            )
+          : Promise.resolve(),
+      ])
       break
-    case "metrics":
-      await animate(
-        targets,
-        { opacity: [0, 1], y: [36, 0], scale: [0.96, 1], filter: ["blur(8px)", "blur(0px)"] },
-        {
-          duration: 0.95,
-          ease: EASE,
-          delay: stagger(0.1, { startDelay: 0.06 }),
-        }
-      )
+    }
+    case "signal": {
+      const claim = targets.filter((el) => el.classList.contains("signal__claim"))
+      const stats = targets.filter((el) => el.classList.contains("signal__stat"))
+      await Promise.all([
+        claim.length
+          ? animate(
+              claim,
+              { opacity: [0, 1], x: [-36, 0], filter: ["blur(6px)", "blur(0px)"] },
+              { duration: 0.9, ease: EASE }
+            )
+          : Promise.resolve(),
+        stats.length
+          ? animate(
+              stats,
+              { opacity: [0, 1], y: [24, 0], x: [18, 0] },
+              {
+                duration: 0.75,
+                ease: EASE,
+                delay: stagger(0.12, { startDelay: 0.22 }),
+              }
+            )
+          : Promise.resolve(),
+      ])
       break
+    }
     case "features": {
       const forward = targets.filter((el) => !el.classList.contains("feature--rev"))
       const reverse = targets.filter((el) => el.classList.contains("feature--rev"))
@@ -186,6 +222,69 @@ async function runAnimation(kind: MotionKind, targets: HTMLElement[]) {
         }
       )
       break
+    case "xroom": {
+      const lede = targets.filter((el) => el.classList.contains("lede"))
+      const stage = targets.filter((el) => el.classList.contains("xstage"))
+      await Promise.all([
+        lede.length
+          ? animate(
+              lede,
+              { opacity: [0, 1], y: [28, 0], filter: ["blur(8px)", "blur(0px)"] },
+              { duration: 0.85, ease: EASE }
+            )
+          : Promise.resolve(),
+        stage.length
+          ? animate(
+              stage,
+              { opacity: [0, 1], y: [36, 0], scale: [0.985, 1] },
+              { duration: 0.95, ease: EASE, delay: 0.16 }
+            )
+          : Promise.resolve(),
+      ])
+      break
+    }
+    case "analytics": {
+      const lede = targets.filter((el) => el.classList.contains("lede"))
+      const board = targets.filter((el) => el.classList.contains("opsboard"))
+      await Promise.all([
+        lede.length
+          ? animate(
+              lede,
+              { opacity: [0, 1], y: [24, 0], filter: ["blur(6px)", "blur(0px)"] },
+              { duration: 0.8, ease: EASE }
+            )
+          : Promise.resolve(),
+        board.length
+          ? animate(
+              board,
+              { opacity: [0, 1], y: [40, 0], scale: [0.985, 1] },
+              { duration: 0.95, ease: EASE, delay: 0.12 }
+            )
+          : Promise.resolve(),
+      ])
+      break
+    }
+    case "tenancy": {
+      const intro = targets.filter((el) => el.classList.contains("tenancy__intro"))
+      const board = targets.filter((el) => el.classList.contains("tenancy__board"))
+      await Promise.all([
+        intro.length
+          ? animate(
+              intro,
+              { opacity: [0, 1], x: [-28, 0], filter: ["blur(8px)", "blur(0px)"] },
+              { duration: 0.9, ease: EASE }
+            )
+          : Promise.resolve(),
+        board.length
+          ? animate(
+              board,
+              { opacity: [0, 1], x: [28, 0], filter: ["blur(6px)", "blur(0px)"] },
+              { duration: 0.95, ease: EASE, delay: 0.1 }
+            )
+          : Promise.resolve(),
+      ])
+      break
+    }
     default:
       await animate(
         targets,
@@ -203,7 +302,7 @@ async function runAnimation(kind: MotionKind, targets: HTMLElement[]) {
 
 function bindCardHover(root: Element) {
   const cards = root.querySelectorAll(
-    ".plan, .metric, .channel, .int-grid > *, .pillar"
+    ".plan, .channel, .int-marquee, .method__step"
   )
   const cleanups: Array<() => void> = []
 
@@ -255,9 +354,13 @@ export function LandingScrollMotion() {
 
     if (reduceMotion) {
       sections.forEach((section) => {
-        section.querySelectorAll("[data-reveal]").forEach((node) => {
-          if (node instanceof HTMLElement) clearInline(node)
-        })
+        section
+          .querySelectorAll(
+            "[data-reveal], .method__step, .method__intro, .signal__claim, .signal__stat, .xstage, .opsboard, .tenancy__intro, .tenancy__board"
+          )
+          .forEach((node) => {
+            if (node instanceof HTMLElement) clearInline(node)
+          })
       })
       return () => root.classList.remove("fm-on")
     }
@@ -283,7 +386,10 @@ export function LandingScrollMotion() {
           stop()
           void runAnimation(kind, targets)
         },
-        { amount: 0.22, margin: "0px 0px -12% 0px" }
+        {
+          amount: kind === "method" || kind === "signal" ? 0.18 : 0.22,
+          margin: "0px 0px -10% 0px",
+        }
       )
 
       cleanups.push(stop)

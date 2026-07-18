@@ -108,7 +108,12 @@ const $ = (s, c) => (c || document).querySelector(s);
     const decimals = el.dataset.countDecimals ? parseInt(el.dataset.countDecimals, 10) : 0;
     const prefix = el.dataset.countPrefix || "";
     const suffix = el.dataset.countSuffix || "";
-    const numeric = decimals > 0 ? value.toFixed(decimals) : String(Math.round(value));
+    let numeric;
+    if (decimals > 0) {
+      numeric = value.toFixed(decimals);
+    } else {
+      numeric = Math.round(value).toLocaleString("en-US");
+    }
     return prefix + numeric + suffix;
   };
   const runCount = (el) => {
@@ -134,10 +139,32 @@ const $ = (s, c) => (c || document).querySelector(s);
     $$("[data-count]").forEach((el) => co.observe(el));
   } else { $$("[data-count]").forEach((el) => (el.textContent = formatCountValue(parseFloat(el.dataset.count), el))); }
 
-  /* ---------------- Animate intent bars when revealed ---------------- */
+  /* ---------------- Animate intent bars + ops stack when revealed ---------------- */
   if ("IntersectionObserver" in window) {
-    const bo = trackObserver(new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) { $$("i[data-w]", e.target).forEach((i) => (i.style.width = i.dataset.w)); bo.unobserve(e.target); } }), { threshold: 0.4 }));
-    $$(".ibars").forEach((el) => bo.observe(el));
+    const bo = trackObserver(new IntersectionObserver((entries) => entries.forEach((e) => {
+      if (!e.isIntersecting) return;
+      const root = e.target;
+      root.classList.add("is-in");
+      $$("i[data-w]", root).forEach((i) => (i.style.width = i.dataset.w));
+      $$(".opsintent__stack span", root).forEach((s) => { s.style.width = getComputedStyle(s).getPropertyValue("--share"); });
+      bo.unobserve(root);
+    }), { threshold: 0.28 }));
+    $$(".ibars, .opsboard").forEach((el) => bo.observe(el));
+  }
+
+  /* ---------------- Tenancy board reveal ---------------- */
+  const tenancyBoard = $("#tenancyBoard");
+  if (tenancyBoard && "IntersectionObserver" in window) {
+    const to = trackObserver(new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (!e.isIntersecting) return;
+        e.target.classList.add("is-in");
+        to.unobserve(e.target);
+      });
+    }, { threshold: 0.3 }));
+    to.observe(tenancyBoard);
+  } else if (tenancyBoard) {
+    tenancyBoard.classList.add("is-in");
   }
 
   /* ---------------- Hero parallax + tilt ---------------- */
@@ -202,18 +229,134 @@ const $ = (s, c) => (c || document).querySelector(s);
   }
   if (roiConv && roiCost) { roiConv.addEventListener("input", updateRoi, { signal }); roiCost.addEventListener("input", updateRoi, { signal }); updateRoi(); }
 
-  /* ---------------- Experience room tabs ---------------- */
+  /* ---------------- Experience room tabs / loop UX ---------------- */
   const glider = $("#xtabGlider");
-  function moveGlider(tab) { if (!glider || !tab) return; glider.style.left = tab.offsetLeft + "px"; glider.style.width = tab.offsetWidth + "px"; }
-  function activateTab(name) {
-    $$(".xtab").forEach((t) => { const on = t.dataset.xtab === name; t.classList.toggle("is-active", on); if (on) moveGlider(t); });
-    $$(".xpanel").forEach((p) => p.classList.toggle("is-active", p.dataset.xpanel === name));
+  const xstagePrompt = $("#xstagePrompt");
+  const xNudge = $("#xNudge");
+  const xNudgeText = $("#xNudgeText");
+  const xNudgeGo = $("#xNudgeGo");
+  const xNudgeDismiss = $("#xNudgeDismiss");
+  const PROMPTS = {
+    chat: "Try a suggested question — or type your own.",
+    train: "Teach the model a fact, then ask about it in chat.",
+    inbox: "Your live thread syncs here with full context."
+  };
+  const LOOP_ORDER = ["chat", "train", "inbox"];
+  const visited = new Set(["chat"]);
+  let currentTab = "chat";
+  let nudgeTimer = null;
+  let nudgeTarget = null;
+  let hasChatted = false;
+  let hasTrained = false;
+
+  function moveGlider(tab) {
+    if (!glider || !tab) return;
+    const parent = tab.parentElement;
+    if (!parent) return;
+    const left = tab.offsetLeft;
+    glider.style.left = left + "px";
+    glider.style.width = tab.offsetWidth + "px";
   }
+
+  function setStagePrompt(name) {
+    if (!xstagePrompt) return;
+    const next = PROMPTS[name] || PROMPTS.chat;
+    if (reduceMotion) {
+      xstagePrompt.textContent = next;
+      return;
+    }
+    xstagePrompt.classList.add("is-swap");
+    window.setTimeout(() => {
+      xstagePrompt.textContent = next;
+      xstagePrompt.classList.remove("is-swap");
+    }, 180);
+  }
+
+  function syncLoop(name) {
+    visited.add(name);
+  }
+
+  function hideNudge() {
+    if (!xNudge) return;
+    xNudge.classList.remove("is-in");
+    window.setTimeout(() => {
+      if (!xNudge.classList.contains("is-in")) xNudge.hidden = true;
+    }, 320);
+    nudgeTarget = null;
+  }
+
+  function showNudge(text, targetTab) {
+    if (!xNudge || !xNudgeText || !xNudgeGo) return;
+    if (currentTab === targetTab) return;
+    nudgeTarget = targetTab;
+    xNudgeText.textContent = text;
+    xNudgeGo.textContent = targetTab === "inbox" ? "Open inbox" : targetTab === "train" ? "Teach AI" : "Open chat";
+    xNudge.hidden = false;
+    requestAnimationFrame(() => xNudge.classList.add("is-in"));
+    if (nudgeTimer) window.clearTimeout(nudgeTimer);
+    nudgeTimer = window.setTimeout(hideNudge, 7000);
+  }
+
+  if (xNudgeGo) xNudgeGo.addEventListener("click", () => {
+    const target = nudgeTarget;
+    hideNudge();
+    if (target) activateTab(target);
+  }, { signal });
+  if (xNudgeDismiss) xNudgeDismiss.addEventListener("click", hideNudge, { signal });
+
+  function activateTab(name, opts) {
+    opts = opts || {};
+    if (!name || (name === currentTab && !opts.force)) {
+      moveGlider($('.xtab[data-xtab="' + name + '"]'));
+      return;
+    }
+
+    const prevName = currentTab;
+    const prevPanel = $('.xpanel[data-xpanel="' + prevName + '"]');
+    const nextPanel = $('.xpanel[data-xpanel="' + name + '"]');
+
+    $$(".xtab").forEach((t) => {
+      const on = t.dataset.xtab === name;
+      t.classList.toggle("is-active", on);
+      t.setAttribute("aria-selected", on ? "true" : "false");
+      if (on) moveGlider(t);
+    });
+
+    if (prevPanel && nextPanel && prevPanel !== nextPanel && !reduceMotion) {
+      prevPanel.classList.add("is-leaving");
+      prevPanel.classList.remove("is-active");
+      window.setTimeout(() => {
+        prevPanel.classList.remove("is-leaving");
+        prevPanel.hidden = true;
+      }, 260);
+      nextPanel.hidden = false;
+      nextPanel.classList.add("is-active");
+    } else {
+      $$(".xpanel").forEach((p) => {
+        const on = p.dataset.xpanel === name;
+        p.classList.toggle("is-active", on);
+        p.hidden = !on;
+        p.classList.remove("is-leaving");
+      });
+    }
+
+    currentTab = name;
+    syncLoop(name);
+    setStagePrompt(name);
+    if (name === "inbox") renderWsLog();
+    hideNudge();
+  }
+
   const firstTab = $(".xtab.is-active");
-  if (firstTab) { requestAnimationFrame(() => moveGlider(firstTab)); window.addEventListener("resize", () => moveGlider($(".xtab.is-active")), { signal }); }
+  if (firstTab) {
+    requestAnimationFrame(() => moveGlider(firstTab));
+    window.addEventListener("resize", () => moveGlider($(".xtab.is-active")), { signal });
+  }
   $$(".xtab").forEach((t) => t.addEventListener("click", () => activateTab(t.dataset.xtab), { signal }));
+  syncLoop("chat");
 
   /* ---------------- Threads / workspace state ---------------- */
+
   const greet = "Greetings. I am Osonflow's calm AI assistant. Ask me anything about Osonflow plans, embed setups, or real-time voice routing pipelines.";
   const liveThread = { id: "t-live", name: "You (live simulation)", avatar: "U", status: "ai_handled", urgency: "low", conf: 95, intent: "Sandbox interaction",
     messages: [{ sender: "ai", text: greet }] };
@@ -232,48 +375,84 @@ const $ = (s, c) => (c || document).querySelector(s);
   /* ---------------- Grounding panel ---------------- */
   function setGrounding(intent, conf) {
     const gi = $("#groundIntent"), gm = $("#groundMeter"), gc = $("#groundConf");
+    const card = $(".xaside__card--ground");
     if (gi) gi.textContent = intent;
-    if (gm) { gm.style.width = conf + "%"; gm.classList.toggle("low", conf < 80); }
+    if (gm) {
+      gm.style.width = conf + "%";
+      gm.classList.toggle("low", conf < 80);
+      gm.classList.remove("is-tick");
+      void gm.offsetWidth;
+      gm.classList.add("is-tick");
+    }
     if (gc) gc.textContent = conf + "%";
+    if (card) {
+      card.classList.remove("is-flash");
+      void card.offsetWidth;
+      card.classList.add("is-flash");
+    }
   }
 
   /* ---------------- Chat widget ---------------- */
   const chatBody = $("#chatBody"), chatForm = $("#chatForm"), chatInput = $("#chatInput");
   function avatar(sender) { return sender === "client" ? "ME" : "AI"; }
+  function clearChipInvite() {
+    $$("#suggestChips .chip--invite").forEach((c) => c.classList.remove("chip--invite"));
+  }
   function appendChat(sender, text, voice) {
     const wrap = document.createElement("div");
-    wrap.className = "msg msg--" + sender;
+    wrap.className = "msg msg--" + sender + " is-enter";
     wrap.innerHTML = '<span class="msg__ava">' + avatar(sender) + '</span><div class="msg__bubble">' + (voice ? '<span class="msg__voice">Voice log</span>' : "") + esc(text) + "</div>";
     chatBody.appendChild(wrap);
     chatBody.scrollTop = chatBody.scrollHeight;
+    window.setTimeout(() => wrap.classList.remove("is-enter"), 500);
   }
   function showTyping() {
+    const widget = $("#widget");
+    if (widget) widget.classList.add("is-busy");
     const t = document.createElement("div");
-    t.className = "msg msg--ai"; t.id = "typingRow";
+    t.className = "msg msg--ai is-enter"; t.id = "typingRow";
     t.innerHTML = '<span class="msg__ava">AI</span><div class="typing"><i></i><i></i><i></i></div>';
     chatBody.appendChild(t); chatBody.scrollTop = chatBody.scrollHeight;
   }
-  function hideTyping() { const t = $("#typingRow"); if (t) t.remove(); }
+  function hideTyping() {
+    const t = $("#typingRow"); if (t) t.remove();
+    const widget = $("#widget");
+    if (widget) widget.classList.remove("is-busy");
+  }
 
   function pushToLive(sender, text, voice) {
     liveThread.messages.push({ sender, text, voice });
     if (activeThreadId === "t-live" && wsActivePanelVisible()) renderWsLog();
-    renderThreads();
+    renderThreads(true);
   }
 
   function handleUserMessage(text) {
+    clearChipInvite();
+    hasChatted = true;
+    visited.add("chat");
     appendChat("client", text);
     pushToLive("client", text);
     const intent = intentFor(text);
-    setGrounding(intent, /(human|person|handoff|agent|escalat)/.test(text.toLowerCase()) ? 62 : 95);
+    const low = /(human|person|handoff|agent|escalat)/.test(text.toLowerCase());
+    setGrounding(intent, low ? 62 : 95);
     liveThread.intent = intent;
+    if (low) {
+      liveThread.status = "waiting";
+      liveThread.urgency = "high";
+      liveThread.conf = 62;
+    }
     showTyping();
     setTimeout(() => {
       hideTyping();
       const reply = generateAiResponse(text);
       appendChat("ai", reply);
       pushToLive("ai", reply);
-    }, 1100);
+      if (currentTab === "chat") {
+        showNudge(low
+          ? "Low confidence — this thread is waiting in the agent inbox."
+          : "Reply grounded. Same thread is now live in the agent inbox.", "inbox");
+      }
+    }, reduceMotion ? 400 : 1100);
   }
 
   if (chatForm) {
@@ -285,17 +464,30 @@ const $ = (s, c) => (c || document).querySelector(s);
       handleUserMessage(v);
     }, { signal });
   }
-  $$("#suggestChips .chip").forEach((c) => c.addEventListener("click", () => { activateTab("chat"); handleUserMessage(c.textContent.trim()); }, { signal }));
+  $$("#suggestChips .chip").forEach((c) => c.addEventListener("click", () => {
+    clearChipInvite();
+    activateTab("chat");
+    handleUserMessage(c.textContent.trim());
+  }, { signal }));
 
   /* escalation */
   const escalateBtn = $("#escalateBtn");
   if (escalateBtn) escalateBtn.addEventListener("click", () => {
+    escalateBtn.classList.remove("is-pulse");
+    void escalateBtn.offsetWidth;
+    escalateBtn.classList.add("is-pulse");
     appendChat("client", "[Alert] Visitor initiated human override / escalation.");
     liveThread.status = "waiting"; liveThread.urgency = "high"; liveThread.conf = 44; liveThread.intent = "Escalated bypass";
     pushToLive("client", "[Alert] Visitor initiated human override / escalation.");
     setGrounding("Escalated bypass", 44);
     showTyping();
-    setTimeout(() => { hideTyping(); const m = "I have dispatched your thread to the Shared Agent Workspace. A specialist will assume control momentarily."; appendChat("ai", m); pushToLive("ai", m); }, 900);
+    setTimeout(() => {
+      hideTyping();
+      const m = "I have dispatched your thread to the Shared Agent Workspace. A specialist will assume control momentarily.";
+      appendChat("ai", m);
+      pushToLive("ai", m);
+      showNudge("Human handoff queued — open the agent inbox to take over.", "inbox");
+    }, reduceMotion ? 350 : 900);
   }, { signal });
 
   /* ---------------- Voice mode ---------------- */
@@ -324,9 +516,9 @@ const $ = (s, c) => (c || document).querySelector(s);
   /* ---------------- Knowledge hub ---------------- */
   const poolList = $("#poolList"), trainForm = $("#trainForm");
   let trainType = "file";
-  function renderPool() {
+  function renderPool(flashId) {
     if (!poolList) return;
-    poolList.innerHTML = knowledge.map((k) => '<div class="kitem"><div class="kitem__top"><span class="kitem__title"><span class="kitem__type">' + (k.type === "file" ? "▤" : "↗") + "</span>" + esc(k.title) + '</span><span class="kitem__src">' + esc(k.source) + '</span></div><div class="kitem__body">' + esc(k.content) + '</div><div class="kitem__foot"><span>Active anchor · Secured</span><span>Indexed ' + k.date + "</span></div></div>").join("");
+    poolList.innerHTML = knowledge.map((k) => '<div class="kitem' + (flashId && k.id === flashId ? " is-new" : "") + '"><div class="kitem__top"><span class="kitem__title"><span class="kitem__type">' + (k.type === "file" ? "▤" : "↗") + "</span>" + esc(k.title) + '</span><span class="kitem__src">' + esc(k.source) + '</span></div><div class="kitem__body">' + esc(k.content) + '</div><div class="kitem__foot"><span>Active anchor · Secured</span><span>Indexed ' + k.date + "</span></div></div>").join("");
   }
   renderPool();
   $$(".tseg").forEach((s) => s.addEventListener("click", () => {
@@ -338,22 +530,36 @@ const $ = (s, c) => (c || document).querySelector(s);
     e.preventDefault();
     const title = $("#trainTitle").value.trim(), content = $("#trainContent").value.trim(), source = $("#trainSource").value.trim();
     if (!title || !content || !source) return;
-    knowledge.unshift({ id: "k-" + Date.now(), title, type: trainType, source, content, date: new Date().toISOString().slice(0, 10) });
-    renderPool();
+    const id = "k-" + Date.now();
+    knowledge.unshift({ id, title, type: trainType, source, content, date: new Date().toISOString().slice(0, 10) });
+    hasTrained = true;
+    visited.add("train");
+    syncLoop(currentTab);
+    renderPool(id);
     $("#trainTitle").value = ""; $("#trainContent").value = ""; $("#trainSource").value = "";
     const ok = $("#trainOk"); ok.hidden = false; setTimeout(() => (ok.hidden = true), 4000);
+    showNudge("Knowledge indexed. Ask about “" + title + "” in customer chat.", "chat");
   }, { signal });
 
   /* ---------------- Agent workspace ---------------- */
   const wsThreads = $("#wsThreads"), wsLog = $("#wsLog"), wsClient = $("#wsClient"), wsIntent = $("#wsIntent"), wsResolve = $("#wsResolve");
   const statusIcon = { resolved: "✓", agent_active: "◉", waiting: "◷", ai_handled: "✦" };
   function wsActivePanelVisible() { const p = $('.xpanel[data-xpanel="inbox"]'); return p && p.classList.contains("is-active"); }
-  function renderThreads() {
+  function renderThreads(flashLive) {
     if (!wsThreads) return;
-    $("#wsOpenCount").textContent = threads.filter((t) => t.status !== "resolved").length + " open";
+    const openEl = $("#wsOpenCount");
+    if (openEl) {
+      openEl.textContent = threads.filter((t) => t.status !== "resolved").length + " open";
+      if (flashLive) {
+        openEl.classList.remove("is-bump");
+        void openEl.offsetWidth;
+        openEl.classList.add("is-bump");
+      }
+    }
     wsThreads.innerHTML = threads.map((t) => {
       const last = t.messages[t.messages.length - 1].text;
-      return '<button class="wsitem ' + (t.id === activeThreadId ? "is-active" : "") + '" data-id="' + t.id + '"><div class="wsitem__top"><span class="wsitem__who"><span class="wsitem__ava">' + t.avatar + '</span><span class="wsitem__name">' + esc(t.name) + '</span></span><span class="wsitem__conf">' + (statusIcon[t.status] || "✦") + " " + t.conf + '%</span></div><div class="wsitem__snip">' + esc(last) + '</div><div class="wsitem__foot"><span class="wsitem__intent">' + esc(t.intent) + '</span><span class="ubadge ubadge--' + t.urgency + '">' + t.urgency + "</span></div></button>";
+      const liveFlash = flashLive && t.id === "t-live" ? " is-live-update" : "";
+      return '<button class="wsitem ' + (t.id === activeThreadId ? "is-active" : "") + liveFlash + '" data-id="' + t.id + '"><div class="wsitem__top"><span class="wsitem__who"><span class="wsitem__ava">' + t.avatar + '</span><span class="wsitem__name">' + esc(t.name) + '</span></span><span class="wsitem__conf">' + (statusIcon[t.status] || "✦") + " " + t.conf + '%</span></div><div class="wsitem__snip">' + esc(last) + '</div><div class="wsitem__foot"><span class="wsitem__intent">' + esc(t.intent) + '</span><span class="ubadge ubadge--' + t.urgency + '">' + t.urgency + "</span></div></button>";
     }).join("");
     $$(".wsitem", wsThreads).forEach((b) => b.addEventListener("click", () => { activeThreadId = b.dataset.id; renderThreads(); renderWsLog(); }, { signal }));
   }
@@ -379,8 +585,6 @@ const $ = (s, c) => (c || document).querySelector(s);
       if (t.id === "t-live") appendChat("ai", v);
     }, { signal });
   }
-  // re-render workspace log when switching to inbox tab
-  $$('.xtab[data-xtab="inbox"]').forEach((t) => t.addEventListener("click", () => renderWsLog(), { signal }));
 
   /* ---------------- FAQ accordion ---------------- */
   $$(".acc").forEach((acc) => {
