@@ -29,6 +29,7 @@ import type * as lib_validateAssistantToolConfig from "../lib/validateAssistantT
 import type * as lib_voiceCallSettings from "../lib/voiceCallSettings.js";
 import type * as lib_voiceToolDeclarations from "../lib/voiceToolDeclarations.js";
 import type * as lib_webhookBaseUrl from "../lib/webhookBaseUrl.js";
+import type * as lib_workflowEngine from "../lib/workflowEngine.js";
 import type * as migrations_stripVapiSettings from "../migrations/stripVapiSettings.js";
 import type * as private_aiConversations from "../private/aiConversations.js";
 import type * as private_analytics from "../private/analytics.js";
@@ -85,6 +86,7 @@ import type * as system_secrets from "../system/secrets.js";
 import type * as system_subscriptions from "../system/subscriptions.js";
 import type * as system_telegram from "../system/telegram.js";
 import type * as system_whatsapp from "../system/whatsapp.js";
+import type * as system_workflowAiSteps from "../system/workflowAiSteps.js";
 import type * as system_workflowRuntime from "../system/workflowRuntime.js";
 
 import type {
@@ -115,6 +117,7 @@ declare const fullApi: ApiFromModules<{
   "lib/voiceCallSettings": typeof lib_voiceCallSettings;
   "lib/voiceToolDeclarations": typeof lib_voiceToolDeclarations;
   "lib/webhookBaseUrl": typeof lib_webhookBaseUrl;
+  "lib/workflowEngine": typeof lib_workflowEngine;
   "migrations/stripVapiSettings": typeof migrations_stripVapiSettings;
   "private/aiConversations": typeof private_aiConversations;
   "private/analytics": typeof private_analytics;
@@ -171,6 +174,7 @@ declare const fullApi: ApiFromModules<{
   "system/subscriptions": typeof system_subscriptions;
   "system/telegram": typeof system_telegram;
   "system/whatsapp": typeof system_whatsapp;
+  "system/workflowAiSteps": typeof system_workflowAiSteps;
   "system/workflowRuntime": typeof system_workflowRuntime;
 }>;
 

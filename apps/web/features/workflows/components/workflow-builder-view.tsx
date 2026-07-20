@@ -1,6 +1,3 @@
-// Workflows disabled — not developing this feature for now.
-export const WorkflowBuilderView = () => null
-/*
 "use client"
 
 import {
@@ -45,6 +42,7 @@ import ReactFlow, {
 import "reactflow/dist/style.css"
 import { useAuth, useOrganization } from "@clerk/nextjs"
 import { useMutation, useQuery } from "convex/react"
+import { useAtomValue } from "jotai"
 import { api } from "@workspace/backend/_generated/api"
 import type { Id } from "@workspace/backend/_generated/dataModel"
 import { toast } from "sonner"
@@ -53,13 +51,17 @@ import {
   type BlockColor,
   type ButtonOption,
   type ButtonsNodeData,
+  type CaptureNodeData,
   type CardNodeData,
+  type ChoiceNodeData,
   type ConditionNodeData,
   type GenericNodeData,
   type ImageNodeData,
+  type KbSearchNodeData,
   type MessageNodeData,
   type NodeData,
   type NodeType,
+  type PromptNodeData,
   type SetVariableNodeData,
   type WorkflowDefinition,
   type WorkflowEdgeData,
@@ -69,11 +71,21 @@ import MessageNode from "../nodes/MessageNode"
 import ImageNode from "../nodes/ImageNode"
 import CardNode from "../nodes/CardNode"
 import ButtonsNode from "../nodes/ButtonsNode"
+import CaptureNode from "../nodes/CaptureNode"
+import ChoiceNode from "../nodes/ChoiceNode"
 import SetVariableNode from "../nodes/SetVariableNode"
 import ConditionNode from "../nodes/ConditionNode"
 import GenericStepNode from "../nodes/GenericStepNode"
 import { NodeRenameContext } from "../nodes/NodeRenameContext"
 import RunPanel from "./run-panel"
+import { WorkflowLiveRoom } from "./workflow-live-room"
+import { LivePresenceBridge } from "./workflow-presence-bridge"
+import { LiveCollaboratorAvatars } from "./live-collaborator-avatars"
+import {
+  livePresenceConnectedAtom,
+  livePresenceMembersAtom,
+  livePresenceUpdatersRef,
+} from "../lib/live-presence-store"
 
 type WorkflowSummary = {
   id: Id<"workflows">
@@ -274,8 +286,8 @@ const genericNodeTypes = {
   operator: GenericStepNode,
   prompt: GenericStepNode,
   carousel: GenericStepNode,
-  choice: GenericStepNode,
-  capture: GenericStepNode,
+  choice: ChoiceNode,
+  capture: CaptureNode,
   component: GenericStepNode,
   end: GenericStepNode,
   tool: GenericStepNode,
@@ -896,6 +908,19 @@ const createNodeData = (type: NodeType): NodeData => {
         label: "Buttons",
         buttons: [createButton("I agree"), createButton("I don't agree")],
       }
+    case "choice":
+      return {
+        label: "Choice",
+        choices: [createButton("Option A"), createButton("Option B")],
+        variableKey: "choice",
+        prompt: "",
+      }
+    case "capture":
+      return {
+        label: "Capture",
+        variableKey: "lastInput",
+        prompt: "Please reply with your answer.",
+      }
     case "setVariable":
       return { label: "Set Variable", key: "variable", value: "value" }
     case "condition":
@@ -904,6 +929,40 @@ const createNodeData = (type: NodeType): NodeData => {
         key: "variable",
         operator: "equals",
         value: "value",
+      }
+    case "prompt":
+      return {
+        label: "Prompt",
+        instructions:
+          "Write a short helpful reply using the latest user message and workflow variables.",
+        useKnowledgeBase: false,
+        outputVariable: "lastAiResponse",
+      }
+    case "kbSearch":
+      return {
+        label: "KB search",
+        query: "{{lastInput}}",
+        outputVariable: "kbAnswer",
+        sendAsMessage: true,
+      }
+    case "playbook":
+    case "agent":
+    case "crew":
+    case "operator":
+      return {
+        label: getStepOption(type)?.label ?? "Agent",
+        instructions:
+          "Help the user with their request. Use knowledge base context when available.",
+        talksFirst: true,
+        useKnowledgeBase: true,
+        outputVariable: "lastAiResponse",
+        accent: "agent",
+      }
+    case "callForward":
+      return {
+        label: "Call forward",
+        description: "Connecting you with a human operator now.",
+        accent: "dev",
       }
     case "end":
       return {
@@ -925,11 +984,21 @@ const createNodeData = (type: NodeType): NodeData => {
 const cloneNodeData = (data: NodeData): NodeData => {
   const copy = JSON.parse(JSON.stringify(data)) as NodeData
 
-  if ("buttons" in copy) {
+  if ("buttons" in copy && Array.isArray(copy.buttons)) {
     return {
       ...copy,
       buttons: copy.buttons.map((button) => ({
         ...button,
+        id: createId("btn"),
+      })),
+    }
+  }
+
+  if ("choices" in copy && Array.isArray(copy.choices)) {
+    return {
+      ...copy,
+      choices: copy.choices.map((choice) => ({
+        ...choice,
         id: createId("btn"),
       })),
     }
@@ -1751,6 +1820,8 @@ export const WorkflowBuilderView = ({
   const [copiedNode, setCopiedNode] = useState<WorkflowNode | null>(null)
   const [runLaunchKey, setRunLaunchKey] = useState(0)
   const [isRunLaunching, setIsRunLaunching] = useState(false)
+  const [runActiveNodeId, setRunActiveNodeId] = useState<string | null>(null)
+  const [runWaitingNodeId, setRunWaitingNodeId] = useState<string | null>(null)
   const [viewportVersion, setViewportVersion] = useState(0)
   const [canvasViewport, setCanvasViewport] = useState<Viewport>(
     DEFAULT_CANVAS_VIEWPORT
@@ -1764,10 +1835,28 @@ export const WorkflowBuilderView = ({
     api.private.workflows.get,
     loadWorkflowId ? { workflowId: loadWorkflowId } : "skip"
   ) as WorkflowRecord | null | undefined
-  const presenceMembers = useQuery(
+  const convexPresenceMembers = useQuery(
     api.private.workflows.listPresence,
     workflowId ? { workflowId, now: presenceNow } : "skip"
   ) as WorkflowPresenceMember[] | undefined
+  const liveMembers = useAtomValue(livePresenceMembersAtom)
+  const liveConnected = useAtomValue(livePresenceConnectedAtom)
+  const usingLiveblocks = liveMembers !== null && liveConnected
+  const presenceMembers = useMemo<WorkflowPresenceMember[] | undefined>(() => {
+    if (liveMembers !== null) {
+      return liveMembers.map((member) => ({
+        userId: member.userId,
+        name: member.name,
+        initials: member.initials,
+        imageUrl: member.imageUrl,
+        color: member.color,
+        cursor: member.cursor,
+        selectedNodeId: member.selectedNodeId,
+        isSelf: member.isSelf,
+      }))
+    }
+    return convexPresenceMembers
+  }, [convexPresenceMembers, liveMembers])
   const library = workflowList ?? []
   const currentWorkflowIsActive = Boolean(
     workflowId &&
@@ -1849,29 +1938,41 @@ export const WorkflowBuilderView = ({
   }, [presenceMembers])
 
   const renderedNodes = useMemo(() => {
-    if (remoteSelectionByNodeId.size === 0) {
+    if (
+      remoteSelectionByNodeId.size === 0 &&
+      !runActiveNodeId &&
+      !runWaitingNodeId
+    ) {
       return nodes
     }
 
     return nodes.map((node) => {
       const selection = remoteSelectionByNodeId.get(node.id)
+      const runClass =
+        node.id === runWaitingNodeId
+          ? "node-run-waiting"
+          : node.id === runActiveNodeId
+            ? "node-run-active"
+            : ""
 
-      if (!selection) {
+      if (!selection && !runClass) {
         return node
       }
 
       return {
         ...node,
-        className: [node.className, "remote-selected-node"]
+        className: [node.className, selection ? "remote-selected-node" : "", runClass]
           .filter(Boolean)
           .join(" "),
         style: {
           ...node.style,
-          "--remote-selection-color": selection.color,
+          ...(selection
+            ? ({ "--remote-selection-color": selection.color } as CSSProperties)
+            : null),
         } as CSSProperties,
       }
     })
-  }, [nodes, remoteSelectionByNodeId])
+  }, [nodes, remoteSelectionByNodeId, runActiveNodeId, runWaitingNodeId])
 
   const menuNode = useMemo(
     () => nodes.find((node) => node.id === nodeMenu?.nodeId) ?? null,
@@ -2046,6 +2147,8 @@ export const WorkflowBuilderView = ({
     clearSelectedNode()
     setIsRunLaunching(true)
     setRunLaunchKey((current) => current + 1)
+    setRunActiveNodeId(null)
+    setRunWaitingNodeId(null)
     setNodeMenu(null)
     setCanvasMenu(null)
     setEdgeMenu(null)
@@ -2480,6 +2583,13 @@ export const WorkflowBuilderView = ({
       }
 
       lastCursorSentAtRef.current = now
+      if (usingLiveblocks && livePresenceUpdatersRef.current) {
+        livePresenceUpdatersRef.current.updateCursor(
+          flowPoint,
+          selectedNodeIdRef.current
+        )
+        return
+      }
       void movePresenceCursor({
         workflowId,
         cursorX: flowPoint.x,
@@ -2487,7 +2597,7 @@ export const WorkflowBuilderView = ({
         selectedNodeId: selectedNodeIdRef.current,
       }).catch(() => undefined)
     },
-    [movePresenceCursor, reactFlow, workflowId]
+    [movePresenceCursor, reactFlow, usingLiveblocks, workflowId]
   )
 
   const openConnectActionMenu = useCallback(
@@ -3394,7 +3504,7 @@ export const WorkflowBuilderView = ({
   }, [])
 
   useEffect(() => {
-    if (!workflowId) {
+    if (!workflowId || usingLiveblocks) {
       return
     }
 
@@ -3412,10 +3522,15 @@ export const WorkflowBuilderView = ({
     const timer = window.setInterval(sendHeartbeat, 15_000)
 
     return () => window.clearInterval(timer)
-  }, [heartbeatPresence, workflowId])
+  }, [heartbeatPresence, usingLiveblocks, workflowId])
 
   useEffect(() => {
     if (!workflowId || !hasLoadedWorkflowRef.current) {
+      return
+    }
+
+    if (usingLiveblocks && livePresenceUpdatersRef.current) {
+      livePresenceUpdatersRef.current.updateSelectedNode(selectedNodeId)
       return
     }
 
@@ -3426,7 +3541,7 @@ export const WorkflowBuilderView = ({
       cursorY: cursor?.y,
       selectedNodeId,
     }).catch(() => undefined)
-  }, [heartbeatPresence, selectedNodeId, workflowId])
+  }, [heartbeatPresence, selectedNodeId, usingLiveblocks, workflowId])
 
   const refreshLibrary = useCallback(() => {
     if (workflowList) {
@@ -3681,7 +3796,7 @@ export const WorkflowBuilderView = ({
     </div>
   )
 
-  return (
+  const shell = (
     <div className={shellClasses} ref={builderShellRef}>
       <aside className="category-rail" aria-label="Step categories">
         {stepsByCategory.map((category) => (
@@ -3821,24 +3936,30 @@ export const WorkflowBuilderView = ({
         >
           <Icon name="plus" size={20} />
         </button>
-        {visiblePresenceMembers.map((member) => (
-          <span
-            key={member.userId}
-            className={`collaborator-avatar ${member.isSelf ? "self" : ""}`}
-            title={`${member.name}${member.isSelf ? " (you)" : ""}`}
-            style={{ "--avatar-color": member.color } as CSSProperties}
-          >
-            <span>{member.initials}</span>
-          </span>
-        ))}
-        {hiddenPresenceCount > 0 ? (
-          <span
-            className="collaborator-avatar overflow"
-            title={`${hiddenPresenceCount} more`}
-          >
-            +{hiddenPresenceCount}
-          </span>
-        ) : null}
+        {workflowId ? (
+          <LiveCollaboratorAvatars />
+        ) : (
+          <>
+            {visiblePresenceMembers.map((member) => (
+              <span
+                key={member.userId}
+                className={`collaborator-avatar ${member.isSelf ? "self" : ""}`}
+                title={`${member.name}${member.isSelf ? " (you)" : ""}`}
+                style={{ "--avatar-color": member.color } as CSSProperties}
+              >
+                <span>{member.initials}</span>
+              </span>
+            ))}
+            {hiddenPresenceCount > 0 ? (
+              <span
+                className="collaborator-avatar overflow"
+                title={`${hiddenPresenceCount} more`}
+              >
+                +{hiddenPresenceCount}
+              </span>
+            ) : null}
+          </>
+        )}
         {collaboratorsPanelOpen && (
           <div
             className="collaborators-panel"
@@ -4595,7 +4716,7 @@ export const WorkflowBuilderView = ({
                     </div>
                     <MessageEditorInput
                       nodeId={selectedNode.id}
-                      value={data.text}
+                      value={data.text ?? ""}
                       placeholder="Enter message"
                       ariaLabel="Message"
                       onSync={syncMessageEditor}
@@ -4764,7 +4885,7 @@ export const WorkflowBuilderView = ({
                     <div className="card-button-editor-body">
                       <input
                         autoFocus
-                        value={editingButton.label}
+                        value={editingButton.label ?? ""}
                         placeholder="Enter button label, { to add variable"
                         aria-label="Button label"
                         onChange={(event) => {
@@ -4904,7 +5025,7 @@ export const WorkflowBuilderView = ({
 
                     <input
                       className="card-title-input"
-                      value={data.title}
+                      value={data.title ?? ""}
                       placeholder="Enter card title, { to add variable"
                       aria-label="Card title"
                       onChange={(event) =>
@@ -4918,7 +5039,7 @@ export const WorkflowBuilderView = ({
                     <div className="card-description-editor">
                       <MessageEditorInput
                         nodeId={selectedNode.id}
-                        value={data.description}
+                        value={data.description ?? ""}
                         placeholder="Enter card description, { to add variable"
                         ariaLabel="Card description"
                         onSync={(_nodeId, html) =>
@@ -5132,7 +5253,7 @@ export const WorkflowBuilderView = ({
                         {data.buttons.map((button, index) => (
                           <div className="field-row" key={button.id}>
                             <input
-                              value={button.label}
+                              value={button.label ?? ""}
                               onChange={(event) => {
                                 const nextButtons = [...data.buttons]
                                 const currentButton = nextButtons[index]
@@ -5184,6 +5305,274 @@ export const WorkflowBuilderView = ({
                       </div>
                     )
                   })()}
+                {selectedNode.type === "choice" &&
+                  (() => {
+                    const data = selectedNode.data as ChoiceNodeData
+
+                    return (
+                      <div className="stack">
+                        <label>
+                          Prompt (optional)
+                          <textarea
+                            value={data.prompt ?? ""}
+                            onChange={(event) =>
+                              updateNodeData(selectedNode.id, {
+                                ...data,
+                                prompt: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <label>
+                          Store as variable
+                          <input
+                            value={data.variableKey ?? ""}
+                            onChange={(event) =>
+                              updateNodeData(selectedNode.id, {
+                                ...data,
+                                variableKey: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <label>Choices</label>
+                        {(data.choices ?? []).map((choice, index) => (
+                          <div className="field-row" key={choice.id}>
+                            <input
+                              value={choice.label ?? ""}
+                              onChange={(event) => {
+                                const nextChoices = [...(data.choices ?? [])]
+                                const current = nextChoices[index]
+                                if (!current) return
+                                nextChoices[index] = {
+                                  ...current,
+                                  label: event.target.value,
+                                }
+                                updateNodeData(selectedNode.id, {
+                                  ...data,
+                                  choices: nextChoices,
+                                })
+                              }}
+                            />
+                            <button
+                              className="mini-button"
+                              onClick={() => {
+                                updateNodeData(selectedNode.id, {
+                                  ...data,
+                                  choices: (data.choices ?? []).filter(
+                                    (_, i) => i !== index
+                                  ),
+                                })
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          className="secondary-button"
+                          onClick={() => {
+                            updateNodeData(selectedNode.id, {
+                              ...data,
+                              choices: [
+                                ...(data.choices ?? []),
+                                createButton("New choice"),
+                              ],
+                            })
+                          }}
+                        >
+                          Add choice
+                        </button>
+                      </div>
+                    )
+                  })()}
+                {selectedNode.type === "capture" &&
+                  (() => {
+                    const data = selectedNode.data as CaptureNodeData
+
+                    return (
+                      <>
+                        <label>
+                          Variable
+                          <input
+                            value={data.variableKey ?? ""}
+                            onChange={(event) =>
+                              updateNodeData(selectedNode.id, {
+                                ...data,
+                                variableKey: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <label>
+                          Prompt (optional)
+                          <textarea
+                            value={data.prompt ?? ""}
+                            onChange={(event) =>
+                              updateNodeData(selectedNode.id, {
+                                ...data,
+                                prompt: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                      </>
+                    )
+                  })()}
+                {selectedNode.type === "prompt" &&
+                  (() => {
+                    const data = selectedNode.data as PromptNodeData
+
+                    return (
+                      <>
+                        <label>
+                          Instructions
+                          <textarea
+                            value={data.instructions ?? ""}
+                            onChange={(event) =>
+                              updateNodeData(selectedNode.id, {
+                                ...data,
+                                instructions: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <label>
+                          Output variable
+                          <input
+                            value={data.outputVariable ?? ""}
+                            onChange={(event) =>
+                              updateNodeData(selectedNode.id, {
+                                ...data,
+                                outputVariable: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <label className="field-row">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(data.useKnowledgeBase)}
+                            onChange={(event) =>
+                              updateNodeData(selectedNode.id, {
+                                ...data,
+                                useKnowledgeBase: event.target.checked,
+                              })
+                            }
+                          />
+                          Use knowledge base
+                        </label>
+                      </>
+                    )
+                  })()}
+                {selectedNode.type === "kbSearch" &&
+                  (() => {
+                    const data = selectedNode.data as KbSearchNodeData
+
+                    return (
+                      <>
+                        <label>
+                          Query
+                          <input
+                            value={data.query ?? ""}
+                            placeholder="{{lastInput}}"
+                            onChange={(event) =>
+                              updateNodeData(selectedNode.id, {
+                                ...data,
+                                query: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <label>
+                          Output variable
+                          <input
+                            value={data.outputVariable ?? "kbAnswer"}
+                            onChange={(event) =>
+                              updateNodeData(selectedNode.id, {
+                                ...data,
+                                outputVariable: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <label className="field-row">
+                          <input
+                            type="checkbox"
+                            checked={data.sendAsMessage !== false}
+                            onChange={(event) =>
+                              updateNodeData(selectedNode.id, {
+                                ...data,
+                                sendAsMessage: event.target.checked,
+                              })
+                            }
+                          />
+                          Send answer as chat message
+                        </label>
+                      </>
+                    )
+                  })()}
+                {["playbook", "agent", "crew", "operator"].includes(
+                  selectedNode.type ?? ""
+                ) &&
+                  (() => {
+                    const data = selectedNode.data as GenericNodeData
+
+                    return (
+                      <>
+                        <label>
+                          Instructions
+                          <textarea
+                            value={data.instructions ?? data.description ?? ""}
+                            onChange={(event) =>
+                              updateNodeData(selectedNode.id, {
+                                ...data,
+                                instructions: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <label>
+                          Output variable
+                          <input
+                            value={data.outputVariable ?? "lastAiResponse"}
+                            onChange={(event) =>
+                              updateNodeData(selectedNode.id, {
+                                ...data,
+                                outputVariable: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <label className="field-row">
+                          <input
+                            type="checkbox"
+                            checked={data.talksFirst !== false}
+                            onChange={(event) =>
+                              updateNodeData(selectedNode.id, {
+                                ...data,
+                                talksFirst: event.target.checked,
+                              })
+                            }
+                          />
+                          Talks first
+                        </label>
+                        <label className="field-row">
+                          <input
+                            type="checkbox"
+                            checked={data.useKnowledgeBase !== false}
+                            onChange={(event) =>
+                              updateNodeData(selectedNode.id, {
+                                ...data,
+                                useKnowledgeBase: event.target.checked,
+                              })
+                            }
+                          />
+                          Use knowledge base
+                        </label>
+                      </>
+                    )
+                  })()}
                 {selectedNode.type === "setVariable" &&
                   (() => {
                     const data = selectedNode.data as SetVariableNodeData
@@ -5193,7 +5582,7 @@ export const WorkflowBuilderView = ({
                         <label>
                           Variable
                           <input
-                            value={data.key}
+                            value={data.key ?? ""}
                             onChange={(event) =>
                               updateNodeData(selectedNode.id, {
                                 ...data,
@@ -5205,7 +5594,7 @@ export const WorkflowBuilderView = ({
                         <label>
                           Value
                           <input
-                            value={data.value}
+                            value={data.value ?? ""}
                             onChange={(event) =>
                               updateNodeData(selectedNode.id, {
                                 ...data,
@@ -5226,7 +5615,7 @@ export const WorkflowBuilderView = ({
                         <label>
                           Variable
                           <input
-                            value={data.key}
+                            value={data.key ?? ""}
                             onChange={(event) =>
                               updateNodeData(selectedNode.id, {
                                 ...data,
@@ -5238,32 +5627,38 @@ export const WorkflowBuilderView = ({
                         <label>
                           Operator
                           <select
-                            value={data.operator}
+                            value={data.operator ?? "equals"}
                             onChange={(event) =>
                               updateNodeData(selectedNode.id, {
                                 ...data,
-                                operator: event.target.value as
-                                  | "equals"
-                                  | "not_equals",
+                                operator: event.target
+                                  .value as ConditionNodeData["operator"],
                               })
                             }
                           >
                             <option value="equals">Equals</option>
                             <option value="not_equals">Not equals</option>
+                            <option value="contains">Contains</option>
+                            <option value="not_contains">Not contains</option>
+                            <option value="exists">Exists</option>
+                            <option value="not_exists">Not exists</option>
                           </select>
                         </label>
-                        <label>
-                          Value
-                          <input
-                            value={data.value}
-                            onChange={(event) =>
-                              updateNodeData(selectedNode.id, {
-                                ...data,
-                                value: event.target.value,
-                              })
-                            }
-                          />
-                        </label>
+                        {data.operator !== "exists" &&
+                          data.operator !== "not_exists" && (
+                            <label>
+                              Value
+                              <input
+                                value={data.value ?? ""}
+                                onChange={(event) =>
+                                  updateNodeData(selectedNode.id, {
+                                    ...data,
+                                    value: event.target.value,
+                                  })
+                                }
+                              />
+                            </label>
+                          )}
                       </>
                     )
                   })()}
@@ -5272,8 +5667,16 @@ export const WorkflowBuilderView = ({
                   "image",
                   "card",
                   "buttons",
+                  "choice",
+                  "capture",
                   "setVariable",
                   "condition",
+                  "prompt",
+                  "kbSearch",
+                  "playbook",
+                  "agent",
+                  "crew",
+                  "operator",
                   "start",
                 ].includes(selectedNode.type ?? "") && (
                   <>
@@ -5341,7 +5744,15 @@ export const WorkflowBuilderView = ({
               edges={edges}
               autoStartKey={runLaunchKey}
               onAutoStartComplete={completeRunLaunch}
-              onClose={() => setDrawerMode(null)}
+              onClose={() => {
+                setDrawerMode(null)
+                setRunActiveNodeId(null)
+                setRunWaitingNodeId(null)
+              }}
+              onActiveNodeChange={({ activeNodeId, waitingNodeId }) => {
+                setRunActiveNodeId(activeNodeId)
+                setRunWaitingNodeId(waitingNodeId)
+              }}
             />
           ) : drawerMode === "library" ? (
             <div className="library-list">
@@ -5371,7 +5782,7 @@ export const WorkflowBuilderView = ({
               <label>
                 Description
                 <textarea
-                  value={workflowDescription}
+                  value={workflowDescription ?? ""}
                   onChange={(event) =>
                     setWorkflowDescription(event.target.value)
                   }
@@ -5384,5 +5795,18 @@ export const WorkflowBuilderView = ({
       )}
     </div>
   )
+
+  if (organization?.id && workflowId) {
+    return (
+      <WorkflowLiveRoom
+        organizationId={organization.id}
+        workflowId={workflowId}
+      >
+        <LivePresenceBridge />
+        {shell}
+      </WorkflowLiveRoom>
+    )
+  }
+
+  return shell
 }
-*/

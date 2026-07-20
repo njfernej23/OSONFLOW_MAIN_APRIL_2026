@@ -1,5 +1,3 @@
-// Workflows disabled — not developing this feature for now.
-/*
 import { v } from "convex/values"
 import { query } from "../_generated/server"
 
@@ -7,6 +5,14 @@ export const getActiveSummary = query({
   args: {
     organizationId: v.string(),
   },
+  returns: v.union(
+    v.object({
+      workflowId: v.id("workflows"),
+      name: v.string(),
+      publishedAt: v.union(v.number(), v.null()),
+    }),
+    v.null()
+  ),
   handler: async (ctx, args) => {
     const workflow = await ctx.db
       .query("workflows")
@@ -32,6 +38,27 @@ export const getPendingChoices = query({
     conversationId: v.id("conversations"),
     contactSessionId: v.id("contactSessions"),
   },
+  returns: v.union(
+    v.object({
+      workflowId: v.id("workflows"),
+      pendingNodeId: v.union(v.string(), v.null()),
+      buttons: v.array(
+        v.object({
+          id: v.string(),
+          label: v.string(),
+        })
+      ),
+      waitingMode: v.union(
+        v.literal("buttons"),
+        v.literal("capture"),
+        v.literal("choice"),
+        v.literal("ai_turn"),
+        v.null()
+      ),
+      pendingPrompt: v.union(v.string(), v.null()),
+    }),
+    v.null()
+  ),
   handler: async (ctx, args) => {
     const contactSession = await ctx.db.get(args.contactSessionId)
 
@@ -60,7 +87,8 @@ export const getPendingChoices = query({
       workflowId: session.workflowId,
       pendingNodeId: session.pendingNodeId ?? null,
       buttons: session.pendingButtons ?? [],
+      waitingMode: session.waitingMode ?? null,
+      pendingPrompt: session.pendingPrompt ?? null,
     }
   },
 })
-*/

@@ -4,7 +4,20 @@ import type { ConditionNodeData } from '../lib/types';
 import EditableNodeTitle from './EditableNodeTitle';
 
 const ConditionNode = ({ id, data }: NodeProps<ConditionNodeData>) => {
-  const operatorLabel = data.operator === 'equals' ? '=' : '!=';
+  const operatorLabel =
+    data.operator === 'equals'
+      ? '='
+      : data.operator === 'not_equals'
+        ? '!='
+        : data.operator === 'contains'
+          ? 'contains'
+          : data.operator === 'not_contains'
+            ? '!contains'
+            : data.operator === 'exists'
+              ? 'exists'
+              : data.operator === 'not_exists'
+                ? '!exists'
+                : '=';
 
   return (
     <div className={`node node-condition node-color-${data.blockColor ?? 'default'}`}>
@@ -12,7 +25,9 @@ const ConditionNode = ({ id, data }: NodeProps<ConditionNodeData>) => {
       <div className="node-body node-condition-body">
         <span className="node-chip">{data.key || 'variable'}</span>
         <span className="node-operator">{operatorLabel}</span>
-        <span className="node-chip">{data.value || 'value'}</span>
+        {data.operator !== 'exists' && data.operator !== 'not_exists' ? (
+          <span className="node-chip">{data.value || 'value'}</span>
+        ) : null}
       </div>
       <div className="node-branch node-branch-true">true</div>
       <div className="node-branch node-branch-false">false</div>

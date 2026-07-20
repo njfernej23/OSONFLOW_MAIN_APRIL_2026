@@ -103,7 +103,6 @@ const resolutionSourceValidator = v.union(
   v.literal("ai"),
   v.literal("human"),
   v.literal("voice_ai"),
-  // v.literal("workflow") // Workflows disabled
   v.literal("workflow")
 )
 
@@ -252,20 +251,37 @@ const assistantToolConfigValidator = v.object({
   webhookMethod: v.optional(v.union(v.literal("GET"), v.literal("POST"))),
 })
 
-// Workflows disabled — not developing this feature for now
-// const workflowDefinitionValidator = v.object({
-//   schemaVersion: v.number(),
-//   id: v.optional(v.string()),
-//   name: v.string(),
-//   description: v.optional(v.string()),
-//   nodes: v.array(v.any()),
-//   edges: v.array(v.any()),
-// })
+const workflowDefinitionValidator = v.object({
+  schemaVersion: v.number(),
+  id: v.optional(v.string()),
+  name: v.string(),
+  description: v.optional(v.string()),
+  nodes: v.array(v.any()),
+  edges: v.array(v.any()),
+})
 
-// const workflowButtonOptionValidator = v.object({
-//   id: v.string(),
-//   label: v.string(),
-// })
+const workflowButtonOptionValidator = v.object({
+  id: v.string(),
+  label: v.string(),
+})
+
+const workflowTraceEventValidator = v.object({
+  at: v.number(),
+  level: v.union(
+    v.literal("info"),
+    v.literal("step"),
+    v.literal("branch"),
+    v.literal("wait"),
+    v.literal("ai"),
+    v.literal("warn"),
+    v.literal("error"),
+    v.literal("done")
+  ),
+  nodeId: v.optional(v.string()),
+  nodeType: v.optional(v.string()),
+  title: v.string(),
+  detail: v.optional(v.string()),
+})
 
 export default defineSchema({
   subscriptions: defineTable({
@@ -584,65 +600,79 @@ export default defineSchema({
       "usageCount",
     ]),
 
-  // Workflows disabled — not developing this feature for now
-  // workflows: defineTable({
-  //   organizationId: v.string(),
-  //   name: v.string(),
-  //   description: v.optional(v.string()),
-  //   definition: workflowDefinitionValidator,
-  //   publishedDefinition: v.optional(workflowDefinitionValidator),
-  //   isActive: v.optional(v.boolean()),
-  //   publishedAt: v.optional(v.number()),
-  //   publishedBy: v.optional(v.string()),
-  //   createdAt: v.number(),
-  //   updatedAt: v.number(),
-  //   createdBy: v.optional(v.string()),
-  //   updatedBy: v.optional(v.string()),
-  // })
-  //   .index("by_organization_id", ["organizationId"])
-  //   .index("by_organization_id_and_active", ["organizationId", "isActive"])
-  //   .index("by_organization_id_and_updated_at", [
-  //     "organizationId",
-  //     "updatedAt",
-  //   ]),
+  workflows: defineTable({
+    organizationId: v.string(),
+    name: v.string(),
+    description: v.optional(v.string()),
+    definition: workflowDefinitionValidator,
+    publishedDefinition: v.optional(workflowDefinitionValidator),
+    isActive: v.optional(v.boolean()),
+    publishedAt: v.optional(v.number()),
+    publishedBy: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdBy: v.optional(v.string()),
+    updatedBy: v.optional(v.string()),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_organization_id_and_active", ["organizationId", "isActive"])
+    .index("by_organization_id_and_updated_at", [
+      "organizationId",
+      "updatedAt",
+    ]),
 
-  // workflowSessions: defineTable({
-  //   organizationId: v.string(),
-  //   workflowId: v.id("workflows"),
-  //   conversationId: v.id("conversations"),
-  //   contactSessionId: v.id("contactSessions"),
-  //   status: v.union(
-  //     v.literal("active"),
-  //     v.literal("waiting"),
-  //     v.literal("ended")
-  //   ),
-  //   currentNodeId: v.optional(v.union(v.string(), v.null())),
-  //   pendingNodeId: v.optional(v.union(v.string(), v.null())),
-  //   pendingButtons: v.optional(v.array(workflowButtonOptionValidator)),
-  //   variables: v.any(),
-  //   startedAt: v.number(),
-  //   updatedAt: v.number(),
-  //   endedAt: v.optional(v.number()),
-  // })
-  //   .index("by_conversation_id", ["conversationId"])
-  //   .index("by_contact_session_id", ["contactSessionId"])
-  //   .index("by_organization_id", ["organizationId"]),
+  workflowSessions: defineTable({
+    organizationId: v.string(),
+    workflowId: v.id("workflows"),
+    conversationId: v.id("conversations"),
+    contactSessionId: v.id("contactSessions"),
+    status: v.union(
+      v.literal("active"),
+      v.literal("waiting"),
+      v.literal("ended")
+    ),
+    currentNodeId: v.optional(v.union(v.string(), v.null())),
+    pendingNodeId: v.optional(v.union(v.string(), v.null())),
+    pendingButtons: v.optional(v.array(workflowButtonOptionValidator)),
+    /** What kind of user input the runtime is blocked on. */
+    waitingMode: v.optional(
+      v.union(
+        v.literal("buttons"),
+        v.literal("capture"),
+        v.literal("choice"),
+        v.literal("ai_turn")
+      )
+    ),
+    pendingCaptureKey: v.optional(v.string()),
+    pendingPrompt: v.optional(v.string()),
+    /** AI step currently executing via scheduled action. */
+    pendingAiNodeId: v.optional(v.union(v.string(), v.null())),
+    /** Ring-buffer of recent runtime events for debugging published flows. */
+    executionTrace: v.optional(v.array(workflowTraceEventValidator)),
+    variables: v.any(),
+    startedAt: v.number(),
+    updatedAt: v.number(),
+    endedAt: v.optional(v.number()),
+  })
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_contact_session_id", ["contactSessionId"])
+    .index("by_organization_id", ["organizationId"]),
 
-  // workflowPresence: defineTable({
-  //   organizationId: v.string(),
-  //   workflowId: v.id("workflows"),
-  //   userId: v.string(),
-  //   name: v.string(),
-  //   initials: v.string(),
-  //   imageUrl: v.optional(v.string()),
-  //   color: v.string(),
-  //   cursorX: v.optional(v.number()),
-  //   cursorY: v.optional(v.number()),
-  //   selectedNodeId: v.optional(v.string()),
-  //   lastSeenAt: v.number(),
-  // })
-  //   .index("by_workflow_id", ["workflowId"])
-  //   .index("by_workflow_id_and_user_id", ["workflowId", "userId"]),
+  workflowPresence: defineTable({
+    organizationId: v.string(),
+    workflowId: v.id("workflows"),
+    userId: v.string(),
+    name: v.string(),
+    initials: v.string(),
+    imageUrl: v.optional(v.string()),
+    color: v.string(),
+    cursorX: v.optional(v.number()),
+    cursorY: v.optional(v.number()),
+    selectedNodeId: v.optional(v.string()),
+    lastSeenAt: v.number(),
+  })
+    .index("by_workflow_id", ["workflowId"])
+    .index("by_workflow_id_and_user_id", ["workflowId", "userId"]),
 
   contactSessions: defineTable({
     name: v.string(),

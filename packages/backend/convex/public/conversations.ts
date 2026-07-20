@@ -227,10 +227,29 @@ export const create = mutation({
   ): Promise<{
     conversationId: Id<"conversations">
     contactSessionId: Id<"contactSessions">
-    source: "widget"
+    source: "workflow" | "widget"
   }> => {
+    const activeWorkflow = await ctx.db
+      .query("workflows")
+      .withIndex("by_organization_id_and_active", (q) =>
+        q.eq("organizationId", args.organizationId).eq("isActive", true)
+      )
+      .first()
+    const hasActiveWorkflow = Boolean(activeWorkflow?.publishedDefinition)
     const contactSessionId: Id<"contactSessions"> | null =
-      args.contactSessionId ?? null
+      args.contactSessionId ??
+      (hasActiveWorkflow
+        ? await ctx.runMutation(
+            (internal as any).public.contactSessions.createAnonymousRecord,
+            {
+              organizationId: args.organizationId,
+              metadata: {
+                ...args.metadata,
+                source: args.metadata?.source ?? "workflow_widget",
+              },
+            }
+          )
+        : null)
 
     if (!contactSessionId) {
       throw new ConvexError({
@@ -277,14 +296,16 @@ export const create = mutation({
       userId: args.organizationId,
     })
 
-    await saveMessage(ctx, components.agent, {
-      threadId,
-      message: {
-        role: "assistant",
-        content:
-          widgetSettings?.greetMessage || "Hello, how can I help you today?",
-      },
-    })
+    if (!hasActiveWorkflow) {
+      await saveMessage(ctx, components.agent, {
+        threadId,
+        message: {
+          role: "assistant",
+          content:
+            widgetSettings?.greetMessage || "Hello, how can I help you today?",
+        },
+      })
+    }
 
     const conversationId: Id<"conversations"> = await ctx.db.insert(
       "conversations",
@@ -314,26 +335,25 @@ export const create = mutation({
           threadId,
           contactSessionId: session._id,
           status: "unresolved",
-          source: "widget",
-          // workflowId: undefined, // Workflows disabled
+          source: hasActiveWorkflow ? "workflow" : "widget",
+          workflowId: hasActiveWorkflow ? activeWorkflow?._id : undefined,
         },
       }
     )
 
-    // Workflows disabled — not developing this feature for now
-    // if (hasActiveWorkflow) {
-    //   await ctx.runMutation(
-    //     (internal as any).system.workflowRuntime.startForConversation,
-    //     {
-    //       conversationId,
-    //     }
-    //   )
-    // }
+    if (hasActiveWorkflow) {
+      await ctx.runMutation(
+        (internal as any).system.workflowRuntime.startForConversation,
+        {
+          conversationId,
+        }
+      )
+    }
 
     return {
       conversationId,
       contactSessionId: session._id,
-      source: "widget" as const,
+      source: hasActiveWorkflow ? ("workflow" as const) : ("widget" as const),
     }
   },
 })

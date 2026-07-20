@@ -279,7 +279,7 @@ export const create = action({
     prompt: v.string(),
     threadId: v.string(),
     contactSessionId: v.id("contactSessions"),
-    workflowButtonId: v.optional(v.string()), // Workflows disabled — kept for API compatibility
+    workflowButtonId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const contactSession = await ctx.runQuery(
@@ -342,20 +342,19 @@ export const create = action({
       contactSessionId: args.contactSessionId,
     })
 
-    // Workflows disabled — not developing this feature for now
-    // const workflowResult = await ctx.runMutation(
-    //   (internal as any).system.workflowRuntime.handleUserMessage,
-    //   {
-    //     threadId: args.threadId,
-    //     prompt: args.prompt,
-    //     contactSessionId: args.contactSessionId,
-    //     workflowButtonId: args.workflowButtonId,
-    //   }
-    // )
+    const workflowResult = await ctx.runMutation(
+      (internal as any).system.workflowRuntime.handleUserMessage,
+      {
+        threadId: args.threadId,
+        prompt: args.prompt,
+        contactSessionId: args.contactSessionId,
+        workflowButtonId: args.workflowButtonId,
+      }
+    )
 
-    // if (workflowResult?.handled) {
-    //   return
-    // }
+    if (workflowResult?.handled) {
+      return
+    }
 
     const now = Date.now()
 

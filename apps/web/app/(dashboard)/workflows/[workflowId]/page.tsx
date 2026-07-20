@@ -1,5 +1,4 @@
-// Workflows disabled — not developing this feature for now
-// import { WorkflowBuilderView } from "@/features/workflows/components/workflow-builder-view"
+import { WorkflowBuilderView } from "@/features/workflows/components/workflow-builder-view"
 
 const Page = async ({
   params,
@@ -8,10 +7,9 @@ const Page = async ({
     workflowId: string
   }>
 }) => {
-  await params
+  const { workflowId } = await params
 
-  return null
-  // return <WorkflowBuilderView initialWorkflowId={workflowId} />
+  return <WorkflowBuilderView initialWorkflowId={workflowId} />
 }
 
 export default Page

@@ -19,7 +19,7 @@ import {
 const getWidgetMetadata = (): Doc<"contactSessions">["metadata"] => {
   if (typeof window === "undefined" || typeof navigator === "undefined") {
     return {
-      source: "widget",
+      source: "workflow_widget",
     }
   }
 
@@ -49,7 +49,7 @@ const getWidgetMetadata = (): Doc<"contactSessions">["metadata"] => {
     cookieEnabled: navigator.cookieEnabled,
     referrer: document.referrer || "direct",
     currentUrl: window.location.href,
-    source: "widget",
+    source: "workflow_widget",
     visitorId,
   }
 }

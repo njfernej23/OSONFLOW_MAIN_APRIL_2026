@@ -9,6 +9,7 @@ import {
   BrainIcon,
   ChartColumnBig,
   CreditCardIcon,
+  GitBranchIcon,
   LayoutDashboardIcon,
   MessagesSquare,
   PaletteIcon,
@@ -92,12 +93,11 @@ const configurationItems = [
     url: "/integrations",
     icon: LayoutDashboardIcon,
   },
-  // Workflows disabled — not developing this feature for now
-  // {
-  //   title: "Workflows",
-  //   url: "/workflows",
-  //   icon: GitBranchIcon,
-  // },
+  {
+    title: "Workflows",
+    url: "/workflows",
+    icon: GitBranchIcon,
+  },
   {
     title: "Data transfer",
     url: "/org-transfer",

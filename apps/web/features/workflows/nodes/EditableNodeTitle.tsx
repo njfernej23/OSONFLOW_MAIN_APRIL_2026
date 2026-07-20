@@ -76,7 +76,7 @@ const EditableNodeTitle = ({ nodeId, value, fallback }: EditableNodeTitleProps) 
       <input
         ref={inputRef}
         className="node-title node-title-input nodrag nopan"
-        value={draft}
+        value={draft ?? ""}
         aria-label={`Rename ${displayName}`}
         onPointerDown={stopNodeInteraction}
         onClick={stopNodeInteraction}
