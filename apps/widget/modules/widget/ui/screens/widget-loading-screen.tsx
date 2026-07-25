@@ -15,69 +15,13 @@ import {
 import { useState, useEffect } from "react"
 import { api } from "@workspace/backend/_generated/api"
 import { mergeWidgetAppearance } from "@workspace/ui/lib/widget-customization"
-import type { Doc } from "@workspace/backend/_generated/dataModel"
 import { Spinner } from "@workspace/ui/components/spinner"
 
 type InitStep = "org" | "session" | "settings" | "voice" | "done"
 
-const VOICE_VISITOR_KEY_PREFIX = "echo_voice_visitor"
-
-const getVoiceVisitorId = (organizationId: string) => {
-  if (typeof window === "undefined") {
-    return `voice_${Date.now().toString(36)}`
-  }
-
-  const key = `${VOICE_VISITOR_KEY_PREFIX}_${organizationId}`
-  const existingVisitorId = window.localStorage.getItem(key)
-
-  if (existingVisitorId) {
-    return existingVisitorId
-  }
-
-  const randomValue =
-    window.crypto?.randomUUID?.() ??
-    `voice_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`
-  const visitorId = `voice_${randomValue.replace(/[^a-zA-Z0-9_-]/g, "")}`
-
-  window.localStorage.setItem(key, visitorId)
-
-  return visitorId
-}
-
-const getBrowserMetadata = (
-  organizationId: string,
-  parentPageUrl?: string,
-  source: "voice_widget" | "widget" = "voice_widget"
-): Doc<"contactSessions">["metadata"] => {
-  if (typeof window === "undefined") {
-    return {
-      source,
-      visitorId: `voice_${Date.now().toString(36)}`,
-    }
-  }
-
-  return {
-    userAgent: navigator.userAgent,
-    language: navigator.language,
-    languages: navigator.languages?.join(","),
-    platform: navigator.platform,
-    vendor: navigator.vendor,
-    screenResolution: `${screen.width}x${screen.height}`,
-    viewportSize: `${window.innerWidth}x${window.innerHeight}`,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    timezoneOffset: new Date().getTimezoneOffset(),
-    cookieEnabled: navigator.cookieEnabled,
-    referrer: document.referrer || "direct",
-    currentUrl: parentPageUrl || document.referrer || window.location.href,
-    source,
-    visitorId: getVoiceVisitorId(organizationId),
-  }
-}
-
 export const WidgetLoadingScreen = ({
   mode = "standard",
   organizationId,
-  parentPageUrl,
 }: {
   mode?: WidgetMode
   organizationId: string | null
@@ -91,9 +35,6 @@ export const WidgetLoadingScreen = ({
   const setWidgetMode = useSetAtom(widgetModeAtom)
 
   const validateOrganization = useAction(api.public.organizations.validate)
-  const createAnonymousContactSession = useAction(
-    api.public.contactSessions.createAnonymous
-  )
   const setScreen = useSetAtom(screenAtom)
 
   const contactSessionId = useAtomValue(
@@ -153,7 +94,12 @@ export const WidgetLoadingScreen = ({
       contactSessionId,
     })
       .then((result) => {
-        if (!result.valid) {
+        // Anonymous sessions are no longer allowed — require name/email first.
+        if (
+          !result.valid ||
+          ("contactSession" in result &&
+            result.contactSession?.isAnonymous === true)
+        ) {
           setContactSessionId(null)
         }
         setStep("settings")
@@ -221,95 +167,38 @@ export const WidgetLoadingScreen = ({
 
     if (!shouldOpenVoiceOnly) {
       setWidgetMode("standard")
-
-      if (contactSessionId) {
-        setScreen("selection")
-        return
-      }
-
-      // No session yet: start anonymously so the visitor can chat right away.
-      // Their email is collected inline in the chat thread instead of a gate screen.
-      const openStandardScreen = async () => {
-        if (!organizationId) {
-          setErrorMessage("Organization ID is required")
-          setScreen("error")
-          return
-        }
-
-        try {
-          const anonymousContactSessionId =
-            await createAnonymousContactSession({
-              organizationId,
-              metadata: getBrowserMetadata(
-                organizationId,
-                parentPageUrl,
-                "widget"
-              ),
-            })
-
-          setContactSessionId(anonymousContactSessionId)
-          setScreen("selection")
-        } catch {
-          setScreen("auth")
-        }
-      }
-
-      void openStandardScreen()
+      setScreen(contactSessionId ? "selection" : "auth")
       return
     }
 
     setWidgetMode("voice")
 
-    const openVoiceScreen = async () => {
-      if (!organizationId) {
-        setErrorMessage("Organization ID is required")
-        setScreen("error")
-        return
-      }
+    const nextVoiceProvider: VoiceProvider | null = widgetSettings
+      ?.openaiRealtimeSettings?.enabled
+      ? "openai"
+      : widgetSettings?.geminiLiveSettings?.enabled
+        ? "gemini"
+        : null
 
-      const nextVoiceProvider: VoiceProvider | null = widgetSettings
-        ?.openaiRealtimeSettings?.enabled
-        ? "openai"
-        : widgetSettings?.geminiLiveSettings?.enabled
-          ? "gemini"
-          : null
-
-      if (!nextVoiceProvider) {
-        setErrorMessage("Voice AI is not enabled for this widget.")
-        setScreen("error")
-        return
-      }
-
-      setActiveVoiceProvider(nextVoiceProvider)
-
-      if (contactSessionId) {
-        setScreen("voice")
-        return
-      }
-
-      try {
-        const anonymousContactSessionId = await createAnonymousContactSession({
-          organizationId,
-          metadata: getBrowserMetadata(organizationId, parentPageUrl),
-        })
-
-        setContactSessionId(anonymousContactSessionId)
-        setScreen("voice")
-      } catch {
-        setErrorMessage("Unable to start an anonymous voice session.")
-        setScreen("error")
-      }
+    if (!nextVoiceProvider) {
+      setErrorMessage("Voice AI is not enabled for this widget.")
+      setScreen("error")
+      return
     }
 
-    void openVoiceScreen()
+    setActiveVoiceProvider(nextVoiceProvider)
+
+    // Require name/email before creating a session or conversation.
+    if (!contactSessionId) {
+      setScreen("auth")
+      return
+    }
+
+    setScreen("voice")
   }, [
     contactSessionId,
-    createAnonymousContactSession,
     mode,
-    organizationId,
-    parentPageUrl,
     setActiveVoiceProvider,
-    setContactSessionId,
     setErrorMessage,
     setScreen,
     setWidgetMode,

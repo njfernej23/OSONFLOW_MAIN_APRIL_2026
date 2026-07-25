@@ -16,9 +16,11 @@ import { useAction } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
 import { Doc } from "@workspace/backend/_generated/dataModel"
 import {
+  activeVoiceProviderAtom,
   contactSessionIdAtomFamily,
   organizationIdAtom,
   screenAtom,
+  widgetModeAtom,
   widgetSettingsAtom,
 } from "../../atoms/widget-atoms"
 import { useSetAtom, useAtomValue } from "jotai"
@@ -45,8 +47,10 @@ const toCssImageUrl = (url: string) => url.replaceAll('"', "%22")
 export const WidgetAuthScreen = () => {
   const setScreen = useSetAtom(screenAtom)
   const organizationId = useAtomValue(organizationIdAtom)
+  const widgetMode = useAtomValue(widgetModeAtom)
   const widgetSettings = useAtomValue(widgetSettingsAtom)
   const theme = mergeWidgetTheme(widgetSettings?.theme)
+  const setActiveVoiceProvider = useSetAtom(activeVoiceProviderAtom)
   const setContactSessionsId = useSetAtom(
     contactSessionIdAtomFamily(organizationId || "")
   )
@@ -117,6 +121,22 @@ export const WidgetAuthScreen = () => {
       })
 
       setContactSessionsId(contactSessionId)
+
+      if (widgetMode === "voice") {
+        const nextVoiceProvider = widgetSettings?.openaiRealtimeSettings
+          ?.enabled
+          ? "openai"
+          : widgetSettings?.geminiLiveSettings?.enabled
+            ? "gemini"
+            : null
+
+        if (nextVoiceProvider) {
+          setActiveVoiceProvider(nextVoiceProvider)
+          setScreen("voice")
+          return
+        }
+      }
+
       setScreen("selection")
     } catch {
       form.setError("email", {

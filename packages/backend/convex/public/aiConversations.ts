@@ -42,6 +42,17 @@ const getValidatedContactSession = async (
   return contactSession
 }
 
+const assertIdentifiedContactSession = (
+  contactSession: Doc<"contactSessions">
+) => {
+  if (contactSession.isAnonymous === true) {
+    throw new ConvexError({
+      code: "UNAUTHORIZED",
+      message: "Contact details required",
+    })
+  }
+}
+
 export const getLatestTranscript = query({
   args: {
     organizationId: v.string(),
@@ -206,10 +217,11 @@ export const create = mutation({
     provider: providerValidator,
   },
   handler: async (ctx, args) => {
-    await getValidatedContactSession(ctx, {
+    const contactSession = await getValidatedContactSession(ctx, {
       contactSessionId: args.contactSessionId,
       organizationId: args.organizationId,
     })
+    assertIdentifiedContactSession(contactSession)
 
     await enforceRateLimit(ctx, "voiceTokenBySession", {
       key: `${args.organizationId}:${args.contactSessionId}:conversation`,

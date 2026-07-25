@@ -83,10 +83,15 @@ export const useStartWidgetConversation = () => {
       return
     }
 
+    if (!contactSessionId) {
+      setScreen("auth")
+      return
+    }
+
     setIsPending(true)
     try {
       const result = await createConversation({
-        contactSessionId: contactSessionId ?? undefined,
+        contactSessionId,
         organizationId,
         metadata: getWidgetMetadata(),
       })

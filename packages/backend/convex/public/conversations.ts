@@ -218,7 +218,7 @@ export const markAsRead = mutation({
 export const create = mutation({
   args: {
     organizationId: v.string(),
-    contactSessionId: v.optional(v.id("contactSessions")),
+    contactSessionId: v.id("contactSessions"),
     metadata: contactSessionMetadataValidator,
   },
   handler: async (
@@ -236,27 +236,7 @@ export const create = mutation({
       )
       .first()
     const hasActiveWorkflow = Boolean(activeWorkflow?.publishedDefinition)
-    const contactSessionId: Id<"contactSessions"> | null =
-      args.contactSessionId ??
-      (hasActiveWorkflow
-        ? await ctx.runMutation(
-            (internal as any).public.contactSessions.createAnonymousRecord,
-            {
-              organizationId: args.organizationId,
-              metadata: {
-                ...args.metadata,
-                source: args.metadata?.source ?? "workflow_widget",
-              },
-            }
-          )
-        : null)
-
-    if (!contactSessionId) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Contact details required",
-      })
-    }
+    const contactSessionId = args.contactSessionId
 
     const session = await ctx.db.get(contactSessionId)
 
@@ -271,6 +251,14 @@ export const create = mutation({
       throw new ConvexError({
         code: "UNAUTHORIZED",
         message: "Invalid organization",
+      })
+    }
+
+    // Visitors must submit name + email before any conversation is stored.
+    if (session.isAnonymous === true) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Contact details required",
       })
     }
 
