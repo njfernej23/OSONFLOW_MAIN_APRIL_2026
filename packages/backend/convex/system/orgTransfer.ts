@@ -47,12 +47,19 @@ export const collectTableData = internalQuery({
   handler: async (ctx, args) => {
     const { organizationId } = args
 
-    const widgetSettings = await ctx.db
+    const widgetSettingsRows = await ctx.db
       .query("widgetSettings")
       .withIndex("by_organization_id", (q) =>
         q.eq("organizationId", organizationId)
       )
-      .unique()
+      .collect()
+
+    const widgetSettings =
+      widgetSettingsRows.find((settings) => settings.isDefault) ??
+      widgetSettingsRows.find((settings) => !settings.agentId) ??
+      widgetSettingsRows.find((settings) => settings.agentId === "default") ??
+      widgetSettingsRows[0] ??
+      null
 
     const savedReplies = await ctx.db
       .query("savedReplies")

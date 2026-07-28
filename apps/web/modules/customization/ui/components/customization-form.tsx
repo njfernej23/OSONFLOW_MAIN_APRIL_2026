@@ -143,6 +143,7 @@ type WidgetSettingsVersionSummary = {
 }
 
 interface CustomizationFormProps {
+  agentId: string
   draftData: WidgetSettingsSnapshot
   publishedVersion: number
   publishedAt?: number
@@ -916,6 +917,7 @@ const HelpTopicEditor = ({
 }
 
 export const CustomizationForm = ({
+  agentId,
   draftData,
   publishedVersion,
   publishedAt,
@@ -987,73 +989,77 @@ export const CustomizationForm = ({
   const systemPromptLen = watchedValues.systemPrompt?.length ?? 0
   const tokenEstimate = Math.ceil(systemPromptLen / 4)
 
-  const buildMutationPayload = useCallback((values: FormSchema) => {
-    const theme: NonNullable<WidgetSettings["theme"]> = {
-      ...values.theme,
-      borderRadius: clampBorderRadius(Number(values.theme.borderRadius)),
-      logoUrl: values.theme.logoUrl.trim(),
-      backgroundImageUrl: values.theme.backgroundImageUrl.trim(),
-      assistantName: values.theme.assistantName.trim(),
-    }
-    const appearance: NonNullable<WidgetSettings["appearance"]> = {
-      ...values.appearance,
-      launcherLabel:
-        values.appearance.launcherLabel.trim() ||
-        DEFAULT_WIDGET_APPEARANCE.launcherLabel,
-      voiceLauncherLabel:
-        values.appearance.voiceLauncherLabel.trim() ||
-        DEFAULT_WIDGET_APPEARANCE.voiceLauncherLabel,
-      launcherIconUrl: values.appearance.launcherIconUrl.trim(),
-      launcherPromptText:
-        values.appearance.launcherPromptText.trim() ||
-        DEFAULT_WIDGET_APPEARANCE.launcherPromptText,
-      launcherPromptDelaySeconds: clampLauncherPromptDelaySeconds(
-        Number(values.appearance.launcherPromptDelaySeconds)
-      ),
-      poweredByText:
-        values.appearance.poweredByText.trim() ||
-        DEFAULT_WIDGET_APPEARANCE.poweredByText,
-    }
-    const openaiRealtimeSettings = {
-      enabled: Boolean(values.openaiRealtimeSettings.enabled),
-      model: values.openaiRealtimeSettings.model.trim() || "gpt-realtime",
-      voice: values.openaiRealtimeSettings.voice.trim() || "marin",
-    }
-    const geminiLiveSettings = {
-      enabled: Boolean(values.geminiLiveSettings.enabled),
-      model:
-        values.geminiLiveSettings.model.trim() ||
-        "gemini-2.5-flash-native-audio-preview-12-2025",
-      voice: values.geminiLiveSettings.voice.trim() || "Kore",
-    }
-    const voiceCallSettings = {
-      autoEndOnGoodbye: Boolean(values.voiceCallSettings.autoEndOnGoodbye),
-      idleTimeoutSeconds: Number(values.voiceCallSettings.idleTimeoutSeconds),
-      maxDurationSeconds: Number(values.voiceCallSettings.maxDurationSeconds),
-      customGoodbyePhrases: values.voiceCallSettings.customGoodbyePhrases
-        .split("\n")
-        .map((phrase) => phrase.trim())
-        .filter(Boolean),
-    }
-    return {
-      greetMessage: values.greetMessage,
-      systemPrompt: values.systemPrompt.trim(),
-      enabledToolIds: (values.enabledToolIds ?? undefined) as
-        | Id<"assistantTools">[]
-        | undefined,
-      chatSettings: {
-        model: values.chatSettings.model.trim() || defaultChatModel,
-      },
-      defaultSuggestions: values.defaultSuggestions,
-      helpTopics: cleanHelpTopicsForSave(values.helpTopics),
-      homeCards: cleanHomeCardsForSave(values.homeCards, values.helpTopics),
-      openaiRealtimeSettings,
-      geminiLiveSettings,
-      voiceCallSettings,
-      theme,
-      appearance,
-    }
-  }, [])
+  const buildMutationPayload = useCallback(
+    (values: FormSchema) => {
+      const theme: NonNullable<WidgetSettings["theme"]> = {
+        ...values.theme,
+        borderRadius: clampBorderRadius(Number(values.theme.borderRadius)),
+        logoUrl: values.theme.logoUrl.trim(),
+        backgroundImageUrl: values.theme.backgroundImageUrl.trim(),
+        assistantName: values.theme.assistantName.trim(),
+      }
+      const appearance: NonNullable<WidgetSettings["appearance"]> = {
+        ...values.appearance,
+        launcherLabel:
+          values.appearance.launcherLabel.trim() ||
+          DEFAULT_WIDGET_APPEARANCE.launcherLabel,
+        voiceLauncherLabel:
+          values.appearance.voiceLauncherLabel.trim() ||
+          DEFAULT_WIDGET_APPEARANCE.voiceLauncherLabel,
+        launcherIconUrl: values.appearance.launcherIconUrl.trim(),
+        launcherPromptText:
+          values.appearance.launcherPromptText.trim() ||
+          DEFAULT_WIDGET_APPEARANCE.launcherPromptText,
+        launcherPromptDelaySeconds: clampLauncherPromptDelaySeconds(
+          Number(values.appearance.launcherPromptDelaySeconds)
+        ),
+        poweredByText:
+          values.appearance.poweredByText.trim() ||
+          DEFAULT_WIDGET_APPEARANCE.poweredByText,
+      }
+      const openaiRealtimeSettings = {
+        enabled: Boolean(values.openaiRealtimeSettings.enabled),
+        model: values.openaiRealtimeSettings.model.trim() || "gpt-realtime",
+        voice: values.openaiRealtimeSettings.voice.trim() || "marin",
+      }
+      const geminiLiveSettings = {
+        enabled: Boolean(values.geminiLiveSettings.enabled),
+        model:
+          values.geminiLiveSettings.model.trim() ||
+          "gemini-2.5-flash-native-audio-preview-12-2025",
+        voice: values.geminiLiveSettings.voice.trim() || "Kore",
+      }
+      const voiceCallSettings = {
+        autoEndOnGoodbye: Boolean(values.voiceCallSettings.autoEndOnGoodbye),
+        idleTimeoutSeconds: Number(values.voiceCallSettings.idleTimeoutSeconds),
+        maxDurationSeconds: Number(values.voiceCallSettings.maxDurationSeconds),
+        customGoodbyePhrases: values.voiceCallSettings.customGoodbyePhrases
+          .split("\n")
+          .map((phrase) => phrase.trim())
+          .filter(Boolean),
+      }
+      return {
+        agentId,
+        greetMessage: values.greetMessage,
+        systemPrompt: values.systemPrompt.trim(),
+        enabledToolIds: (values.enabledToolIds ?? undefined) as
+          | Id<"assistantTools">[]
+          | undefined,
+        chatSettings: {
+          model: values.chatSettings.model.trim() || defaultChatModel,
+        },
+        defaultSuggestions: values.defaultSuggestions,
+        helpTopics: cleanHelpTopicsForSave(values.helpTopics),
+        homeCards: cleanHomeCardsForSave(values.homeCards, values.helpTopics),
+        openaiRealtimeSettings,
+        geminiLiveSettings,
+        voiceCallSettings,
+        theme,
+        appearance,
+      }
+    },
+    [agentId]
+  )
 
   const markCurrentValuesAsSaved = useCallback(
     (values: FormSchema) => {
@@ -1102,7 +1108,7 @@ export const CustomizationForm = ({
     setIsPublishing(true)
     try {
       await saveDraftWidgetSettings(buildMutationPayload(values))
-      const result = await publishDraftWidgetSettings({})
+      const result = await publishDraftWidgetSettings({ agentId })
       markCurrentValuesAsSaved(values)
       toast.success(`Published version v${result.publishedVersion}`)
     } catch {
@@ -1125,6 +1131,7 @@ export const CustomizationForm = ({
     setIsRollingBack(true)
     try {
       const result = await rollbackWidgetSettingsVersion({
+        agentId,
         version: targetVersion,
       })
       toast.success(

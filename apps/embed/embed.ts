@@ -139,6 +139,7 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
 
   // Get configuration from script tag
   let organizationId: string | null = null
+  let agentId: string | null = null
   let position: WidgetPosition = EMBED_CONFIG.DEFAULT_POSITION
 
   const getLauncherIconMarkup = (icon: WidgetLauncherIcon): string => {
@@ -835,6 +836,7 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
   const currentScript = document.currentScript as HTMLScriptElement
   if (currentScript) {
     organizationId = currentScript.getAttribute("data-organization-id")
+    agentId = currentScript.getAttribute("data-agent-id")
     position =
       (currentScript.getAttribute("data-position") as WidgetPosition) ||
       EMBED_CONFIG.DEFAULT_POSITION
@@ -850,6 +852,7 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
 
     if (embedScript) {
       organizationId = embedScript.getAttribute("data-organization-id")
+      agentId = embedScript.getAttribute("data-agent-id")
       position =
         (embedScript.getAttribute("data-position") as WidgetPosition) ||
         EMBED_CONFIG.DEFAULT_POSITION
@@ -1009,6 +1012,10 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
   function buildWidgetUrl(): string {
     const params = new URLSearchParams()
     params.append("organizationId", organizationId!)
+    const resolvedAgentId = agentId?.trim()
+    if (resolvedAgentId) {
+      params.append("agentId", resolvedAgentId)
+    }
     return `${EMBED_CONFIG.WIDGET_URL}?${params.toString()}`
   }
 
@@ -1313,6 +1320,7 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
   // Function to reinitialize with new config
   function reinit(newConfig: {
     organizationId?: string
+    agentId?: string
     position?: WidgetPosition
     animation?: WidgetAnimation
   }) {
@@ -1322,6 +1330,9 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
     // Update config
     if (newConfig.organizationId) {
       organizationId = newConfig.organizationId
+    }
+    if (newConfig.agentId !== undefined) {
+      agentId = newConfig.agentId
     }
     if (newConfig.position) {
       position = newConfig.position

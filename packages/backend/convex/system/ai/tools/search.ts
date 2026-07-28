@@ -37,7 +37,10 @@ export const search = createTool({
     )
     const widgetSettings: any = await ctx.runQuery(
       api.public.widgetSettings.getByOrganizationId,
-      { organizationId: orgId }
+      {
+        organizationId: orgId,
+        agentId: conversation.agentId,
+      }
     )
     const chatModel =
       widgetSettings?.chatSettings?.model?.trim() || OPENAI_CHAT_MODEL

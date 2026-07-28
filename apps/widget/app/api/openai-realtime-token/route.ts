@@ -16,9 +16,11 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     organizationId?: string
     contactSessionId?: string
+    agentId?: string
   } | null
   const organizationId = body?.organizationId
   const contactSessionId = body?.contactSessionId
+  const agentId = body?.agentId
 
   if (!organizationId) {
     return NextResponse.json(
@@ -41,6 +43,7 @@ export async function POST(request: Request) {
       {
         organizationId,
         contactSessionId: contactSessionId as Id<"contactSessions">,
+        agentId,
       }
     )
 

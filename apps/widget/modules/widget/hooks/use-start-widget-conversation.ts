@@ -9,6 +9,7 @@ import {
   chatReturnScreenAtom,
   contactSessionIdAtomFamily,
   conversationIdAtom,
+  agentIdAtom,
   errorMessageAtom,
   organizationIdAtom,
   pendingInitialMessageAtom,
@@ -61,6 +62,7 @@ export const useStartWidgetConversation = () => {
   const setChatReturnScreen = useSetAtom(chatReturnScreenAtom)
   const setPendingInitialMessage = useSetAtom(pendingInitialMessageAtom)
   const organizationId = useAtomValue(organizationIdAtom)
+  const agentId = useAtomValue(agentIdAtom)
   const setContactSessionId = useSetAtom(
     contactSessionIdAtomFamily(organizationId || "")
   )
@@ -93,6 +95,7 @@ export const useStartWidgetConversation = () => {
       const result = await createConversation({
         contactSessionId,
         organizationId,
+        agentId: agentId ?? undefined,
         metadata: getWidgetMetadata(),
       })
       const trimmedMessage = initialMessage?.trim()

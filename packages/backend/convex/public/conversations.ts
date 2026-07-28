@@ -218,6 +218,7 @@ export const markAsRead = mutation({
 export const create = mutation({
   args: {
     organizationId: v.string(),
+    agentId: v.optional(v.string()),
     contactSessionId: v.id("contactSessions"),
     metadata: contactSessionMetadataValidator,
   },
@@ -273,12 +274,30 @@ export const create = mutation({
       contactSessionId,
     })
 
+    const agentId = args.agentId?.trim() || "default"
     const widgetSettings = await ctx.db
       .query("widgetSettings")
-      .withIndex("by_organization_id", (q) =>
-        q.eq("organizationId", args.organizationId)
+      .withIndex("by_organization_id_and_agent_id", (q) =>
+        q.eq("organizationId", args.organizationId).eq("agentId", agentId)
       )
       .unique()
+      .then(async (settings) => {
+        if (settings || agentId !== "default") return settings
+
+        const organizationSettings = await ctx.db
+          .query("widgetSettings")
+          .withIndex("by_organization_id", (q) =>
+            q.eq("organizationId", args.organizationId)
+          )
+          .collect()
+
+        return (
+          organizationSettings.find((item) => item.isDefault) ??
+          organizationSettings.find((item) => !item.agentId) ??
+          organizationSettings[0] ??
+          null
+        )
+      })
 
     const { threadId } = await supportAgent.createThread(ctx, {
       userId: args.organizationId,
@@ -301,6 +320,7 @@ export const create = mutation({
         contactSessionId: session._id,
         status: "unresolved",
         organizationId: args.organizationId,
+        agentId,
         threadId,
         assignedToId: null,
         assignedToName: null,

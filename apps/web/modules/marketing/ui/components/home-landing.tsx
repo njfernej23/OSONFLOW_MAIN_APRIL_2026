@@ -5,7 +5,6 @@ import { createPortal } from "react-dom"
 
 import { LandingCaseStudyShowcase } from "./landing-case-study-showcase"
 import { JapandiLandingNav } from "./japandi-landing-nav"
-import { LandingScrollMotion } from "./landing-scroll-motion"
 import { landingPageBodyMarkup } from "./landing-page-markup"
 
 declare global {
@@ -16,8 +15,12 @@ declare global {
 }
 
 const LANDING_SCRIPT_ID = "osonflow-landing-main"
+const LANDING_MOTION_SCRIPT_ID = "osonflow-landing-motion"
 const LANDING_STYLES_ID = "osonflow-landing-styles"
+const LANDING_MOTION_STYLES_ID = "osonflow-landing-motion-styles"
 const LANDING_STYLES_HREF = "/landing/japandi-landing.css"
+const LANDING_MOTION_STYLES_HREF = "/landing/motion.css"
+const LANDING_MOTION_SCRIPT_HREF = "/landing/motion.js"
 
 function ensureLandingStyles() {
   const existing = document.getElementById(LANDING_STYLES_ID)
@@ -42,7 +45,41 @@ function ensureLandingStyles() {
   return link
 }
 
+function ensureLandingMotionStyles() {
+  const existing = document.getElementById(LANDING_MOTION_STYLES_ID)
+
+  if (existing instanceof HTMLLinkElement) {
+    return existing
+  }
+
+  document
+    .querySelectorAll('link[rel="stylesheet"][href*="motion.css"]')
+    .forEach((node) => {
+      if (node.id !== LANDING_MOTION_STYLES_ID) {
+        node.remove()
+      }
+    })
+
+  const link = document.createElement("link")
+  link.id = LANDING_MOTION_STYLES_ID
+  link.rel = "stylesheet"
+  link.href = LANDING_MOTION_STYLES_HREF
+  document.head.appendChild(link)
+  return link
+}
+
+function removeLandingMotionStyles() {
+  document.getElementById(LANDING_MOTION_STYLES_ID)?.remove()
+
+  document
+    .querySelectorAll('link[rel="stylesheet"][href*="motion.css"]')
+    .forEach((node) => {
+      node.remove()
+    })
+}
+
 function removeLandingStyles() {
+  removeLandingMotionStyles()
   document.getElementById(LANDING_STYLES_ID)?.remove()
 
   document
@@ -52,9 +89,31 @@ function removeLandingStyles() {
     })
 }
 
+function destroyLandingMotionChrome() {
+  document.documentElement.classList.remove("mo-on")
+  document.querySelector(".mo-progress")?.remove()
+  document.querySelector(".mo-top")?.remove()
+}
+
+function initLandingMotionScript() {
+  const existingScript = document.getElementById(LANDING_MOTION_SCRIPT_ID)
+
+  if (existingScript) {
+    destroyLandingMotionChrome()
+    existingScript.remove()
+  }
+
+  const script = document.createElement("script")
+  script.id = LANDING_MOTION_SCRIPT_ID
+  script.src = LANDING_MOTION_SCRIPT_HREF
+  script.async = true
+  document.body.appendChild(script)
+}
+
 function initLandingScript() {
   const initLanding = () => {
     window.__initOsonflowLanding?.()
+    initLandingMotionScript()
   }
 
   const existingScript = document.getElementById(LANDING_SCRIPT_ID)
@@ -102,6 +161,7 @@ export const HomeLandingPage = () => {
 
   useLayoutEffect(() => {
     ensureLandingStyles()
+    ensureLandingMotionStyles()
     mountLandingMarkup(landingContentRef.current)
     setCaseStudyHost(document.getElementById("osonflow-case-study-root"))
 
@@ -118,6 +178,8 @@ export const HomeLandingPage = () => {
 
     return () => {
       removeLandingStyles()
+      destroyLandingMotionChrome()
+      document.getElementById(LANDING_MOTION_SCRIPT_ID)?.remove()
       if ("scrollRestoration" in history) {
         history.scrollRestoration = previousRestoration || "auto"
       }
@@ -133,6 +195,8 @@ export const HomeLandingPage = () => {
 
     return () => {
       window.__destroyOsonflowLanding?.()
+      destroyLandingMotionChrome()
+      document.getElementById(LANDING_MOTION_SCRIPT_ID)?.remove()
       document.body.style.overflow = ""
     }
   }, [])
@@ -144,7 +208,6 @@ export const HomeLandingPage = () => {
       {caseStudyHost
         ? createPortal(<LandingCaseStudyShowcase />, caseStudyHost)
         : null}
-      <LandingScrollMotion />
     </div>
   )
 }

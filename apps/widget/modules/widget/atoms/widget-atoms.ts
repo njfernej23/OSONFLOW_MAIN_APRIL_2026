@@ -32,6 +32,7 @@ export type WidgetHomeHelpCard =
 export const screenAtom = atom<WidgetScreen>("loading")
 export const widgetModeAtom = atom<WidgetMode>("standard")
 export const organizationIdAtom = atom<string | null>(null)
+export const agentIdAtom = atom<string | null>(null)
 export const contactSessionIdAtomFamily = atomFamily(
   (organizationId: string) => {
     return atomWithStorage<Id<"contactSessions"> | null>(

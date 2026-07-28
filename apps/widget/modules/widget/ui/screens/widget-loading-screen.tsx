@@ -3,6 +3,7 @@ import { useAction, useMutation, useQuery } from "convex/react"
 import { useAtomValue, useSetAtom } from "jotai"
 import {
   activeVoiceProviderAtom,
+  agentIdAtom,
   errorMessageAtom,
   screenAtom,
   organizationIdAtom,
@@ -22,15 +23,18 @@ type InitStep = "org" | "session" | "settings" | "voice" | "done"
 export const WidgetLoadingScreen = ({
   mode = "standard",
   organizationId,
+  agentId,
 }: {
   mode?: WidgetMode
   organizationId: string | null
+  agentId?: string | null
   parentPageUrl?: string
 }) => {
   const [step, setStep] = useState<InitStep>("org")
   const setWidgetSettings = useSetAtom(widgetSettingsAtom)
   const setErrorMessage = useSetAtom(errorMessageAtom)
   const setOrganizationId = useSetAtom(organizationIdAtom)
+  const setAgentId = useSetAtom(agentIdAtom)
   const setActiveVoiceProvider = useSetAtom(activeVoiceProviderAtom)
   const setWidgetMode = useSetAtom(widgetModeAtom)
 
@@ -57,6 +61,7 @@ export const WidgetLoadingScreen = ({
       .then((result) => {
         if (result.valid) {
           setOrganizationId(organizationId)
+          setAgentId(agentId?.trim() || null)
           setStep("session")
         } else {
           setErrorMessage(result.reason || "Invalid configuration")
@@ -70,9 +75,11 @@ export const WidgetLoadingScreen = ({
   }, [
     step,
     organizationId,
+    agentId,
     setScreen,
     setErrorMessage,
     setOrganizationId,
+    setAgentId,
     validateOrganization,
     setStep,
   ])
@@ -119,7 +126,9 @@ export const WidgetLoadingScreen = ({
   // Step 3: load widget settings
   const widgetSettings = useQuery(
     api.public.widgetSettings.getByOrganizationId,
-    organizationId ? { organizationId } : "skip"
+    organizationId
+      ? { organizationId, agentId: agentId?.trim() || undefined }
+      : "skip"
   )
 
   useEffect(() => {

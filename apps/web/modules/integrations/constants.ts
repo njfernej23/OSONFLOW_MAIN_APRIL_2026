@@ -107,24 +107,40 @@ export type IntegrationSnippetOptions = {
     organizationId: string;
     scriptUrl: string;
     position: WidgetPosition;
+    agentId?: string;
+};
+
+const DEFAULT_AGENT_ID = "default";
+
+const resolveAgentId = (agentId?: string) => {
+    const trimmed = agentId?.trim();
+    return trimmed && trimmed.length > 0 ? trimmed : DEFAULT_AGENT_ID;
 };
 
 const createHtmlSnippet = ({
     organizationId,
     scriptUrl,
     position,
-}: IntegrationSnippetOptions) => `<script
+    agentId,
+}: IntegrationSnippetOptions) => {
+    const resolvedAgentId = resolveAgentId(agentId);
+    return `<script
   src="${scriptUrl}"
   data-organization-id="${organizationId}"
+  data-agent-id="${resolvedAgentId}"
   data-position="${position}"
   defer
 ></script>`;
+};
 
 const createReactSnippet = ({
     organizationId,
     scriptUrl,
     position,
-}: IntegrationSnippetOptions) => `import { useEffect } from "react";
+    agentId,
+}: IntegrationSnippetOptions) => {
+    const resolvedAgentId = resolveAgentId(agentId);
+    return `import { useEffect } from "react";
 
 export const EchoWidget = () => {
   useEffect(() => {
@@ -132,6 +148,7 @@ export const EchoWidget = () => {
     script.src = "${scriptUrl}";
     script.defer = true;
     script.dataset.organizationId = "${organizationId}";
+    script.dataset.agentId = "${resolvedAgentId}";
     script.dataset.position = "${position}";
 
     document.body.appendChild(script);
@@ -145,12 +162,16 @@ export const EchoWidget = () => {
 
   return null;
 };`;
+};
 
 const createNextSnippet = ({
     organizationId,
     scriptUrl,
     position,
-}: IntegrationSnippetOptions) => `import Script from "next/script";
+    agentId,
+}: IntegrationSnippetOptions) => {
+    const resolvedAgentId = resolveAgentId(agentId);
+    return `import Script from "next/script";
 
 export const EchoWidgetScript = () => (
   <Script
@@ -158,23 +179,30 @@ export const EchoWidgetScript = () => (
     src="${scriptUrl}"
     strategy="afterInteractive"
     data-organization-id="${organizationId}"
+    data-agent-id="${resolvedAgentId}"
     data-position="${position}"
   />
 );`;
+};
 
 const createJavascriptSnippet = ({
     organizationId,
     scriptUrl,
     position,
-}: IntegrationSnippetOptions) => `(function initEchoWidget() {
+    agentId,
+}: IntegrationSnippetOptions) => {
+    const resolvedAgentId = resolveAgentId(agentId);
+    return `(function initEchoWidget() {
   const script = document.createElement("script");
   script.src = "${scriptUrl}";
   script.defer = true;
   script.dataset.organizationId = "${organizationId}";
+  script.dataset.agentId = "${resolvedAgentId}";
   script.dataset.position = "${position}";
 
   document.head.appendChild(script);
 })();`;
+};
 
 export const INTEGRATION_SNIPPET_BUILDERS: Record<
     IntegrationId,

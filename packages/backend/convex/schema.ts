@@ -296,6 +296,9 @@ export default defineSchema({
   }).index("by_organization_id", ["organizationId"]),
   widgetSettings: defineTable({
     organizationId: v.string(),
+    agentId: v.optional(v.string()),
+    name: v.optional(v.string()),
+    isDefault: v.optional(v.boolean()),
     greetMessage: v.string(),
     systemPrompt: v.optional(v.string()),
     enabledToolIds: v.optional(v.array(v.id("assistantTools"))),
@@ -315,9 +318,12 @@ export default defineSchema({
     publishedBy: v.optional(v.string()),
     draftUpdatedAt: v.optional(v.number()),
     draftUpdatedBy: v.optional(v.string()),
-  }).index("by_organization_id", ["organizationId"]),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_organization_id_and_agent_id", ["organizationId", "agentId"]),
   widgetSettingsVersions: defineTable({
     organizationId: v.string(),
+    agentId: v.optional(v.string()),
     version: v.number(),
     settings: widgetSettingsSnapshotValidator,
     publishedAt: v.number(),
@@ -330,6 +336,7 @@ export default defineSchema({
     sourceVersion: v.optional(v.number()),
   })
     .index("by_organization_id", ["organizationId"])
+    .index("by_organization_id_and_agent_id", ["organizationId", "agentId"])
     .index("by_organization_id_and_version", ["organizationId", "version"]),
   assistantTools: defineTable({
     organizationId: v.string(),
@@ -528,6 +535,7 @@ export default defineSchema({
   conversations: defineTable({
     threadId: v.string(),
     organizationId: v.string(),
+    agentId: v.optional(v.string()),
     contactSessionId: v.id("contactSessions"),
     status: v.union(
       v.literal("unresolved"),

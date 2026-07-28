@@ -33,6 +33,9 @@ const DEFAULT_APPEARANCE = {
 }
 
 const MAX_WIDGET_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
+const DEFAULT_AGENT_ID = "default"
+const FREE_AGENT_LIMIT = 1
+const PRO_AGENT_LIMIT = 5
 
 const defaultSuggestionsValidator = v.object({
   suggestion1: v.optional(v.string()),
@@ -147,6 +150,7 @@ const appearanceValidator = v.object({
 })
 
 const widgetSettingsArgsValidator = {
+  agentId: v.optional(v.string()),
   greetMessage: v.string(),
   systemPrompt: v.optional(v.string()),
   enabledToolIds: v.optional(v.array(v.id("assistantTools"))),
@@ -160,6 +164,10 @@ const widgetSettingsArgsValidator = {
   voiceCallSettings: v.optional(voiceCallSettingsValidator),
   theme: v.optional(themeValidator),
   appearance: v.optional(appearanceValidator),
+} as const
+
+const agentScopedArgsValidator = {
+  agentId: v.optional(v.string()),
 } as const
 
 type WidgetTheme = {
@@ -715,6 +723,41 @@ const getAuthContext = async (ctx: any) => {
 
 const getWidgetSettingsByOrganizationId = async (
   ctx: any,
+  organizationId: string,
+  agentId = DEFAULT_AGENT_ID
+) => {
+  const byAgentId = await ctx.db
+    .query("widgetSettings")
+    .withIndex("by_organization_id_and_agent_id", (q: any) =>
+      q.eq("organizationId", organizationId).eq("agentId", agentId)
+    )
+    .unique()
+
+  if (byAgentId) {
+    return byAgentId
+  }
+
+  if (agentId !== DEFAULT_AGENT_ID) {
+    return null
+  }
+
+  const organizationSettings = await ctx.db
+    .query("widgetSettings")
+    .withIndex("by_organization_id", (q: any) =>
+      q.eq("organizationId", organizationId)
+    )
+    .collect()
+
+  return (
+    organizationSettings.find((settings: any) => settings.isDefault) ??
+    organizationSettings.find((settings: any) => !settings.agentId) ??
+    organizationSettings[0] ??
+    null
+  )
+}
+
+const listWidgetSettingsForOrganization = async (
+  ctx: any,
   organizationId: string
 ) => {
   return await ctx.db
@@ -722,8 +765,33 @@ const getWidgetSettingsByOrganizationId = async (
     .withIndex("by_organization_id", (q: any) =>
       q.eq("organizationId", organizationId)
     )
-    .unique()
+    .collect()
 }
+
+const getAgentLimitForOrganization = async (
+  ctx: any,
+  organizationId: string
+) => {
+  const subscription = await ctx.db
+    .query("subscriptions")
+    .withIndex("by_organization_id", (q: any) =>
+      q.eq("organizationId", organizationId)
+    )
+    .unique()
+
+  const isPro =
+    subscription?.status === "active" ||
+    subscription?.status === "trialing" ||
+    subscription?.status === "past_due"
+
+  return isPro ? PRO_AGENT_LIMIT : FREE_AGENT_LIMIT
+}
+
+const normalizeAgentId = (agentId?: string) =>
+  agentId?.trim() || DEFAULT_AGENT_ID
+
+const createAgentId = () =>
+  `agent_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
 
 const applyPublishedSnapshotPatch = (snapshot: WidgetSettingsSnapshot) => ({
   greetMessage: snapshot.greetMessage,
@@ -745,6 +813,7 @@ const insertVersionRecord = async (
   ctx: any,
   args: {
     organizationId: string
+    agentId: string
     version: number
     settings: WidgetSettingsSnapshot
     publishedAt: number
@@ -755,6 +824,7 @@ const insertVersionRecord = async (
 ) => {
   await ctx.db.insert("widgetSettingsVersions", {
     organizationId: args.organizationId,
+    agentId: args.agentId,
     version: args.version,
     settings: args.settings,
     publishedAt: args.publishedAt,
@@ -767,6 +837,7 @@ const insertVersionRecord = async (
 const ensureBaselineVersionRecord = async (
   ctx: any,
   organizationId: string,
+  agentId: string,
   widgetSettings: any,
   actorId?: string
 ) => {
@@ -774,10 +845,13 @@ const ensureBaselineVersionRecord = async (
 
   const existingBaseline = await ctx.db
     .query("widgetSettingsVersions")
-    .withIndex("by_organization_id_and_version", (q: any) =>
-      q.eq("organizationId", organizationId).eq("version", baselineVersion)
+    .withIndex("by_organization_id_and_agent_id", (q: any) =>
+      q.eq("organizationId", organizationId).eq("agentId", agentId)
     )
-    .unique()
+    .collect()
+    .then((versions: any[]) =>
+      versions.find((version) => version.version === baselineVersion)
+    )
 
   if (existingBaseline) {
     return
@@ -785,6 +859,7 @@ const ensureBaselineVersionRecord = async (
 
   await insertVersionRecord(ctx, {
     organizationId,
+    agentId,
     version: baselineVersion,
     settings: getPublishedSnapshot(widgetSettings),
     publishedAt: widgetSettings.publishedAt ?? widgetSettings._creationTime,
@@ -796,13 +871,15 @@ const ensureBaselineVersionRecord = async (
 const saveDraftForOrganization = async (
   ctx: any,
   organizationId: string,
+  agentId: string,
   actorId: string | undefined,
   draftArgs: WidgetSettingsSnapshot
 ) => {
   const now = Date.now()
   const existingWidgetSettings = await getWidgetSettingsByOrganizationId(
     ctx,
-    organizationId
+    organizationId,
+    agentId
   )
 
   if (existingWidgetSettings) {
@@ -813,6 +890,9 @@ const saveDraftForOrganization = async (
     const nextDraft = normalizeSnapshot(draftArgs, baseDraftSnapshot)
 
     await ctx.db.patch(existingWidgetSettings._id, {
+      agentId,
+      isDefault:
+        existingWidgetSettings.isDefault ?? agentId === DEFAULT_AGENT_ID,
       draft: nextDraft,
       draftUpdatedAt: now,
       draftUpdatedBy: actorId,
@@ -831,6 +911,9 @@ const saveDraftForOrganization = async (
 
   await ctx.db.insert("widgetSettings", {
     organizationId,
+    agentId,
+    name: agentId === DEFAULT_AGENT_ID ? "Default agent" : "New agent",
+    isDefault: agentId === DEFAULT_AGENT_ID,
     ...applyPublishedSnapshotPatch(initialPublished),
     draft: nextDraft,
     publishedVersion: 1,
@@ -842,6 +925,7 @@ const saveDraftForOrganization = async (
 
   await insertVersionRecord(ctx, {
     organizationId,
+    agentId,
     version: 1,
     settings: initialPublished,
     publishedAt: now,
@@ -854,7 +938,8 @@ export const upsert = mutation({
   args: widgetSettingsArgsValidator,
   handler: async (ctx, args) => {
     const { organizationId, actorId } = await getAuthContext(ctx)
-    await saveDraftForOrganization(ctx, organizationId, actorId, args)
+    const agentId = normalizeAgentId(args.agentId)
+    await saveDraftForOrganization(ctx, organizationId, agentId, actorId, args)
   },
 })
 
@@ -862,7 +947,8 @@ export const saveDraft = mutation({
   args: widgetSettingsArgsValidator,
   handler: async (ctx, args) => {
     const { organizationId, actorId } = await getAuthContext(ctx)
-    await saveDraftForOrganization(ctx, organizationId, actorId, args)
+    const agentId = normalizeAgentId(args.agentId)
+    await saveDraftForOrganization(ctx, organizationId, agentId, actorId, args)
   },
 })
 
@@ -920,12 +1006,14 @@ export const getUploadedImageUrl = mutation({
 })
 
 export const publishDraft = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: agentScopedArgsValidator,
+  handler: async (ctx, args) => {
     const { organizationId, actorId } = await getAuthContext(ctx)
+    const agentId = normalizeAgentId(args.agentId)
     const existingWidgetSettings = await getWidgetSettingsByOrganizationId(
       ctx,
-      organizationId
+      organizationId,
+      agentId
     )
 
     if (!existingWidgetSettings) {
@@ -938,6 +1026,7 @@ export const publishDraft = mutation({
     await ensureBaselineVersionRecord(
       ctx,
       organizationId,
+      agentId,
       existingWidgetSettings,
       actorId
     )
@@ -958,6 +1047,7 @@ export const publishDraft = mutation({
 
     await insertVersionRecord(ctx, {
       organizationId,
+      agentId,
       version: nextVersion,
       settings: draftSnapshot,
       publishedAt: now,
@@ -971,6 +1061,7 @@ export const publishDraft = mutation({
 
 export const rollbackToVersion = mutation({
   args: {
+    agentId: v.optional(v.string()),
     version: v.number(),
   },
   handler: async (ctx, args) => {
@@ -982,9 +1073,11 @@ export const rollbackToVersion = mutation({
     }
 
     const { organizationId, actorId } = await getAuthContext(ctx)
+    const agentId = normalizeAgentId(args.agentId)
     const existingWidgetSettings = await getWidgetSettingsByOrganizationId(
       ctx,
-      organizationId
+      organizationId,
+      agentId
     )
 
     if (!existingWidgetSettings) {
@@ -997,16 +1090,20 @@ export const rollbackToVersion = mutation({
     await ensureBaselineVersionRecord(
       ctx,
       organizationId,
+      agentId,
       existingWidgetSettings,
       actorId
     )
 
     const targetVersion = await ctx.db
       .query("widgetSettingsVersions")
-      .withIndex("by_organization_id_and_version", (q: any) =>
-        q.eq("organizationId", organizationId).eq("version", args.version)
+      .withIndex("by_organization_id_and_agent_id", (q: any) =>
+        q.eq("organizationId", organizationId).eq("agentId", agentId)
       )
-      .unique()
+      .collect()
+      .then((versions: any[]) =>
+        versions.find((version) => version.version === args.version)
+      )
 
     if (!targetVersion) {
       throw new ConvexError({
@@ -1034,6 +1131,7 @@ export const rollbackToVersion = mutation({
 
     await insertVersionRecord(ctx, {
       organizationId,
+      agentId,
       version: nextVersion,
       settings: rollbackSnapshot,
       publishedAt: now,
@@ -1049,21 +1147,183 @@ export const rollbackToVersion = mutation({
   },
 })
 
-export const getOne = query({
+export const listAgents = query({
   args: {},
   handler: async (ctx) => {
     const { organizationId } = await getAuthContext(ctx)
-    return await getWidgetSettingsByOrganizationId(ctx, organizationId)
+    const settingsRows = await listWidgetSettingsForOrganization(
+      ctx,
+      organizationId
+    )
+    const limit = await getAgentLimitForOrganization(ctx, organizationId)
+
+    const agents = settingsRows
+      .map((settings: any) => {
+        const agentId = settings.agentId ?? DEFAULT_AGENT_ID
+        return {
+          agentId,
+          name:
+            settings.name ??
+            settings.theme?.assistantName ??
+            (agentId === DEFAULT_AGENT_ID ? "Default agent" : "New agent"),
+          isDefault: settings.isDefault ?? agentId === DEFAULT_AGENT_ID,
+          publishedVersion: settings.publishedVersion ?? 1,
+          updatedAt:
+            settings.draftUpdatedAt ??
+            settings.publishedAt ??
+            settings._creationTime,
+        }
+      })
+      .sort((a: any, b: any) => {
+        if (a.isDefault) return -1
+        if (b.isDefault) return 1
+        return b.updatedAt - a.updatedAt
+      })
+
+    const effectiveAgentCount = Math.max(agents.length, 1)
+
+    return {
+      agents: agents.length
+        ? agents
+        : [
+            {
+              agentId: DEFAULT_AGENT_ID,
+              name: "Default agent",
+              isDefault: true,
+              publishedVersion: 1,
+              updatedAt: undefined,
+            },
+          ],
+      limit,
+      canCreateAgent: effectiveAgentCount < limit,
+    }
+  },
+})
+
+export const createAgent = mutation({
+  args: {
+    name: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { organizationId, actorId } = await getAuthContext(ctx)
+    const existingAgents = await listWidgetSettingsForOrganization(
+      ctx,
+      organizationId
+    )
+    const limit = await getAgentLimitForOrganization(ctx, organizationId)
+
+    const effectiveAgentCount = Math.max(existingAgents.length, 1)
+
+    if (effectiveAgentCount >= limit) {
+      throw new ConvexError({
+        code: "LIMIT_REACHED",
+        message:
+          limit === FREE_AGENT_LIMIT
+            ? "Upgrade to Pro to create more agents."
+            : `You can create up to ${limit} agents on this plan.`,
+      })
+    }
+
+    const agentId = createAgentId()
+    const now = Date.now()
+    const initialPublished = createDefaultWidgetSettings()
+    const name = args.name?.trim() || `Agent ${effectiveAgentCount + 1}`
+
+    await ctx.db.insert("widgetSettings", {
+      organizationId,
+      agentId,
+      name,
+      isDefault: false,
+      ...applyPublishedSnapshotPatch({
+        ...initialPublished,
+        theme: {
+          ...initialPublished.theme,
+          assistantName: name,
+        },
+      }),
+      draft: {
+        ...initialPublished,
+        theme: {
+          ...initialPublished.theme,
+          assistantName: name,
+        },
+      },
+      publishedVersion: 1,
+      publishedAt: now,
+      publishedBy: actorId,
+      draftUpdatedAt: now,
+      draftUpdatedBy: actorId,
+    })
+
+    await insertVersionRecord(ctx, {
+      organizationId,
+      agentId,
+      version: 1,
+      settings: initialPublished,
+      publishedAt: now,
+      publishedBy: actorId,
+      action: "bootstrap",
+    })
+
+    return { agentId }
+  },
+})
+
+export const renameAgent = mutation({
+  args: {
+    agentId: v.optional(v.string()),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { organizationId } = await getAuthContext(ctx)
+    const agentId = normalizeAgentId(args.agentId)
+    const name = args.name.trim()
+
+    if (!name) {
+      throw new ConvexError({
+        code: "INVALID_INPUT",
+        message: "Agent name is required.",
+      })
+    }
+
+    const widgetSettings = await getWidgetSettingsByOrganizationId(
+      ctx,
+      organizationId,
+      agentId
+    )
+
+    if (!widgetSettings) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "Agent not found.",
+      })
+    }
+
+    await ctx.db.patch(widgetSettings._id, { agentId, name })
+  },
+})
+
+export const getOne = query({
+  args: agentScopedArgsValidator,
+  handler: async (ctx, args) => {
+    const { organizationId } = await getAuthContext(ctx)
+    return await getWidgetSettingsByOrganizationId(
+      ctx,
+      organizationId,
+      normalizeAgentId(args.agentId)
+    )
   },
 })
 
 export const getCustomizationState = query({
-  args: {},
-  handler: async (ctx) => {
+  args: agentScopedArgsValidator,
+  handler: async (ctx, args) => {
     const { organizationId } = await getAuthContext(ctx)
+    const agentId = normalizeAgentId(args.agentId)
     const widgetSettings = await getWidgetSettingsByOrganizationId(
       ctx,
-      organizationId
+      organizationId,
+      agentId
     )
 
     if (!widgetSettings) {
@@ -1072,6 +1332,8 @@ export const getCustomizationState = query({
       return {
         published: defaults,
         draft: defaults,
+        agentId,
+        agentName: agentId === DEFAULT_AGENT_ID ? "Default agent" : "New agent",
         publishedVersion: 1,
         publishedAt: undefined,
         draftUpdatedAt: undefined,
@@ -1091,8 +1353,8 @@ export const getCustomizationState = query({
 
     const versionDocs = await ctx.db
       .query("widgetSettingsVersions")
-      .withIndex("by_organization_id", (q: any) =>
-        q.eq("organizationId", organizationId)
+      .withIndex("by_organization_id_and_agent_id", (q: any) =>
+        q.eq("organizationId", organizationId).eq("agentId", agentId)
       )
       .collect()
 
@@ -1110,6 +1372,8 @@ export const getCustomizationState = query({
     return {
       published,
       draft,
+      agentId,
+      agentName: widgetSettings.name ?? "Default agent",
       publishedVersion: widgetSettings.publishedVersion ?? 1,
       publishedAt: widgetSettings.publishedAt ?? widgetSettings._creationTime,
       draftUpdatedAt:

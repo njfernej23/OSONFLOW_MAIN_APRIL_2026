@@ -379,6 +379,7 @@ export const IntegrationsView = () => {
     useState<IntegrationId>("html5")
   const [scriptUrl, setScriptUrl] = useState(DEFAULT_WIDGET_SCRIPT_URL)
   const [position, setPosition] = useState<WidgetPosition>("bottom-right")
+  const [selectedAgentId, setSelectedAgentId] = useState("default")
   const [snippetCopied, setSnippetCopied] = useState(false)
 
   const [selectedWebhookProvider, setSelectedWebhookProvider] =
@@ -421,6 +422,8 @@ export const IntegrationsView = () => {
   const [isConnectingWhatsapp, setIsConnectingWhatsapp] = useState(false)
   const [isDisconnectingWhatsapp, setIsDisconnectingWhatsapp] = useState(false)
 
+  const agentsState = useQuery(api.private.widgetSettings.listAgents)
+
   const normalizedScriptUrl = useMemo(
     () => normalizeScriptUrl(scriptUrl),
     [scriptUrl]
@@ -437,6 +440,21 @@ export const IntegrationsView = () => {
     () => webhookProviderById[selectedWebhookProvider],
     [selectedWebhookProvider]
   )
+  const agents = (agentsState?.agents ?? []) as Array<{
+    agentId: string
+    name: string
+    isDefault: boolean
+  }>
+
+  useEffect(() => {
+    if (!agentsState || agents.length === 0) return
+    const exists = agents.some(
+      (agent: { agentId: string }) => agent.agentId === selectedAgentId
+    )
+    if (!exists) {
+      setSelectedAgentId(agents[0]?.agentId ?? "default")
+    }
+  }, [agents, agentsState, selectedAgentId])
 
   const snippet = useMemo(() => {
     if (!organization?.id) return ""
@@ -444,8 +462,15 @@ export const IntegrationsView = () => {
       organizationId: organization.id,
       scriptUrl: normalizedScriptUrl,
       position,
+      agentId: selectedAgentId,
     })
-  }, [organization?.id, selectedIntegration, normalizedScriptUrl, position])
+  }, [
+    organization?.id,
+    selectedIntegration,
+    normalizedScriptUrl,
+    position,
+    selectedAgentId,
+  ])
 
   const snippetTokens = useMemo(() => tokenizeSnippet(snippet), [snippet])
 
@@ -924,6 +949,7 @@ export const IntegrationsView = () => {
     setSelectedIntegration("html5")
     setScriptUrl(DEFAULT_WIDGET_SCRIPT_URL)
     setPosition("bottom-right")
+    setSelectedAgentId(agents[0]?.agentId ?? "default")
   }
 
   const webhookDestinations = webhookDashboard?.webhooks ?? []
@@ -1252,6 +1278,38 @@ export const IntegrationsView = () => {
                   </Select>
                 </div>
 
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="widget-agent"
+                    className="text-xs text-sidebar-foreground/58"
+                  >
+                    Agent
+                  </Label>
+                  <Select
+                    onValueChange={setSelectedAgentId}
+                    value={selectedAgentId}
+                    disabled={agentsState === undefined || agents.length === 0}
+                  >
+                    <SelectTrigger
+                      className="h-10 w-full min-w-0 bg-sidebar-accent/70"
+                      id="widget-agent"
+                    >
+                      <SelectValue placeholder="Select agent" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {agents.map((agent) => (
+                        <SelectItem key={agent.agentId} value={agent.agentId}>
+                          {agent.name}
+                          {agent.isDefault ? " (default)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Embeds load this agent&apos;s published settings.
+                  </p>
+                </div>
+
                 <button
                   className="text-xs font-medium text-sidebar-primary transition-colors hover:text-sidebar-primary/80"
                   onClick={resetGenerator}
@@ -1272,7 +1330,7 @@ export const IntegrationsView = () => {
                     {selectedIntegrationItem?.title ?? "Framework"} install code
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    Includes your organization ID and launcher position.
+                    Includes your organization ID, agent, and launcher position.
                   </p>
                 </div>
                 <Button

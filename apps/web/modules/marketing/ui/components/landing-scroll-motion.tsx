@@ -30,7 +30,7 @@ const KIND_SELECTORS: Record<MotionKind, string[]> = {
   faq: [".lede", ".acc"],
   cta: [".site-end__panel"],
   logos: [".trust__label", ".case-logo-btn", ".logo-img", ".trustband .logo-img"],
-  channels: [".lede", ".channel", ".channels__grid > *", ".int-marquee"],
+  channels: [".lede", ".channel", ".channels__grid > *"],
   xroom: [".lede", ".xstage"],
   analytics: [".lede", ".opsboard"],
   tenancy: [".tenancy__intro", ".tenancy__board"],
@@ -302,7 +302,7 @@ async function runAnimation(kind: MotionKind, targets: HTMLElement[]) {
 
 function bindCardHover(root: Element) {
   const cards = root.querySelectorAll(
-    ".plan, .channel, .int-marquee, .method__step"
+    ".plan, .channel, .method__step"
   )
   const cleanups: Array<() => void> = []
 

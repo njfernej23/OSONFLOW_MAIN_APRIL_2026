@@ -89,15 +89,21 @@ export const createOpenAIRealtimeSession = action({
   args: {
     organizationId: v.string(),
     contactSessionId: v.id("contactSessions"),
+    agentId: v.optional(v.string()),
   },
   handler: async (
     ctx: any,
-    args: { organizationId: string; contactSessionId: string }
+    args: {
+      organizationId: string
+      contactSessionId: string
+      agentId?: string
+    }
   ): Promise<TokenActionResponse> => {
     const widgetSettings: any = await ctx.runQuery(
       api.public.widgetSettings.getByOrganizationId,
       {
         organizationId: args.organizationId,
+        agentId: args.agentId,
       }
     )
 
@@ -233,16 +239,22 @@ export const createGeminiLiveToken = action({
   args: {
     organizationId: v.string(),
     contactSessionId: v.id("contactSessions"),
+    agentId: v.optional(v.string()),
   },
   handler: async (
     ctx: any,
-    args: { organizationId: string; contactSessionId: string }
+    args: {
+      organizationId: string
+      contactSessionId: string
+      agentId?: string
+    }
   ): Promise<TokenActionResponse> => {
     try {
       const widgetSettings: any = await ctx.runQuery(
         api.public.widgetSettings.getByOrganizationId,
         {
           organizationId: args.organizationId,
+          agentId: args.agentId,
         }
       )
 

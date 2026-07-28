@@ -18,6 +18,17 @@ import {
 } from "./translations"
 
 const LANGUAGE_STORAGE_KEY = "osonflow-language"
+const I18N_ORIGINAL_HTML_ATTR = "data-i18n-original-html"
+const HEADLINE_SELECTORS = [
+  ".hero__title",
+  ".lede__title",
+  ".method__title",
+  ".signal__title",
+  ".site-end__title",
+  ".tenancy__title",
+  ".feature__copy h2",
+  ".embed__copy h3",
+].join(", ")
 
 type LanguageContextValue = {
   language: Language
@@ -28,6 +39,7 @@ type LanguageContextValue = {
 const LanguageContext = createContext<LanguageContextValue | null>(null)
 
 const textNodeOriginals = new WeakMap<Text, string>()
+let translatePassDepth = 0
 
 const ATTRIBUTES_TO_TRANSLATE = [
   "aria-label",
@@ -36,6 +48,12 @@ const ATTRIBUTES_TO_TRANSLATE = [
   "title",
   "data-placeholder",
 ]
+
+declare global {
+  interface Window {
+    __osonflowSplitHeadlines?: (root?: ParentNode | Document | Element) => void
+  }
+}
 
 const isLanguage = (value: string | null): value is Language =>
   SUPPORTED_LANGUAGES.includes(value as Language)
@@ -71,7 +89,19 @@ function preserveSpacing(original: string, translated: string) {
   return `${leading}${translated}${trailing}`
 }
 
+function isInsideMotionWord(node: Node) {
+  return (
+    node.parentElement?.classList.contains("mo-word") ||
+    node.parentElement?.closest(".mo-host") != null
+  )
+}
+
 function translateTextNode(node: Text, language: Language) {
+  // Word-split headlines are handled as whole hosts — skip fragment nodes.
+  if (isInsideMotionWord(node)) {
+    return
+  }
+
   const currentValue = node.nodeValue ?? ""
   const storedOriginal = textNodeOriginals.get(node)
   const currentLooksTranslatable =
@@ -123,31 +153,134 @@ function translateElementAttributes(element: Element, language: Language) {
   }
 }
 
-function translateDom(root: Node, language: Language) {
-  if (root.nodeType === Node.TEXT_NODE) {
-    translateTextNode(root as Text, language)
-    return
-  }
-
-  if (root instanceof Element) {
-    translateElementAttributes(root, language)
-  }
-
-  const walker = document.createTreeWalker(
-    root,
-    NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT
-  )
-
+function translateSubtreeText(root: ParentNode, language: Language) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
   let current = walker.nextNode()
 
   while (current) {
-    if (current.nodeType === Node.TEXT_NODE) {
-      translateTextNode(current as Text, language)
-    } else if (current.nodeType === Node.ELEMENT_NODE) {
-      translateElementAttributes(current as Element, language)
+    const node = current as Text
+    const currentValue = node.nodeValue ?? ""
+    const storedOriginal = textNodeOriginals.get(node)
+    const currentLooksTranslatable =
+      language !== "en" && translateText(currentValue, language) !== currentValue
+    const originalValue = currentLooksTranslatable
+      ? currentValue
+      : storedOriginal ?? currentValue
+    const normalized = normalizeTranslatableText(originalValue)
+
+    if (normalized) {
+      const nextValue =
+        language === "en"
+          ? originalValue
+          : preserveSpacing(originalValue, translateText(originalValue, language))
+
+      if (nextValue !== currentValue) {
+        textNodeOriginals.set(node, originalValue)
+        node.nodeValue = nextValue
+      }
     }
 
     current = walker.nextNode()
+  }
+}
+
+function ensureHeadlineSnapshots(root: ParentNode) {
+  root.querySelectorAll?.(HEADLINE_SELECTORS).forEach((node) => {
+    if (!(node instanceof HTMLElement)) return
+    if (node.getAttribute(I18N_ORIGINAL_HTML_ATTR)) return
+    if (node.querySelector(".mo-word")) return
+    node.setAttribute(I18N_ORIGINAL_HTML_ATTR, node.innerHTML)
+  })
+}
+
+function translateMotionHeadline(el: HTMLElement, language: Language) {
+  let originalHtml = el.getAttribute(I18N_ORIGINAL_HTML_ATTR)
+
+  if (!originalHtml) {
+    // First time seeing a split host without a snapshot — capture English from words.
+    const clone = el.cloneNode(true) as HTMLElement
+    clone.querySelectorAll(".mo-word").forEach((word) => {
+      const parent = word.parentNode
+      if (!parent) return
+      parent.replaceChild(document.createTextNode(word.textContent ?? ""), word)
+    })
+    originalHtml = clone.innerHTML
+    el.setAttribute(I18N_ORIGINAL_HTML_ATTR, originalHtml)
+  }
+
+  const shell = document.createElement("div")
+  shell.innerHTML = originalHtml
+  translateSubtreeText(shell, language)
+  el.innerHTML = shell.innerHTML
+  el.classList.remove("mo-host")
+  delete el.dataset.moSplit
+}
+
+function translateMotionHeadlines(root: ParentNode, language: Language) {
+  ensureHeadlineSnapshots(root)
+
+  const hosts = root.querySelectorAll?.(
+    `${HEADLINE_SELECTORS}, .mo-host, [data-mo-split], [data-i18n-original-html]`
+  )
+
+  if (!hosts?.length) return
+
+  const seen = new Set<HTMLElement>()
+  hosts.forEach((node) => {
+    if (!(node instanceof HTMLElement) || seen.has(node)) return
+    if (!node.matches(HEADLINE_SELECTORS) && !node.hasAttribute(I18N_ORIGINAL_HTML_ATTR)) {
+      return
+    }
+    seen.add(node)
+    translateMotionHeadline(node, language)
+  })
+
+  // Re-apply word split for animation after language swap.
+  window.__osonflowSplitHeadlines?.(root instanceof Element ? root : document)
+}
+
+function translateDom(root: Node, language: Language) {
+  if (translatePassDepth > 0) {
+    // Avoid re-entrancy from MutationObserver while we rewrite headlines.
+    if (root.nodeType === Node.TEXT_NODE) {
+      translateTextNode(root as Text, language)
+    }
+    return
+  }
+
+  translatePassDepth += 1
+  try {
+    if (root.nodeType === Node.TEXT_NODE) {
+      translateTextNode(root as Text, language)
+      return
+    }
+
+    if (root instanceof Element) {
+      translateElementAttributes(root, language)
+    }
+
+    if (root instanceof Element || root instanceof Document) {
+      translateMotionHeadlines(root, language)
+    }
+
+    const walker = document.createTreeWalker(
+      root,
+      NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT
+    )
+
+    let current = walker.nextNode()
+
+    while (current) {
+      if (current.nodeType === Node.TEXT_NODE) {
+        translateTextNode(current as Text, language)
+      } else if (current.nodeType === Node.ELEMENT_NODE) {
+        translateElementAttributes(current as Element, language)
+      }
+
+      current = walker.nextNode()
+    }
+  } finally {
+    translatePassDepth -= 1
   }
 }
 
@@ -207,7 +340,15 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       subtree: true,
     })
 
-    return () => observer.disconnect()
+    // Motion script may split headlines after the first translate pass.
+    const retryTimers = [200, 600, 1200].map((ms) =>
+      window.setTimeout(() => translateDom(document.body, language), ms)
+    )
+
+    return () => {
+      observer.disconnect()
+      retryTimers.forEach((id) => window.clearTimeout(id))
+    }
   }, [language])
 
   const value = useMemo<LanguageContextValue>(

@@ -185,7 +185,8 @@ export function LandingCaseStudyShowcase() {
 
   return (
     <div ref={rootRef} className="case-study-showcase">
-      <div className="trust reveal is-in" data-reveal>
+      {/* mo-in must stay in React className or re-renders strip it and hide the card */}
+      <div className="trust reveal is-in mo-in" data-reveal>
         <span className="trust__label">
           <span ref={labelTextRef} className="trust__label-text">
             Choose case study
@@ -219,7 +220,7 @@ export function LandingCaseStudyShowcase() {
         <div className="hero__showcase-bg" aria-hidden="true" />
         <div className="hero__showcase-layout">
           <article
-            className={`case-study-card reveal is-in${isSwitching ? " is-switching" : ""}`}
+            className={`case-study-card reveal is-in mo-in${isSwitching ? " is-switching" : ""}`}
             data-reveal
             id="caseStudyCard"
             aria-live="polite"
@@ -239,7 +240,7 @@ export function LandingCaseStudyShowcase() {
               See case study <span aria-hidden="true">›</span>
             </a>
           </article>
-          <div className="hero__video reveal is-in" data-reveal>
+          <div className="hero__video reveal is-in mo-in" data-reveal>
             <video
               key={active.video}
               ref={attachVideo}

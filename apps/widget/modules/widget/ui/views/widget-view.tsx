@@ -25,6 +25,7 @@ import type { WidgetMode } from "../../atoms/widget-atoms"
 
 interface Props {
   organizationId: string | null
+  agentId?: string | null
   mode?: WidgetMode
   parentPageUrl?: string
 }
@@ -32,6 +33,7 @@ interface Props {
 export const WidgetView = ({
   mode = "standard",
   organizationId,
+  agentId,
   parentPageUrl,
 }: Props) => {
   const screen = useAtomValue(screenAtom)
@@ -65,6 +67,7 @@ export const WidgetView = ({
       <WidgetLoadingScreen
         mode={mode}
         organizationId={organizationId}
+        agentId={agentId}
         parentPageUrl={parentPageUrl}
       />
     ),

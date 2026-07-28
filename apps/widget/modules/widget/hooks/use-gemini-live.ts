@@ -9,6 +9,7 @@ import { useAction } from "convex/react"
 import { useAtomValue } from "jotai"
 import { useEffect, useRef, useState } from "react"
 import {
+  agentIdAtom,
   contactSessionIdAtomFamily,
   organizationIdAtom,
   widgetSettingsAtom,
@@ -107,6 +108,7 @@ const downsample = (
 
 export const useGeminiLive = () => {
   const organizationId = useAtomValue(organizationIdAtom)
+  const agentId = useAtomValue(agentIdAtom)
   const widgetSettings = useAtomValue(widgetSettingsAtom)
   const contactSessionId = useAtomValue(
     contactSessionIdAtomFamily(organizationId || "")
@@ -581,7 +583,11 @@ export const useGeminiLive = () => {
       const tokenResponse = await fetch("/api/gemini-live-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ organizationId, contactSessionId }),
+        body: JSON.stringify({
+          organizationId,
+          contactSessionId,
+          agentId: agentId ?? undefined,
+        }),
       })
       const tokenData =
         await parseJsonResponse<GeminiTokenResponse>(tokenResponse)

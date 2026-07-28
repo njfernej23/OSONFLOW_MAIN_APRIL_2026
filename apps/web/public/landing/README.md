@@ -23,3 +23,14 @@ When editing the source stylesheet at
 ```bash
 cp apps/web/modules/marketing/ui/styles/japandi-landing.css apps/web/public/landing/japandi-landing.css
 ```
+
+## Motion layer
+
+The homepage also loads `motion.css` and `motion.js` after the base stylesheet and `main.js`.
+Source copy for the stylesheet:
+
+```bash
+cp apps/web/modules/marketing/ui/styles/motion.css apps/web/public/landing/motion.css
+```
+
+`motion.js` lives only in `apps/web/public/landing/`. See `MOTION.md` for tuning notes.

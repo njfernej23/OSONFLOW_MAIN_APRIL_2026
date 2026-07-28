@@ -590,9 +590,12 @@ html:has(.japandi-landing) { scroll-behavior: smooth; -webkit-text-size-adjust: 
   text-align: left;
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
-.case-study-card.is-switching {
+/* Beat motion.css `[data-reveal].mo-in { opacity: 1 }` during case switches */
+.japandi-landing .case-study-card.is-switching,
+.japandi-landing [data-reveal].case-study-card.is-switching {
   opacity: 0.35;
   transform: translateY(4px);
+  filter: none;
 }
 .case-study-card__stat {
   display: flex;

@@ -1,3 +1,4 @@
+import { landingTranslations } from "./landing-translations"
 import { supplementalTranslations } from "./supplemental-translations"
 
 export const SUPPORTED_LANGUAGES = ["en", "uz", "ru"] as const
@@ -41,7 +42,7 @@ export const translations: Record<string, TranslationValue> = {
     ru: "Регистрация",
   },
   "Book a demo": {
-    uz: "Demo band qilish",
+    uz: "Demo ko'rish",
     ru: "Заказать демо",
   },
   Dashboard: {
@@ -552,7 +553,7 @@ export const translations: Record<string, TranslationValue> = {
   },
   Custom: {
     uz: "Maxsus",
-    ru: "Custom",
+    ru: "Индивидуально",
   },
   Talk: {
     uz: "Gaplashish",
@@ -1762,6 +1763,7 @@ export function translateText(value: string, language: Language) {
 
   const normalized = normalizeTranslatableText(value)
   const translated =
+    landingTranslations[normalized]?.[language] ??
     translations[normalized]?.[language] ??
     supplementalTranslations[normalized]?.[language]
 

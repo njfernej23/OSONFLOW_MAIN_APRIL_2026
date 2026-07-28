@@ -406,6 +406,7 @@ export const create = action({
       api.public.widgetSettings.getByOrganizationId,
       {
         organizationId: conversation.organizationId,
+        agentId: conversation.agentId,
       }
     )
 
@@ -684,12 +685,13 @@ export const getConversationExport = query({
       })
     }
 
-    const widgetSettings = await ctx.db
-      .query("widgetSettings")
-      .withIndex("by_organization_id", (q: any) =>
-        q.eq("organizationId", conversation.organizationId)
-      )
-      .unique()
+    const widgetSettings = await ctx.runQuery(
+      api.public.widgetSettings.getByOrganizationId,
+      {
+        organizationId: conversation.organizationId,
+        agentId: conversation.agentId,
+      }
+    )
 
     if (widgetSettings?.appearance?.showChatHistoryDownload === false) {
       throw new ConvexError({
