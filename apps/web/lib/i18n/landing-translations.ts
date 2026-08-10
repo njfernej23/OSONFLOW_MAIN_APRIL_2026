@@ -296,10 +296,6 @@ export const landingTranslations: Record<string, LandingTranslationValue> = {
     uz: "Jonli navbatlar uchun yaratilgan",
     ru: "Создано для живых очередей",
   },
-  "Calculate your support cost savings.": {
-    uz: "Qo'llab-quvvatlash xarajatlarini tejashni hisoblang.",
-    ru: "Рассчитайте экономию на поддержке.",
-  },
   "Can I connect a human specialist?": {
     uz: "Inson mutaxassisini ulashim mumkinmi?",
     ru: "Могу ли я подключить специалиста?",
@@ -1272,10 +1268,6 @@ export const landingTranslations: Record<string, LandingTranslationValue> = {
     uz: "Salesforce",
     ru: "Salesforce",
   },
-  "Same calm loop. Now it can speak.": {
-    uz: "Xuddi shu tinch sikl. Endi u gapira oladi.",
-    ru: "Тот же спокойный контур. Теперь он умеет говорить.",
-  },
   "Sandbox interaction": {
     uz: "Sinov o'zaro aloqasi",
     ru: "Взаимодействие в песочнице",
@@ -1703,10 +1695,6 @@ export const landingTranslations: Record<string, LandingTranslationValue> = {
   "You can update billing info via Account settings in your dashboard. Want a direct update link?": {
     uz: "Billing ma'lumotlarini dashboarddagi Account settings orqali yangilashingiz mumkin. To'g'ridan-to'g'ri yangilash havolasini xohlaysizmi?",
     ru: "Данные биллинга можно обновить в Account settings на панели. Нужна прямая ссылка на обновление?",
-  },
-  "Your data never leaves the building you paid for.": {
-    uz: "Ma'lumotlaringiz to'lagan muhitingizdan chiqib ketmaydi.",
-    ru: "Ваши данные не покидают инфраструктуру, за которую вы платите.",
   },
   "Your live thread syncs here with full context.": {
     uz: "Jonli suhbatlaringiz bu yerda to'liq kontekst bilan sinxronlanadi.",

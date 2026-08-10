@@ -223,7 +223,7 @@ html.mo-on .japandi-landing .hero__ambient { animation: moAmbientIn 1.8s var(--m
 }
 .japandi-landing .nav__capsule { transition: max-width .5s var(--mo-out), background .4s var(--mo-soft), box-shadow .4s var(--mo-soft), transform .5s var(--mo-out); }
 .japandi-landing .nav.is-scrolled .nav__capsule { box-shadow: 0 10px 34px -18px rgba(0, 0, 0, .28); }
-.japandi-landing .nav.mo-hide .nav__shell { transform: translate3d(0, -130%, 0); }
+.japandi-landing .nav.mo-hide .nav__shell { transform: translate3d(0, 0, 0); }
 .japandi-landing .nav__shell { transition: transform .5s var(--mo-out); }
 .japandi-landing .nav__menu { position: relative; }
 .japandi-landing .nav__menu a { position: relative; }

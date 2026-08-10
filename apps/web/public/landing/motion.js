@@ -309,10 +309,7 @@
           m.style.setProperty("--mo-par", (p - 0.5).toFixed(3));
         });
 
-        if (nav) {
-          var down = y > lastY;
-          nav.classList.toggle("mo-hide", down && y > 700 && vel > 3);
-        }
+        if (nav) nav.classList.remove("mo-hide");
 
         if (top) top.classList.toggle("is-in", y > vh * 1.2);
 
