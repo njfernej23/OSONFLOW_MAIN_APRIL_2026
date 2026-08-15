@@ -30,12 +30,17 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const DEFAULT_WIDGET_HEIGHT = 640
 
 const formSchema = z.object({
-  name: z.string().trim().min(1, "Name is required"),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Name is required")
+    .max(80, "Name must be 80 characters or less"),
   email: z
     .string()
     .trim()
     .toLowerCase()
     .min(1, "Email is required")
+    .max(120, "Email must be 120 characters or less")
     .refine(
       (email) => EMAIL_PATTERN.test(email),
       "Enter a valid email address"
@@ -209,6 +214,7 @@ export const WidgetAuthScreen = () => {
                     <Input
                       autoComplete="name"
                       className="h-10 rounded-full bg-background text-sm"
+                      maxLength={80}
                       placeholder="zyzz mukh"
                       type="text"
                       {...field}
@@ -230,6 +236,7 @@ export const WidgetAuthScreen = () => {
                       autoCorrect="off"
                       className="h-10 rounded-full bg-background text-sm"
                       inputMode="email"
+                      maxLength={120}
                       placeholder="your@email.com"
                       spellCheck={false}
                       type="email"

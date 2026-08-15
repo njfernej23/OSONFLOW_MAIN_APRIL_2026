@@ -6,6 +6,8 @@ import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+const NAME_MAX_LENGTH = 80
+const EMAIL_MAX_LENGTH = 120
 
 export const WidgetEmailCapture = ({
   onSubmitDetails,
@@ -33,8 +35,18 @@ export const WidgetEmailCapture = ({
       return
     }
 
+    if (trimmedName.length > NAME_MAX_LENGTH) {
+      setError(`Name must be ${NAME_MAX_LENGTH} characters or less`)
+      return
+    }
+
     if (!EMAIL_PATTERN.test(trimmedEmail)) {
       setError("Enter a valid email address")
+      return
+    }
+
+    if (trimmedEmail.length > EMAIL_MAX_LENGTH) {
+      setError(`Email must be ${EMAIL_MAX_LENGTH} characters or less`)
       return
     }
 
@@ -90,7 +102,10 @@ export const WidgetEmailCapture = ({
               autoComplete="name"
               className="mt-1 w-full border-0 bg-transparent pb-1 text-base text-foreground outline-none placeholder:text-muted-foreground/60"
               disabled={isSubmitting}
-              onChange={(event) => setName(event.target.value)}
+              maxLength={NAME_MAX_LENGTH}
+              onChange={(event) =>
+                setName(event.target.value.slice(0, NAME_MAX_LENGTH))
+              }
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault()
@@ -118,7 +133,10 @@ export const WidgetEmailCapture = ({
               className="mt-1 w-full border-0 bg-transparent pb-1 text-base text-foreground outline-none placeholder:text-muted-foreground/60"
               disabled={isSubmitting}
               inputMode="email"
-              onChange={(event) => setEmail(event.target.value)}
+              maxLength={EMAIL_MAX_LENGTH}
+              onChange={(event) =>
+                setEmail(event.target.value.slice(0, EMAIL_MAX_LENGTH))
+              }
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault()

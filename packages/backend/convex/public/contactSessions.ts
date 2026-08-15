@@ -7,6 +7,8 @@ import type { Id } from "../_generated/dataModel"
 import { enforceRateLimit } from "../lib/rateLimits"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+const NAME_MAX_LENGTH = 80
+const EMAIL_MAX_LENGTH = 120
 const ANONYMOUS_EMAIL_DOMAIN = "anonymous.osonflow.local"
 const DNS_QUERY_URL = "https://cloudflare-dns.com/dns-query"
 const DNS_TYPE_A = 1
@@ -146,7 +148,13 @@ export const create = action({
     const { email, name } = normalizeContactDetails(args)
     const domain = getEmailDomain(email)
 
-    if (!name || !domain || !EMAIL_PATTERN.test(email)) {
+    if (
+      !name ||
+      name.length > NAME_MAX_LENGTH ||
+      !domain ||
+      !EMAIL_PATTERN.test(email) ||
+      email.length > EMAIL_MAX_LENGTH
+    ) {
       throw new Error("Invalid contact details")
     }
 
@@ -210,7 +218,12 @@ export const createRecord = internalMutation({
   handler: async (ctx, args) => {
     const { email, name } = normalizeContactDetails(args)
 
-    if (!name || !EMAIL_PATTERN.test(email)) {
+    if (
+      !name ||
+      name.length > NAME_MAX_LENGTH ||
+      !EMAIL_PATTERN.test(email) ||
+      email.length > EMAIL_MAX_LENGTH
+    ) {
       throw new Error("Invalid contact details")
     }
 
@@ -306,7 +319,12 @@ export const identify = action({
     const email = args.email.trim().toLowerCase()
     const domain = getEmailDomain(email)
 
-    if (!domain || !EMAIL_PATTERN.test(email)) {
+    if (
+      !domain ||
+      !EMAIL_PATTERN.test(email) ||
+      email.length > EMAIL_MAX_LENGTH ||
+      (args.name !== undefined && args.name.trim().length > NAME_MAX_LENGTH)
+    ) {
       throw new Error("Invalid contact details")
     }
 
@@ -357,12 +375,16 @@ export const identifyRecord = internalMutation({
     }
 
     const email = args.email.trim().toLowerCase()
+    const providedName = args.name?.trim()
 
-    if (!EMAIL_PATTERN.test(email)) {
+    if (
+      !EMAIL_PATTERN.test(email) ||
+      email.length > EMAIL_MAX_LENGTH ||
+      (providedName !== undefined && providedName.length > NAME_MAX_LENGTH)
+    ) {
       throw new Error("Invalid contact details")
     }
 
-    const providedName = args.name?.trim()
     // Keep a previously supplied real name; otherwise derive one from the email.
     const name =
       providedName ||
