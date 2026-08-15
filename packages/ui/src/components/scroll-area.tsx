@@ -16,9 +16,11 @@ function ScrollArea({
       className={cn("relative", className)}
       {...props}
     >
+      {/* `[&>div]:block!` overrides the inline `display: table` Radix puts on its
+          content wrapper, which sizes to content and breaks `truncate` inside. */}
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
-        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
+        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 [&>div]:block!"
       >
         {children}
       </ScrollAreaPrimitive.Viewport>
