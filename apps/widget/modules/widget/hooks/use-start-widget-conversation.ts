@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useMutation } from "convex/react"
+import { useAction, useMutation } from "convex/react"
 import { useAtomValue, useSetAtom } from "jotai"
 import { api } from "@workspace/backend/_generated/api"
 import type { Doc } from "@workspace/backend/_generated/dataModel"
@@ -70,6 +70,9 @@ export const useStartWidgetConversation = () => {
     contactSessionIdAtomFamily(organizationId || "")
   )
   const createConversation = useMutation(api.public.conversations.create)
+  const createAnonymousContactSession = useAction(
+    api.public.contactSessions.createAnonymous
+  )
   const [isPending, setIsPending] = useState(false)
 
   const startConversation = async ({
@@ -85,15 +88,20 @@ export const useStartWidgetConversation = () => {
       return
     }
 
-    if (!contactSessionId) {
-      setScreen("auth")
-      return
-    }
-
     setIsPending(true)
     try {
+      let sessionId = contactSessionId
+
+      if (!sessionId) {
+        sessionId = await createAnonymousContactSession({
+          organizationId,
+          metadata: getWidgetMetadata(),
+        })
+        setContactSessionId(sessionId)
+      }
+
       const result = await createConversation({
-        contactSessionId,
+        contactSessionId: sessionId,
         organizationId,
         agentId: agentId ?? undefined,
         metadata: getWidgetMetadata(),

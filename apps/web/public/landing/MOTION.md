@@ -29,7 +29,7 @@ Order matters: `motion.css` must come after the base stylesheet, `motion.js` aft
 | Sections below the hero | no animation in the export (`fm-pending` never resolves) | fade + rise + de-blur, staggered 70ms per element within each section |
 | Headlines | static | split into words, each rising with blur out, 42ms apart |
 | "AI customer experience" | flat ink | live blue → orange gradient sweep |
-| Hero background | `display:none` | animated ring field + drifting aurora + dashed ribbon, parallaxed on scroll |
+| Hero background | `display:none` | soft aurora glow behind the copy |
 | Hero copy | static | lifts, fades and softens as you scroll past |
 | Buttons | colour transition | magnetic cursor pull, sheen sweep on hover, halo pulse on the primary CTA |
 | Cards | 4° tilt | tilt + radial cursor spotlight + depth shadow |

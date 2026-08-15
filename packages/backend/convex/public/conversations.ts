@@ -255,14 +255,6 @@ export const create = mutation({
       })
     }
 
-    // Visitors must submit name + email before any conversation is stored.
-    if (session.isAnonymous === true) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Contact details required",
-      })
-    }
-
     await enforceRateLimit(ctx, "widgetConversationCreateBySession", {
       key: `${args.organizationId}:${contactSessionId}`,
       message:

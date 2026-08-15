@@ -13,7 +13,7 @@ import {
   type WidgetMode,
   type VoiceProvider,
 } from "@/modules/widget/atoms/widget-atoms"
-import { useState, useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import { api } from "@workspace/backend/_generated/api"
 import { mergeWidgetAppearance } from "@workspace/ui/lib/widget-customization"
 import { Spinner } from "@workspace/ui/components/spinner"
@@ -31,6 +31,7 @@ export const WidgetLoadingScreen = ({
   parentPageUrl?: string
 }) => {
   const [step, setStep] = useState<InitStep>("org")
+  const ensuringSessionRef = useRef(false)
   const setWidgetSettings = useSetAtom(widgetSettingsAtom)
   const setErrorMessage = useSetAtom(errorMessageAtom)
   const setOrganizationId = useSetAtom(organizationIdAtom)
@@ -39,6 +40,9 @@ export const WidgetLoadingScreen = ({
   const setWidgetMode = useSetAtom(widgetModeAtom)
 
   const validateOrganization = useAction(api.public.organizations.validate)
+  const createAnonymousContactSession = useAction(
+    api.public.contactSessions.createAnonymous
+  )
   const setScreen = useSetAtom(screenAtom)
 
   const contactSessionId = useAtomValue(
@@ -90,35 +94,66 @@ export const WidgetLoadingScreen = ({
   )
   useEffect(() => {
     if (step !== "session") return
-    if (!contactSessionId) {
-      queueMicrotask(() => {
+    if (ensuringSessionRef.current) return
+    ensuringSessionRef.current = true
+
+    const startAnonymousSession = async () => {
+      if (!organizationId) {
         setStep("settings")
-      })
+        return
+      }
+
+      try {
+        const anonymousSessionId = await createAnonymousContactSession({
+          organizationId,
+          metadata: {
+            userAgent: navigator.userAgent,
+            language: navigator.language,
+            languages: navigator.languages?.join(","),
+            platform: navigator.platform,
+            vendor: navigator.vendor,
+            screenResolution: `${window.screen.width}x${window.screen.height}`,
+            viewportSize: `${window.innerWidth}x${window.innerHeight}`,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            timezoneOffset: new Date().getTimezoneOffset(),
+            cookieEnabled: navigator.cookieEnabled,
+            referrer: document.referrer || "direct",
+            currentUrl: window.location.href,
+            source: "workflow_widget",
+          },
+        })
+        setContactSessionId(anonymousSessionId)
+      } catch {
+        setContactSessionId(null)
+      }
+
+      setStep("settings")
+    }
+
+    if (!contactSessionId) {
+      void startAnonymousSession()
       return
     }
+
     validateContactSession({
       organizationId: organizationId!,
       contactSessionId,
     })
       .then((result) => {
-        // Anonymous sessions are no longer allowed — require name/email first.
-        if (
-          !result.valid ||
-          ("contactSession" in result &&
-            result.contactSession?.isAnonymous === true)
-        ) {
-          setContactSessionId(null)
+        if (!result.valid) {
+          void startAnonymousSession()
+          return
         }
         setStep("settings")
       })
       .catch(() => {
-        setContactSessionId(null)
-        setStep("settings")
+        void startAnonymousSession()
       })
   }, [
     step,
     contactSessionId,
     organizationId,
+    createAnonymousContactSession,
     setContactSessionId,
     validateContactSession,
   ])

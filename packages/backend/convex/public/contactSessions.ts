@@ -183,10 +183,20 @@ export const createAnonymous = action({
     organizationId: v.string(),
     metadata: contactSessionMetadataValidator,
   },
-  handler: async (_ctx, _args): Promise<Id<"contactSessions">> => {
-    // Anonymous contact sessions are disabled. Visitors must provide name + email
-    // via contactSessions.create before any session or conversation is stored.
-    throw new Error("Contact details required")
+  handler: async (ctx, args): Promise<Id<"contactSessions">> => {
+    await enforceRateLimit(ctx, "contactSessionCreateByOrg", {
+      key: args.organizationId,
+      message:
+        "This widget is receiving too many contact sessions. Please try again shortly.",
+    })
+
+    return await ctx.runMutation(
+      (internal as any).public.contactSessions.createAnonymousRecord,
+      {
+        organizationId: args.organizationId,
+        metadata: args.metadata,
+      }
+    )
   },
 })
 

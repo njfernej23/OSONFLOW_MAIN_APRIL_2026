@@ -266,7 +266,6 @@
     safe("scroll", function () {
       var hero = $(".hero");
       var heroCopy = $(".hero__copy");
-      var ambient = $(".hero__ambient");
       var track = $(".method__track");
       var nav = $("#nav");
       var progressFill = bar ? bar.querySelector("i") : null;
@@ -292,7 +291,6 @@
         if (hero && heroCopy) {
           var hp = clamp(y / Math.max(1, hero.offsetHeight * 0.85), 0, 1);
           hero.style.setProperty("--mo-hero-p", hp.toFixed(3));
-          if (ambient) ambient.style.setProperty("--mo-hero-p", hp.toFixed(3));
           heroCopy.style.setProperty("--mo-hero-p", hp.toFixed(3));
         }
 

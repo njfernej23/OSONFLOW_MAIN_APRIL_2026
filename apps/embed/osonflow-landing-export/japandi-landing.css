@@ -501,17 +501,6 @@ html:has(.japandi-landing) { scroll-behavior: smooth; -webkit-text-size-adjust: 
 @media (min-width: 981px) {
   .hero { min-height: 100svh; }
 }
-.hero__ambient { display: none; }
-.ambient__svg { width: min(1100px, 130%); height: 100%; }
-.ring { transform-origin: 400px 250px; }
-.ring--1 { animation: spin 80s linear infinite; }
-.ring--2 { animation: spin 120s linear infinite reverse; }
-.ring--3 { animation: breathe 12s ease-in-out infinite; transform-origin: 400px 250px; }
-.ribbon { animation: ribbon 24s ease-in-out infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-@keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.03); } }
-@keyframes ribbon { 0%,100% { d: path("M -100 250 C 200 110, 200 380, 400 250 C 600 110, 600 380, 900 250"); } 50% { d: path("M -100 250 C 200 200, 200 300, 400 250 C 600 200, 600 300, 900 250"); } }
-
 .hero__inner { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0; padding-top: clamp(8px, 1.2vw, 18px); flex: 1 1 auto; min-height: 0; }
 .hero__copy { display: flex; flex-direction: column; align-items: center; max-width: 780px; flex: 0 0 auto; }
 .hero__title { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.03em; font-size: clamp(42px, 4.4vw, 62px); line-height: 1.12; text-wrap: balance; margin-top: 0; color: var(--ink); }
@@ -590,9 +579,12 @@ html:has(.japandi-landing) { scroll-behavior: smooth; -webkit-text-size-adjust: 
   text-align: left;
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
-.case-study-card.is-switching {
+/* Beat motion.css `[data-reveal].mo-in { opacity: 1 }` during case switches */
+.japandi-landing .case-study-card.is-switching,
+.japandi-landing [data-reveal].case-study-card.is-switching {
   opacity: 0.35;
   transform: translateY(4px);
+  filter: none;
 }
 .case-study-card__stat {
   display: flex;
@@ -2438,16 +2430,17 @@ html:has(.japandi-landing) { scroll-behavior: smooth; -webkit-text-size-adjust: 
   mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
 }
 .int-marquee__track {
-  display: flex;
+  display: inline-flex;
+  min-width: max-content;
   width: max-content;
   animation: int-marquee 38s linear infinite;
   will-change: transform;
 }
 .int-marquee__group {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: clamp(32px, 5vw, 56px);
-  flex: none;
+  flex: 0 0 auto;
   padding-right: clamp(32px, 5vw, 56px);
 }
 .int-marquee:hover .int-marquee__track,
@@ -2479,8 +2472,8 @@ html:has(.japandi-landing) { scroll-behavior: smooth; -webkit-text-size-adjust: 
 }
 
 @keyframes int-marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
 }
 
 /* ============ PRICING ============ */
