@@ -1,6 +1,6 @@
 import { v } from "convex/values"
 import { GoogleGenAI, Modality } from "@google/genai"
-import { api, internal } from "../_generated/api"
+import { internal } from "../_generated/api"
 import { action } from "../_generated/server"
 import { Doc } from "../_generated/dataModel"
 import { parseSecretValue } from "../lib/secrets"
@@ -100,7 +100,7 @@ export const createOpenAIRealtimeSession = action({
     }
   ): Promise<TokenActionResponse> => {
     const widgetSettings: any = await ctx.runQuery(
-      api.public.widgetSettings.getByOrganizationId,
+      internal.system.widgetSettings.getByOrganizationId,
       {
         organizationId: args.organizationId,
         agentId: args.agentId,
@@ -251,7 +251,7 @@ export const createGeminiLiveToken = action({
   ): Promise<TokenActionResponse> => {
     try {
       const widgetSettings: any = await ctx.runQuery(
-        api.public.widgetSettings.getByOrganizationId,
+        internal.system.widgetSettings.getByOrganizationId,
         {
           organizationId: args.organizationId,
           agentId: args.agentId,

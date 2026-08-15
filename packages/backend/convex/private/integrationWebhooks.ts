@@ -1,6 +1,7 @@
 import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
+import { OutboundUrlError, assertSafeOutboundUrl } from "../lib/outboundUrl";
 
 const webhookEventTypeValidator = v.union(
     v.literal("contact_session.created"),
@@ -89,25 +90,19 @@ const normalizeOptionalString = (value?: string) => {
 };
 
 const parseAndValidateWebhookUrl = (url: string, provider: WebhookProvider) => {
-    let parsedUrl: URL;
-
     try {
-        parsedUrl = new URL(url);
-    } catch {
+        // Also rejects loopback, private and cloud-metadata addresses, which the
+        // backend can reach but the customer should not be able to target.
+        return assertSafeOutboundUrl(url).toString();
+    } catch (error) {
         throw new ConvexError({
             code: "BAD_REQUEST",
-            message: `Invalid ${provider} destination URL`,
+            message:
+                error instanceof OutboundUrlError
+                    ? error.message
+                    : `Invalid ${provider} destination URL`,
         });
     }
-
-    if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
-        throw new ConvexError({
-            code: "BAD_REQUEST",
-            message: "Destination URL must use http or https",
-        });
-    }
-
-    return parsedUrl.toString();
 };
 
 const normalizeProviderConfig = (providerConfig?: WebhookProviderConfig) => {

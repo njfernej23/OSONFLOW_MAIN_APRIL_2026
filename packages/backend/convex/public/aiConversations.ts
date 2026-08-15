@@ -5,6 +5,7 @@ import { Doc, Id } from "../_generated/dataModel"
 import { saveMessage } from "@convex-dev/agent"
 import { supportAgent } from "../system/ai/agents/supportAgent"
 import { enforceRateLimit } from "../lib/rateLimits"
+import { isAnonymousContactSession } from "../lib/contactSessionIdentity"
 
 const providerValidator = v.union(
   v.literal("openai_realtime"),
@@ -45,7 +46,7 @@ const getValidatedContactSession = async (
 const assertIdentifiedContactSession = (
   contactSession: Doc<"contactSessions">
 ) => {
-  if (contactSession.isAnonymous === true) {
+  if (isAnonymousContactSession(contactSession)) {
     throw new ConvexError({
       code: "UNAUTHORIZED",
       message: "Contact details required",

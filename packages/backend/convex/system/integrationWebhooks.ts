@@ -5,6 +5,7 @@ import {
   internalMutation,
   internalQuery,
 } from "../_generated/server"
+import { safeFetch } from "../lib/outboundUrl"
 
 const webhookEventTypeValidator = v.union(
   v.literal("contact_session.created"),
@@ -537,7 +538,10 @@ export const deliverEventAttempt: any = internalAction({
     const startedAt = Date.now()
 
     try {
-      const response: Response = await fetch(request.url, {
+      // Re-checked at delivery time, not just when the webhook was configured:
+      // rows written before that check existed, and a hostname can be
+      // re-pointed at a private address after it was validated.
+      const response: Response = await safeFetch(request.url, {
         method: "POST",
         headers: request.headers,
         body: request.body,

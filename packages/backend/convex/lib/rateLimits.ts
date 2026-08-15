@@ -51,6 +51,31 @@ const rateLimits = {
     period: MINUTE,
     capacity: 20,
   },
+  assistantToolExecuteBySession: {
+    kind: "token bucket",
+    rate: 30,
+    period: MINUTE,
+    capacity: 10,
+  },
+  assistantToolExecuteByOrg: {
+    kind: "token bucket",
+    rate: 600,
+    period: MINUTE,
+    capacity: 120,
+    shards: 4,
+  },
+  widgetImageUploadByUser: {
+    kind: "fixed window",
+    rate: 40,
+    period: HOUR,
+  },
+  organizationValidate: {
+    kind: "token bucket",
+    rate: 120,
+    period: MINUTE,
+    capacity: 30,
+    shards: 4,
+  },
   telegramMessageByChat: {
     kind: "token bucket",
     rate: 20,

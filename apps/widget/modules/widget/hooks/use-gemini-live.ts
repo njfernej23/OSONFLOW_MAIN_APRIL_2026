@@ -377,7 +377,7 @@ export const useGeminiLive = () => {
           }
         }
 
-        if (!organizationId) {
+        if (!organizationId || !contactSessionId) {
           return {
             id: functionCall.id,
             name: functionCall.name,
@@ -393,6 +393,7 @@ export const useGeminiLive = () => {
         try {
           const result = await executeAssistantTool({
             organizationId,
+            contactSessionId,
             toolName: functionCall.name ?? "unknown_tool",
             args,
             channel: "voice",

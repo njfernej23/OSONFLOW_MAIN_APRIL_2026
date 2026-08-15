@@ -1,4 +1,7 @@
-import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
+import {
+  getOrganizationIdFromIdentity,
+  requireOrganizationIdentity,
+} from "../lib/organizationIdentity"
 import { ConvexError, v } from "convex/values"
 import {
   action,
@@ -438,7 +441,8 @@ export const getGoogleSheetsCredentials = query({
 export const getToolTypeLabels = query({
   args: {},
   returns: v.any(),
-  handler: async (): Promise<typeof ASSISTANT_TOOL_TYPE_LABELS> => {
+  handler: async (ctx): Promise<typeof ASSISTANT_TOOL_TYPE_LABELS> => {
+    await requireOrganizationIdentity(ctx)
     return ASSISTANT_TOOL_TYPE_LABELS
   },
 })

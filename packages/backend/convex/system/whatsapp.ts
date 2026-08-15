@@ -1,6 +1,6 @@
 import { saveMessage } from "@convex-dev/agent"
 import { ConvexError, v } from "convex/values"
-import { api, components, internal } from "../_generated/api"
+import { components, internal } from "../_generated/api"
 import {
   internalAction,
   internalMutation,
@@ -647,7 +647,7 @@ const handleIncomingMessage = async ({
     }
   )
   const widgetSettings = await ctx.runQuery(
-    api.public.widgetSettings.getByOrganizationId,
+    internal.system.widgetSettings.getByOrganizationId,
     {
       organizationId: integration.organizationId,
     }

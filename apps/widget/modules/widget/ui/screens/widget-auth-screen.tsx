@@ -19,12 +19,14 @@ import {
   activeVoiceProviderAtom,
   contactSessionIdAtomFamily,
   organizationIdAtom,
+  pendingStartChatAtom,
   screenAtom,
   widgetModeAtom,
   widgetSettingsAtom,
 } from "../../atoms/widget-atoms"
 import { useSetAtom, useAtomValue } from "jotai"
 import { mergeWidgetTheme } from "@workspace/ui/lib/widget-customization"
+import { useStartWidgetConversation } from "../../hooks/use-start-widget-conversation"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const DEFAULT_WIDGET_HEIGHT = 640
@@ -59,6 +61,8 @@ export const WidgetAuthScreen = () => {
   const setContactSessionsId = useSetAtom(
     contactSessionIdAtomFamily(organizationId || "")
   )
+  const pendingStartChat = useAtomValue(pendingStartChatAtom)
+  const { startConversation } = useStartWidgetConversation()
   const createContactSession = useAction(api.public.contactSessions.create)
 
   const backgroundImageUrl = theme.backgroundImageUrl.trim()
@@ -140,6 +144,14 @@ export const WidgetAuthScreen = () => {
           setScreen("voice")
           return
         }
+      }
+
+      if (pendingStartChat) {
+        await startConversation({
+          ...pendingStartChat,
+          contactSessionId,
+        })
+        return
       }
 
       setScreen("selection")

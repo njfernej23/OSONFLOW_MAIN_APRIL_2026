@@ -11,6 +11,11 @@ type MessageLike = {
 
 const getMessageId = (message: MessageLike) => message.id ?? message._id ?? null
 
+/**
+ * Plays the notification sound when a message with `notifyForRole` lands at the
+ * end of the list. Only the newest message is inspected so paginating older
+ * history into the list never triggers a chime.
+ */
 export const useNotifyOnNewMessages = <T extends MessageLike>(
   messages: T[] | undefined,
   options: {
@@ -18,39 +23,33 @@ export const useNotifyOnNewMessages = <T extends MessageLike>(
     notifyForRole: string
   }
 ) => {
-  const previousIdsRef = useRef<Set<string> | null>(null)
+  const lastSeenIdRef = useRef<string | null>(null)
+  const hasBaselineRef = useRef(false)
   const enabled = options.enabled ?? true
 
   useEffect(() => {
-    if (!enabled || !messages) {
+    if (!messages?.length) {
       return
     }
 
-    const currentIds = new Set(
-      messages
-        .map((message) => getMessageId(message))
-        .filter((id): id is string => Boolean(id))
-    )
+    const latestMessage = messages[messages.length - 1]
+    const latestId = latestMessage ? getMessageId(latestMessage) : null
 
-    const previousIds = previousIdsRef.current
-
-    if (previousIds !== null) {
-      for (const message of messages) {
-        const messageId = getMessageId(message)
-
-        if (
-          !messageId ||
-          previousIds.has(messageId) ||
-          message.role !== options.notifyForRole
-        ) {
-          continue
-        }
-
-        playNotificationSound()
-        break
-      }
+    if (!latestId || latestId === lastSeenIdRef.current) {
+      return
     }
 
-    previousIdsRef.current = currentIds
+    const hadBaseline = hasBaselineRef.current
+
+    lastSeenIdRef.current = latestId
+    hasBaselineRef.current = true
+
+    if (!enabled || !hadBaseline) {
+      return
+    }
+
+    if (latestMessage?.role === options.notifyForRole) {
+      playNotificationSound()
+    }
   }, [enabled, messages, options.notifyForRole])
 }

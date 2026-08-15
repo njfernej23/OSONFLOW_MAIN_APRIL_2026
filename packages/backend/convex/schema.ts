@@ -354,6 +354,17 @@ export default defineSchema({
   })
     .index("by_organization_id", ["organizationId"])
     .index("by_organization_id_and_name", ["organizationId", "name"]),
+  // Binds an uploaded blob to the organization that uploaded it. Convex storage
+  // ids carry no tenant information on their own, so ownership is tracked here.
+  storageObjects: defineTable({
+    storageId: v.id("_storage"),
+    organizationId: v.string(),
+    uploadedBy: v.optional(v.string()),
+    purpose: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_storage_id", ["storageId"])
+    .index("by_organization_id", ["organizationId"]),
   plugins: defineTable({
     organizationId: v.string(),
     service: v.union(

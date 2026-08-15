@@ -8,8 +8,31 @@ import {
   PolarWebhookVerificationError,
   validatePolarWebhookEvent,
 } from "./lib/polarWebhook"
+import {
+  META_APP_SECRET_ENV_VAR,
+  verifyMetaSignature,
+  type MetaProvider,
+  type MetaSignatureResult,
+} from "./lib/metaWebhook"
 
 const http = httpRouter()
+
+const rejectUnverifiedMetaWebhook = (
+  provider: MetaProvider,
+  result: Extract<MetaSignatureResult, { ok: false }>
+) => {
+  if (result.reason === "not_configured") {
+    console.error(
+      `${provider} webhook rejected: set ${META_APP_SECRET_ENV_VAR[provider]} so payload signatures can be verified.`
+    )
+    return new Response("Webhook signature verification is not configured", {
+      status: 500,
+    })
+  }
+
+  console.warn(`${provider} webhook rejected: ${result.reason}`)
+  return new Response("Invalid signature", { status: 403 })
+}
 
 const clerkClient = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY || "",
@@ -360,10 +383,24 @@ http.route({
   path: "/instagram/webhook",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
+    // This route carries no per-integration secret (Meta delivers every app
+    // event to one callback URL), so the payload signature is the only proof of
+    // origin. Without it anyone could inject messages into any organization.
+    const rawBody = await request.text()
+    const verification = await verifyMetaSignature({
+      provider: "instagram",
+      rawBody,
+      signatureHeader: request.headers.get("x-hub-signature-256"),
+    })
+
+    if (!verification.ok) {
+      return rejectUnverifiedMetaWebhook("instagram", verification)
+    }
+
     let payload: unknown
 
     try {
-      payload = await request.json()
+      payload = JSON.parse(rawBody)
     } catch {
       return new Response("Invalid JSON", { status: 400 })
     }
@@ -428,10 +465,23 @@ http.route({
       return new Response("Missing Instagram webhook secret", { status: 400 })
     }
 
+    // The unguessable path secret authenticates this route, so a missing app
+    // secret only downgrades to that; a present-but-wrong signature is fatal.
+    const rawBody = await request.text()
+    const verification = await verifyMetaSignature({
+      provider: "instagram",
+      rawBody,
+      signatureHeader: request.headers.get("x-hub-signature-256"),
+    })
+
+    if (!verification.ok && verification.reason !== "not_configured") {
+      return rejectUnverifiedMetaWebhook("instagram", verification)
+    }
+
     let payload: unknown
 
     try {
-      payload = await request.json()
+      payload = JSON.parse(rawBody)
     } catch {
       return new Response("Invalid JSON", { status: 400 })
     }
@@ -497,10 +547,21 @@ http.route({
       return new Response("Missing WhatsApp webhook secret", { status: 400 })
     }
 
+    const rawBody = await request.text()
+    const verification = await verifyMetaSignature({
+      provider: "whatsapp",
+      rawBody,
+      signatureHeader: request.headers.get("x-hub-signature-256"),
+    })
+
+    if (!verification.ok && verification.reason !== "not_configured") {
+      return rejectUnverifiedMetaWebhook("whatsapp", verification)
+    }
+
     let payload: unknown
 
     try {
-      payload = await request.json()
+      payload = JSON.parse(rawBody)
     } catch {
       return new Response("Invalid JSON", { status: 400 })
     }

@@ -2,7 +2,9 @@ import { atomFamily } from "jotai-family"
 import { atomWithStorage } from "jotai/utils"
 import { WidgetScreen } from "@/modules/widget/types"
 import { CONTACT_SESSION_KEY } from "../constants"
-import { Doc, Id } from "@workspace/backend/_generated/dataModel"
+import { Id } from "@workspace/backend/_generated/dataModel"
+import { api } from "@workspace/backend/_generated/api"
+import type { FunctionReturnType } from "convex/server"
 import { atom } from "jotai"
 
 export type VoiceProvider = "gemini" | "openai"
@@ -47,11 +49,19 @@ export const loadingMessageAtom = atom<string | null>(null)
 export const conversationIdAtom = atom<Id<"conversations"> | null>(null)
 export const chatReturnScreenAtom = atom<ChatReturnScreen>("selection")
 export const pendingInitialMessageAtom = atom<string | null>(null)
+export const pendingStartChatAtom = atom<{
+  initialMessage?: string
+  returnScreen: ChatReturnScreen
+} | null>(null)
 export const selectedHelpArticleAtom = atom<WidgetHelpArticle | null>(null)
 export const selectedHelpTopicAtom = atom<WidgetHelpTopic | null>(null)
 export const helpSearchQueryAtom = atom("")
 
-export const widgetSettingsAtom = atom<Doc<"widgetSettings"> | null>(null)
+export type PublicWidgetSettings = NonNullable<
+  FunctionReturnType<typeof api.public.widgetSettings.getByOrganizationId>
+>
+
+export const widgetSettingsAtom = atom<PublicWidgetSettings | null>(null)
 
 export const activeVoiceProviderAtom = atom<VoiceProvider | null>(null)
 

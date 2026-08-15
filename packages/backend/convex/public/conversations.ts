@@ -8,6 +8,8 @@ import type { Id } from "../_generated/dataModel"
 import { paginationOptsValidator } from "convex/server"
 import { enforceRateLimit } from "../lib/rateLimits"
 import { getLatestTextAgentMessage } from "../lib/agentMessageText"
+import { requireContactSessionConversation } from "../lib/widgetAuth"
+import { isAnonymousContactSession } from "../lib/contactSessionIdentity"
 
 const contactSessionMetadataValidator = v.optional(
   v.object({
@@ -106,10 +108,7 @@ export const getOne = query({
     const session = await ctx.db.get(args.contactSessionId)
 
     if (!session || session.expiresAt < Date.now()) {
-      return {
-        unreadConversationCount: 0,
-        unreadMessageCount: 0,
-      }
+      return null
     }
 
     const conversation = await ctx.db.get(args.conversationId)
@@ -117,7 +116,10 @@ export const getOne = query({
     if (!conversation) {
       return null
     }
-    if (conversation.contactSessionId !== session._id) {
+    if (
+      conversation.contactSessionId !== session._id ||
+      conversation.organizationId !== session.organizationId
+    ) {
       throw new ConvexError({
         code: "UNAUTHORIZED",
         message: "Incorrect session",
@@ -141,7 +143,14 @@ export const getOne = query({
 export const getUnreadSummary = query({
   args: {
     contactSessionId: v.id("contactSessions"),
+    // The conversation the visitor currently has open, excluded so that the
+    // widget only chimes for threads they are not already reading.
+    excludeConversationId: v.optional(v.id("conversations")),
   },
+  returns: v.object({
+    unreadConversationCount: v.number(),
+    unreadMessageCount: v.number(),
+  }),
   handler: async (ctx, args) => {
     const session = await ctx.db.get(args.contactSessionId)
 
@@ -160,7 +169,9 @@ export const getUnreadSummary = query({
       .collect()
 
     const unreadConversations = conversations.filter(
-      (conversation) => (conversation.unreadForContactCount ?? 0) > 0
+      (conversation) =>
+        (conversation.unreadForContactCount ?? 0) > 0 &&
+        conversation._id !== args.excludeConversationId
     )
 
     return {
@@ -180,30 +191,10 @@ export const markAsRead = mutation({
     contactSessionId: v.id("contactSessions"),
   },
   handler: async (ctx, args) => {
-    const session = await ctx.db.get(args.contactSessionId)
-
-    if (!session || session.expiresAt < Date.now()) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Invalid session",
-      })
-    }
-
-    const conversation = await ctx.db.get(args.conversationId)
-
-    if (!conversation) {
-      throw new ConvexError({
-        code: "NOT_FOUND",
-        message: "Conversation not found",
-      })
-    }
-
-    if (conversation.contactSessionId !== session._id) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Incorrect session",
-      })
-    }
+    await requireContactSessionConversation(ctx, {
+      conversationId: args.conversationId,
+      contactSessionId: args.contactSessionId,
+    })
 
     await ctx.runMutation(internal.system.contactSessions.refresh, {
       contactSessionId: args.contactSessionId,
@@ -252,6 +243,13 @@ export const create = mutation({
       throw new ConvexError({
         code: "UNAUTHORIZED",
         message: "Invalid organization",
+      })
+    }
+
+    if (isAnonymousContactSession(session)) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Contact details required",
       })
     }
 

@@ -63,6 +63,7 @@ const STANDARD_OPEN_CONTAINER_MAX_HEIGHT_GUTTER =
 const LAUNCHER_STYLE_ID = "echo-widget-launcher-styles"
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)"
 const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
+const NOTIFICATION_SOUND_PATH = "/sounds/notification.mp3"
 
 ;(function () {
   let iframe: HTMLIFrameElement | null = null
@@ -76,6 +77,9 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
   let launcherPromptDismissed = false
   let isLauncherReady = false
   let isLiveVoiceEnabled = false
+  let notificationAudio: HTMLAudioElement | null = null
+  let canPlayNotificationSound = false
+  let isListeningForHostUserActivation = false
 
   const launcherAppearance: Required<
     Pick<
@@ -185,6 +189,31 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
     }
 
     return value
+  }
+
+  // The launcher icon is injected into an `<img src>` on the customer's page, so
+  // reject anything that is not a plain http(s) or inline image URL.
+  const sanitizeImageUrl = (value: string): string => {
+    const trimmed = value.trim()
+
+    if (!trimmed || /[()"'\\\s;<>]/.test(trimmed)) {
+      return ""
+    }
+
+    if (
+      /^data:image\/(?:png|jpeg|jpg|gif|webp);base64,[A-Za-z0-9+/=]+$/.test(
+        trimmed
+      )
+    ) {
+      return trimmed
+    }
+
+    try {
+      const protocol = new URL(trimmed, window.location.href).protocol
+      return protocol === "http:" || protocol === "https:" ? trimmed : ""
+    } catch {
+      return ""
+    }
   }
 
   const getContrastingTextColor = (color: string): string => {
@@ -760,11 +789,14 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
   }
 
   const updateLauncherAppearance = (appearance: WidgetAppearancePayload) => {
-    if (
-      typeof appearance.launcherColor === "string" &&
-      appearance.launcherColor.trim()
-    ) {
-      launcherAppearance.launcherColor = appearance.launcherColor
+    if (typeof appearance.launcherColor === "string") {
+      // Applied straight to `button.style.background` on the customer's own
+      // page, so only accept a literal hex colour.
+      const launcherColor = normalizeHexColor(appearance.launcherColor.trim())
+
+      if (launcherColor) {
+        launcherAppearance.launcherColor = launcherColor
+      }
     }
 
     if (typeof appearance.launcherLabel === "string") {
@@ -782,7 +814,9 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
     }
 
     if (typeof appearance.launcherIconUrl === "string") {
-      launcherAppearance.launcherIconUrl = appearance.launcherIconUrl.trim()
+      launcherAppearance.launcherIconUrl = sanitizeImageUrl(
+        appearance.launcherIconUrl
+      )
     }
 
     if (typeof appearance.animation === "string") {
@@ -998,8 +1032,10 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
       transform-origin: center;
       will-change: opacity, transform;
     `
-    // Add permissions for microphone and clipboard
-    iframe.allow = "microphone; clipboard-read; clipboard-write"
+    // Add permissions for microphone, clipboard and notification sounds.
+    // Without `autoplay`, a cross-origin iframe cannot play audio at all: the
+    // browser rejects every play() call, so new-message chimes stay silent.
+    iframe.allow = "microphone; clipboard-read; clipboard-write; autoplay"
 
     container.appendChild(revealSurface)
     container.appendChild(iframe)
@@ -1007,6 +1043,103 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
 
     // Handle messages from widget
     window.addEventListener("message", handleMessage)
+
+    listenForHostUserActivation()
+  }
+
+  // Browsers only grant audio playback to a document the visitor has interacted
+  // with, and visitors click the launcher on this page rather than inside the
+  // cross-origin iframe. So the host page owns the chime: it unlocks playback on
+  // the first real interaction here and plays on request from the widget.
+  function listenForHostUserActivation() {
+    if (isListeningForHostUserActivation) {
+      return
+    }
+
+    isListeningForHostUserActivation = true
+
+    const onUserActivation = () => {
+      unlockNotificationSound()
+
+      if (canPlayNotificationSound) {
+        window.removeEventListener("pointerdown", onUserActivation)
+        window.removeEventListener("touchstart", onUserActivation)
+        window.removeEventListener("keydown", onUserActivation)
+      }
+    }
+
+    window.addEventListener("pointerdown", onUserActivation, { passive: true })
+    window.addEventListener("touchstart", onUserActivation, { passive: true })
+    window.addEventListener("keydown", onUserActivation)
+  }
+
+  function getNotificationAudio(): HTMLAudioElement {
+    if (!notificationAudio) {
+      notificationAudio = new Audio(
+        `${EMBED_CONFIG.WIDGET_URL}${NOTIFICATION_SOUND_PATH}`
+      )
+      notificationAudio.preload = "auto"
+    }
+
+    return notificationAudio
+  }
+
+  function unlockNotificationSound() {
+    if (canPlayNotificationSound) {
+      return
+    }
+
+    try {
+      const audio = getNotificationAudio()
+      audio.muted = true
+      audio.currentTime = 0
+
+      const played = audio.play()
+
+      if (!(played instanceof Promise)) {
+        return
+      }
+
+      void played
+        .then(() => {
+          audio.pause()
+          audio.currentTime = 0
+          audio.muted = false
+          canPlayNotificationSound = true
+          announceNotificationSoundSupport()
+        })
+        .catch(() => {
+          audio.muted = false
+        })
+    } catch {
+      // Ignore playback failures in unsupported environments.
+    }
+  }
+
+  function playNotificationSound() {
+    try {
+      const audio = getNotificationAudio()
+      audio.muted = false
+      audio.currentTime = 0
+      void audio.play().catch(() => {
+        // Nothing to recover here; the widget already tried its own frame.
+      })
+    } catch {
+      // Ignore playback failures in unsupported environments.
+    }
+  }
+
+  // Tells the widget to route chimes through this page instead of playing them
+  // inside the iframe, which browsers frequently block.
+  function announceNotificationSoundSupport() {
+    if (!iframe?.contentWindow) {
+      return
+    }
+
+    iframe.contentWindow.postMessage(
+      { type: "host-audio-ready" },
+      new URL(EMBED_CONFIG.WIDGET_URL).origin
+    )
   }
 
   function buildWidgetUrl(): string {
@@ -1025,6 +1158,16 @@ const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
     const { type, payload } = event.data
 
     switch (type) {
+      case "widget-ready":
+        // The widget may have mounted after the visitor already interacted with
+        // this page, so repeat the announcement it missed.
+        if (canPlayNotificationSound) {
+          announceNotificationSoundSupport()
+        }
+        break
+      case "notification-sound":
+        playNotificationSound()
+        break
       case "close":
         hide()
         break

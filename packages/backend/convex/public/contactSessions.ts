@@ -5,11 +5,11 @@ import { SESSION_DURATION_MS } from "../constants"
 import { internal } from "../_generated/api"
 import type { Id } from "../_generated/dataModel"
 import { enforceRateLimit } from "../lib/rateLimits"
+import { ANONYMOUS_EMAIL_DOMAIN } from "../lib/contactSessionIdentity"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 const NAME_MAX_LENGTH = 40
 const EMAIL_MAX_LENGTH = 50
-const ANONYMOUS_EMAIL_DOMAIN = "anonymous.osonflow.local"
 const DNS_QUERY_URL = "https://cloudflare-dns.com/dns-query"
 const DNS_TYPE_A = 1
 const DNS_TYPE_AAAA = 28

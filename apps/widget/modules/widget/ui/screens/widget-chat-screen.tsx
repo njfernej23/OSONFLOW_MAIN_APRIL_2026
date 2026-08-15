@@ -305,9 +305,13 @@ export const WidgetChatScreen = () => {
     [uiMessages]
   )
 
+  // Operator replies are stored with the assistant role, so the sound is only
+  // enabled once the thread is escalated to a human. While the conversation is
+  // still unresolved the assistant messages are AI replies to something the
+  // visitor just typed, which should not chime.
   useNotifyOnNewMessages(visibleMessages, {
     notifyForRole: "assistant",
-    enabled: false,
+    enabled: conversation?.status === "escalated",
   })
   const assistantMessageCount = useMemo(
     () =>

@@ -291,6 +291,11 @@ const importKnowledgeEntry = async (
     type: entry.mimeType || "text/plain",
   })
   const storageId = await ctx.storage.store(storageBlob)
+  await ctx.runMutation((internal as any).system.storageObjects.claim, {
+    storageId,
+    organizationId: orgId,
+    purpose: "knowledge_base_import",
+  })
 
   const { created } = await organizationRag.add(ctx, {
     namespace: orgId,
@@ -310,6 +315,9 @@ const importKnowledgeEntry = async (
 
   if (!created) {
     await ctx.storage.delete(storageId)
+    await ctx.runMutation((internal as any).system.storageObjects.release, {
+      storageId,
+    })
   }
 
   return { created, reason: created ? null : ("duplicate" as const) }

@@ -9,7 +9,11 @@ import {
 } from "convex/server"
 import { Doc } from "../_generated/dataModel"
 import { components, internal } from "../_generated/api"
-import { requireOrganizationIdentity } from "../lib/organizationIdentity"
+import {
+  belongsToOrganization,
+  requireOrganizationIdentity,
+} from "../lib/organizationIdentity"
+import { isAnonymousContactSession } from "../lib/contactSessionIdentity"
 import {
   extractAgentMessageText,
   getLatestTextAgentMessage,
@@ -208,12 +212,15 @@ export const getOne = query({
 
     if (conversation.organizationId !== orgId) {
       throw new ConvexError({
-        code: "UNAUTHORZIED",
+        code: "UNAUTHORIZED",
         message: "Invalid Organization Id",
       })
     }
-    const contactSession = await ctx.db.get(conversation.contactSessionId)
-    if (!contactSession) {
+    const contactSession = belongsToOrganization(
+      await ctx.db.get(conversation.contactSessionId),
+      orgId
+    )
+    if (!contactSession || isAnonymousContactSession(contactSession)) {
       return null
     }
 
@@ -247,7 +254,10 @@ export const exportOne = query({
       })
     }
 
-    const contactSession = await ctx.db.get(conversation.contactSessionId)
+    const contactSession = belongsToOrganization(
+      await ctx.db.get(conversation.contactSessionId),
+      orgId
+    )
     const messages = await supportAgent.listMessages(ctx, {
       threadId: conversation.threadId,
       paginationOpts: { numItems: 1000, cursor: null },
@@ -299,7 +309,7 @@ export const exportOne = query({
               ? new Date((message as any)._creationTime).toISOString()
               : null,
           role: getRoleFromMessage(message),
-            text: extractAgentMessageText(message),
+          text: extractAgentMessageText(message),
         }))
         .filter((message) => message.text.length > 0),
     }
@@ -439,8 +449,17 @@ export const markAllAsRead = mutation({
 })
 
 export const getUnreadSummary = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    // The conversation the operator is currently reading. It is excluded so
+    // that new-message notifications only fire for threads they are not
+    // already looking at.
+    excludeConversationId: v.optional(v.id("conversations")),
+  },
+  returns: v.object({
+    unreadConversationCount: v.number(),
+    unreadMessageCount: v.number(),
+  }),
+  handler: async (ctx, args) => {
     const { orgId } = await requireOrganizationIdentity(ctx)
 
     const conversations = await ctx.db
@@ -449,7 +468,9 @@ export const getUnreadSummary = query({
       .collect()
 
     const unreadConversations = conversations.filter(
-      (conversation) => (conversation.unreadForOperatorCount ?? 0) > 0
+      (conversation) =>
+        (conversation.unreadForOperatorCount ?? 0) > 0 &&
+        conversation._id !== args.excludeConversationId
     )
 
     return {
@@ -587,9 +608,12 @@ export const getMany = query({
         let lastMessage: MessageDoc | null = null
         let searchMatchPreview: string | undefined
 
-        const contactSession = await ctx.db.get(conversation.contactSessionId)
+        const contactSession = belongsToOrganization(
+          await ctx.db.get(conversation.contactSessionId),
+          orgId
+        )
 
-        if (!contactSession) {
+        if (!contactSession || isAnonymousContactSession(contactSession)) {
           return null
         }
 

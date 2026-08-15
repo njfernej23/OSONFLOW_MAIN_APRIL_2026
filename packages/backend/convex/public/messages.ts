@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values"
 import { action, query } from "../_generated/server"
-import { api, components, internal } from "../_generated/api"
+import { components, internal } from "../_generated/api"
 import { supportAgent } from "../system/ai/agents/supportAgent"
 import { paginationOptsValidator } from "convex/server"
 import { escalateConversation } from "../system/ai/tools/escalateConversation"
@@ -32,6 +32,10 @@ import {
   extractAgentMessageText,
   getLatestTextAgentMessage,
 } from "../lib/agentMessageText"
+import {
+  requireContactSessionConversation,
+  requireContactSessionThread,
+} from "../lib/widgetAuth"
 
 const getAgentMessageRole = (message: any): string => {
   const role = message?.message?.role ?? message?.role
@@ -403,7 +407,7 @@ export const create = action({
       hasOpenAICredentials
 
     const widgetSettings = await ctx.runQuery(
-      api.public.widgetSettings.getByOrganizationId,
+      internal.system.widgetSettings.getByOrganizationId,
       {
         organizationId: conversation.organizationId,
         agentId: conversation.agentId,
@@ -638,13 +642,13 @@ export const getMany = query({
     contactSessionId: v.id("contactSessions"),
   },
   handler: async (ctx, args) => {
-    const contactSession = await ctx.db.get(args.contactSessionId)
-    if (!contactSession || contactSession.expiresAt < Date.now()) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Invalid session",
-      })
-    }
+    // A valid session alone is not enough: the thread must belong to a
+    // conversation owned by this session, or any visitor could read any
+    // organization's transcripts by guessing thread ids.
+    await requireContactSessionThread(ctx, {
+      threadId: args.threadId,
+      contactSessionId: args.contactSessionId,
+    })
 
     const paginated = await supportAgent.listMessages(ctx, {
       threadId: args.threadId,
@@ -662,31 +666,13 @@ export const getConversationExport = query({
     contactSessionId: v.id("contactSessions"),
   },
   handler: async (ctx, args) => {
-    const contactSession = await ctx.db.get(args.contactSessionId)
-    if (!contactSession || contactSession.expiresAt < Date.now()) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Invalid session",
-      })
-    }
-
-    const conversation = await ctx.db.get(args.conversationId)
-    if (!conversation) {
-      throw new ConvexError({
-        code: "NOT_FOUND",
-        message: "Conversation not found",
-      })
-    }
-
-    if (conversation.contactSessionId !== contactSession._id) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Invalid conversation",
-      })
-    }
+    const { conversation } = await requireContactSessionConversation(ctx, {
+      conversationId: args.conversationId,
+      contactSessionId: args.contactSessionId,
+    })
 
     const widgetSettings = await ctx.runQuery(
-      api.public.widgetSettings.getByOrganizationId,
+      internal.system.widgetSettings.getByOrganizationId,
       {
         organizationId: conversation.organizationId,
         agentId: conversation.agentId,

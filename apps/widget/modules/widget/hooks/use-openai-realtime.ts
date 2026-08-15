@@ -227,7 +227,7 @@ export const useOpenAIRealtime = () => {
       return
     }
 
-    if (!organizationId || !name) return
+    if (!organizationId || !name || !contactSessionId) return
 
     let parsedArgs: Record<string, unknown> = {}
     try {
@@ -239,6 +239,7 @@ export const useOpenAIRealtime = () => {
     try {
       const result = await executeAssistantTool({
         organizationId,
+        contactSessionId,
         toolName: name,
         args: parsedArgs,
         channel: "voice",

@@ -18,6 +18,16 @@ export const getOrganizationIdFromIdentity = (identity: unknown) => {
     : undefined
 }
 
+/**
+ * Guards documents reached indirectly (e.g. a conversation's contact session).
+ * The parent check alone assumes the two rows never drift apart; this makes the
+ * tenant boundary explicit so a bad row can't leak across organizations.
+ */
+export const belongsToOrganization = <T extends { organizationId: string }>(
+  doc: T | null | undefined,
+  orgId: string
+): T | null => (doc && doc.organizationId === orgId ? doc : null)
+
 export const requireOrganizationIdentity = async (ctx: AuthCtx) => {
   const identity = await ctx.auth.getUserIdentity()
 

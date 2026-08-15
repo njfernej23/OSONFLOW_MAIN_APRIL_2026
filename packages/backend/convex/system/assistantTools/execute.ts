@@ -17,6 +17,7 @@ import {
   formatSheetLookupContext,
   type GoogleSheetsOperation,
 } from "../../lib/googleSheetsCrud"
+import { OutboundUrlError, safeFetch } from "../../lib/outboundUrl"
 
 const parseSheetLookupMatches = (rawResult: string) => {
   try {
@@ -135,11 +136,21 @@ const executeApiRequest = async (
         ).toString()}`
       : url
 
-  const response = await fetch(requestUrl, {
-    method,
-    headers,
-    body: method === "POST" ? body : undefined,
-  })
+  let response: Response
+
+  try {
+    response = await safeFetch(requestUrl, {
+      method,
+      headers,
+      body: method === "POST" ? body : undefined,
+    })
+  } catch (error) {
+    if (error instanceof OutboundUrlError) {
+      return `API Request tool has an unusable URL: ${error.message}`
+    }
+
+    throw error
+  }
 
   const text = await response.text()
 
@@ -162,13 +173,23 @@ const executeCustomWebhook = async (
 
   const method = tool.config?.webhookMethod ?? "POST"
 
-  const response = await fetch(webhookUrl, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: method === "POST" ? JSON.stringify(args) : undefined,
-  })
+  let response: Response
+
+  try {
+    response = await safeFetch(webhookUrl, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: method === "POST" ? JSON.stringify(args) : undefined,
+    })
+  } catch (error) {
+    if (error instanceof OutboundUrlError) {
+      return `Custom tool has an unusable webhook URL: ${error.message}`
+    }
+
+    throw error
+  }
 
   const text = await response.text()
 

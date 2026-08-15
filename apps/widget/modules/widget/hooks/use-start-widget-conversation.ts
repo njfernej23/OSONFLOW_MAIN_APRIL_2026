@@ -1,10 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { useAction, useMutation } from "convex/react"
+import { useMutation } from "convex/react"
 import { useAtomValue, useSetAtom } from "jotai"
 import { api } from "@workspace/backend/_generated/api"
-import type { Doc } from "@workspace/backend/_generated/dataModel"
+import type { Doc, Id } from "@workspace/backend/_generated/dataModel"
 import {
   chatReturnScreenAtom,
   contactSessionIdAtomFamily,
@@ -13,6 +13,7 @@ import {
   errorMessageAtom,
   organizationIdAtom,
   pendingInitialMessageAtom,
+  pendingStartChatAtom,
   screenAtom,
   type ChatReturnScreen,
 } from "@/modules/widget/atoms/widget-atoms"
@@ -61,6 +62,7 @@ export const useStartWidgetConversation = () => {
   const setConversationId = useSetAtom(conversationIdAtom)
   const setChatReturnScreen = useSetAtom(chatReturnScreenAtom)
   const setPendingInitialMessage = useSetAtom(pendingInitialMessageAtom)
+  const setPendingStartChat = useSetAtom(pendingStartChatAtom)
   const organizationId = useAtomValue(organizationIdAtom)
   const agentId = useAtomValue(agentIdAtom)
   const setContactSessionId = useSetAtom(
@@ -70,17 +72,16 @@ export const useStartWidgetConversation = () => {
     contactSessionIdAtomFamily(organizationId || "")
   )
   const createConversation = useMutation(api.public.conversations.create)
-  const createAnonymousContactSession = useAction(
-    api.public.contactSessions.createAnonymous
-  )
   const [isPending, setIsPending] = useState(false)
 
   const startConversation = async ({
     initialMessage,
     returnScreen = "selection",
+    contactSessionId: providedSessionId,
   }: {
     initialMessage?: string
     returnScreen?: ChatReturnScreen
+    contactSessionId?: Id<"contactSessions">
   } = {}) => {
     if (!organizationId) {
       setScreen("error")
@@ -88,18 +89,19 @@ export const useStartWidgetConversation = () => {
       return
     }
 
+    const sessionId = providedSessionId ?? contactSessionId
+
+    if (!sessionId) {
+      setPendingStartChat({
+        initialMessage,
+        returnScreen,
+      })
+      setScreen("auth")
+      return
+    }
+
     setIsPending(true)
     try {
-      let sessionId = contactSessionId
-
-      if (!sessionId) {
-        sessionId = await createAnonymousContactSession({
-          organizationId,
-          metadata: getWidgetMetadata(),
-        })
-        setContactSessionId(sessionId)
-      }
-
       const result = await createConversation({
         contactSessionId: sessionId,
         organizationId,
@@ -107,6 +109,7 @@ export const useStartWidgetConversation = () => {
         metadata: getWidgetMetadata(),
       })
       const trimmedMessage = initialMessage?.trim()
+      setPendingStartChat(null)
       setContactSessionId(result.contactSessionId)
       setPendingInitialMessage(trimmedMessage ? trimmedMessage : null)
       setChatReturnScreen(returnScreen)
@@ -114,6 +117,10 @@ export const useStartWidgetConversation = () => {
       setScreen("chat")
     } catch {
       setPendingInitialMessage(null)
+      setPendingStartChat({
+        initialMessage,
+        returnScreen,
+      })
       setScreen("auth")
     } finally {
       setIsPending(false)

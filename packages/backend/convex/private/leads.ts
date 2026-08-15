@@ -4,8 +4,8 @@ import { v } from "convex/values"
 import type { Doc, Id } from "../_generated/dataModel"
 import { query, type QueryCtx } from "../_generated/server"
 import { requireOrganizationIdentity } from "../lib/organizationIdentity"
+import { isAnonymousContactSession } from "../lib/contactSessionIdentity"
 
-const ANONYMOUS_EMAIL_DOMAIN = "anonymous.osonflow.local"
 export const LEADS_EXPORT_LIMIT = 5000
 const LEADS_LIST_SCAN_LIMIT = 2000
 const NEWCOMER_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
@@ -60,15 +60,7 @@ const paginateArray = <T>(items: T[], paginationOpts: PaginationOptions) => {
 }
 
 const isRealLead = (session: Doc<"contactSessions">) => {
-  if (session.isAnonymous === true) {
-    return false
-  }
-
-  if (session.email.toLowerCase().endsWith(`@${ANONYMOUS_EMAIL_DOMAIN}`)) {
-    return false
-  }
-
-  return true
+  return !isAnonymousContactSession(session)
 }
 
 const getLeadChannel = (metadata?: Doc<"contactSessions">["metadata"]) => {

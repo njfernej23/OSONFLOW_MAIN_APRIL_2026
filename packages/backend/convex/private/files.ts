@@ -10,6 +10,7 @@ import { internal } from "../_generated/api";
 import { generateText } from "ai";
 import { getOpenAIChatModelFromSecretValue } from "../lib/openai";
 import { enforceRateLimit } from "../lib/rateLimits";
+import { OutboundUrlError, assertSafeOutboundUrl, safeFetch } from "../lib/outboundUrl";
 
 function guessMimeType(filename: string, bytes: ArrayBuffer): string {
     return (
@@ -55,25 +56,20 @@ function normalizeAndValidateWebsiteUrl(rawUrl: string): string {
         });
     }
 
-    let parsed: URL;
-
+    // The scraped body is stored in the organization's knowledge base and read
+    // back through the assistant, so an unvalidated URL here is a readable SSRF
+    // rather than a blind one.
     try {
-        parsed = new URL(normalized);
-    } catch {
+        return assertSafeOutboundUrl(normalized).toString();
+    } catch (error) {
         throw new ConvexError({
             code: "BAD_REQUEST",
-            message: "Invalid website URL",
+            message:
+                error instanceof OutboundUrlError
+                    ? error.message
+                    : "Invalid website URL",
         });
     }
-
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-        throw new ConvexError({
-            code: "BAD_REQUEST",
-            message: "Website URL must start with http:// or https://",
-        });
-    }
-
-    return parsed.toString();
 }
 
 function decodeHtmlEntities(content: string): string {
@@ -190,9 +186,8 @@ async function scrapeWebsite(url: string): Promise<{
     const timeout = setTimeout(() => abortController.abort(), SCRAPE_TIMEOUT_MS);
 
     try {
-        const response = await fetch(normalizedUrl, {
+        const response = await safeFetch(normalizedUrl, {
             method: "GET",
-            redirect: "follow",
             headers: {
                 "User-Agent": SCRAPER_USER_AGENT,
                 Accept: "text/html,text/plain;q=0.9,*/*;q=0.8",
@@ -269,6 +264,13 @@ async function scrapeWebsite(url: string): Promise<{
             throw new ConvexError({
                 code: "BAD_REQUEST",
                 message: "Website scraping timed out",
+            });
+        }
+
+        if (error instanceof OutboundUrlError) {
+            throw new ConvexError({
+                code: "BAD_REQUEST",
+                message: error.message,
             });
         }
 
@@ -400,6 +402,12 @@ export const addFile = action({
         const blob = new Blob([bytes], { type: mimeType });
 
         const storageId = await ctx.storage.store(blob);
+        await ctx.runMutation((internal as any).system.storageObjects.claim, {
+            storageId,
+            organizationId: orgId,
+            uploadedBy: identity.subject,
+            purpose: "knowledge_base_file",
+        });
         const text = await extractTextContent(ctx, {
             storageId,
             filename,
@@ -429,6 +437,9 @@ export const addFile = action({
         if (!created) {
             console.debug("entry already exists, skipping upload metadata");
             await ctx.storage.delete(storageId);
+            await ctx.runMutation((internal as any).system.storageObjects.release, {
+                storageId,
+            });
         } else {
             await ctx.runMutation((internal as any).system.ai.replyCache.clearForOrganization, {
                 organizationId: orgId,
@@ -501,6 +512,12 @@ export const addWebsite = action({
         const storageFilename = `${sanitizedBaseFilename}.txt`;
         const storageBlob = new Blob([scraped.text], { type: "text/plain" });
         const storageId = await ctx.storage.store(storageBlob);
+        await ctx.runMutation((internal as any).system.storageObjects.claim, {
+            storageId,
+            organizationId: orgId,
+            uploadedBy: identity.subject,
+            purpose: "knowledge_base_website",
+        });
 
         const textBytes = new TextEncoder().encode(scraped.text);
         const textBuffer = textBytes.buffer.slice(
@@ -527,6 +544,9 @@ export const addWebsite = action({
         if (!created) {
             console.debug("website entry already exists, skipping upload metadata");
             await ctx.storage.delete(storageId);
+            await ctx.runMutation((internal as any).system.storageObjects.release, {
+                storageId,
+            });
         } else {
             await ctx.runMutation((internal as any).system.ai.replyCache.clearForOrganization, {
                 organizationId: orgId,

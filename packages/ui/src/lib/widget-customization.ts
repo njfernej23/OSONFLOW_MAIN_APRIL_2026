@@ -88,6 +88,59 @@ export const clampLauncherPromptDelaySeconds = (value: number): number => {
   return Math.max(0, Math.min(120, value))
 }
 
+// These values are set by organization admins and end up inside inline styles,
+// CSS custom properties and `url()` expressions, so anything that is not a
+// plain hex colour or an http(s)/data image URL falls back to the default
+// rather than being passed through to the DOM.
+const sanitizeColor = (value: unknown, fallback: string): string => {
+  if (typeof value !== "string") {
+    return fallback
+  }
+
+  return normalizeHexColor(value.trim()) ?? fallback
+}
+
+const SAFE_IMAGE_URL_PROTOCOLS = new Set(["http:", "https:"])
+
+export const sanitizeImageUrl = (value: unknown): string => {
+  if (typeof value !== "string") {
+    return ""
+  }
+
+  const trimmed = value.trim()
+
+  if (!trimmed) {
+    return ""
+  }
+
+  // Reject anything that could terminate a CSS url() or style declaration.
+  if (/[()"'\\\s;]/.test(trimmed)) {
+    return ""
+  }
+
+  if (trimmed.startsWith("/")) {
+    return trimmed.startsWith("//") ? "" : trimmed
+  }
+
+  // Raster formats only. An inline SVG carries scripts, which execute if the
+  // URL ever reaches a context richer than `<img src>` or CSS `url()`.
+  if (
+    /^data:image\/(?:png|jpeg|jpg|gif|webp);base64,[A-Za-z0-9+/=]+$/.test(
+      trimmed
+    )
+  ) {
+    return trimmed
+  }
+
+  try {
+    return SAFE_IMAGE_URL_PROTOCOLS.has(new URL(trimmed).protocol)
+      ? trimmed
+      : ""
+  } catch {
+    return ""
+  }
+}
+
 export const mergeWidgetTheme = (
   theme?: Partial<WidgetThemeSettings> | null
 ): WidgetThemeSettings => {
@@ -98,6 +151,28 @@ export const mergeWidgetTheme = (
 
   return {
     ...merged,
+    primaryColor: sanitizeColor(
+      merged.primaryColor,
+      DEFAULT_WIDGET_THEME.primaryColor
+    ),
+    headerGradientStart: sanitizeColor(
+      merged.headerGradientStart,
+      DEFAULT_WIDGET_THEME.headerGradientStart
+    ),
+    headerGradientEnd: sanitizeColor(
+      merged.headerGradientEnd,
+      DEFAULT_WIDGET_THEME.headerGradientEnd
+    ),
+    userBubbleColor: sanitizeColor(
+      merged.userBubbleColor,
+      DEFAULT_WIDGET_THEME.userBubbleColor
+    ),
+    botBubbleColor: sanitizeColor(
+      merged.botBubbleColor,
+      DEFAULT_WIDGET_THEME.botBubbleColor
+    ),
+    logoUrl: sanitizeImageUrl(merged.logoUrl),
+    backgroundImageUrl: sanitizeImageUrl(merged.backgroundImageUrl),
     borderRadius: clampBorderRadius(merged.borderRadius),
   }
 }
@@ -112,6 +187,11 @@ export const mergeWidgetAppearance = (
 
   return {
     ...merged,
+    launcherColor: sanitizeColor(
+      merged.launcherColor,
+      DEFAULT_WIDGET_APPEARANCE.launcherColor
+    ),
+    launcherIconUrl: sanitizeImageUrl(merged.launcherIconUrl),
     launcherPromptDelaySeconds: clampLauncherPromptDelaySeconds(
       Number(merged.launcherPromptDelaySeconds)
     ),

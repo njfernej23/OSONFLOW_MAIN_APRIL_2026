@@ -52,6 +52,8 @@ import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { ConversationStatusButton } from "../components/conversation-status-button"
 import { useConversationContactDocked } from "../hooks/use-conversation-contact-docked"
+import { useSetAtom } from "jotai"
+import { openConversationIdAtom } from "@/modules/dashboard/atoms"
 import { useEffect, useMemo, useState } from "react"
 import { cn } from "@workspace/ui/lib/utils"
 import { Skeleton } from "@workspace/ui/components/skeleton"
@@ -141,6 +143,15 @@ export const ConversationIdView = ({
   const markConversationAsRead = useMutation(
     api.private.conversations.markAsRead
   )
+  const setOpenConversationId = useSetAtom(openConversationIdAtom)
+
+  useEffect(() => {
+    setOpenConversationId(conversationId)
+
+    return () => {
+      setOpenConversationId(null)
+    }
+  }, [conversationId, setOpenConversationId])
 
   const messages = useThreadMessages(
     api.private.messages.getMany,

@@ -6,7 +6,11 @@ import {
 import { ConvexError, v } from "convex/values"
 import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server"
 import { Doc } from "../_generated/dataModel"
-import { requireOrganizationIdentity } from "../lib/organizationIdentity"
+import {
+  belongsToOrganization,
+  requireOrganizationIdentity,
+} from "../lib/organizationIdentity"
+import { isAnonymousContactSession } from "../lib/contactSessionIdentity"
 
 const getOrganizationIdentity = async (ctx: QueryCtx) => {
   return requireOrganizationIdentity(ctx)
@@ -95,8 +99,16 @@ const withLinkedHandoffStatus = async (
 }
 
 export const getUnreadSummary = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    // The conversation the operator is currently reading, excluded so that
+    // notifications only fire for threads they are not already looking at.
+    excludeConversationId: v.optional(v.id("aiVoiceConversations")),
+  },
+  returns: v.object({
+    unreadConversationCount: v.number(),
+    unreadMessageCount: v.number(),
+  }),
+  handler: async (ctx, args) => {
     const { orgId } = await getOrganizationIdentity(ctx)
 
     const conversations = await ctx.db
@@ -105,7 +117,9 @@ export const getUnreadSummary = query({
       .collect()
 
     const unreadConversations = conversations.filter(
-      (conversation) => (conversation.unreadForOperatorCount ?? 0) > 0
+      (conversation) =>
+        (conversation.unreadForOperatorCount ?? 0) > 0 &&
+        conversation._id !== args.excludeConversationId
     )
 
     return {
@@ -208,7 +222,15 @@ export const getMany = query({
           conversation,
           orgId
         )
-        const contactSession = await ctx.db.get(conversation.contactSessionId)
+        const contactSession = belongsToOrganization(
+          await ctx.db.get(conversation.contactSessionId),
+          orgId
+        )
+
+        if (!contactSession || isAnonymousContactSession(contactSession)) {
+          return null
+        }
+
         let searchMatchPreview: string | undefined
 
         if (normalizedSearchQuery) {
@@ -303,7 +325,14 @@ export const getOne = query({
       conversation,
       orgId
     )
-    const contactSession = await ctx.db.get(conversation.contactSessionId)
+    const contactSession = belongsToOrganization(
+      await ctx.db.get(conversation.contactSessionId),
+      orgId
+    )
+
+    if (!contactSession || isAnonymousContactSession(contactSession)) {
+      return null
+    }
 
     return {
       ...syncedConversation,
@@ -341,7 +370,10 @@ export const exportOne = query({
       conversation,
       orgId
     )
-    const contactSession = await ctx.db.get(conversation.contactSessionId)
+    const contactSession = belongsToOrganization(
+      await ctx.db.get(conversation.contactSessionId),
+      orgId
+    )
     const messages = await ctx.db
       .query("aiVoiceConversationMessages")
       .withIndex("by_conversation_id", (q) =>

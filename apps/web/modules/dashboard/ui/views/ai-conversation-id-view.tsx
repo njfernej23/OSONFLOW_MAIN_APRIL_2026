@@ -31,6 +31,8 @@ import {
 import { AIResponse } from "@workspace/ui/components/ai/response"
 import { DicebearAvatar } from "@workspace/ui/components/dicebear-avatar"
 import { cn } from "@workspace/ui/lib/utils"
+import { useSetAtom } from "jotai"
+import { openAiConversationIdAtom } from "@/modules/dashboard/atoms"
 import {
   AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES,
   AI_CONVERSATION_PROVIDER_LABELS,
@@ -113,6 +115,15 @@ export const AIConversationIdView = ({
   const markConversationAsRead = useMutation(
     api.private.aiConversations.markAsRead
   )
+  const setOpenAiConversationId = useSetAtom(openAiConversationIdAtom)
+
+  useEffect(() => {
+    setOpenAiConversationId(conversationId)
+
+    return () => {
+      setOpenAiConversationId(null)
+    }
+  }, [conversationId, setOpenAiConversationId])
 
   const messages = usePaginatedQuery(
     api.private.aiConversations.getMessages,

@@ -40,9 +40,6 @@ export const WidgetLoadingScreen = ({
   const setWidgetMode = useSetAtom(widgetModeAtom)
 
   const validateOrganization = useAction(api.public.organizations.validate)
-  const createAnonymousContactSession = useAction(
-    api.public.contactSessions.createAnonymous
-  )
   const setScreen = useSetAtom(screenAtom)
 
   const contactSessionId = useAtomValue(
@@ -97,63 +94,32 @@ export const WidgetLoadingScreen = ({
     if (ensuringSessionRef.current) return
     ensuringSessionRef.current = true
 
-    const startAnonymousSession = async () => {
-      if (!organizationId) {
-        setStep("settings")
-        return
-      }
-
-      try {
-        const anonymousSessionId = await createAnonymousContactSession({
-          organizationId,
-          metadata: {
-            userAgent: navigator.userAgent,
-            language: navigator.language,
-            languages: navigator.languages?.join(","),
-            platform: navigator.platform,
-            vendor: navigator.vendor,
-            screenResolution: `${window.screen.width}x${window.screen.height}`,
-            viewportSize: `${window.innerWidth}x${window.innerHeight}`,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            timezoneOffset: new Date().getTimezoneOffset(),
-            cookieEnabled: navigator.cookieEnabled,
-            referrer: document.referrer || "direct",
-            currentUrl: window.location.href,
-            source: "workflow_widget",
-          },
-        })
-        setContactSessionId(anonymousSessionId)
-      } catch {
+    if (!organizationId || !contactSessionId) {
+      if (contactSessionId) {
         setContactSessionId(null)
       }
-
       setStep("settings")
-    }
-
-    if (!contactSessionId) {
-      void startAnonymousSession()
       return
     }
 
     validateContactSession({
-      organizationId: organizationId!,
+      organizationId,
       contactSessionId,
     })
       .then((result) => {
-        if (!result.valid) {
-          void startAnonymousSession()
-          return
+        if (!result.valid || result.contactSession?.isAnonymous === true) {
+          setContactSessionId(null)
         }
         setStep("settings")
       })
       .catch(() => {
-        void startAnonymousSession()
+        setContactSessionId(null)
+        setStep("settings")
       })
   }, [
     step,
     contactSessionId,
     organizationId,
-    createAnonymousContactSession,
     setContactSessionId,
     validateContactSession,
   ])
@@ -211,7 +177,7 @@ export const WidgetLoadingScreen = ({
 
     if (!shouldOpenVoiceOnly) {
       setWidgetMode("standard")
-      setScreen(contactSessionId ? "selection" : "auth")
+      setScreen("selection")
       return
     }
 

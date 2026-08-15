@@ -1,4 +1,7 @@
-import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
+import {
+  belongsToOrganization,
+  getOrganizationIdFromIdentity,
+} from "../lib/organizationIdentity"
 import { ConvexError, v } from "convex/values"
 import { query } from "../_generated/server"
 
@@ -38,6 +41,9 @@ export const getOneByConversationId = query({
       })
     }
 
-    return await ctx.db.get(conversation.contactSessionId)
+    return belongsToOrganization(
+      await ctx.db.get(conversation.contactSessionId),
+      orgId
+    )
   },
 })

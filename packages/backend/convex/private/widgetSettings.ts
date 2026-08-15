@@ -3,6 +3,7 @@ import { ConvexError, v } from "convex/values"
 import { mutation, query } from "../_generated/server"
 import { Id } from "../_generated/dataModel"
 import { SUPPORT_AGENT_PROMPT } from "../system/ai/constants"
+import { enforceRateLimit } from "../lib/rateLimits"
 
 const DEFAULT_THEME = {
   primaryColor: "#000000",
@@ -868,6 +869,29 @@ const ensureBaselineVersionRecord = async (
   })
 }
 
+// Tool ids arrive from the client, so a caller could otherwise point their
+// widget at another organization's tools.
+const assertToolsBelongToOrganization = async (
+  ctx: any,
+  organizationId: string,
+  enabledToolIds: Id<"assistantTools">[] | undefined
+) => {
+  if (!enabledToolIds?.length) {
+    return
+  }
+
+  for (const toolId of new Set(enabledToolIds)) {
+    const tool = await ctx.db.get(toolId)
+
+    if (!tool || tool.organizationId !== organizationId) {
+      throw new ConvexError({
+        code: "INVALID_INPUT",
+        message: "One of the selected tools is not available.",
+      })
+    }
+  }
+}
+
 const saveDraftForOrganization = async (
   ctx: any,
   organizationId: string,
@@ -875,6 +899,12 @@ const saveDraftForOrganization = async (
   actorId: string | undefined,
   draftArgs: WidgetSettingsSnapshot
 ) => {
+  await assertToolsBelongToOrganization(
+    ctx,
+    organizationId,
+    draftArgs.enabledToolIds
+  )
+
   const now = Date.now()
   const existingWidgetSettings = await getWidgetSettingsByOrganizationId(
     ctx,
@@ -955,7 +985,11 @@ export const saveDraft = mutation({
 export const generateImageUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
-    await getAuthContext(ctx)
+    const { actorId } = await getAuthContext(ctx)
+    await enforceRateLimit(ctx, "widgetImageUploadByUser", {
+      key: actorId ?? "unknown",
+      message: "Too many image uploads. Please wait a moment and try again.",
+    })
     return await ctx.storage.generateUploadUrl()
   },
 })
@@ -965,7 +999,7 @@ export const getUploadedImageUrl = mutation({
     storageId: v.id("_storage"),
   },
   handler: async (ctx, args) => {
-    await getAuthContext(ctx)
+    const { organizationId, actorId } = await getAuthContext(ctx)
 
     const metadata = await ctx.db.system.get(args.storageId)
 
@@ -976,20 +1010,47 @@ export const getUploadedImageUrl = mutation({
       })
     }
 
-    if (!metadata.contentType?.startsWith("image/")) {
-      await ctx.storage.delete(args.storageId)
+    // Storage ids are not tenant-scoped, so ownership is tracked separately.
+    // Every other `ctx.storage.store` call claims its blob, which means an
+    // unclaimed blob can only be one this organization just uploaded.
+    const existingOwner = await ctx.db
+      .query("storageObjects")
+      .withIndex("by_storage_id", (q) => q.eq("storageId", args.storageId))
+      .unique()
+
+    if (existingOwner && existingOwner.organizationId !== organizationId) {
       throw new ConvexError({
-        code: "INVALID_INPUT",
-        message: "Please select an image file.",
+        code: "FORBIDDEN",
+        message: "Uploaded image not found",
       })
     }
 
-    if (metadata.size > MAX_WIDGET_IMAGE_SIZE_BYTES) {
-      await ctx.storage.delete(args.storageId)
+    if (existingOwner && existingOwner.purpose !== "widget_image") {
+      // Owned by this organization but serving another purpose (a knowledge
+      // base file, say). Refuse without deleting, or this endpoint doubles as
+      // a way to destroy the organization's own documents.
       throw new ConvexError({
         code: "INVALID_INPUT",
-        message: "Image must be 5MB or smaller.",
+        message: "That file is not a widget image.",
       })
+    }
+
+    const rejectUpload = async (message: string) => {
+      await ctx.storage.delete(args.storageId)
+
+      if (existingOwner) {
+        await ctx.db.delete(existingOwner._id)
+      }
+
+      throw new ConvexError({ code: "INVALID_INPUT", message })
+    }
+
+    if (!metadata.contentType?.startsWith("image/")) {
+      await rejectUpload("Please select an image file.")
+    }
+
+    if (metadata.size > MAX_WIDGET_IMAGE_SIZE_BYTES) {
+      await rejectUpload("Image must be 5MB or smaller.")
     }
 
     const url = await ctx.storage.getUrl(args.storageId)
@@ -998,6 +1059,16 @@ export const getUploadedImageUrl = mutation({
       throw new ConvexError({
         code: "NOT_FOUND",
         message: "Uploaded image URL is not available",
+      })
+    }
+
+    if (!existingOwner) {
+      await ctx.db.insert("storageObjects", {
+        storageId: args.storageId,
+        organizationId,
+        uploadedBy: actorId,
+        purpose: "widget_image",
+        createdAt: Date.now(),
       })
     }
 
