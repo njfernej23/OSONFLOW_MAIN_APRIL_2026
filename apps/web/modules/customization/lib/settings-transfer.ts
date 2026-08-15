@@ -35,9 +35,41 @@ export const parseWidgetSettingsImport = (raw: string): FormSchema => {
     throw new Error("Clipboard content is not valid JSON.")
   }
 
-  const settings = isRecord(parsed) && "settings" in parsed ? parsed.settings : parsed
+  const settings = (() => {
+    if (!isRecord(parsed)) {
+      return parsed
+    }
 
-  const result = widgetSettingsSchema.safeParse(settings)
+    if ("settings" in parsed) {
+      return parsed.settings
+    }
+
+    if (isRecord(parsed.widgetSettings)) {
+      return parsed.widgetSettings.draft ?? parsed.widgetSettings.published
+    }
+
+    return parsed
+  })()
+
+  const normalizedSettings = isRecord(settings)
+    ? {
+        ...settings,
+        voiceCallSettings: isRecord(settings.voiceCallSettings)
+          ? {
+              ...settings.voiceCallSettings,
+              customGoodbyePhrases: Array.isArray(
+                settings.voiceCallSettings.customGoodbyePhrases
+              )
+                ? settings.voiceCallSettings.customGoodbyePhrases
+                    .filter((phrase) => typeof phrase === "string")
+                    .join("\n")
+                : settings.voiceCallSettings.customGoodbyePhrases,
+            }
+          : settings.voiceCallSettings,
+      }
+    : settings
+
+  const result = widgetSettingsSchema.safeParse(normalizedSettings)
 
   if (!result.success) {
     throw new Error("Settings JSON is missing required fields or has invalid values.")

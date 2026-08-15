@@ -1164,15 +1164,23 @@ export const CustomizationForm = ({
     }
   }
 
-  const onOpenImportDialog = async () => {
-    try {
-      const clipboardText = await navigator.clipboard.readText()
-      setImportPayload(clipboardText)
-    } catch {
-      setImportPayload("")
+  const onOpenImportDialog = () => {
+    setIsImportDialogOpen(true)
+
+    if (importPayload.trim()) {
+      return
     }
 
-    setIsImportDialogOpen(true)
+    void navigator.clipboard
+      .readText()
+      .then((clipboardText) => {
+        if (clipboardText.trim()) {
+          setImportPayload(clipboardText)
+        }
+      })
+      .catch(() => {
+        // User can paste manually if clipboard access is blocked.
+      })
   }
 
   const onImportSettings = async () => {
@@ -2203,7 +2211,7 @@ export const CustomizationForm = ({
       </form>
 
       <Dialog onOpenChange={setIsImportDialogOpen} open={isImportDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="!flex max-h-[90vh] max-w-2xl flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>Import widget settings</DialogTitle>
             <DialogDescription>
@@ -2211,12 +2219,12 @@ export const CustomizationForm = ({
               replaces the current draft for this organization.
             </DialogDescription>
           </DialogHeader>
-          <Textarea
-            className="min-h-[280px] font-mono text-xs"
-            onChange={(event) => setImportPayload(event.target.value)}
-            placeholder='Paste exported JSON here, e.g. {"type":"osonflow-widget-settings",...}'
-            value={importPayload}
-          />
+            <Textarea
+              className="h-[min(42vh,360px)] field-sizing-fixed resize-none overflow-y-auto font-mono text-xs"
+              onChange={(event) => setImportPayload(event.target.value)}
+              placeholder='Paste exported JSON here, e.g. {"type":"osonflow-widget-settings",...}'
+              value={importPayload}
+            />
           <DialogFooter>
             <Button
               disabled={isImporting}

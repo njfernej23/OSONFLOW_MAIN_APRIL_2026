@@ -70,7 +70,236 @@ type OrgBundle = {
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null
+  typeof value === "object" && value !== null && !Array.isArray(value)
+
+const compact = <T extends Record<string, unknown>>(value: T): T =>
+  Object.fromEntries(
+    Object.entries(value).filter(([, nested]) => nested !== undefined)
+  ) as T
+
+const pickString = (value: unknown) =>
+  typeof value === "string" ? value : undefined
+
+const pickNumber = (value: unknown) =>
+  typeof value === "number" && Number.isFinite(value) ? value : undefined
+
+const pickBoolean = (value: unknown) =>
+  typeof value === "boolean" ? value : undefined
+
+const pickHelpTopics = (value: unknown) => {
+  const topics = Array.isArray(value)
+    ? value
+    : isRecord(value)
+      ? [value.topic1, value.topic2, value.topic3]
+      : []
+
+  return topics.filter(isRecord).map((topic) => ({
+    title: pickString(topic.title) ?? "",
+    excerpt: pickString(topic.excerpt) ?? "",
+    articles: (
+      Array.isArray(topic.articles)
+        ? topic.articles
+        : isRecord(topic.articles)
+          ? [
+              topic.articles.article1,
+              topic.articles.article2,
+              topic.articles.article3,
+            ]
+          : []
+    )
+      .filter(isRecord)
+      .map((article) => ({
+        title: pickString(article.title) ?? "",
+        excerpt: pickString(article.excerpt) ?? "",
+        body: pickString(article.body) ?? "",
+      })),
+  }))
+}
+
+const pickHomeCards = (value: unknown) => {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .filter(isRecord)
+    .filter((card) => card.type === "article")
+    .map((card) => ({
+      type: "article" as const,
+      topicIndex: pickNumber(card.topicIndex) ?? 0,
+      articleIndex: pickNumber(card.articleIndex) ?? 0,
+    }))
+}
+
+const pickTheme = (value: unknown) => {
+  if (!isRecord(value)) {
+    return undefined
+  }
+
+  return compact({
+    primaryColor: pickString(value.primaryColor),
+    headerGradientStart: pickString(value.headerGradientStart),
+    headerGradientEnd: pickString(value.headerGradientEnd),
+    userBubbleColor: pickString(value.userBubbleColor),
+    botBubbleColor: pickString(value.botBubbleColor),
+    borderRadius: pickNumber(value.borderRadius),
+    logoUrl: pickString(value.logoUrl),
+    backgroundImageUrl: pickString(value.backgroundImageUrl),
+    assistantName: pickString(value.assistantName),
+    headerBrandMode:
+      value.headerBrandMode === "none" ||
+      value.headerBrandMode === "image" ||
+      value.headerBrandMode === "text"
+        ? value.headerBrandMode
+        : undefined,
+    headerBannerImageUrl: pickString(value.headerBannerImageUrl),
+    headerBannerText: pickString(value.headerBannerText),
+    headerBannerTextColor: pickString(value.headerBannerTextColor),
+    headerBannerAccentColor: pickString(value.headerBannerAccentColor),
+    headerBannerFont:
+      value.headerBannerFont === "sans" ||
+      value.headerBannerFont === "serif" ||
+      value.headerBannerFont === "mono" ||
+      value.headerBannerFont === "display"
+        ? value.headerBannerFont
+        : undefined,
+    headerBannerStyle:
+      value.headerBannerStyle === "plain" ||
+      value.headerBannerStyle === "pill" ||
+      value.headerBannerStyle === "gradient"
+        ? value.headerBannerStyle
+        : undefined,
+  })
+}
+
+const pickAppearance = (value: unknown) => {
+  if (!isRecord(value)) {
+    return undefined
+  }
+
+  return compact({
+    launcherColor: pickString(value.launcherColor),
+    launcherLabel: pickString(value.launcherLabel),
+    voiceLauncherLabel: pickString(value.voiceLauncherLabel),
+    launcherIcon:
+      value.launcherIcon === "chat" ||
+      value.launcherIcon === "sparkles" ||
+      value.launcherIcon === "question"
+        ? value.launcherIcon
+        : undefined,
+    launcherIconUrl: pickString(value.launcherIconUrl),
+    launcherPromptEnabled: pickBoolean(value.launcherPromptEnabled),
+    launcherPromptText: pickString(value.launcherPromptText),
+    launcherPromptDelaySeconds: pickNumber(value.launcherPromptDelaySeconds),
+    animation:
+      value.animation === "slide-up" ||
+      value.animation === "scale" ||
+      value.animation === "fade" ||
+      value.animation === "pop"
+        ? value.animation
+        : undefined,
+    poweredByText: pickString(value.poweredByText),
+    showPoweredBy: pickBoolean(value.showPoweredBy),
+    showHelpCenter: pickBoolean(value.showHelpCenter),
+    showChatHistoryDownload: pickBoolean(value.showChatHistoryDownload),
+  })
+}
+
+const pickVoiceCallSettings = (value: unknown) => {
+  if (!isRecord(value)) {
+    return undefined
+  }
+
+  const phrases = Array.isArray(value.customGoodbyePhrases)
+    ? value.customGoodbyePhrases.filter(
+        (phrase): phrase is string => typeof phrase === "string"
+      )
+    : typeof value.customGoodbyePhrases === "string"
+      ? value.customGoodbyePhrases
+          .split("\n")
+          .map((phrase) => phrase.trim())
+          .filter(Boolean)
+      : undefined
+
+  return compact({
+    autoEndOnGoodbye: pickBoolean(value.autoEndOnGoodbye),
+    customGoodbyePhrases: phrases,
+    idleTimeoutSeconds: pickNumber(value.idleTimeoutSeconds),
+    maxDurationSeconds: pickNumber(value.maxDurationSeconds),
+  })
+}
+
+const sanitizeWidgetSnapshot = (snapshot: unknown) => {
+  if (!isRecord(snapshot)) {
+    return null
+  }
+
+  const defaultSuggestions = isRecord(snapshot.defaultSuggestions)
+    ? compact({
+        suggestion1: pickString(snapshot.defaultSuggestions.suggestion1),
+        suggestion2: pickString(snapshot.defaultSuggestions.suggestion2),
+        suggestion3: pickString(snapshot.defaultSuggestions.suggestion3),
+      })
+    : { suggestion1: "", suggestion2: "", suggestion3: "" }
+
+  const chatSettings = isRecord(snapshot.chatSettings)
+    ? compact({ model: pickString(snapshot.chatSettings.model) })
+    : undefined
+
+  const openaiRealtimeSettings = isRecord(snapshot.openaiRealtimeSettings)
+    ? compact({
+        enabled: pickBoolean(snapshot.openaiRealtimeSettings.enabled),
+        model: pickString(snapshot.openaiRealtimeSettings.model),
+        voice: pickString(snapshot.openaiRealtimeSettings.voice),
+      })
+    : undefined
+
+  const geminiLiveSettings = isRecord(snapshot.geminiLiveSettings)
+    ? compact({
+        enabled: pickBoolean(snapshot.geminiLiveSettings.enabled),
+        model: pickString(snapshot.geminiLiveSettings.model),
+        voice: pickString(snapshot.geminiLiveSettings.voice),
+      })
+    : undefined
+
+  return compact({
+    greetMessage:
+      pickString(snapshot.greetMessage)?.trim() ||
+      "Hi! How can I help you today?",
+    systemPrompt: pickString(snapshot.systemPrompt),
+    defaultSuggestions,
+    helpTopics: pickHelpTopics(snapshot.helpTopics),
+    homeCards: pickHomeCards(snapshot.homeCards),
+    chatSettings,
+    openaiRealtimeSettings,
+    geminiLiveSettings,
+    voiceCallSettings: pickVoiceCallSettings(snapshot.voiceCallSettings),
+    theme: pickTheme(snapshot.theme),
+    appearance: pickAppearance(snapshot.appearance),
+  })
+}
+
+const pickWorkflowDefinition = (value: unknown) => {
+  if (!isRecord(value) || typeof value.schemaVersion !== "number") {
+    return null
+  }
+
+  const name = pickString(value.name)
+  if (!name) {
+    return null
+  }
+
+  return compact({
+    schemaVersion: value.schemaVersion,
+    id: pickString(value.id),
+    name,
+    description: pickString(value.description),
+    nodes: Array.isArray(value.nodes) ? value.nodes : [],
+    edges: Array.isArray(value.edges) ? value.edges : [],
+  })
+}
+
+const WIDGET_SETTINGS_EXPORT_TYPE = "osonflow-widget-settings"
 
 const parseOrgBundle = (parsed: unknown): OrgBundle => {
   if (!isRecord(parsed)) {
@@ -78,6 +307,20 @@ const parseOrgBundle = (parsed: unknown): OrgBundle => {
       code: "BAD_REQUEST",
       message: "Bundle format is invalid or unsupported",
     })
+  }
+
+  if (parsed.type === WIDGET_SETTINGS_EXPORT_TYPE && isRecord(parsed.settings)) {
+    return {
+      type: ORG_BUNDLE_TYPE,
+      version: ORG_BUNDLE_VERSION,
+      exportedAt:
+        typeof parsed.exportedAt === "string"
+          ? parsed.exportedAt
+          : new Date().toISOString(),
+      widgetSettings: {
+        draft: parsed.settings,
+      },
+    }
   }
 
   if (
@@ -105,18 +348,42 @@ const importOptionsValidator = v.object({
   replaceKnowledgeBase: v.optional(v.boolean()),
 })
 
-const buildWidgetSnapshotFromRow = (row: any) => ({
-  greetMessage: row.greetMessage,
-  systemPrompt: row.systemPrompt,
-  chatSettings: row.chatSettings,
-  defaultSuggestions: row.defaultSuggestions,
-  helpTopics: Array.isArray(row.helpTopics) ? row.helpTopics : [],
-  homeCards: Array.isArray(row.homeCards) ? row.homeCards : [],
-  openaiRealtimeSettings: row.openaiRealtimeSettings,
-  geminiLiveSettings: row.geminiLiveSettings,
-  theme: row.theme,
-  appearance: row.appearance,
-})
+const EMPTY_WIDGET_SNAPSHOT = {
+  greetMessage: "Hi! How can I help you today?",
+  defaultSuggestions: {
+    suggestion1: "",
+    suggestion2: "",
+    suggestion3: "",
+  },
+  helpTopics: [] as Array<{
+    title: string
+    excerpt: string
+    articles: Array<{ title: string; excerpt: string; body: string }>
+  }>,
+  homeCards: [] as Array<{
+    type: "article"
+    topicIndex: number
+    articleIndex: number
+  }>,
+}
+
+const toWidgetSnapshot = (value: unknown): Record<string, unknown> =>
+  sanitizeWidgetSnapshot(value) ?? EMPTY_WIDGET_SNAPSHOT
+
+const buildWidgetSnapshotFromRow = (row: any): Record<string, unknown> =>
+  toWidgetSnapshot({
+    greetMessage: row.greetMessage,
+    systemPrompt: row.systemPrompt,
+    chatSettings: row.chatSettings,
+    defaultSuggestions: row.defaultSuggestions,
+    helpTopics: row.helpTopics,
+    homeCards: row.homeCards,
+    openaiRealtimeSettings: row.openaiRealtimeSettings,
+    geminiLiveSettings: row.geminiLiveSettings,
+    voiceCallSettings: row.voiceCallSettings,
+    theme: row.theme,
+    appearance: row.appearance,
+  })
 
 const extractKnowledgeText = async (
   ctx: { storage: any },
@@ -269,7 +536,8 @@ const clearKnowledgeBase = async (ctx: any, orgId: string) => {
 const importKnowledgeEntry = async (
   ctx: any,
   orgId: string,
-  entry: KnowledgeExportEntry
+  entry: KnowledgeExportEntry,
+  openAISecret?: string | null
 ) => {
   const text = entry.text.trim()
 
@@ -277,7 +545,7 @@ const importKnowledgeEntry = async (
     return { created: false, reason: "empty_text" as const }
   }
 
-  const organizationRag = await getRagForOrganization()
+  const organizationRag = await getRagForOrganization(openAISecret)
   const textBytes = new TextEncoder().encode(text)
   const textBuffer = textBytes.buffer.slice(
     textBytes.byteOffset,
@@ -365,18 +633,20 @@ export const exportBundle = action({
 
     const knowledgeBase = await exportKnowledgeBase(ctx, orgId)
 
-    const bundle = {
+    const widgetSettings = tableData.widgetSettings
+      ? {
+          published: buildWidgetSnapshotFromRow(tableData.widgetSettings),
+          draft:
+            sanitizeWidgetSnapshot(tableData.widgetSettings.draft) ??
+            buildWidgetSnapshotFromRow(tableData.widgetSettings),
+        }
+      : undefined
+
+    const bundle: OrgBundle = {
       type: ORG_BUNDLE_TYPE,
       version: ORG_BUNDLE_VERSION,
       exportedAt: new Date().toISOString(),
-      widgetSettings: tableData.widgetSettings
-        ? {
-            published: buildWidgetSnapshotFromRow(tableData.widgetSettings),
-            draft:
-              tableData.widgetSettings.draft ??
-              buildWidgetSnapshotFromRow(tableData.widgetSettings),
-          }
-        : undefined,
+      widgetSettings,
       knowledgeBase,
       savedReplies: tableData.savedReplies,
       workflows: tableData.workflows,
@@ -398,11 +668,61 @@ export const exportBundle = action({
   },
 })
 
+const importSummaryValidator = v.object({
+  widgetSettings: v.boolean(),
+  publishedWidgetSettings: v.boolean(),
+  knowledgeBaseImported: v.number(),
+  knowledgeBaseSkipped: v.number(),
+  knowledgeBaseCleared: v.number(),
+  savedReplies: v.number(),
+  workflows: v.number(),
+  plugins: v.number(),
+  integrationWebhooks: v.number(),
+  warnings: v.array(v.string()),
+})
+
+const getCaughtErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof ConvexError) {
+    const data = error.data
+    if (typeof data === "string" && data.trim()) {
+      return data
+    }
+    if (
+      isRecord(data) &&
+      typeof data.message === "string" &&
+      data.message.trim()
+    ) {
+      return data.message
+    }
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    return error.message
+  }
+
+  return fallback
+}
+
+const serializePluginValue = (value: unknown) => {
+  if (typeof value === "string" && value.trim()) {
+    return value
+  }
+
+  if (isRecord(value)) {
+    return serializeSecretValue(value)
+  }
+
+  return null
+}
+
 export const importBundle = action({
   args: {
     bundleJson: v.string(),
     options: v.optional(importOptionsValidator),
   },
+  returns: v.object({
+    summary: importSummaryValidator,
+  }),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
 
@@ -445,38 +765,104 @@ export const importBundle = action({
       workflows: 0,
       plugins: 0,
       integrationWebhooks: 0,
+      warnings: [] as string[],
     }
 
     if (bundle.widgetSettings) {
-      const snapshot =
+      const snapshot = sanitizeWidgetSnapshot(
         bundle.widgetSettings.draft ?? bundle.widgetSettings.published
+      )
 
       if (snapshot) {
-        await ctx.runMutation(
-          api.private.widgetSettings.saveDraft,
-          snapshot as never
-        )
-        summary.widgetSettings = true
+        try {
+          await ctx.runMutation(
+            api.private.widgetSettings.saveDraft,
+            snapshot as never
+          )
+          summary.widgetSettings = true
 
-        if (options.publishWidgetSettings) {
-          await ctx.runMutation(api.private.widgetSettings.publishDraft, {})
-          summary.publishedWidgetSettings = true
+          if (options.publishWidgetSettings) {
+            await ctx.runMutation(api.private.widgetSettings.publishDraft, {})
+            summary.publishedWidgetSettings = true
+          }
+        } catch (error) {
+          summary.warnings.push(
+            getCaughtErrorMessage(error, "Widget settings could not be imported")
+          )
         }
       }
     }
 
+    if (bundle.plugins?.length) {
+      for (const plugin of bundle.plugins) {
+        const secretValue = serializePluginValue(plugin.value)
+
+        if (
+          !secretValue ||
+          (plugin.service !== "openai_realtime" &&
+            plugin.service !== "gemini_live" &&
+            plugin.service !== "google_sheets")
+        ) {
+          continue
+        }
+
+        try {
+          await ctx.runMutation(internal.system.orgTransfer.importPlugin, {
+            organizationId: orgId,
+            service: plugin.service,
+            secretName: plugin.secretName,
+            secretValue,
+          })
+          summary.plugins += 1
+        } catch (error) {
+          summary.warnings.push(
+            getCaughtErrorMessage(
+              error,
+              `Could not import ${plugin.service} key`
+            )
+          )
+        }
+      }
+    }
+
+    const bundledOpenAI = bundle.plugins?.find(
+      (plugin) => plugin.service === "openai_realtime"
+    )
+    const openAISecret = serializePluginValue(bundledOpenAI?.value)
+
     if (options.replaceKnowledgeBase) {
-      summary.knowledgeBaseCleared = await clearKnowledgeBase(ctx, orgId)
+      try {
+        summary.knowledgeBaseCleared = await clearKnowledgeBase(ctx, orgId)
+      } catch (error) {
+        summary.warnings.push(
+          getCaughtErrorMessage(error, "Could not replace the knowledge base")
+        )
+      }
     }
 
     if (bundle.knowledgeBase?.length) {
       for (const entry of bundle.knowledgeBase) {
-        const result = await importKnowledgeEntry(ctx, orgId, entry)
+        try {
+          const result = await importKnowledgeEntry(
+            ctx,
+            orgId,
+            entry,
+            openAISecret
+          )
 
-        if (result.created) {
-          summary.knowledgeBaseImported += 1
-        } else {
+          if (result.created) {
+            summary.knowledgeBaseImported += 1
+          } else {
+            summary.knowledgeBaseSkipped += 1
+          }
+        } catch (error) {
           summary.knowledgeBaseSkipped += 1
+          summary.warnings.push(
+            getCaughtErrorMessage(
+              error,
+              `Could not import knowledge source "${entry.title}"`
+            )
+          )
         }
       }
 
@@ -490,79 +876,132 @@ export const importBundle = action({
 
     if (bundle.savedReplies?.length) {
       for (const reply of bundle.savedReplies) {
-        await ctx.runMutation(internal.system.orgTransfer.importSavedReply, {
-          organizationId: orgId,
-          actorId: identity.subject,
-          title: reply.title,
-          body: reply.body,
-          category: reply.category,
-        })
-        summary.savedReplies += 1
+        try {
+          await ctx.runMutation(internal.system.orgTransfer.importSavedReply, {
+            organizationId: orgId,
+            actorId: identity.subject,
+            title: reply.title,
+            body: reply.body,
+            category: reply.category,
+          })
+          summary.savedReplies += 1
+        } catch (error) {
+          summary.warnings.push(
+            getCaughtErrorMessage(
+              error,
+              `Could not import saved reply "${reply.title}"`
+            )
+          )
+        }
       }
     }
 
     if (bundle.workflows?.length) {
       for (const workflow of bundle.workflows) {
-        await ctx.runMutation(internal.system.orgTransfer.importWorkflow, {
-          organizationId: orgId,
-          actorId: identity.subject,
-          name: workflow.name,
-          description: workflow.description,
-          definition: workflow.definition as never,
-          publishedDefinition: workflow.publishedDefinition as never,
-          isActive: workflow.isActive,
-        })
-        summary.workflows += 1
-      }
-    }
+        const definition = pickWorkflowDefinition(workflow.definition)
+        const publishedDefinition = pickWorkflowDefinition(
+          workflow.publishedDefinition
+        )
 
-    if (bundle.plugins?.length) {
-      for (const plugin of bundle.plugins) {
-        if (!plugin.value) {
+        if (!definition) {
+          summary.warnings.push(
+            `Skipped workflow "${workflow.name}" because its definition is invalid`
+          )
           continue
         }
 
-        await ctx.runMutation(internal.system.orgTransfer.importPlugin, {
-          organizationId: orgId,
-          service: plugin.service,
-          secretName: plugin.secretName,
-          secretValue: serializeSecretValue(
-            plugin.value as Record<string, unknown>
-          ),
-        })
-        summary.plugins += 1
+        try {
+          await ctx.runMutation(internal.system.orgTransfer.importWorkflow, {
+            organizationId: orgId,
+            actorId: identity.subject,
+            name: workflow.name,
+            description: workflow.description,
+            definition: definition as never,
+            publishedDefinition: publishedDefinition as never,
+            isActive: workflow.isActive,
+          })
+          summary.workflows += 1
+        } catch (error) {
+          summary.warnings.push(
+            getCaughtErrorMessage(
+              error,
+              `Could not import workflow "${workflow.name}"`
+            )
+          )
+        }
       }
     }
 
     if (bundle.integrationWebhooks?.length) {
       for (const webhook of bundle.integrationWebhooks) {
-        await ctx.runMutation(
-          internal.system.orgTransfer.importIntegrationWebhook,
-          {
-            organizationId: orgId,
-            actorId: identity.subject,
-            url: webhook.url,
-            description: webhook.description,
-            provider:
-              webhook.provider === "webhook" ||
-              webhook.provider === "discord" ||
-              webhook.provider === "telegram" ||
-              webhook.provider === "whatsapp"
-                ? webhook.provider
-                : undefined,
-            providerConfig: webhook.providerConfig as never,
-            isEnabled: webhook.isEnabled,
-            eventTypes: webhook.eventTypes as Array<
+        try {
+          const allowedEventTypes = (
+            Array.isArray(webhook.eventTypes) ? webhook.eventTypes : []
+          ).filter(
+            (
+              eventType
+            ): eventType is
               | "contact_session.created"
               | "conversation.created"
               | "conversation.status_changed"
               | "message.received"
-              | "message.sent"
-            >,
-            signingSecret: webhook.signingSecret,
-          }
-        )
-        summary.integrationWebhooks += 1
+              | "message.sent" =>
+              eventType === "contact_session.created" ||
+              eventType === "conversation.created" ||
+              eventType === "conversation.status_changed" ||
+              eventType === "message.received" ||
+              eventType === "message.sent"
+          )
+
+          const providerConfig = isRecord(webhook.providerConfig)
+            ? compact({
+                telegramBotToken: pickString(
+                  webhook.providerConfig.telegramBotToken
+                ),
+                telegramChatId: pickString(
+                  webhook.providerConfig.telegramChatId
+                ),
+                whatsappAccessToken: pickString(
+                  webhook.providerConfig.whatsappAccessToken
+                ),
+                whatsappPhoneNumberId: pickString(
+                  webhook.providerConfig.whatsappPhoneNumberId
+                ),
+                whatsappRecipientPhone: pickString(
+                  webhook.providerConfig.whatsappRecipientPhone
+                ),
+              })
+            : undefined
+
+          await ctx.runMutation(
+            internal.system.orgTransfer.importIntegrationWebhook,
+            {
+              organizationId: orgId,
+              actorId: identity.subject,
+              url: webhook.url,
+              description: webhook.description,
+              provider:
+                webhook.provider === "webhook" ||
+                webhook.provider === "discord" ||
+                webhook.provider === "telegram" ||
+                webhook.provider === "whatsapp"
+                  ? webhook.provider
+                  : undefined,
+              providerConfig: providerConfig as never,
+              isEnabled: webhook.isEnabled,
+              eventTypes: allowedEventTypes,
+              signingSecret: webhook.signingSecret,
+            }
+          )
+          summary.integrationWebhooks += 1
+        } catch (error) {
+          summary.warnings.push(
+            getCaughtErrorMessage(
+              error,
+              `Could not import webhook "${webhook.url}"`
+            )
+          )
+        }
       }
     }
 

@@ -1,6 +1,7 @@
 "use client"
 
 import { useAction } from "convex/react"
+import { ConvexError } from "convex/values"
 import { api } from "@workspace/backend/_generated/api"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -27,9 +28,10 @@ import {
   ClipboardPasteIcon,
   DownloadIcon,
   Loader2Icon,
+  UploadIcon,
 } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { toast } from "sonner"
 import { copyTextToClipboard } from "@/lib/clipboard"
 
@@ -52,6 +54,31 @@ type ImportSummary = {
   workflows: number
   plugins: number
   integrationWebhooks: number
+  warnings?: string[]
+}
+
+const getTransferErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof ConvexError) {
+    if (typeof error.data === "string" && error.data.trim()) {
+      return error.data
+    }
+
+    if (
+      error.data &&
+      typeof error.data === "object" &&
+      "message" in error.data &&
+      typeof error.data.message === "string" &&
+      error.data.message.trim()
+    ) {
+      return error.data.message
+    }
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    return error.message
+  }
+
+  return fallback
 }
 
 const formatSummaryLines = (summary: ExportSummary | ImportSummary) => {
@@ -132,6 +159,7 @@ export const OrgTransferView = () => {
     useState<ExportSummary | null>(null)
   const [publishWidgetSettings, setPublishWidgetSettings] = useState(true)
   const [replaceKnowledgeBase, setReplaceKnowledgeBase] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const onExport = async () => {
     setIsExporting(true)
@@ -158,9 +186,7 @@ export const OrgTransferView = () => {
       }
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to export organization data"
+        getTransferErrorMessage(error, "Failed to export organization data")
       )
     } finally {
       setIsExporting(false)
@@ -183,15 +209,46 @@ export const OrgTransferView = () => {
     toast.success("Bundle downloaded")
   }
 
-  const onOpenImportDialog = async () => {
-    try {
-      const clipboardText = await navigator.clipboard.readText()
-      setImportPayload(clipboardText)
-    } catch {
-      setImportPayload(lastExportJson ?? "")
+  const onOpenImportDialog = () => {
+    setIsImportDialogOpen(true)
+
+    if (importPayload.trim()) {
+      return
     }
 
-    setIsImportDialogOpen(true)
+    void navigator.clipboard
+      .readText()
+      .then((clipboardText) => {
+        if (clipboardText.trim()) {
+          setImportPayload(clipboardText)
+        } else if (lastExportJson) {
+          setImportPayload(lastExportJson)
+        }
+      })
+      .catch(() => {
+        if (lastExportJson) {
+          setImportPayload(lastExportJson)
+        }
+      })
+  }
+
+  const onPickBundleFile = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0]
+    event.target.value = ""
+
+    if (!file) {
+      return
+    }
+
+    try {
+      const text = await file.text()
+      setImportPayload(text)
+      setIsImportDialogOpen(true)
+    } catch {
+      toast.error("Could not read that JSON file")
+    }
   }
 
   const onImport = async () => {
@@ -209,13 +266,22 @@ export const OrgTransferView = () => {
       setIsImportDialogOpen(false)
       setImportPayload("")
 
-      toast.success("Organization bundle imported", {
-        description:
-          formatSummaryLines(result.summary).join(" · ") || "Nothing was imported",
-      })
+      const importedText =
+        formatSummaryLines(result.summary).join(" · ") || "Nothing was imported"
+      const warnings = result.summary.warnings ?? []
+
+      if (warnings.length > 0) {
+        toast.success("Organization bundle imported with warnings", {
+          description: `${importedText}. ${warnings[0]}`,
+        })
+      } else {
+        toast.success("Organization bundle imported", {
+          description: importedText,
+        })
+      }
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to import organization data"
+        getTransferErrorMessage(error, "Failed to import organization data")
       )
     } finally {
       setIsImporting(false)
@@ -303,10 +369,27 @@ export const OrgTransferView = () => {
               <li>Telegram, Instagram, and WhatsApp need reconnecting on prod</li>
             </ul>
 
-            <Button onClick={onOpenImportDialog} variant="outline">
-              <ClipboardPasteIcon className="size-4" />
-              Import bundle
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={onOpenImportDialog} variant="outline">
+                <ClipboardPasteIcon className="size-4" />
+                Import bundle
+              </Button>
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                type="button"
+                variant="outline"
+              >
+                <UploadIcon className="size-4" />
+                Upload JSON
+              </Button>
+              <input
+                accept="application/json,.json"
+                className="hidden"
+                onChange={onPickBundleFile}
+                ref={fileInputRef}
+                type="file"
+              />
+            </div>
 
             <p className="text-xs text-muted-foreground">
               Need only widget styling? Use the quick copy tools on{" "}
@@ -320,16 +403,17 @@ export const OrgTransferView = () => {
       </div>
 
       <Dialog onOpenChange={setIsImportDialogOpen} open={isImportDialogOpen}>
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto sm:max-w-3xl">
+        <DialogContent className="!flex max-h-[90vh] max-w-3xl flex-col overflow-hidden sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Import organization bundle</DialogTitle>
             <DialogDescription>
-              This writes into the currently selected Clerk organization on the
-              connected Convex deployment.
+              Paste a bundle or upload the downloaded JSON file. This writes
+              into the currently selected Clerk organization on the connected
+              Convex deployment.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
             <div className="flex items-center justify-between gap-3 rounded-xl border border-border/70 p-3">
               <div>
                 <Label htmlFor="publish-widget-settings">
@@ -363,7 +447,7 @@ export const OrgTransferView = () => {
             </div>
 
             <Textarea
-              className="h-[min(42vh,360px)] resize-none overflow-y-auto font-mono text-xs"
+              className="h-[min(42vh,360px)] field-sizing-fixed resize-none overflow-y-auto font-mono text-xs"
               onChange={(event) => setImportPayload(event.target.value)}
               placeholder='Paste exported JSON here, e.g. {"type":"osonflow-org-bundle",...}'
               value={importPayload}
