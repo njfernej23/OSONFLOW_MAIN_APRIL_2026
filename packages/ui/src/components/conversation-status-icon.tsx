@@ -1,9 +1,10 @@
-import { ArrowRightIcon, ArrowUpIcon, CheckIcon } from "lucide-react";
-import { cn } from "@workspace/ui/lib/utils";
+import { ArrowRightIcon, ArrowUpIcon, CheckIcon } from "lucide-react"
+import { cn } from "@workspace/ui/lib/utils"
 
 interface ConversationStatusIconProps {
-  status: "unresolved" | "escalated" | "resolved";
-};
+  className?: string
+  status: "unresolved" | "escalated" | "resolved"
+}
 
 const statusConfig = {
   resolved: {
@@ -18,22 +19,24 @@ const statusConfig = {
     icon: ArrowUpIcon,
     bgColor: "bg-yellow-500",
   },
-} as const;
+} as const
 
 export const ConversationStatusIcon = ({
+  className,
   status,
 }: ConversationStatusIconProps) => {
-  const config = statusConfig[status];
-  const Icon = config.icon;
+  const config = statusConfig[status] ?? statusConfig.unresolved
+  const Icon = config.icon
 
   return (
     <div
       className={cn(
-        "flex items-center justify-center rounded-full p-1.5",
+        "flex size-6 shrink-0 items-center justify-center rounded-full",
         config.bgColor,
+        className
       )}
     >
-      <Icon className="size-3 stroke-3 text-white" />
+      <Icon className="size-3 stroke-[3] text-white" />
     </div>
-  );
-};
+  )
+}
