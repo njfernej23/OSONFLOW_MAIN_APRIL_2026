@@ -34,13 +34,13 @@ const formSchema = z.object({
     .string()
     .trim()
     .min(1, "Name is required")
-    .max(80, "Name must be 80 characters or less"),
+    .max(40, "Name must be 40 characters or less"),
   email: z
     .string()
     .trim()
     .toLowerCase()
     .min(1, "Email is required")
-    .max(120, "Email must be 120 characters or less")
+    .max(50, "Email must be 50 characters or less")
     .refine(
       (email) => EMAIL_PATTERN.test(email),
       "Enter a valid email address"
@@ -214,7 +214,7 @@ export const WidgetAuthScreen = () => {
                     <Input
                       autoComplete="name"
                       className="h-10 rounded-full bg-background text-sm"
-                      maxLength={80}
+                      maxLength={40}
                       placeholder="zyzz mukh"
                       type="text"
                       {...field}
@@ -236,7 +236,7 @@ export const WidgetAuthScreen = () => {
                       autoCorrect="off"
                       className="h-10 rounded-full bg-background text-sm"
                       inputMode="email"
-                      maxLength={120}
+                      maxLength={50}
                       placeholder="your@email.com"
                       spellCheck={false}
                       type="email"

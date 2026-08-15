@@ -6,8 +6,8 @@ import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
-const NAME_MAX_LENGTH = 80
-const EMAIL_MAX_LENGTH = 120
+const NAME_MAX_LENGTH = 40
+const EMAIL_MAX_LENGTH = 50
 
 export const WidgetEmailCapture = ({
   onSubmitDetails,

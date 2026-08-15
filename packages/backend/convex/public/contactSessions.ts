@@ -7,8 +7,8 @@ import type { Id } from "../_generated/dataModel"
 import { enforceRateLimit } from "../lib/rateLimits"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
-const NAME_MAX_LENGTH = 80
-const EMAIL_MAX_LENGTH = 120
+const NAME_MAX_LENGTH = 40
+const EMAIL_MAX_LENGTH = 50
 const ANONYMOUS_EMAIL_DOMAIN = "anonymous.osonflow.local"
 const DNS_QUERY_URL = "https://cloudflare-dns.com/dns-query"
 const DNS_TYPE_A = 1
