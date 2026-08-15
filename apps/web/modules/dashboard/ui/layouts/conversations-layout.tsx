@@ -59,7 +59,7 @@ export const ConversationsLayout = ({
       </ResizablePanel>
       <ResizableHandle
         withHandle
-        className="w-0 bg-transparent [&>div]:h-10 [&>div]:w-3.5 [&>div]:rounded-full [&>div]:border-border/70 [&>div]:bg-background/92 [&>div]:shadow-sm"
+        className="w-2 bg-transparent [&>div]:h-10 [&>div]:w-3.5 [&>div]:rounded-full [&>div]:border-border/70 [&>div]:bg-background/92 [&>div]:shadow-sm"
       />
       <ResizablePanel
         id="conversations-content"

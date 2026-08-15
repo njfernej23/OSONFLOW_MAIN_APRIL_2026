@@ -357,7 +357,7 @@ export const ConversationsPanel = () => {
         <SkeletonConversations />
       ) : (
         <ScrollArea className="min-h-0 flex-1">
-          <div className="flex w-full flex-col gap-1 p-2.5">
+          <div className="flex w-full flex-col gap-1 p-2.5 pr-3.5">
             {!conversations.results.length &&
             !normalizedSearchQuery &&
             !hasActiveFilters ? (
@@ -468,7 +468,7 @@ export const ConversationsPanel = () => {
                           className="mt-0.5 shrink-0"
                         />
 
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 overflow-hidden">
                           {/* Name + time row */}
                           <div className="flex w-full items-start justify-between gap-1">
                             <span className="truncate text-[13px] leading-snug font-semibold">
@@ -520,31 +520,31 @@ export const ConversationsPanel = () => {
                           )}
 
                           {/* Message preview */}
-                          <div className="mt-1.5 flex items-center justify-between gap-2">
-                            <div className="flex min-w-0 flex-1 items-center gap-1">
-                              {isLastMessageFromOperator && (
-                                <CornerUpLeftIcon className="size-3 shrink-0 text-sidebar-foreground/55" />
+                          <div className="mt-1.5 flex min-w-0 items-center gap-1">
+                            {isLastMessageFromOperator && (
+                              <CornerUpLeftIcon className="size-3 shrink-0 text-sidebar-foreground/55" />
+                            )}
+                            <span
+                              className={cn(
+                                "min-w-0 truncate text-[12px]",
+                                isLastMessageFromOperator
+                                  ? "text-sidebar-foreground/60"
+                                  : "font-medium text-sidebar-foreground"
                               )}
-                              <span
-                                className={cn(
-                                  "line-clamp-1 text-[12px]",
-                                  isLastMessageFromOperator
-                                    ? "text-sidebar-foreground/60"
-                                    : "font-medium text-sidebar-foreground"
-                                )}
-                              >
-                                {highlightMatch(
-                                  conversation.searchMatchPreview ??
-                                    conversation.lastMessage?.text,
-                                  normalizedSearchQuery
-                                )}
-                              </span>
-                            </div>
-                            <ConversationStatusIcon
-                              status={conversation.status}
-                            />
+                            >
+                              {highlightMatch(
+                                conversation.searchMatchPreview ??
+                                  conversation.lastMessage?.text,
+                                normalizedSearchQuery
+                              )}
+                            </span>
                           </div>
                         </div>
+
+                        <ConversationStatusIcon
+                          className="mt-1"
+                          status={conversation.status}
+                        />
                       </Link>
                     </ContextMenuTrigger>
                     <ContextMenuContent className="w-48">
