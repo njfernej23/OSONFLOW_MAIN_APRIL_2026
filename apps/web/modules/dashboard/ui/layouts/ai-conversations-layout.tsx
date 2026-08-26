@@ -45,6 +45,7 @@ export const AIConversationsLayout = ({
         defaultSize={320}
         minSize={260}
         maxSize={520}
+        groupResizeBehavior="preserve-pixel-size"
         className="flex min-w-0 flex-col"
       >
         <AIConversationsPanel />

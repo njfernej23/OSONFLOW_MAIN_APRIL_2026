@@ -3,8 +3,13 @@
 import type { CSSProperties, HTMLAttributes } from "react"
 import { memo } from "react"
 import ReactMarkdown, { type Options } from "react-markdown"
-import remarkGfm from "remark-gfm"
+import remarkGfmImport from "remark-gfm"
 import { cn } from "@workspace/ui/lib/utils"
+
+const remarkGfm =
+  typeof remarkGfmImport === "function"
+    ? remarkGfmImport
+    : (remarkGfmImport as { default?: typeof remarkGfmImport }).default
 
 export type AIResponseProps = HTMLAttributes<HTMLDivElement> & {
   options?: Options
@@ -104,7 +109,7 @@ export const AIResponse = memo(
     >
       <ReactMarkdown
         components={components}
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={remarkGfm ? [remarkGfm] : undefined}
         {...options}
       >
         {children}

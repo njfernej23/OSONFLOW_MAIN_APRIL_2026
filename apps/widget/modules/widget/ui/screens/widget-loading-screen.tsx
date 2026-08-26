@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from "react"
 import { api } from "@workspace/backend/_generated/api"
 import { mergeWidgetAppearance } from "@workspace/ui/lib/widget-customization"
 import { Spinner } from "@workspace/ui/components/spinner"
+import { useEnsureVoiceContactSession } from "../../hooks/use-ensure-voice-contact-session"
 
 type InitStep = "org" | "session" | "settings" | "voice" | "done"
 
@@ -32,12 +33,14 @@ export const WidgetLoadingScreen = ({
 }) => {
   const [step, setStep] = useState<InitStep>("org")
   const ensuringSessionRef = useRef(false)
+  const startingVoiceSessionRef = useRef(false)
   const setWidgetSettings = useSetAtom(widgetSettingsAtom)
   const setErrorMessage = useSetAtom(errorMessageAtom)
   const setOrganizationId = useSetAtom(organizationIdAtom)
   const setAgentId = useSetAtom(agentIdAtom)
   const setActiveVoiceProvider = useSetAtom(activeVoiceProviderAtom)
   const setWidgetMode = useSetAtom(widgetModeAtom)
+  const { ensureSession } = useEnsureVoiceContactSession()
 
   const validateOrganization = useAction(api.public.organizations.validate)
   const setScreen = useSetAtom(screenAtom)
@@ -107,7 +110,7 @@ export const WidgetLoadingScreen = ({
       contactSessionId,
     })
       .then((result) => {
-        if (!result.valid || result.contactSession?.isAnonymous === true) {
+        if (!result.valid) {
           setContactSessionId(null)
         }
         setStep("settings")
@@ -198,9 +201,22 @@ export const WidgetLoadingScreen = ({
 
     setActiveVoiceProvider(nextVoiceProvider)
 
-    // Require name/email before creating a session or conversation.
     if (!contactSessionId) {
-      setScreen("auth")
+      if (startingVoiceSessionRef.current) {
+        return
+      }
+
+      startingVoiceSessionRef.current = true
+      void ensureSession().then((sessionId) => {
+        if (!sessionId) {
+          startingVoiceSessionRef.current = false
+          setErrorMessage("Failed to start voice session")
+          setScreen("error")
+          return
+        }
+
+        setScreen("voice")
+      })
       return
     }
 
@@ -214,6 +230,7 @@ export const WidgetLoadingScreen = ({
     setWidgetMode,
     step,
     widgetSettings,
+    ensureSession,
   ])
 
   return (

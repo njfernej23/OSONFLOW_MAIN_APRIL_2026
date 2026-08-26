@@ -2049,9 +2049,10 @@ export const CustomizationForm = ({
                     </p>
                     <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                       When OpenAI Realtime or Gemini Live is enabled, the
-                      published widget opens as a voice-only assistant. It skips
-                      name/email collection, hides the regular chat view, and
-                      saves final transcript lines in AI voicechats.
+                      published widget opens as a voice-only assistant. Visitors
+                      are stored as Anonymous voice visitor, the regular chat
+                      view is hidden, and final transcript lines are saved in AI
+                      voicechats.
                     </p>
                   </div>
                   <FormField

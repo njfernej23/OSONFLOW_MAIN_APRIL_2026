@@ -28,6 +28,7 @@ import {
 } from "../../atoms/widget-atoms"
 import { WidgetFooter } from "../components/widget-footer"
 import { useStartWidgetConversation } from "../../hooks/use-start-widget-conversation"
+import { useEnsureVoiceContactSession } from "../../hooks/use-ensure-voice-contact-session"
 import { useHelpTopics, useHomeHelpCards } from "../../hooks/use-help-articles"
 
 const toCssImageUrl = (url: string) => url.replaceAll('"', "%22")
@@ -203,6 +204,7 @@ export const WidgetSelectionScreen = () => {
   const setConversationId = useSetAtom(conversationIdAtom)
   const setChatReturnScreen = useSetAtom(chatReturnScreenAtom)
   const { isPending, startConversation } = useStartWidgetConversation()
+  const { ensureSession } = useEnsureVoiceContactSession()
   const helpTopics = useHelpTopics()
   const homeHelpCards = useHomeHelpCards()
   const hasHelpContent = helpTopics.length > 0
@@ -269,13 +271,14 @@ export const WidgetSelectionScreen = () => {
   }
 
   const handleVoiceClick = (provider: "gemini" | "openai") => {
-    if (!contactSessionId) {
-      setScreen("auth")
-      return
-    }
+    void ensureSession().then((sessionId) => {
+      if (!sessionId) {
+        return
+      }
 
-    setActiveVoiceProvider(provider)
-    setScreen("voice")
+      setActiveVoiceProvider(provider)
+      setScreen("voice")
+    })
   }
 
   const openRecentConversation = (conversationId: Id<"conversations">) => {

@@ -13,5 +13,7 @@ export const isAnonymousContactSession = (
     return true
   }
 
-  return session.email.toLowerCase().endsWith(`@${ANONYMOUS_EMAIL_DOMAIN}`)
+  return (
+    session.email?.toLowerCase().endsWith(`@${ANONYMOUS_EMAIL_DOMAIN}`) ?? false
+  )
 }

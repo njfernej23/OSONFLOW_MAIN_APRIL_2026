@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useMutation } from "convex/react"
 import { useAtomValue, useSetAtom } from "jotai"
 import { api } from "@workspace/backend/_generated/api"
-import type { Doc, Id } from "@workspace/backend/_generated/dataModel"
+import type { Id } from "@workspace/backend/_generated/dataModel"
 import {
   chatReturnScreenAtom,
   contactSessionIdAtomFamily,
@@ -17,44 +17,7 @@ import {
   screenAtom,
   type ChatReturnScreen,
 } from "@/modules/widget/atoms/widget-atoms"
-
-const getWidgetMetadata = (): Doc<"contactSessions">["metadata"] => {
-  if (typeof window === "undefined" || typeof navigator === "undefined") {
-    return {
-      source: "workflow_widget",
-    }
-  }
-
-  let visitorId: string | null = null
-
-  try {
-    visitorId = window.localStorage.getItem("osonflow_visitor_id")
-
-    if (!visitorId) {
-      visitorId = `visitor_${Date.now().toString(36)}`
-      window.localStorage.setItem("osonflow_visitor_id", visitorId)
-    }
-  } catch {
-    visitorId = `visitor_${Date.now().toString(36)}`
-  }
-
-  return {
-    userAgent: navigator.userAgent,
-    language: navigator.language,
-    languages: navigator.languages?.join(","),
-    platform: navigator.platform,
-    vendor: navigator.vendor,
-    screenResolution: `${window.screen.width}x${window.screen.height}`,
-    viewportSize: `${window.innerWidth}x${window.innerHeight}`,
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    timezoneOffset: new Date().getTimezoneOffset(),
-    cookieEnabled: navigator.cookieEnabled,
-    referrer: document.referrer || "direct",
-    currentUrl: window.location.href,
-    source: "workflow_widget",
-    visitorId,
-  }
-}
+import { getWidgetMetadata } from "../lib/widget-metadata"
 
 export const useStartWidgetConversation = () => {
   const setScreen = useSetAtom(screenAtom)

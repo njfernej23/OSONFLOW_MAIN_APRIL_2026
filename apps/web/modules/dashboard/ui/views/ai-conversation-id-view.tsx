@@ -3,7 +3,7 @@
 import { api } from "@workspace/backend/_generated/api"
 import { Id } from "@workspace/backend/_generated/dataModel"
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react"
-import { format, isSameDay } from "date-fns"
+import { format, isSameDay, isValid } from "date-fns"
 import {
   ArrowLeftIcon,
   BotIcon,
@@ -20,15 +20,9 @@ import { Button } from "@workspace/ui/components/button"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { useIsMobile } from "@workspace/ui/hooks/use-mobile"
 import {
-  AIConversation,
-  AIConversationContent,
-  AIConversationScrollButton,
-} from "@workspace/ui/components/ai/conversation"
-import {
   AIMessage,
   AIMessageContent,
 } from "@workspace/ui/components/ai/message"
-import { AIResponse } from "@workspace/ui/components/ai/response"
 import { DicebearAvatar } from "@workspace/ui/components/dicebear-avatar"
 import { cn } from "@workspace/ui/lib/utils"
 import { useSetAtom } from "jotai"
@@ -38,11 +32,24 @@ import {
   AI_CONVERSATION_PROVIDER_LABELS,
 } from "../../constants"
 
-const formatTimestamp = (timestamp: number) =>
-  format(new Date(timestamp), "MMM d, yyyy 'at' h:mm a")
+const toValidDate = (timestamp: number | undefined) => {
+  if (typeof timestamp !== "number" || !Number.isFinite(timestamp)) {
+    return null
+  }
 
-const formatTranscriptTime = (timestamp: number) =>
-  format(new Date(timestamp), "h:mm a")
+  const date = new Date(timestamp)
+  return isValid(date) ? date : null
+}
+
+const formatTimestamp = (timestamp: number | undefined) => {
+  const date = toValidDate(timestamp)
+  return date ? format(date, "MMM d, yyyy 'at' h:mm a") : "—"
+}
+
+const formatTranscriptTime = (timestamp: number | undefined) => {
+  const date = toValidDate(timestamp)
+  return date ? format(date, "h:mm a") : ""
+}
 
 const formatCurrentPage = (value: string | undefined) => {
   if (!value) {
@@ -132,7 +139,7 @@ export const AIConversationIdView = ({
   )
 
   const orderedMessages = useMemo(
-    () => [...messages.results].reverse(),
+    () => [...(messages.results ?? [])].reverse(),
     [messages.results]
   )
 
@@ -160,13 +167,12 @@ export const AIConversationIdView = ({
     () =>
       orderedMessages.map((message, index) => {
         const previousMessage = orderedMessages[index - 1]
+        const messageDate = toValidDate(message._creationTime)
+        const previousDate = toValidDate(previousMessage?._creationTime)
         const dayLabel =
-          !previousMessage ||
-          !isSameDay(
-            new Date(previousMessage._creationTime),
-            new Date(message._creationTime)
-          )
-            ? format(new Date(message._creationTime), "EEEE, MMM d")
+          messageDate &&
+          (!previousDate || !isSameDay(previousDate, messageDate))
+            ? format(messageDate, "EEEE, MMM d")
             : null
 
         return {
@@ -321,85 +327,84 @@ export const AIConversationIdView = ({
           </div>
         </div>
 
-        <AIConversation className="min-h-0 flex-1 px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
-          <AIConversationContent className="px-0 py-0">
-            <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 sm:gap-4">
-              {transcriptItems.length > 0 ? (
-                transcriptItems.map(({ dayLabel, message }) => (
-                  <div key={message._id}>
-                    {dayLabel ? (
-                      <div className="mb-3 flex items-center gap-3 sm:mb-4">
-                        <div className="h-px flex-1 bg-border/70" />
-                        <span className="rounded-full bg-background px-2.5 py-1 text-[10px] font-medium text-muted-foreground ring-1 ring-border sm:px-3 sm:text-[11px]">
-                          {dayLabel}
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
+          <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 sm:gap-4">
+            {transcriptItems.length > 0 ? (
+              transcriptItems.map(({ dayLabel, message }) => (
+                <div key={message._id}>
+                  {dayLabel ? (
+                    <div className="mb-3 flex items-center gap-3 sm:mb-4">
+                      <div className="h-px flex-1 bg-border/70" />
+                      <span className="rounded-full bg-background px-2.5 py-1 text-[10px] font-medium text-muted-foreground ring-1 ring-border sm:px-3 sm:text-[11px]">
+                        {dayLabel}
+                      </span>
+                      <div className="h-px flex-1 bg-border/70" />
+                    </div>
+                  ) : null}
+
+                  <AIMessage
+                    from={message.role === "assistant" ? "assistant" : "user"}
+                  >
+                    <div className="flex max-w-2xl flex-col gap-1.5">
+                      <div
+                        className={cn(
+                          "inline-flex items-center gap-1.5 text-[10px] font-medium sm:text-[11px]",
+                          message.role === "assistant"
+                            ? "justify-start text-muted-foreground"
+                            : "justify-end text-muted-foreground"
+                        )}
+                      >
+                        {message.role === "assistant" ? (
+                          <>
+                            <BotIcon className="size-3 sm:size-3.5" />
+                            <span>Assistant</span>
+                          </>
+                        ) : (
+                          <>
+                            <UserRoundIcon className="size-3 sm:size-3.5" />
+                            <span>Visitor</span>
+                          </>
+                        )}
+                        <span className="text-muted-foreground/60">·</span>
+                        <span className="text-muted-foreground/60">
+                          {formatTranscriptTime(message._creationTime)}
                         </span>
-                        <div className="h-px flex-1 bg-border/70" />
                       </div>
-                    ) : null}
 
-                    <AIMessage
-                      from={message.role === "assistant" ? "assistant" : "user"}
-                    >
-                      <div className="flex max-w-2xl flex-col gap-1.5">
-                        <div
-                          className={cn(
-                            "inline-flex items-center gap-1.5 text-[10px] font-medium sm:text-[11px]",
-                            message.role === "assistant"
-                              ? "justify-start text-muted-foreground"
-                              : "justify-end text-muted-foreground"
-                          )}
-                        >
-                          {message.role === "assistant" ? (
-                            <>
-                              <BotIcon className="size-3 sm:size-3.5" />
-                              <span>Assistant</span>
-                            </>
-                          ) : (
-                            <>
-                              <UserRoundIcon className="size-3 sm:size-3.5" />
-                              <span>Visitor</span>
-                            </>
-                          )}
-                          <span className="text-muted-foreground/60">·</span>
-                          <span className="text-muted-foreground/60">
-                            {formatTranscriptTime(message._creationTime)}
-                          </span>
-                        </div>
-
-                        <AIMessageContent
-                          className={cn(
-                            "rounded-2xl border px-3 py-2 text-[12px] leading-relaxed shadow-sm sm:px-4 sm:py-2.5 sm:text-[13px]",
-                            message.role === "assistant"
-                              ? "border-border/70 bg-background text-foreground shadow-[0_14px_34px_-24px_rgba(15,23,42,0.24)]"
-                              : "border-transparent bg-primary text-primary-foreground shadow-[0_18px_36px_-24px_rgba(15,23,42,0.38)]"
-                          )}
-                        >
-                          <AIResponse>{message.text}</AIResponse>
-                        </AIMessageContent>
-                      </div>
-                    </AIMessage>
-                  </div>
-                ))
-              ) : (
-                <div className="flex min-h-[260px] flex-col items-center justify-center gap-2.5 rounded-2xl border border-dashed bg-background/65 p-4 text-center sm:min-h-[320px] sm:gap-3 sm:p-6">
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-muted/50 sm:size-11">
-                    <SparklesIcon className="size-4 text-muted-foreground sm:size-5" />
-                  </div>
-                  <div>
-                    <p className="text-[13px] font-medium text-foreground sm:text-sm">
-                      No transcript messages yet
-                    </p>
-                    <p className="mt-1 text-[11px] text-muted-foreground sm:text-[12px]">
-                      The call is saved. Final transcript lines will appear here
-                      as the voice provider returns them.
-                    </p>
-                  </div>
+                      <AIMessageContent
+                        className={cn(
+                          "rounded-2xl border px-3 py-2 text-[12px] leading-relaxed shadow-sm sm:px-4 sm:py-2.5 sm:text-[13px]",
+                          message.role === "assistant"
+                            ? "border-border/70 bg-background text-foreground shadow-[0_14px_34px_-24px_rgba(15,23,42,0.24)]"
+                            : "border-transparent bg-primary text-primary-foreground shadow-[0_18px_36px_-24px_rgba(15,23,42,0.38)]"
+                        )}
+                      >
+                        <p className="whitespace-pre-wrap break-words">
+                          {message.text}
+                        </p>
+                      </AIMessageContent>
+                    </div>
+                  </AIMessage>
                 </div>
-              )}
-            </div>
-          </AIConversationContent>
-          <AIConversationScrollButton />
-        </AIConversation>
+              ))
+            ) : (
+              <div className="flex min-h-[260px] flex-col items-center justify-center gap-2.5 rounded-2xl border border-dashed bg-background/65 p-4 text-center sm:min-h-[320px] sm:gap-3 sm:p-6">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-muted/50 sm:size-11">
+                  <SparklesIcon className="size-4 text-muted-foreground sm:size-5" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-medium text-foreground sm:text-sm">
+                    No transcript messages yet
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground sm:text-[12px]">
+                    The call is saved. Final transcript lines will appear here
+                    as the voice provider returns them.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </section>
     </div>
   )

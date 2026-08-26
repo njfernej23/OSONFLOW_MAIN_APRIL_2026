@@ -5,7 +5,6 @@ import { Doc, Id } from "../_generated/dataModel"
 import { saveMessage } from "@convex-dev/agent"
 import { supportAgent } from "../system/ai/agents/supportAgent"
 import { enforceRateLimit } from "../lib/rateLimits"
-import { isAnonymousContactSession } from "../lib/contactSessionIdentity"
 
 const providerValidator = v.union(
   v.literal("openai_realtime"),
@@ -41,17 +40,6 @@ const getValidatedContactSession = async (
   }
 
   return contactSession
-}
-
-const assertIdentifiedContactSession = (
-  contactSession: Doc<"contactSessions">
-) => {
-  if (isAnonymousContactSession(contactSession)) {
-    throw new ConvexError({
-      code: "UNAUTHORIZED",
-      message: "Contact details required",
-    })
-  }
 }
 
 export const getLatestTranscript = query({
@@ -218,11 +206,10 @@ export const create = mutation({
     provider: providerValidator,
   },
   handler: async (ctx, args) => {
-    const contactSession = await getValidatedContactSession(ctx, {
+    await getValidatedContactSession(ctx, {
       contactSessionId: args.contactSessionId,
       organizationId: args.organizationId,
     })
-    assertIdentifiedContactSession(contactSession)
 
     await enforceRateLimit(ctx, "voiceTokenBySession", {
       key: `${args.organizationId}:${args.contactSessionId}:conversation`,

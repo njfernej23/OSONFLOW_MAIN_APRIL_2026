@@ -30,7 +30,7 @@ export const DicebearAvatar = ({
     }
 
     const avatar = createAvatar(glass, {
-      seed: seed.toLowerCase().trim(),
+      seed: (seed ?? "visitor").toLowerCase().trim(),
       size,
     });
 

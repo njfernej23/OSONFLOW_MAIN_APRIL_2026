@@ -268,14 +268,14 @@ export const createAnonymousRecord = internalMutation({
       args.metadata?.visitorId?.trim() || `visitor_${now.toString(36)}`
     const suffix = visitorId.replace(/[^a-zA-Z0-9_-]/g, "").slice(-8) || "guest"
     const contactSessionId = await ctx.db.insert("contactSessions", {
-      name: `Visitor ${suffix.toUpperCase()}`,
+      name: "Anonymous voice visitor",
       email: `${suffix.toLowerCase()}@${ANONYMOUS_EMAIL_DOMAIN}`,
       organizationId: args.organizationId,
       expiresAt,
       isAnonymous: true,
       metadata: {
         ...args.metadata,
-        source: args.metadata?.source ?? "workflow_widget",
+        source: args.metadata?.source ?? "voice_widget",
         visitorId,
       },
     })
@@ -287,13 +287,13 @@ export const createAnonymousRecord = internalMutation({
         eventType: "contact_session.created",
         payload: {
           contactSessionId,
-          name: `Visitor ${suffix.toUpperCase()}`,
+          name: "Anonymous voice visitor",
           email: `${suffix.toLowerCase()}@${ANONYMOUS_EMAIL_DOMAIN}`,
           expiresAt,
           isAnonymous: true,
           metadata: {
             ...args.metadata,
-            source: args.metadata?.source ?? "workflow_widget",
+            source: args.metadata?.source ?? "voice_widget",
             visitorId,
           },
         },

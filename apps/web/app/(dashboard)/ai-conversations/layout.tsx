@@ -1,9 +1,6 @@
-import { auth } from "@clerk/nextjs/server"
 import { AIConversationsLayout } from "@/modules/dashboard/ui/layouts/ai-conversations-layout"
 
-const Layout = async ({ children }: { children: React.ReactNode }) => {
-  await auth.protect()
-
+const Layout = ({ children }: { children: React.ReactNode }) => {
   return <AIConversationsLayout>{children}</AIConversationsLayout>
 }
 

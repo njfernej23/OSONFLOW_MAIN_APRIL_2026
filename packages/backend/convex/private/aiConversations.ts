@@ -10,7 +10,6 @@ import {
   belongsToOrganization,
   requireOrganizationIdentity,
 } from "../lib/organizationIdentity"
-import { isAnonymousContactSession } from "../lib/contactSessionIdentity"
 
 const getOrganizationIdentity = async (ctx: QueryCtx) => {
   return requireOrganizationIdentity(ctx)
@@ -227,10 +226,6 @@ export const getMany = query({
           orgId
         )
 
-        if (!contactSession || isAnonymousContactSession(contactSession)) {
-          return null
-        }
-
         let searchMatchPreview: string | undefined
 
         if (normalizedSearchQuery) {
@@ -329,10 +324,6 @@ export const getOne = query({
       await ctx.db.get(conversation.contactSessionId),
       orgId
     )
-
-    if (!contactSession || isAnonymousContactSession(contactSession)) {
-      return null
-    }
 
     return {
       ...syncedConversation,
