@@ -9,7 +9,6 @@ import { paginationOptsValidator } from "convex/server"
 import { enforceRateLimit } from "../lib/rateLimits"
 import { getLatestTextAgentMessage } from "../lib/agentMessageText"
 import { requireContactSessionConversation } from "../lib/widgetAuth"
-import { isAnonymousContactSession } from "../lib/contactSessionIdentity"
 
 const contactSessionMetadataValidator = v.optional(
   v.object({
@@ -243,13 +242,6 @@ export const create = mutation({
       throw new ConvexError({
         code: "UNAUTHORIZED",
         message: "Invalid organization",
-      })
-    }
-
-    if (isAnonymousContactSession(session)) {
-      throw new ConvexError({
-        code: "UNAUTHORIZED",
-        message: "Contact details required",
       })
     }
 

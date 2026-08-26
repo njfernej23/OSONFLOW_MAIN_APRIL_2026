@@ -190,6 +190,7 @@ export const createAnonymous = action({
   args: {
     organizationId: v.string(),
     metadata: contactSessionMetadataValidator,
+    name: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<Id<"contactSessions">> => {
     await enforceRateLimit(ctx, "contactSessionCreateByOrg", {
@@ -203,6 +204,7 @@ export const createAnonymous = action({
       {
         organizationId: args.organizationId,
         metadata: args.metadata,
+        name: args.name,
       }
     )
   },
@@ -260,6 +262,7 @@ export const createAnonymousRecord = internalMutation({
   args: {
     organizationId: v.string(),
     metadata: contactSessionMetadataValidator,
+    name: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<Id<"contactSessions">> => {
     const now = Date.now()
@@ -267,15 +270,22 @@ export const createAnonymousRecord = internalMutation({
     const visitorId =
       args.metadata?.visitorId?.trim() || `visitor_${now.toString(36)}`
     const suffix = visitorId.replace(/[^a-zA-Z0-9_-]/g, "").slice(-8) || "guest"
+    const source = args.metadata?.source ?? "voice_widget"
+    const name =
+      args.name?.trim() ||
+      (source === "voice_widget"
+        ? "Anonymous voice visitor"
+        : "Anonymous visitor")
+    const email = `${suffix.toLowerCase()}@${ANONYMOUS_EMAIL_DOMAIN}`
     const contactSessionId = await ctx.db.insert("contactSessions", {
-      name: "Anonymous voice visitor",
-      email: `${suffix.toLowerCase()}@${ANONYMOUS_EMAIL_DOMAIN}`,
+      name,
+      email,
       organizationId: args.organizationId,
       expiresAt,
       isAnonymous: true,
       metadata: {
         ...args.metadata,
-        source: args.metadata?.source ?? "voice_widget",
+        source,
         visitorId,
       },
     })
@@ -287,13 +297,13 @@ export const createAnonymousRecord = internalMutation({
         eventType: "contact_session.created",
         payload: {
           contactSessionId,
-          name: "Anonymous voice visitor",
-          email: `${suffix.toLowerCase()}@${ANONYMOUS_EMAIL_DOMAIN}`,
+          name,
+          email,
           expiresAt,
           isAnonymous: true,
           metadata: {
             ...args.metadata,
-            source: args.metadata?.source ?? "voice_widget",
+            source,
             visitorId,
           },
         },

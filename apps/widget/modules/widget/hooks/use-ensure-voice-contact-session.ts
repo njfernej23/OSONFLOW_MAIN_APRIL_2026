@@ -42,6 +42,7 @@ export const useEnsureVoiceContactSession = () => {
     const promise = createAnonymousSession({
       organizationId,
       metadata: getWidgetMetadata("voice_widget"),
+      name: "Anonymous voice visitor",
     })
       .then((sessionId) => {
         setContactSessionId(sessionId)
