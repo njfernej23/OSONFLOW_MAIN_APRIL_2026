@@ -11,6 +11,7 @@ import { Doc } from "../_generated/dataModel"
 import { components, internal } from "../_generated/api"
 import {
   belongsToOrganization,
+  getOrganizationIdFromIdentity,
   requireOrganizationIdentity,
 } from "../lib/organizationIdentity"
 import { isAnonymousContactSession } from "../lib/contactSessionIdentity"
@@ -450,22 +451,29 @@ export const markAllAsRead = mutation({
 
 export const getUnreadSummary = query({
   args: {
-    // The conversation the operator is currently reading. It is excluded so
-    // that new-message notifications only fire for threads they are not
-    // already looking at.
-    excludeConversationId: v.optional(v.id("conversations")),
+    excludeConversationId: v.optional(v.string()),
   },
   returns: v.object({
     unreadConversationCount: v.number(),
     unreadMessageCount: v.number(),
   }),
   handler: async (ctx, args) => {
-    const { orgId } = await requireOrganizationIdentity(ctx)
+    const identity = await ctx.auth.getUserIdentity()
+    const orgId = identity
+      ? getOrganizationIdFromIdentity(identity)
+      : undefined
+
+    if (!orgId) {
+      return {
+        unreadConversationCount: 0,
+        unreadMessageCount: 0,
+      }
+    }
 
     const conversations = await ctx.db
       .query("conversations")
       .withIndex("by_organization_id", (q) => q.eq("organizationId", orgId))
-      .collect()
+      .take(2000)
 
     const unreadConversations = conversations.filter(
       (conversation) =>
@@ -473,13 +481,17 @@ export const getUnreadSummary = query({
         conversation._id !== args.excludeConversationId
     )
 
+    const unreadMessageCount = unreadConversations.reduce(
+      (total, conversation) =>
+        total + (conversation.unreadForOperatorCount ?? 0),
+      0
+    )
+
     return {
       unreadConversationCount: unreadConversations.length,
-      unreadMessageCount: unreadConversations.reduce(
-        (total, conversation) =>
-          total + (conversation.unreadForOperatorCount ?? 0),
-        0
-      ),
+      unreadMessageCount: Number.isFinite(unreadMessageCount)
+        ? unreadMessageCount
+        : 0,
     }
   },
 })

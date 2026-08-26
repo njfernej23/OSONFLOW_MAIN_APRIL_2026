@@ -1,10 +1,10 @@
 "use client"
 
 import { useAuth } from "@clerk/nextjs"
-import { useQuery } from "convex/react"
 import { useAtomValue } from "jotai"
 import { usePathname } from "next/navigation"
 import { api } from "@workspace/backend/_generated/api"
+import { useSafeQuery } from "@/lib/use-safe-query"
 import { useNotifyOnCountIncrease } from "@workspace/ui/hooks/use-notify-on-count-increase"
 import { useNotificationSoundUnlock } from "@workspace/ui/hooks/use-notification-sound-unlock"
 import {
@@ -21,16 +21,20 @@ export const DashboardNotificationSound = () => {
   const openConversationId = useAtomValue(openConversationIdAtom)
   const openAiConversationId = useAtomValue(openAiConversationIdAtom)
 
-  const conversationUnreadSummary = useQuery(
+  const conversationUnreadSummary = useSafeQuery(
     api.private.conversations.getUnreadSummary,
     hasActiveOrganization
-      ? { excludeConversationId: openConversationId ?? undefined }
+      ? openConversationId
+        ? { excludeConversationId: openConversationId }
+        : {}
       : "skip"
   )
-  const aiVoicechatUnreadSummary = useQuery(
+  const aiVoicechatUnreadSummary = useSafeQuery(
     api.private.aiConversations.getUnreadSummary,
     hasActiveOrganization
-      ? { excludeConversationId: openAiConversationId ?? undefined }
+      ? openAiConversationId
+        ? { excludeConversationId: openAiConversationId }
+        : {}
       : "skip"
   )
 

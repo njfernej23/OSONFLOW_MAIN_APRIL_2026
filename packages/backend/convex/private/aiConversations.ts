@@ -8,6 +8,7 @@ import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server"
 import { Doc } from "../_generated/dataModel"
 import {
   belongsToOrganization,
+  getOrganizationIdFromIdentity,
   requireOrganizationIdentity,
 } from "../lib/organizationIdentity"
 
@@ -99,21 +100,29 @@ const withLinkedHandoffStatus = async (
 
 export const getUnreadSummary = query({
   args: {
-    // The conversation the operator is currently reading, excluded so that
-    // notifications only fire for threads they are not already looking at.
-    excludeConversationId: v.optional(v.id("aiVoiceConversations")),
+    excludeConversationId: v.optional(v.string()),
   },
   returns: v.object({
     unreadConversationCount: v.number(),
     unreadMessageCount: v.number(),
   }),
   handler: async (ctx, args) => {
-    const { orgId } = await getOrganizationIdentity(ctx)
+    const identity = await ctx.auth.getUserIdentity()
+    const orgId = identity
+      ? getOrganizationIdFromIdentity(identity)
+      : undefined
+
+    if (!orgId) {
+      return {
+        unreadConversationCount: 0,
+        unreadMessageCount: 0,
+      }
+    }
 
     const conversations = await ctx.db
       .query("aiVoiceConversations")
       .withIndex("by_organization_id", (q) => q.eq("organizationId", orgId))
-      .collect()
+      .take(2000)
 
     const unreadConversations = conversations.filter(
       (conversation) =>
@@ -121,13 +130,17 @@ export const getUnreadSummary = query({
         conversation._id !== args.excludeConversationId
     )
 
+    const unreadMessageCount = unreadConversations.reduce(
+      (total, conversation) =>
+        total + (conversation.unreadForOperatorCount ?? 0),
+      0
+    )
+
     return {
       unreadConversationCount: unreadConversations.length,
-      unreadMessageCount: unreadConversations.reduce(
-        (total, conversation) =>
-          total + (conversation.unreadForOperatorCount ?? 0),
-        0
-      ),
+      unreadMessageCount: Number.isFinite(unreadMessageCount)
+        ? unreadMessageCount
+        : 0,
     }
   },
 })
