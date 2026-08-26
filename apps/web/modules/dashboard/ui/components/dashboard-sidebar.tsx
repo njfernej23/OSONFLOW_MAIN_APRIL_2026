@@ -41,9 +41,8 @@ import {
 import { cn } from "@workspace/ui/lib/utils"
 import { LanguageSwitcher } from "@/components/i18n/language-switcher"
 import { DashboardThemeToggle } from "./dashboard-theme-toggle"
-import { useMutation } from "convex/react"
+import { useMutation, useQuery } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
-import { useSafeQuery } from "@/lib/use-safe-query"
 
 const customerSupportItems = [
   {
@@ -145,11 +144,11 @@ export const DashboardSidebar = () => {
   const { isMobile, setOpenMobile } = useSidebar()
   const { isLoaded: isAuthLoaded, orgId } = useAuth()
   const hasActiveOrganization = isAuthLoaded && Boolean(orgId)
-  const conversationUnreadSummary = useSafeQuery(
+  const conversationUnreadSummary = useQuery(
     api.private.conversations.getUnreadSummary,
     hasActiveOrganization ? {} : "skip"
   )
-  const aiVoicechatUnreadSummary = useSafeQuery(
+  const aiVoicechatUnreadSummary = useQuery(
     api.private.aiConversations.getUnreadSummary,
     hasActiveOrganization ? {} : "skip"
   )
