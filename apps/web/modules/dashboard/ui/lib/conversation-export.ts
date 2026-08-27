@@ -50,3 +50,24 @@ export const downloadConversationExport = (
   link.remove()
   URL.revokeObjectURL(url)
 }
+
+export type CsvValue = string | number | boolean | null | undefined
+
+export const formatCsvTimestamp = (timestamp: number | null | undefined) =>
+  typeof timestamp === "number" && Number.isFinite(timestamp)
+    ? new Date(timestamp).toISOString()
+    : ""
+
+/**
+ * Quotes a cell for CSV and defuses spreadsheet formula injection: a leading
+ * =, +, -, @, tab or CR would otherwise be evaluated by Excel/Sheets on open.
+ */
+export const escapeCsvCell = (value: CsvValue) => {
+  const raw = String(value ?? "")
+  const safe = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw
+
+  return `"${safe.replaceAll('"', '""')}"`
+}
+
+export const stringifyCsvRows = (rows: CsvValue[][]) =>
+  rows.map((row) => row.map(escapeCsvCell).join(",")).join("\n")

@@ -1,4 +1,4 @@
-import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
+import { requireOrganizationIdentity } from "../lib/organizationIdentity"
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { OutboundUrlError, assertSafeOutboundUrl } from "../lib/outboundUrl";
@@ -217,24 +217,10 @@ const getProviderConfigPreview = (providerConfig?: WebhookProviderConfig) => {
     };
 };
 
-const getAuthContext = async (ctx: any) => {
-    const identity = await ctx.auth.getUserIdentity();
-
-    if (identity === null) {
-        throw new ConvexError({
-            code: "UNAUTHORIZED",
-            message: "Identity not found",
-        });
-    }
-
-    const orgId = getOrganizationIdFromIdentity(identity) as string;
-
-    if (!orgId) {
-        throw new ConvexError({
-            code: "UNAUTHORIZED",
-            message: "Organization not found",
-        });
-    }
+const getAuthContext = async (
+    ctx: Parameters<typeof requireOrganizationIdentity>[0],
+) => {
+    const { identity, orgId } = await requireOrganizationIdentity(ctx);
 
     return {
         organizationId: orgId,

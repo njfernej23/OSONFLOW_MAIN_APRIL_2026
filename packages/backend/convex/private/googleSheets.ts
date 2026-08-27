@@ -1,4 +1,4 @@
-import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
+import { requireOrganizationIdentity } from "../lib/organizationIdentity"
 import {
   buildGoogleSheetsAuthorizationUrl,
   exchangeGoogleCodeForTokens,
@@ -12,29 +12,13 @@ import { ConvexError, v } from "convex/values"
 import { internal } from "../_generated/api"
 import { action, mutation, query } from "../_generated/server"
 
-const getAuthContext = async (ctx: {
-  auth: { getUserIdentity: () => Promise<{ subject: string } | null> }
-}) => {
-  const identity = await ctx.auth.getUserIdentity()
-
-  if (!identity) {
-    throw new ConvexError({
-      code: "UNAUTHORIZED",
-      message: "Identity not found",
-    })
-  }
-
-  const organizationId = getOrganizationIdFromIdentity(identity) as string
-
-  if (!organizationId) {
-    throw new ConvexError({
-      code: "UNAUTHORIZED",
-      message: "Organization not found",
-    })
-  }
+const getAuthContext = async (
+  ctx: Parameters<typeof requireOrganizationIdentity>[0]
+) => {
+  const { identity, orgId } = await requireOrganizationIdentity(ctx)
 
   return {
-    organizationId,
+    organizationId: orgId,
     actorId: identity.subject,
   }
 }

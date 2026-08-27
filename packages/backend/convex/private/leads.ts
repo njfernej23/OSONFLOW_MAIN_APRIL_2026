@@ -1,10 +1,11 @@
-import { paginationOptsValidator, PaginationOptions } from "convex/server"
+import { paginationOptsValidator } from "convex/server"
 import { v } from "convex/values"
 
 import type { Doc, Id } from "../_generated/dataModel"
 import { query, type QueryCtx } from "../_generated/server"
 import { requireOrganizationIdentity } from "../lib/organizationIdentity"
 import { isAnonymousContactSession } from "../lib/contactSessionIdentity"
+import { paginateArray } from "../lib/paginateArray"
 
 export const LEADS_EXPORT_LIMIT = 5000
 const LEADS_LIST_SCAN_LIMIT = 2000
@@ -42,21 +43,6 @@ export type LeadRecord = {
   conversationCount: number
   latestConversationId?: Id<"conversations">
   isNewcomer: boolean
-}
-
-const paginateArray = <T>(items: T[], paginationOpts: PaginationOptions) => {
-  const start = paginationOpts.cursor
-    ? Number.parseInt(paginationOpts.cursor, 10)
-    : 0
-  const safeStart = Number.isFinite(start) ? start : 0
-  const end = safeStart + paginationOpts.numItems
-  const isDone = end >= items.length
-
-  return {
-    page: items.slice(safeStart, end),
-    isDone,
-    continueCursor: isDone ? "" : String(end),
-  }
 }
 
 const isRealLead = (session: Doc<"contactSessions">) => {

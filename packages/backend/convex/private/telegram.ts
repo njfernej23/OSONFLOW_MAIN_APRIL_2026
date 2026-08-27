@@ -1,4 +1,4 @@
-import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
+import { requireOrganizationIdentity } from "../lib/organizationIdentity"
 import { getTelegramWebhookBaseUrl } from "../lib/webhookBaseUrl"
 import { ConvexError, v } from "convex/values"
 import { internal } from "../_generated/api"
@@ -20,29 +20,13 @@ type TelegramApiResponse = {
   description?: string
 }
 
-const getAuthContext = async (ctx: {
-  auth: { getUserIdentity: () => Promise<any> }
-}) => {
-  const identity = await ctx.auth.getUserIdentity()
-
-  if (identity === null) {
-    throw new ConvexError({
-      code: "UNAUTHORIZED",
-      message: "Identity not found",
-    })
-  }
-
-  const organizationId = getOrganizationIdFromIdentity(identity)
-
-  if (!organizationId) {
-    throw new ConvexError({
-      code: "UNAUTHORIZED",
-      message: "Organization not found",
-    })
-  }
+const getAuthContext = async (
+  ctx: Parameters<typeof requireOrganizationIdentity>[0]
+) => {
+  const { identity, orgId } = await requireOrganizationIdentity(ctx)
 
   return {
-    organizationId,
+    organizationId: orgId,
     actorId: identity.subject as string | undefined,
   }
 }

@@ -30,12 +30,15 @@ import {
   TabsTrigger,
 } from "@workspace/ui/components/tabs"
 import { cn } from "@workspace/ui/lib/utils"
+import {
+  formatCsvTimestamp,
+  stringifyCsvRows,
+  type CsvValue,
+} from "../lib/conversation-export"
 
 const ANALYTICS_EXPORT_LIMIT = 5000
 
 type ConversationInsight = Doc<"conversationInsights">
-type CsvValue = string | number | boolean | null | undefined
-
 const formatDuration = (ms: number | null) => {
   if (ms === null) {
     return "No human replies yet"
@@ -58,21 +61,6 @@ const formatIntent = (intent: string) =>
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ")
-
-const formatCsvTimestamp = (timestamp: number | null | undefined) =>
-  typeof timestamp === "number" && Number.isFinite(timestamp)
-    ? new Date(timestamp).toISOString()
-    : ""
-
-const escapeCsvCell = (value: CsvValue) => {
-  const raw = String(value ?? "")
-  const safe = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw
-
-  return `"${safe.replaceAll('"', '""')}"`
-}
-
-const stringifyCsvRows = (rows: CsvValue[][]) =>
-  rows.map((row) => row.map(escapeCsvCell).join(",")).join("\n")
 
 const insightToCsvRow = (insight: ConversationInsight) => [
   insight._id,

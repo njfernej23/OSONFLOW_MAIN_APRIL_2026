@@ -2,7 +2,7 @@
 
 import { ConvexError, v } from "convex/values"
 import { action } from "../_generated/server"
-import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
+import { requireOrganizationIdentity } from "../lib/organizationIdentity"
 import { resolveGoogleSheetsAuth } from "../lib/googleSheetsAuth"
 import {
   listGoogleSpreadsheets,
@@ -12,28 +12,14 @@ import {
   listSpreadsheetTabsWithApiKey,
 } from "../lib/googleSheetsDrive"
 
-const getAuthContext = async (ctx: {
-  auth: { getUserIdentity: () => Promise<{ subject: string } | null> }
-}) => {
-  const identity = await ctx.auth.getUserIdentity()
+const getAuthContext = async (
+  ctx: Parameters<typeof requireOrganizationIdentity>[0]
+) => {
+  const { identity, orgId } = await requireOrganizationIdentity(ctx)
 
-  if (!identity) {
-    throw new ConvexError({
-      code: "UNAUTHORIZED",
-      message: "Identity not found",
-    })
+  return {
+    organizationId: orgId,
   }
-
-  const organizationId = getOrganizationIdFromIdentity(identity) as string
-
-  if (!organizationId) {
-    throw new ConvexError({
-      code: "UNAUTHORIZED",
-      message: "Organization not found",
-    })
-  }
-
-  return { organizationId }
 }
 
 const requireOAuthAccessToken = async (
