@@ -46,37 +46,37 @@ const $ = (s, c) => (c || document).querySelector(s);
 
   /* ---------------- Shared knowledge corpus ---------------- */
   const knowledge = [
-    { id: "k-1", title: "Osonflow Core Overview", type: "file", source: "osonflow-faq.pdf",
-      content: "Osonflow is an AI customer support platform. It behaves as a 'one calm front door' for websites. When a visitor reaches out via chat or voice, Osonflow answers using grounded local context like URLs, help-desk docs, and training files. When judgment is required, it gracefully routes the ticket to a human agent along with the full chat history.", date: "2026-06-01" },
-    { id: "k-2", title: "Pricing & Plans", type: "url", source: "https://osonflow.ai/pricing",
-      content: "Osonflow offers three tiers. Starter: $0/month with full AI widget, up to 1,000 threads, 1 crawler, and basic email handoff. Growth: 299.000 soms/month with priority voice, live shared inbox workspaces, up to 10 agent seats, unlimited crawler indexing, and Slack integration. Enterprise: custom pricing built with SLA guarantees, dedicated databases, and customized voice frequencies.", date: "2026-06-05" },
-    { id: "k-3", title: "Real-time Voice Support", type: "file", source: "voice_capabilities.txt",
-      content: "Osonflow includes bidirectional real-time streaming voice support. Visitors tap the voice button inside the widget to speak with the AI. It matches the same central queue as chat. If a voice interaction needs a person, it rings the active support team and hands off mid-call with an automated transcript prepared instantly in their shared inbox.", date: "2026-06-10" },
-    { id: "k-4", title: "Integrations & Script Setup", type: "url", source: "https://docs.osonflow.ai/setup",
-      content: "Osonflow installs with a single script tag in your head: <script src='https://widget.osonflow.uz/widget.js' data-id='oson-demo'></script>. It supports smooth state syncs, lets you customize theme presets like Japandi linen, and connects cleanly with CMS/CRM tools such as Shopify, WordPress, and HubSpot.", date: "2026-06-12" }
+    { id: "k-1", title: "What Osonflow does", type: "file", source: "osonflow-faq.pdf",
+      content: "Osonflow is an AI customer support tool for websites. When a visitor writes or calls in, Osonflow answers using your own content — your web pages, help articles, and uploaded files. When a question needs a person, it passes the whole conversation to your team so the customer never repeats themselves.", date: "2026-06-01" },
+    { id: "k-2", title: "Pricing and plans", type: "url", source: "https://osonflow.ai/pricing",
+      content: "There are three plans. Starter is free: the full chat widget, up to 1,000 conversations, one website to read from, and email handover. Growth is 299.000 soms a month: voice support, the shared team inbox, up to 10 team seats, unlimited pages read from your site, and Slack. Enterprise is custom-priced with an SLA, a dedicated database, and custom voice options.", date: "2026-06-05" },
+    { id: "k-3", title: "Voice support", type: "file", source: "voice_capabilities.txt",
+      content: "Customers can speak to Osonflow instead of typing — they tap the voice button in the widget and talk. Voice calls go into the same queue as chat. If a call needs a person, Osonflow rings your support team and hands over mid-call, with a written transcript already waiting in the shared inbox.", date: "2026-06-10" },
+    { id: "k-4", title: "Setup and integrations", type: "url", source: "https://docs.osonflow.ai/setup",
+      content: "Installing Osonflow is one line of code in your site's head: <script src='https://widget.osonflow.uz/widget.js' data-id='oson-demo'></script>. You can pick a colour theme to match your brand, and it works with Shopify, WordPress, and HubSpot.", date: "2026-06-12" }
   ];
 
   function generateAiResponse(query) {
     const q = query.toLowerCase();
     const find = (id) => knowledge.find((k) => k.id === id);
-    if (/(price|plan|cost|pricing|tier)/.test(q)) return (find("k-2") || {}).content || "We offer flexible plans from free, including a Growth plan with shared workspace seats and voice channels for 299.000 soms/mo.";
-    if (/(voice|speak|realtime|audio|call)/.test(q)) return (find("k-3") || {}).content || "Osonflow features live, streaming voice-to-voice support. Users speak directly to the widget, and agents can join or read live transcripts inside the Shared Agent Workspace.";
-    if (/(install|embed|script|setup|code|integrat)/.test(q)) return (find("k-4") || {}).content || "Setup is easy — inject our lightweight script tag in your document head to bring calm support live.";
-    if (/(human|person|handoff|agent|escalat|specialist)/.test(q)) return "When confidence is below your buffers, or urgency is elevated, we gracefully queue the customer. The support agent inherits the entire transcript instantly on their screen.";
+    if (/(price|plan|cost|pricing|tier)/.test(q)) return (find("k-2") || {}).content || "Plans start free. Growth is 299.000 soms a month and adds voice support and shared inbox seats for your team.";
+    if (/(voice|speak|realtime|audio|call)/.test(q)) return (find("k-3") || {}).content || "Customers can talk to Osonflow instead of typing, and your team can join the call or read the live transcript from the shared inbox.";
+    if (/(install|embed|script|setup|code|integrat)/.test(q)) return (find("k-4") || {}).content || "Setup is one line of code in your site's head — that's it.";
+    if (/(human|person|handoff|agent|escalat|specialist)/.test(q)) return "When Osonflow is not sure enough, or the question is urgent, the chat goes to your team. They see the whole conversation the moment they open it.";
     for (const item of knowledge) {
       const kws = item.title.toLowerCase().split(/\s+/);
-      if (kws.some((kw) => kw.length > 3 && q.includes(kw))) return "[Grounded from " + item.source + "]: " + item.content;
+      if (kws.some((kw) => kw.length > 3 && q.includes(kw))) return "[From " + item.source + "]: " + item.content;
     }
-    return "Based on our calm knowledge corpus, Osonflow handles repetitive inquiries with grounded AI and routes deeper questions to human agents with perfect conversation history.";
+    return "Osonflow answers the repetitive questions from your own content, and passes the harder ones to your team with the full conversation attached.";
   }
 
   function intentFor(query) {
     const q = query.toLowerCase();
-    if (/(price|plan|cost|pricing)/.test(q)) return "Pricing inquiry";
-    if (/(voice|audio|call)/.test(q)) return "Voice capability";
-    if (/(install|embed|script|setup|code)/.test(q)) return "Deployment setup";
-    if (/(human|person|handoff|agent|escalat)/.test(q)) return "Escalation request";
-    return "Sandbox interaction";
+    if (/(price|plan|cost|pricing)/.test(q)) return "About pricing";
+    if (/(voice|audio|call)/.test(q)) return "About voice";
+    if (/(install|embed|script|setup|code)/.test(q)) return "Setup question";
+    if (/(human|person|handoff|agent|escalat)/.test(q)) return "Wants a person";
+    return "Just trying it out";
   }
 
   /* ---------------- Reveal on scroll (hero only; rest uses Framer Motion) ---------------- */
@@ -187,21 +187,21 @@ const $ = (s, c) => (c || document).querySelector(s);
   /* ---------------- Hero typewriter ---------------- */
   const typeEl = $("#chatType");
   if (typeEl && !reduceMotion) {
-    const phrases = ["Type a message…", "Ask about your order…", "Where is my refund?", "Talk to a human"];
+    const phrases = ["Type a message…", "Where is my order?", "Can I get a refund?", "Talk to a human"];
     let pi = 0; typeEl.style.transition = "opacity 0.35s ease";
     trackInterval(() => { typeEl.style.opacity = "0"; setTimeout(() => { pi = (pi + 1) % phrases.length; typeEl.textContent = phrases[pi]; typeEl.style.opacity = "1"; }, 350); }, 2600);
   }
 
   /* ---------------- Pipeline stepper ---------------- */
   const pviews = [
-    { rule: "", title: "Ingest raw organizational data", desc: "Rather than configuring static chatbots with keyphrase logic, Osonflow crawls public directories or matches local PDF context files. Every grounding variable is strictly indexed.",
-      term: '<div class="term"><div class="term__title">=== OSONFLOW VECTOR GROUNDING ENGINE ===</div><pre>[RAW INDEX CHANNELS] ─────(oson index)─────▶ [SECURE CACHE MAPS]\n  ├─ billing_faqs.txt                    ├─ Fragment A [■■■■■■■■□□] 92ms\n  └─ setup_guides.pdf                    └─ Fragment B [■■■■■■■■■■] 130ms</pre><div class="term__ok">✔ SUCCESS: Generated vector segments automatically.</div></div>' },
-    { title: "Immediate context generation", desc: "When a support ticket fires, context is paired down to corresponding semantic fragments. The LLM only reviews details strictly contained in your approved corpus.",
-      term: '<div class="term"><div class="term__title term__title--ochre">=== ALIGNED CONTEXT CONSTRUCTOR ===</div><pre>PROMPT ───────────────▶ [ GROUNDING ALIGNER ] ─────▶ TARGET OUTPUT\n  "Do you have Pro?"          ▲                  "Growth plan is 299.000 soms/mo"\n                             │ (Verified Anchors)\n                     [APPROVED SYSTEM CORPUS]</pre><div class="term__ok">✔ RESPONSE: Fully cited matching corpus context.</div></div>' },
-    { title: "Confidence scoring protection", desc: "Every candidate phrase undergoes structured scoring. If responses cannot link back to source vectors, Osonflow declines completion — bypassing user frustration.",
-      term: '<div class="term"><div class="term__title">=== CONFIDENCE THRESHOLD EVALUATOR ===</div><pre>INCOMING ARTIFACT ─────▶ [ STOCHASTIC FILTER ] ────▶ 95% MATCH\n                            ├─ Anchor Matching: PASS\n                            ├─ Hallucination Prob: 0.02%\n                            └─ Handoff Bypass: OK</pre><div class="term__ok">✔ STATE: Highly confident output (bypasses human queue)</div></div>' },
-    { title: "Seamless agent co-pilot switch", desc: "If confidence drops or a user requests human backup, Osonflow alerts staff, keeping dialogue visible in the shared dashboard. Transition requires zero customer interruption.",
-      term: '<div class="term"><div class="term__title term__title--ochre">=== HUMAN CO-PILOT INJECTOR ===</div><pre>CUSTOMER STREAM ───────▶ [ LOW CONFIDENCE ] ──────▶ DISPATCH ALERT\n                            │ (Scored: 44%)         │\n                            └───────────────────────┴─▶ [AGENT DESK]</pre><div class="term__warn">! ACTION: Transitioning caller live to the Agent Workspace.</div></div>' }
+    { rule: "", title: "You add your content", desc: "You don't write scripts or keyword rules. Point Osonflow at your website, or upload the PDFs and text files your team already answers from. It reads them once and keeps them up to date.",
+      term: '<div class="term"><div class="term__title">WHAT YOU GIVE IT</div><pre>Your files and pages  ───────▶  Read and organised\n  ├─ billing-faq.txt                  ├─ ready in 92ms\n  └─ setup-guide.pdf                  └─ ready in 130ms</pre><div class="term__ok">Done — Osonflow can now answer from both.</div></div>' },
+    { title: "Osonflow reads it", desc: "When a customer asks something, Osonflow pulls up only the parts of your content that actually relate to the question — then writes its answer from those, and nothing else.",
+      term: '<div class="term"><div class="term__title term__title--ochre">FINDING THE ANSWER</div><pre>Customer asks ────────▶ Osonflow looks it up ────────▶ Answer\n  "Do you have Pro?"           in your own content       "Growth is 299.000 soms a month"</pre><div class="term__ok">The answer came from your pricing page.</div></div>' },
+    { title: "It answers — or it stops", desc: "Before replying, Osonflow rates how well the answer is backed by your content. If that rating falls below the level you set, it doesn't send a guess — it stops and gets a person.",
+      term: '<div class="term"><div class="term__title">CHECKING BEFORE IT REPLIES</div><pre>Draft answer ─────────▶ How well is this backed up?\n                          ├─ Found in your content: yes\n                          ├─ Confidence: 95%\n                          └─ Your threshold: 80%</pre><div class="term__ok">Confident enough — send it, no one needed.</div></div>' },
+    { title: "Your team steps in", desc: "If confidence drops, or the customer just asks for a person, your team is notified and the chat appears in the shared inbox. The customer stays in the same conversation and never repeats themselves.",
+      term: '<div class="term"><div class="term__title term__title--ochre">HANDING OVER</div><pre>Customer ──────────────▶ Not confident enough ──────▶ Team notified\n                            │ (Confidence: 44%)        │\n                            └──────────────────────────┴─▶ Shared inbox</pre><div class="term__warn">Passing this conversation to your team, with the full history.</div></div>' }
   ];
   const pipelineView = $("#pipelineView");
   function renderPipeline(i) {
@@ -238,8 +238,8 @@ const $ = (s, c) => (c || document).querySelector(s);
   const xNudgeDismiss = $("#xNudgeDismiss");
   const PROMPTS = {
     chat: "Try a suggested question — or type your own.",
-    train: "Teach the model a fact, then ask about it in chat.",
-    inbox: "Your live thread syncs here with full context."
+    train: "Teach it a new fact, then ask about it in the chat.",
+    inbox: "The same conversation shows up here, in full."
   };
   const LOOP_ORDER = ["chat", "train", "inbox"];
   const visited = new Set(["chat"]);
@@ -290,7 +290,7 @@ const $ = (s, c) => (c || document).querySelector(s);
     if (currentTab === targetTab) return;
     nudgeTarget = targetTab;
     xNudgeText.textContent = text;
-    xNudgeGo.textContent = targetTab === "inbox" ? "Open inbox" : targetTab === "train" ? "Teach AI" : "Open chat";
+    xNudgeGo.textContent = targetTab === "inbox" ? "Open inbox" : targetTab === "train" ? "Teach it" : "Open chat";
     xNudge.hidden = false;
     requestAnimationFrame(() => xNudge.classList.add("is-in"));
     if (nudgeTimer) window.clearTimeout(nudgeTimer);
@@ -357,18 +357,18 @@ const $ = (s, c) => (c || document).querySelector(s);
 
   /* ---------------- Threads / workspace state ---------------- */
 
-  const greet = "Greetings. I am Osonflow's calm AI assistant. Ask me anything about Osonflow plans, embed setups, or real-time voice routing pipelines.";
-  const liveThread = { id: "t-live", name: "You (live simulation)", avatar: "U", status: "ai_handled", urgency: "low", conf: 95, intent: "Sandbox interaction",
+  const greet = "Hi! I'm the Osonflow assistant. Ask me about plans, setting up the widget, or voice support.";
+  const liveThread = { id: "t-live", name: "You (live demo)", avatar: "U", status: "ai_handled", urgency: "low", conf: 95, intent: "Just trying it out",
     messages: [{ sender: "ai", text: greet }] };
   const threads = [ liveThread,
-    { id: "t-1", name: "Hiroshi T.", avatar: "HT", status: "waiting", urgency: "high", conf: 74, intent: "Billing escalation",
+    { id: "t-1", name: "Hiroshi T.", avatar: "HT", status: "waiting", urgency: "high", conf: 74, intent: "Billing question",
       messages: [{ sender: "client", text: "Hi, I need help configuring our corporate credit card settings." }, { sender: "ai", text: "You can update billing info via Account settings in your dashboard. Want a direct update link?" }, { sender: "client", text: "No, we require single-invoice wire transfer setups. Can you route this only to billing specialists?" }] },
-    { id: "t-2", name: "Freja Lindqvist", avatar: "FL", status: "ai_handled", urgency: "low", conf: 98, intent: "Documentation search",
-      messages: [{ sender: "client", text: "Can I train the model by feeding it my support website link?" }, { sender: "ai", text: "Yes — on Growth you can register arbitrary URLs. The crawler indexes documents and updates context within 5 minutes." }, { sender: "client", text: "Perfect, works like a charm. I crawled the entire helpdesk." }] },
-    { id: "t-3", name: "Julian Thorne", avatar: "JT", status: "agent_active", urgency: "medium", conf: 61, intent: "Voice debugging",
+    { id: "t-2", name: "Freja Lindqvist", avatar: "FL", status: "ai_handled", urgency: "low", conf: 98, intent: "Setup question",
+      messages: [{ sender: "client", text: "Can I train the model by feeding it my support website link?" }, { sender: "ai", text: "Yes — on Growth you can add any web address. Osonflow reads the pages and knows them within 5 minutes." }, { sender: "client", text: "Perfect, works like a charm. I crawled the entire helpdesk." }] },
+    { id: "t-3", name: "Julian Thorne", avatar: "JT", status: "agent_active", urgency: "medium", conf: 61, intent: "Voice problem",
       messages: [{ sender: "client", text: "Hello, testing the Osonflow voice platform on my staging app." }, { sender: "ai", text: "Greetings, I'm ready to converse. How can I assist with your voice test?" }, { sender: "client", text: "The audio drops out slightly during real-time voice in local Chrome." }] },
-    { id: "t-4", name: "Sora Tanaka", avatar: "ST", status: "resolved", urgency: "low", conf: 94, intent: "Customer gratitude",
-      messages: [{ sender: "client", text: "Integrating Osonflow on Shopify. Will custom categories show automatically?" }, { sender: "ai", text: "Yes, Osonflow analyzes catalog metadata from Shopify tags and structures knowledge dynamically." }, { sender: "client", text: "Thank you! Setup reduced our initial response workload by 60%." }] }
+    { id: "t-4", name: "Sora Tanaka", avatar: "ST", status: "resolved", urgency: "low", conf: 94, intent: "Happy customer",
+      messages: [{ sender: "client", text: "Integrating Osonflow on Shopify. Will custom categories show automatically?" }, { sender: "ai", text: "Yes — Osonflow reads your Shopify product tags and keeps its answers in step with your catalogue." }, { sender: "client", text: "Thank you! Setup reduced our initial response workload by 60%." }] }
   ];
   let activeThreadId = "t-live";
 
@@ -449,8 +449,8 @@ const $ = (s, c) => (c || document).querySelector(s);
       pushToLive("ai", reply);
       if (currentTab === "chat") {
         showNudge(low
-          ? "Low confidence — this thread is waiting in the agent inbox."
-          : "Reply grounded. Same thread is now live in the agent inbox.", "inbox");
+          ? "Not confident enough — this chat is now waiting in the team inbox."
+          : "Answered from your content. The same chat is now in the team inbox.", "inbox");
       }
     }, reduceMotion ? 400 : 1100);
   }
@@ -476,17 +476,17 @@ const $ = (s, c) => (c || document).querySelector(s);
     escalateBtn.classList.remove("is-pulse");
     void escalateBtn.offsetWidth;
     escalateBtn.classList.add("is-pulse");
-    appendChat("client", "[Alert] Visitor initiated human override / escalation.");
-    liveThread.status = "waiting"; liveThread.urgency = "high"; liveThread.conf = 44; liveThread.intent = "Escalated bypass";
-    pushToLive("client", "[Alert] Visitor initiated human override / escalation.");
-    setGrounding("Escalated bypass", 44);
+    appendChat("client", "[Alert] Visitor asked to speak to a person.");
+    liveThread.status = "waiting"; liveThread.urgency = "high"; liveThread.conf = 44; liveThread.intent = "Asked for a person";
+    pushToLive("client", "[Alert] Visitor asked to speak to a person.");
+    setGrounding("Asked for a person", 44);
     showTyping();
     setTimeout(() => {
       hideTyping();
-      const m = "I have dispatched your thread to the Shared Agent Workspace. A specialist will assume control momentarily.";
+      const m = "I have passed this over to the support team. Someone will pick it up in a moment.";
       appendChat("ai", m);
       pushToLive("ai", m);
-      showNudge("Human handoff queued — open the agent inbox to take over.", "inbox");
+      showNudge("Passed to a person — open the team inbox to take over.", "inbox");
     }, reduceMotion ? 350 : 900);
   }, { signal });
 
@@ -499,17 +499,17 @@ const $ = (s, c) => (c || document).querySelector(s);
     voiceOn = on;
     voiceToggle.classList.toggle("is-on", on);
     voiceStage.hidden = !on; chatBody.hidden = on; widgetInput.hidden = on;
-    widgetState.textContent = on ? "Connected · Live voice link" : "Grounded AI assistant · Chat live";
-    if (on) { setVoiceState("listening", "Listening carefully to your sound space…"); setTimeout(() => { if (voiceOn) setVoiceState("speaking", '"Greetings from Osonflow. I am trained on your local FAQs. Ask about pricing or widget setup."'); }, 1700); }
-    else setVoiceState("idle", "Tap a prompt below to trigger a simulated real-time voice-to-voice support call.");
+    widgetState.textContent = on ? "Connected · On a call" : "AI assistant · Online";
+    if (on) { setVoiceState("listening", "Listening…"); setTimeout(() => { if (voiceOn) setVoiceState("speaking", '"Hi, this is Osonflow. I know your help content — ask me about pricing or setup."'); }, 1700); }
+    else setVoiceState("idle", "Tap a prompt below to hear how a spoken support call would go.");
   }
   if (voiceToggle) voiceToggle.addEventListener("click", () => toggleVoice(!voiceOn), { signal });
   $$(".vbtn").forEach((b) => b.addEventListener("click", () => {
     const kind = b.dataset.voice;
-    setVoiceState("listening", kind === "pricing" ? 'Analyzing voice… "What are your pricing plans?"' : 'Analyzing voice… "Can I connect a human specialist?"');
+    setVoiceState("listening", kind === "pricing" ? 'Listening… "What are your pricing plans?"' : 'Listening… "Can I speak to a person?"');
     setTimeout(() => {
-      if (kind === "pricing") { const t = "Osonflow offers a Starter plan free, and a Growth plan at 299.000 soms/mo featuring priority real-time voice, crawling, and 10 agent workspace seats."; setVoiceState("speaking", '"' + t + '"'); pushToLive("ai", t, true); }
-      else { const t = "Yes, I can transition us immediately. Handing off to the shared agent inbox with full history."; setVoiceState("speaking", '"' + t + '"'); liveThread.status = "waiting"; liveThread.urgency = "high"; liveThread.conf = 44; liveThread.intent = "Escalated bypass"; setGrounding("Escalated bypass", 44); pushToLive("ai", t, true); }
+      if (kind === "pricing") { const t = "Starter is free, and Growth is 299.000 soms a month — that adds voice support, reading from your website, and 10 seats for your team."; setVoiceState("speaking", '"' + t + '"'); pushToLive("ai", t, true); }
+      else { const t = "Of course — passing you over now. Your team will see this whole conversation."; setVoiceState("speaking", '"' + t + '"'); liveThread.status = "waiting"; liveThread.urgency = "high"; liveThread.conf = 44; liveThread.intent = "Asked for a person"; setGrounding("Asked for a person", 44); pushToLive("ai", t, true); }
     }, 1400);
   }, { signal }));
 
@@ -518,13 +518,13 @@ const $ = (s, c) => (c || document).querySelector(s);
   let trainType = "file";
   function renderPool(flashId) {
     if (!poolList) return;
-    poolList.innerHTML = knowledge.map((k) => '<div class="kitem' + (flashId && k.id === flashId ? " is-new" : "") + '"><div class="kitem__top"><span class="kitem__title"><span class="kitem__type">' + (k.type === "file" ? "▤" : "↗") + "</span>" + esc(k.title) + '</span><span class="kitem__src">' + esc(k.source) + '</span></div><div class="kitem__body">' + esc(k.content) + '</div><div class="kitem__foot"><span>Active anchor · Secured</span><span>Indexed ' + k.date + "</span></div></div>").join("");
+    poolList.innerHTML = knowledge.map((k) => '<div class="kitem' + (flashId && k.id === flashId ? " is-new" : "") + '"><div class="kitem__top"><span class="kitem__title"><span class="kitem__type">' + (k.type === "file" ? "▤" : "↗") + "</span>" + esc(k.title) + '</span><span class="kitem__src">' + esc(k.source) + '</span></div><div class="kitem__body">' + esc(k.content) + '</div><div class="kitem__foot"><span>In use · Private to you</span><span>Added ' + k.date + "</span></div></div>").join("");
   }
   renderPool();
   $$(".tseg").forEach((s) => s.addEventListener("click", () => {
     $$(".tseg").forEach((x) => x.classList.remove("is-active")); s.classList.add("is-active");
     trainType = s.dataset.ttype;
-    $("#trainSource").value = trainType === "file" ? "support_logs.txt" : "https://help.yoursite.com/faq";
+    $("#trainSource").value = trainType === "file" ? "refund-policy.txt" : "https://help.yoursite.com/faq";
   }, { signal }));
   if (trainForm) trainForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -538,7 +538,7 @@ const $ = (s, c) => (c || document).querySelector(s);
     renderPool(id);
     $("#trainTitle").value = ""; $("#trainContent").value = ""; $("#trainSource").value = "";
     const ok = $("#trainOk"); ok.hidden = false; setTimeout(() => (ok.hidden = true), 4000);
-    showNudge("Knowledge indexed. Ask about “" + title + "” in customer chat.", "chat");
+    showNudge("Saved. Now ask about “" + title + "” in the customer chat.", "chat");
   }, { signal });
 
   /* ---------------- Agent workspace ---------------- */
@@ -569,7 +569,7 @@ const $ = (s, c) => (c || document).querySelector(s);
     wsClient.textContent = t.name; wsIntent.textContent = t.intent;
     wsResolve.classList.toggle("is-resolved", t.status === "resolved");
     wsResolve.textContent = t.status === "resolved" ? "Resolved" : "Resolve";
-    const role = { client: "Client", ai: "AI Assistant", agent: "Human Specialist" };
+    const role = { client: "Customer", ai: "AI assistant", agent: "Your team" };
     wsLog.innerHTML = t.messages.map((m) => '<div class="wsmsg wsmsg--' + m.sender + '"><span class="wsmsg__who">' + role[m.sender] + (m.voice ? " · Voice" : "") + '</span><div class="wsmsg__bubble">' + esc(m.text) + "</div></div>").join("");
     wsLog.scrollTop = wsLog.scrollHeight;
   }

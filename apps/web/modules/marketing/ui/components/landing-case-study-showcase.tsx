@@ -13,7 +13,9 @@ type CaseStudy = {
   statNum: string
   statLabel: string
   cardText: string
-  cardHref: string
+  // Real case-study page for this customer. Until one exists, leave it out and
+  // the card links to the live demo instead of a dead "#".
+  cardHref?: string
 }
 
 const CASE_STUDIES: CaseStudy[] = [
@@ -29,7 +31,6 @@ const CASE_STUDIES: CaseStudy[] = [
     statLabel: "Week rollout",
     cardText:
       "Sanlam deployed an AI customer support agent across regional channels using Osonflow, empowering non-technical teams to launch without engineering bottlenecks.",
-    cardHref: "#",
   },
   {
     id: "stubhub",
@@ -43,7 +44,6 @@ const CASE_STUDIES: CaseStudy[] = [
     statLabel: "Month development",
     cardText:
       "StubHub International built and launched a powerful AI customer support agent in 90 days using Osonflow, empowering non-technical teams and transforming their support operations.",
-    cardHref: "#",
   },
   {
     id: "superloop",
@@ -56,7 +56,6 @@ const CASE_STUDIES: CaseStudy[] = [
     statLabel: "Faster resolution",
     cardText:
       "Superloop scaled always-on AI support for broadband customers, cutting handle time while keeping complex escalations in the same shared agent workspace.",
-    cardHref: "#",
   },
   {
     id: "turo",
@@ -70,7 +69,6 @@ const CASE_STUDIES: CaseStudy[] = [
     statLabel: "Agent efficiency",
     cardText:
       "Stark Solutions unified voice and chat in one support loop, letting agents pick up any thread with full conversation context from the first message.",
-    cardHref: "#",
   },
 ]
 
@@ -152,7 +150,9 @@ export function LandingCaseStudyShowcase() {
     video.load()
   }, [active?.video])
 
-  // Resume playback when the showcase scrolls back into view (iOS often pauses offscreen).
+  // Play only while the showcase is on screen. Decoding a looping clip for a
+  // section nobody is looking at burns CPU for the whole visit; iOS also pauses
+  // offscreen video on its own, so we have to resume on the way back in.
   useLayoutEffect(() => {
     const video = videoRef.current
     if (!video) return
@@ -161,8 +161,10 @@ export function LandingCaseStudyShowcase() {
       (entries) => {
         const entry = entries[0]
         if (!entry) return
-        if (entry.isIntersecting && video.paused) {
-          void playVideo(video, false)
+        if (entry.isIntersecting) {
+          if (video.paused) void playVideo(video, false)
+        } else if (!video.paused) {
+          video.pause()
         }
       },
       { threshold: 0.35 },
@@ -173,6 +175,10 @@ export function LandingCaseStudyShowcase() {
   }, [active?.video])
 
   if (!active) return null
+
+  const cardHref = active.cardHref ?? "#experience"
+  const cardLabel = active.cardHref ? "See case study" : "See it working"
+
 
   const selectCase = (study: CaseStudy) => {
     if (study.id === activeId) return
@@ -236,8 +242,8 @@ export function LandingCaseStudyShowcase() {
             <p className="case-study-card__text" id="caseStudyCardText">
               {active.cardText}
             </p>
-            <a className="case-study-card__link" id="caseStudyCardLink" href={active.cardHref}>
-              See case study <span aria-hidden="true">›</span>
+            <a className="case-study-card__link" id="caseStudyCardLink" href={cardHref}>
+              {cardLabel} <span aria-hidden="true">›</span>
             </a>
           </article>
           <div className="hero__video reveal is-in mo-in" data-reveal>

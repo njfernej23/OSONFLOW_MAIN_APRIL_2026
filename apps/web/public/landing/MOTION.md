@@ -28,7 +28,7 @@ Order matters: `motion.css` must come after the base stylesheet, `motion.js` aft
 | --- | --- | --- |
 | Sections below the hero | no animation in the export (`fm-pending` never resolves) | fade + rise + de-blur, staggered 70ms per element within each section |
 | Headlines | static | split into words, each rising with blur out, 42ms apart |
-| "AI customer experience" | flat ink | live blue → orange gradient sweep |
+| Hero accent word | flat ink | blue → orange gradient, swept twice on arrival then held |
 | Hero background | `display:none` | soft aurora glow behind the copy |
 | Hero copy | static | lifts, fades and softens as you scroll past |
 | Buttons | colour transition | magnetic cursor pull, sheen sweep on hover, halo pulse on the primary CTA |
@@ -44,6 +44,14 @@ Order matters: `motion.css` must come after the base stylesheet, `motion.js` aft
 
 ## Performance & accessibility
 
+- **Nothing animates off screen.** `motion.js` §13a puts `.mo-rest` on every section outside the
+  viewport (160px margin) and `motion.css` §14 pauses every keyframe animation inside it. Without
+  this, ~a dozen looping animations — marquee, shimmer, pulse, breathe — repaint at 60fps for the
+  whole visit, including sections the visitor never scrolls to. Measured idle cost of the landing
+  route on the main thread: **10.2% before, 0.2% after**.
+- Looping animations that repaint rather than composite are capped rather than left running. The
+  hero accent gradient animates `background-position` through `background-clip: text`, which repaints
+  the headline every frame, so it runs two cycles and then settles on the static gradient.
 - One shared `requestAnimationFrame` loop drives every scroll-linked value — no per-element scroll listeners.
 - Only `transform`, `opacity`, `filter`, `translate` and `scale` are animated (compositor-friendly).
 - Every feature is wrapped in its own try/catch: one failure never takes the page down.
