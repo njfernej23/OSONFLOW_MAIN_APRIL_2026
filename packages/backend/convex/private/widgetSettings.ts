@@ -964,15 +964,6 @@ const saveDraftForOrganization = async (
   })
 }
 
-export const upsert = mutation({
-  args: widgetSettingsArgsValidator,
-  handler: async (ctx, args) => {
-    const { organizationId, actorId } = await getAuthContext(ctx)
-    const agentId = normalizeAgentId(args.agentId)
-    await saveDraftForOrganization(ctx, organizationId, agentId, actorId, args)
-  },
-})
-
 export const saveDraft = mutation({
   args: widgetSettingsArgsValidator,
   handler: async (ctx, args) => {
@@ -1371,18 +1362,6 @@ export const renameAgent = mutation({
     }
 
     await ctx.db.patch(widgetSettings._id, { agentId, name })
-  },
-})
-
-export const getOne = query({
-  args: agentScopedArgsValidator,
-  handler: async (ctx, args) => {
-    const { organizationId } = await getAuthContext(ctx)
-    return await getWidgetSettingsByOrganizationId(
-      ctx,
-      organizationId,
-      normalizeAgentId(args.agentId)
-    )
   },
 })
 

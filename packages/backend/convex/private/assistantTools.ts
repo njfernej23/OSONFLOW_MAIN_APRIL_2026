@@ -1,7 +1,4 @@
-import {
-  getOrganizationIdFromIdentity,
-  requireOrganizationIdentity,
-} from "../lib/organizationIdentity"
+import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
 import { ConvexError, v } from "convex/values"
 import {
   action,
@@ -13,13 +10,11 @@ import {
 import { Doc, Id } from "../_generated/dataModel"
 import { internal } from "../_generated/api"
 import {
-  ASSISTANT_TOOL_TYPE_LABELS,
   BUILTIN_ASSISTANT_TOOLS,
   isVoiceCompatibleAssistantTool,
   sanitizeAssistantToolName,
 } from "../lib/assistantTools"
 import { validateAssistantToolConfig } from "../lib/validateAssistantToolConfig"
-import { serializeGoogleSheetsSecret } from "../lib/googleSheetsOAuth"
 
 const assistantToolTypeValidator = v.union(
   v.literal("query"),
@@ -309,39 +304,6 @@ export const update = mutation({
   },
 })
 
-export const reorder = mutation({
-  args: {
-    toolIds: v.array(v.id("assistantTools")),
-  },
-  returns: v.null(),
-  handler: async (ctx, args): Promise<null> => {
-    const organizationId = await requireOrganizationId(ctx)
-    const tools = await listOrganizationTools(ctx, organizationId)
-    const toolById = new Map(tools.map((tool) => [tool._id, tool]))
-
-    for (const toolId of args.toolIds) {
-      const tool = toolById.get(toolId)
-      if (!tool) {
-        throw new ConvexError({
-          code: "NOT_FOUND",
-          message: "Assistant tool not found",
-        })
-      }
-    }
-
-    const now = Date.now()
-    for (let index = 0; index < args.toolIds.length; index += 1) {
-      const toolId = args.toolIds[index]!
-      await ctx.db.patch(toolId, {
-        sortOrder: index,
-        updatedAt: now,
-      })
-    }
-
-    return null
-  },
-})
-
 export const remove = mutation({
   args: {
     toolId: v.id("assistantTools"),
@@ -367,83 +329,6 @@ export const remove = mutation({
 
     await ctx.db.delete(args.toolId)
     return null
-  },
-})
-
-export const upsertGoogleSheetsCredentials = mutation({
-  args: {
-    apiKey: v.string(),
-  },
-  returns: v.null(),
-  handler: async (ctx, args): Promise<null> => {
-    const organizationId = await requireOrganizationId(ctx)
-    const apiKey = args.apiKey.trim()
-
-    if (!apiKey) {
-      throw new ConvexError({
-        code: "BAD_REQUEST",
-        message: "Google Sheets API key is required",
-      })
-    }
-
-    const existing = await ctx.db
-      .query("plugins")
-      .withIndex("by_organization_id_and_service", (q) =>
-        q.eq("organizationId", organizationId).eq("service", "google_sheets")
-      )
-      .unique()
-
-    const secretValue = serializeGoogleSheetsSecret({
-      authMethod: "api_key",
-      apiKey,
-    })
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        secretValue,
-        secretName: "Google Sheets API key",
-      })
-      return null
-    }
-
-    await ctx.db.insert("plugins", {
-      organizationId,
-      service: "google_sheets",
-      secretName: "Google Sheets API key",
-      secretValue,
-    })
-
-    return null
-  },
-})
-
-export const getGoogleSheetsCredentials = query({
-  args: {},
-  returns: v.object({
-    isConfigured: v.boolean(),
-  }),
-  handler: async (ctx): Promise<{ isConfigured: boolean }> => {
-    const organizationId = await requireOrganizationId(ctx)
-
-    const plugin = await ctx.db
-      .query("plugins")
-      .withIndex("by_organization_id_and_service", (q) =>
-        q.eq("organizationId", organizationId).eq("service", "google_sheets")
-      )
-      .unique()
-
-    return {
-      isConfigured: Boolean(plugin?.secretValue),
-    }
-  },
-})
-
-export const getToolTypeLabels = query({
-  args: {},
-  returns: v.any(),
-  handler: async (ctx): Promise<typeof ASSISTANT_TOOL_TYPE_LABELS> => {
-    await requireOrganizationIdentity(ctx)
-    return ASSISTANT_TOOL_TYPE_LABELS
   },
 })
 

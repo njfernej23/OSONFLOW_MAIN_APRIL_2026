@@ -216,38 +216,6 @@ export const connect = action({
   },
 })
 
-export const syncWebhook = action({
-  args: {},
-  handler: async (ctx) => {
-    const { organizationId } = await getAuthContext(ctx)
-    const integration = (await ctx.runQuery(
-      (internal as any).system.telegram.getIntegrationByOrganizationId,
-      { organizationId }
-    )) as {
-      _id: string
-      botToken: string
-      webhookSecret: string
-      botUsername?: string
-    } | null
-
-    if (!integration) {
-      throw new ConvexError({
-        code: "NOT_FOUND",
-        message: "Telegram integration not found",
-      })
-    }
-
-    return await registerTelegramWebhook({
-      ctx,
-      integrationId: integration._id,
-      organizationId,
-      botToken: integration.botToken,
-      webhookSecret: integration.webhookSecret,
-      botUsername: integration.botUsername,
-    })
-  },
-})
-
 export const disconnect = action({
   args: {},
   handler: async (ctx) => {
