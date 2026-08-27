@@ -3,7 +3,8 @@
   "type": "module",
   "scripts": {
     "dev": "convex dev",
-    "setup": "convex dev --until-success"
+    "setup": "convex dev --until-success",
+    "typecheck": "tsc --noEmit"
   },
   "exports": {
     "./convex": "./convex/*.ts"
@@ -11,7 +12,7 @@
   "devDependencies": {
     "@types/node": "^25.9.2",
     "@workspace/typescript-config": "workspace:*",
-    "typescript": "latest"
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "@ai-sdk/openai": "3.0.69",

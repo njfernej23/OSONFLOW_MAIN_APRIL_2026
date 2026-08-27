@@ -90,7 +90,6 @@ export const organizationHasActivePolarSubscription = async (
   }
 }
 
-export { getAppOrigin as getAppUrl } from "@/lib/urls"
 
 export const getClientIp = (headers: Headers) => {
   const forwardedFor = headers.get("x-forwarded-for")

@@ -2,11 +2,8 @@
 
 import {
     type LucideIcon,
-    BookOpenIcon,
     BotIcon,
     GemIcon,
-    MicIcon,
-    PaletteIcon,
     PhoneIcon,
     UsersIcon,
 } from "lucide-react";

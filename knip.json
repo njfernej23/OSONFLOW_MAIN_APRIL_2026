@@ -1,0 +1,52 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    "apps/web": {
+      "entry": [
+        "app/**/{page,layout,error,loading,not-found,template,default,route}.tsx",
+        "app/**/{page,layout,error,loading,not-found,template,default,route}.ts",
+        "proxy.ts",
+        "next.config.mjs",
+        "postcss.config.mjs"
+      ],
+      "project": ["**/*.{ts,tsx}"]
+    },
+    "apps/widget": {
+      "entry": [
+        "app/**/{page,layout,error,loading,not-found,template,default,route}.tsx",
+        "app/**/{page,layout,error,loading,not-found,template,default,route}.ts",
+        "next.config.mjs",
+        "postcss.config.mjs"
+      ],
+      "project": ["**/*.{ts,tsx}"]
+    },
+    "apps/embed": {
+      "entry": ["embed.ts", "vite.config.ts"],
+      "project": ["**/*.ts"]
+    },
+    "packages/ui": {
+      "entry": ["src/components/**/*.tsx", "src/hooks/*.ts", "src/lib/*.ts"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/backend": {
+      "entry": [
+        "convex/http.ts",
+        "convex/schema.ts",
+        "convex/convex.config.ts",
+        "convex/auth.config.ts",
+        "convex/{public,private,system}/**/*.ts"
+      ],
+      "project": ["convex/**/*.ts"]
+    }
+  },
+  "ignore": ["**/_generated/**", "apps/embed/osonflow-landing-export/**"],
+  "ignoreDependencies": [
+    "@liveblocks/client",
+    "shadcn",
+    "tw-animate-css",
+    "@tailwindcss/postcss",
+    "tailwindcss",
+    "postcss-load-config"
+  ],
+  "ignoreBinaries": ["convex"]
+}
