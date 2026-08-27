@@ -78,7 +78,7 @@ export const getMarketingOrigin = (fallback?: string | null) => {
   return DEFAULT_MARKETING_ORIGIN
 }
 
-export const getAppHostname = () => {
+const getAppHostname = () => {
   try {
     return new URL(getAppOrigin()).hostname.toLowerCase()
   } catch {

@@ -11,7 +11,6 @@ import {
   CircleHelpIcon,
   Clock3Icon,
   DatabaseZapIcon,
-  FileTextIcon,
   GaugeIcon,
   GitBranchIcon,
   Globe2Icon,
@@ -20,8 +19,6 @@ import {
   LineChartIcon,
   LockKeyholeIcon,
   MessageCircleMoreIcon,
-  MessageSquareTextIcon,
-  Mic2Icon,
   PanelsTopLeftIcon,
   PhoneCallIcon,
   PlugZapIcon,
@@ -52,42 +49,11 @@ type MarketingFeature = {
   accent: string
 }
 
-export const proofItems = [
-  "Live chat",
-  "AI voice",
-  "Help center",
-  "Human handoff",
-]
-
-export const channelLogos = [
+const channelLogos = [
   { label: "WhatsApp", src: "/whatsapp.png" },
   { label: "Telegram", src: "/telegram.png" },
   { label: "ChatGPT", src: "/logos/chatgpt-logo.png" },
   { label: "Gemini", src: "/logos/gemini-logo.png" },
-]
-
-export const featureCards: MarketingFeature[] = [
-  {
-    title: "Answers from your knowledge base",
-    description:
-      "Upload files and URLs, then let the assistant respond with grounded support instead of vague guesses.",
-    icon: FileTextIcon,
-    accent: "bg-[#e8f3ff] text-[#2563eb]",
-  },
-  {
-    title: "One inbox for every conversation",
-    description:
-      "Track unresolved chats, escalations, AI sessions, and customer context without switching tools.",
-    icon: MessageSquareTextIcon,
-    accent: "bg-[#e9ffe8] text-[#15803d]",
-  },
-  {
-    title: "Voice when chat is not enough",
-    description:
-      "Connect realtime AI voice and phone support for customers who need a faster path to help.",
-    icon: Mic2Icon,
-    accent: "bg-[#fff3c4] text-[#8a5b00]",
-  },
 ]
 
 export const productHighlights: MarketingFeature[] = [
@@ -162,7 +128,7 @@ export const integrationHighlights: MarketingFeature[] = [
   },
 ]
 
-export const workflowSteps = [
+const workflowSteps = [
   {
     title: "Install the widget",
     description:
@@ -180,13 +146,13 @@ export const workflowSteps = [
   },
 ]
 
-export const insightRows = [
+const insightRows = [
   ["Billing question", "Resolved by AI", "42s"],
   ["Login issue", "Needs human", "2m"],
   ["Plan upgrade", "AI voice", "Live"],
 ]
 
-export const pricingTiers = [
+const pricingTiers = [
   {
     name: "Launch",
     price: "$29",
@@ -257,7 +223,7 @@ const productSystemItems: Array<{
   },
 ]
 
-export const Logo = ({ className }: { className?: string }) => (
+const Logo = ({ className }: { className?: string }) => (
   <Link
     className={cn("inline-flex shrink-0 items-center gap-2.5", className)}
     href="/"
@@ -274,21 +240,6 @@ export const Logo = ({ className }: { className?: string }) => (
       Osonflow
     </span>
   </Link>
-)
-
-export const LiquidBackdrop = ({ className }: { className?: string }) => (
-  <div
-    aria-hidden="true"
-    className={cn(
-      "pointer-events-none absolute inset-0 overflow-hidden",
-      className
-    )}
-  >
-    <div className="osonflow-liquid-field absolute inset-0" />
-    <div className="osonflow-liquid-ribbon osonflow-liquid-ribbon-one" />
-    <div className="osonflow-liquid-ribbon osonflow-liquid-ribbon-two" />
-    <div className="osonflow-liquid-ribbon osonflow-liquid-ribbon-three" />
-  </div>
 )
 
 export const SectionHeading = ({
@@ -542,30 +493,6 @@ export const ChannelStrip = () => (
   </section>
 )
 
-export const MetricsBand = () => (
-  <section className="bg-[#101828] py-6 text-white" id="product">
-    <div className="mx-auto grid max-w-7xl gap-3 px-5 sm:px-8 md:grid-cols-3">
-      {[
-        ["72%", "fewer repeat questions"],
-        ["4.8x", "faster first response"],
-        ["24/7", "coverage across chat and voice"],
-      ].map(([value, label]) => (
-        <div
-          className="osonflow-metric flex items-end justify-between gap-4 border-b border-white/14 py-6 md:border-r md:border-b-0 md:last:border-r-0"
-          key={label}
-        >
-          <p className="text-5xl leading-none font-semibold text-white">
-            {value}
-          </p>
-          <p className="max-w-36 text-sm leading-5 font-medium text-white/62">
-            {label}
-          </p>
-        </div>
-      ))}
-    </div>
-  </section>
-)
-
 export const WorkflowCards = () => (
   <div className="grid gap-4">
     {workflowSteps.map((step, index) => (
@@ -749,7 +676,7 @@ export const WidgetPreview = () => (
   </div>
 )
 
-export const CtaSection = () => (
+const CtaSection = () => (
   <section className="osonflow-command-final relative overflow-hidden py-20">
     <div className="relative mx-auto max-w-7xl px-5 sm:px-8">
       <div className="grid overflow-hidden rounded-[18px] bg-white/40 shadow-[0_0_0_1px_rgba(23,18,15,0.08),0_28px_90px_-64px_rgba(23,18,15,0.65)] lg:grid-cols-[1.05fr_0.95fr]">
@@ -786,7 +713,7 @@ export const CtaSection = () => (
   </section>
 )
 
-export const MarketingFooter = () => (
+const MarketingFooter = () => (
   <footer className="border-t border-white/10 bg-[#080b0f] px-5 py-10 text-[#f8f3ea] sm:px-8">
     <div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-center md:justify-between">
       <div>

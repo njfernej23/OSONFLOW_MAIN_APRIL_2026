@@ -62,7 +62,7 @@ export const formatCsvTimestamp = (timestamp: number | null | undefined) =>
  * Quotes a cell for CSV and defuses spreadsheet formula injection: a leading
  * =, +, -, @, tab or CR would otherwise be evaluated by Excel/Sheets on open.
  */
-export const escapeCsvCell = (value: CsvValue) => {
+const escapeCsvCell = (value: CsvValue) => {
   const raw = String(value ?? "")
   const safe = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw
 

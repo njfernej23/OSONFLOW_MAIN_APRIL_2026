@@ -10,7 +10,7 @@ type Finalizable = {
   }) => Promise<{ error: unknown } | void>
 }
 
-export function navigateAfterAuth(
+function navigateAfterAuth(
   router: AppRouterInstance,
   url: string
 ) {

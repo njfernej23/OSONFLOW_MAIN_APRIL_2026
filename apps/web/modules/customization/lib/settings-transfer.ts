@@ -1,8 +1,8 @@
 import { widgetSettingsSchema } from "../schemas"
 import type { FormSchema } from "../types"
 
-export const WIDGET_SETTINGS_EXPORT_TYPE = "osonflow-widget-settings" as const
-export const WIDGET_SETTINGS_EXPORT_VERSION = 1 as const
+const WIDGET_SETTINGS_EXPORT_TYPE = "osonflow-widget-settings" as const
+const WIDGET_SETTINGS_EXPORT_VERSION = 1 as const
 
 export type WidgetSettingsExport = {
   type: typeof WIDGET_SETTINGS_EXPORT_TYPE
@@ -11,7 +11,7 @@ export type WidgetSettingsExport = {
   settings: FormSchema
 }
 
-export const createWidgetSettingsExport = (
+const createWidgetSettingsExport = (
   settings: FormSchema
 ): WidgetSettingsExport => ({
   type: WIDGET_SETTINGS_EXPORT_TYPE,

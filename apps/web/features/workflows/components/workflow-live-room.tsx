@@ -5,7 +5,7 @@ import { RoomProvider } from "@liveblocks/react"
 
 import "@/liveblocks.config"
 
-export function workflowRoomId(organizationId: string, workflowId: string) {
+function workflowRoomId(organizationId: string, workflowId: string) {
   return `org:${organizationId}:workflow:${workflowId}`
 }
 

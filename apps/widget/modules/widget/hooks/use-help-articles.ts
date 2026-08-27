@@ -221,12 +221,6 @@ export const useHelpTopics = () => {
   }, [widgetSettings?.appearance, widgetSettings?.helpTopics])
 }
 
-export const useHelpArticles = () => {
-  const topics = useHelpTopics()
-
-  return useMemo(() => topics.flatMap((topic) => topic.articles), [topics])
-}
-
 export const useHomeHelpCards = () => {
   const widgetSettings = useAtomValue(widgetSettingsAtom)
   const topics = useHelpTopics()

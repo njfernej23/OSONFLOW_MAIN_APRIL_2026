@@ -633,7 +633,7 @@ export const ConversationsPanel = () => {
   )
 }
 
-export const SkeletonConversations = () => {
+const SkeletonConversations = () => {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto p-2.5">
       {Array.from({ length: 6 }).map((_, index) => (
