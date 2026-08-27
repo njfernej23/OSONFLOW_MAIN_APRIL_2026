@@ -223,6 +223,7 @@ export const getMany = query({
     page: v.array(leadRecordValidator),
     isDone: v.boolean(),
     continueCursor: v.string(),
+    splitCursor: v.optional(v.union(v.string(), v.null())),
   }),
   handler: async (ctx, args) => {
     const { orgId } = await requireOrganizationIdentity(ctx)
