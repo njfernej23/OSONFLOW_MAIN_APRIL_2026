@@ -1,4 +1,0 @@
-- generic [active] [ref=e1]:
-  - main [ref=e3]:
-    - status "Loading" [ref=e6]
-  - alert [ref=e8]

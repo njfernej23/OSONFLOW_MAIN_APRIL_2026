@@ -34,3 +34,19 @@ npm-debug.log*
 # Misc
 .DS_Store
 *.pem
+
+# TypeScript incremental build cache (machine-local)
+*.tsbuildinfo
+
+# Tooling / editor scratch
+.playwright-cli/
+output/
+.idea/
+.qodo/
+graphify-out/
+reports/
+
+# Generated landing export (rebuild with apps/embed/osonflow-landing-export/build-export.mjs)
+apps/embed/osonflow-landing-export/*
+!apps/embed/osonflow-landing-export/build-export.mjs
+apps/embed/osonflow-landing-export.zip

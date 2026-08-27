@@ -41,7 +41,7 @@ import {
   AISuggestion,
   AISuggestions,
 } from "@workspace/ui/components/ai/suggestion"
-import { useInfiniteScroll } from "@workspace/ui/hooks/use-infitnite-scroll"
+import { useInfiniteScroll } from "@workspace/ui/hooks/use-infinite-scroll"
 import { useNotifyOnNewMessages } from "@workspace/ui/hooks/use-notify-on-new-messages"
 import { InfiniteScrollTrigger } from "@workspace/ui/components/infinite-scroll-trigger"
 import { DicebearAvatar } from "@workspace/ui/components/dicebear-avatar"
