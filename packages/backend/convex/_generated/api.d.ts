@@ -25,6 +25,7 @@ import type * as lib_metaWebhook from "../lib/metaWebhook.js";
 import type * as lib_openai from "../lib/openai.js";
 import type * as lib_organizationIdentity from "../lib/organizationIdentity.js";
 import type * as lib_outboundUrl from "../lib/outboundUrl.js";
+import type * as lib_paginateArray from "../lib/paginateArray.js";
 import type * as lib_polarWebhook from "../lib/polarWebhook.js";
 import type * as lib_rateLimits from "../lib/rateLimits.js";
 import type * as lib_secrets from "../lib/secrets.js";
@@ -118,6 +119,7 @@ declare const fullApi: ApiFromModules<{
   "lib/openai": typeof lib_openai;
   "lib/organizationIdentity": typeof lib_organizationIdentity;
   "lib/outboundUrl": typeof lib_outboundUrl;
+  "lib/paginateArray": typeof lib_paginateArray;
   "lib/polarWebhook": typeof lib_polarWebhook;
   "lib/rateLimits": typeof lib_rateLimits;
   "lib/secrets": typeof lib_secrets;
