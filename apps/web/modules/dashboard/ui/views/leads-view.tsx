@@ -29,12 +29,14 @@ import {
 import { useInfiniteScroll } from "@workspace/ui/hooks/use-infinite-scroll"
 import { InfiniteScrollTrigger } from "@workspace/ui/components/infinite-scroll-trigger"
 import { cn } from "@workspace/ui/lib/utils"
+import {
+  formatCsvTimestamp,
+  stringifyCsvRows,
+} from "../lib/conversation-export"
 
 const LEADS_EXPORT_LIMIT = 5000
 
 type LeadTab = "all" | "newcomers" | "with_chats"
-
-type CsvValue = string | number | null | undefined
 
 type LeadRecord = {
   contactSessionId: Id<"contactSessions">
@@ -61,16 +63,6 @@ const formatDate = (timestamp: number) =>
     hour: "numeric",
     minute: "2-digit",
   }).format(timestamp)
-
-const formatCsvTimestamp = (timestamp: number) =>
-  Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : ""
-
-const escapeCsvCell = (value: CsvValue) => {
-  const raw = String(value ?? "")
-  const safe = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw
-
-  return `"${safe.replaceAll('"', '""')}"`
-}
 
 const buildLeadsCsv = (leads: LeadRecord[]) => {
   const rows = [
@@ -106,7 +98,7 @@ const buildLeadsCsv = (leads: LeadRecord[]) => {
     ]),
   ]
 
-  return rows.map((row) => row.map(escapeCsvCell).join(",")).join("\n")
+  return stringifyCsvRows(rows)
 }
 
 const StatTile = ({

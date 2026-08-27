@@ -506,20 +506,6 @@ export const getIntegrationById = internalQuery({
   },
 })
 
-export const getIntegrationByInstagramUserId = internalQuery({
-  args: {
-    instagramUserId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("instagramIntegrations")
-      .withIndex("by_instagram_user_id", (q) =>
-        q.eq("instagramUserId", args.instagramUserId)
-      )
-      .unique()
-  },
-})
-
 const extractInstagramAccountIds = (payload: InstagramWebhookPayload) => {
   const accountIds = new Set<string>()
 

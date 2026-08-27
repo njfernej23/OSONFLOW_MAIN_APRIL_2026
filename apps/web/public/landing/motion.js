@@ -363,6 +363,22 @@
         });
       });
     });
+    /* ---------- 13a · rest: no looping animation off screen ---------- */
+    /* Roughly a dozen keyframe loops run for the whole session otherwise —
+       marquee, shimmer, pulse, breathe — repainting sections nobody is
+       looking at. Park each section that leaves the viewport. */
+    safe("rest", function () {
+      if (!("IntersectionObserver" in window)) return;
+      var blocks = $$(".japandi-landing section, .japandi-landing .site-end");
+      if (!blocks.length) return;
+      var ro = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          e.target.classList.toggle("mo-rest", !e.isIntersecting);
+        });
+      }, { rootMargin: "160px 0px" });
+      blocks.forEach(function (b) { ro.observe(b); });
+    });
+
     /* ---------- 13 · failsafe: nothing may ever stay hidden ---------- */
     safe("failsafe", function () {
       window.setTimeout(function () {

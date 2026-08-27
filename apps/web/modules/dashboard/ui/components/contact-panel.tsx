@@ -411,7 +411,7 @@ export const ContactPanel = () => {
   )
 }
 
-export const ContactPanelSkeleton = () => {
+const ContactPanelSkeleton = () => {
   return (
     <div className="surface-panel flex h-full w-full min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded-[30px] bg-background/90 text-foreground">
       <div className="border-b border-border/70 px-4 pt-4 pb-4">

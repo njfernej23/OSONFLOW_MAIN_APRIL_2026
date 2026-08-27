@@ -1,6 +1,6 @@
 import { Polar } from "@polar-sh/sdk"
 
-export const polarServer =
+const polarServer =
   process.env.POLAR_SERVER === "sandbox" ? "sandbox" : "production"
 
 export const getPolar = () =>
@@ -13,7 +13,7 @@ export const polarProductIds = {
   pro: process.env.POLAR_PRO_PRODUCT_ID ?? process.env.POLAR_PRODUCT_ID_PRO ?? "",
 }
 
-export const buildOrganizationBillingEmail = (
+const buildOrganizationBillingEmail = (
   userEmail: string | null | undefined,
   orgId: string
 ) => {
@@ -32,7 +32,7 @@ export const buildOrganizationBillingEmail = (
   return `${localPart}+${orgSuffix}@${domain}`
 }
 
-export const isPolarNotFoundError = (error: unknown) => {
+const isPolarNotFoundError = (error: unknown) => {
   if (!error || typeof error !== "object") {
     return false
   }
@@ -90,7 +90,6 @@ export const organizationHasActivePolarSubscription = async (
   }
 }
 
-export { getAppOrigin as getAppUrl } from "@/lib/urls"
 
 export const getClientIp = (headers: Headers) => {
   const forwardedFor = headers.get("x-forwarded-for")

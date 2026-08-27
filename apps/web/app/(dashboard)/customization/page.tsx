@@ -1,7 +1,12 @@
-import { CustomizationViewWithProtection } from "@/modules/customization/ui/views/customization-view-with-protection";
+import { ProFeatureGate } from "@/modules/billing/ui/components/pro-feature-gate"
+import { CustomizationView } from "@/modules/customization/ui/views/customization-view"
 
 const Page = () => {
-  return <CustomizationViewWithProtection />;
-};
+  return (
+    <ProFeatureGate>
+      <CustomizationView />
+    </ProFeatureGate>
+  )
+}
 
-export default Page;
+export default Page

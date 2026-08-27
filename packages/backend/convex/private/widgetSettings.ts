@@ -1,4 +1,4 @@
-import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
+import { requireOrganizationIdentity } from "../lib/organizationIdentity"
 import { ConvexError, v } from "convex/values"
 import { mutation, query } from "../_generated/server"
 import { Id } from "../_generated/dataModel"
@@ -697,24 +697,10 @@ const getDraftSnapshot = (
   return normalizeSnapshot(widgetSettings.draft, publishedSnapshot)
 }
 
-const getAuthContext = async (ctx: any) => {
-  const identity = await ctx.auth.getUserIdentity()
-
-  if (identity === null) {
-    throw new ConvexError({
-      code: "UNAUTHORIZED",
-      message: "Identity not found",
-    })
-  }
-
-  const orgId = getOrganizationIdFromIdentity(identity) as string
-
-  if (!orgId) {
-    throw new ConvexError({
-      code: "UNAUTHORIZED",
-      message: "Organization not found",
-    })
-  }
+const getAuthContext = async (
+  ctx: Parameters<typeof requireOrganizationIdentity>[0]
+) => {
+  const { identity, orgId } = await requireOrganizationIdentity(ctx)
 
   return {
     organizationId: orgId,
@@ -963,15 +949,6 @@ const saveDraftForOrganization = async (
     action: "bootstrap",
   })
 }
-
-export const upsert = mutation({
-  args: widgetSettingsArgsValidator,
-  handler: async (ctx, args) => {
-    const { organizationId, actorId } = await getAuthContext(ctx)
-    const agentId = normalizeAgentId(args.agentId)
-    await saveDraftForOrganization(ctx, organizationId, agentId, actorId, args)
-  },
-})
 
 export const saveDraft = mutation({
   args: widgetSettingsArgsValidator,
@@ -1371,18 +1348,6 @@ export const renameAgent = mutation({
     }
 
     await ctx.db.patch(widgetSettings._id, { agentId, name })
-  },
-})
-
-export const getOne = query({
-  args: agentScopedArgsValidator,
-  handler: async (ctx, args) => {
-    const { organizationId } = await getAuthContext(ctx)
-    return await getWidgetSettingsByOrganizationId(
-      ctx,
-      organizationId,
-      normalizeAgentId(args.agentId)
-    )
   },
 })
 

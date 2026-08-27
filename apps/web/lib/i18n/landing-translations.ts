@@ -1708,4 +1708,371 @@ export const landingTranslations: Record<string, LandingTranslationValue> = {
     uz: "Zendesk",
     ru: "Zendesk",
   },
+
+  // --- plain-language landing copy (2026 rewrite) ---
+  "AI support that": {
+    uz: "Biznesingizni biladigan",
+    ru: "Поддержка с ИИ, которая",
+  },
+  "knows your business": {
+    uz: "AI yordami",
+    ru: "знает ваш бизнес",
+  },
+  "Osonflow answers your customers by chat and voice using your own help docs, prices, and policies — and hands the conversation to your team, with the full history, the moment a person is needed.": {
+    uz: "Osonflow mijozlaringizga chat va ovoz orqali sizning yordam hujjatlaringiz, narxlaringiz va qoidalaringiz asosida javob beradi — odam kerak bo'lgan zahoti esa suhbatni to'liq tarixi bilan jamoangizga uzatadi.",
+    ru: "Osonflow отвечает вашим клиентам в чате и голосом, опираясь на ваши же справочные материалы, цены и правила, — а как только нужен человек, передаёт диалог вашей команде вместе со всей историей.",
+  },
+  "Find the answer. Solve it. Or pass it to a person.": {
+    uz: "Javobni toping. Muammoni hal qiling. Yoki odamga uzating.",
+    ru: "Найти ответ. Решить вопрос. Или передать человеку.",
+  },
+  "Osonflow handles the whole conversation — from your customer's first message to a solved problem, or a teammate who already knows the story.": {
+    uz: "Osonflow butun suhbatni olib boradi — mijozning birinchi xabaridan hal qilingan muammogacha yoki voqeadan allaqachon xabardor hamkasbgacha.",
+    ru: "Osonflow ведёт диалог целиком — от первого сообщения клиента до решённого вопроса или коллеги, который уже в курсе дела.",
+  },
+  "Answers come from your own help docs, website, and past conversations. Every reply shows where it came from.": {
+    uz: "Javoblar sizning yordam hujjatlaringiz, saytingiz va oldingi suhbatlardan olinadi. Har bir javob qayerdan kelganini ko'rsatadi.",
+    ru: "Ответы берутся из ваших справочных документов, сайта и прошлых диалогов. Каждый ответ показывает свой источник.",
+  },
+  "If Osonflow isn't sure enough, it doesn't guess. You decide how sure it has to be.": {
+    uz: "Agar Osonflow yetarlicha ishonchli bo'lmasa, taxmin qilmaydi. Qanchalik ishonchli bo'lishi kerakligini siz belgilaysiz.",
+    ru: "Если Osonflow недостаточно уверен, он не гадает. Насколько он должен быть уверен, решаете вы.",
+  },
+  "Your team picks up the thread with the whole conversation already there. Nobody has to repeat themselves.": {
+    uz: "Jamoangiz suhbatni to'liq yozishmasi bilan qabul qiladi. Hech kim o'zini takrorlashi shart emas.",
+    ru: "Ваша команда подхватывает диалог, где уже видна вся переписка. Никому не нужно повторяться.",
+  },
+  "Built for busy days": {
+    uz: "Band kunlar uchun",
+    ru: "Создано для загруженных дней",
+  },
+  "Fast enough to talk to. Steady enough for your busiest hour.": {
+    uz: "Gaplashsa bo'ladigan darajada tez. Eng band soatingizga dosh beradigan darajada barqaror.",
+    ru: "Достаточно быстро, чтобы разговаривать. Достаточно стабильно для самого пикового часа.",
+  },
+  "Voice and chat run on the same system, so answers stay just as accurate when the queue fills up.": {
+    uz: "Ovoz va chat bitta tizimda ishlaydi, shuning uchun navbat to'lganda ham javoblar xuddi shunday aniq qoladi.",
+    ru: "Голос и чат работают в одной системе, поэтому при наплыве обращений ответы остаются такими же точными.",
+  },
+  "To answer out loud": {
+    uz: "Ovozli javobgacha",
+    ru: "До ответа голосом",
+  },
+  "Support agents using it": {
+    uz: "Undan foydalanayotgan operatorlar",
+    ru: "Операторов работают в нём",
+  },
+  "No more dead ends for your customers.": {
+    uz: "Mijozlaringiz uchun boshi berk ko'chalar yo'q.",
+    ru: "Больше никаких тупиков для ваших клиентов.",
+  },
+  "Most chatbots answer until they can't, then dump the customer in a queue where nobody knows what they already said. Osonflow is the whole thing: a fast chat widget for your website, a shared inbox for your team behind it, and AI that knows exactly when to step back.": {
+    uz: "Ko'pchilik chatbotlar imkoni boricha javob beradi, keyin mijozni u nima deganini hech kim bilmaydigan navbatga tashlab ketadi. Osonflow — bu to'liq yechim: saytingiz uchun tezkor chat oynasi, uning ortida jamoangiz uchun umumiy pochta qutisi va qachon chekinish kerakligini aniq biladigan AI.",
+    ru: "Большинство чат-ботов отвечают, пока могут, а потом бросают клиента в очередь, где никто не знает, что он уже рассказал. Osonflow — это всё сразу: быстрый чат-виджет для сайта, общий почтовый ящик для команды за ним и ИИ, который точно знает, когда отойти в сторону.",
+  },
+  "of questions answered without anyone from your team": {
+    uz: "savollar jamoangizdan hech kimsiz javob oladi",
+    ru: "вопросов закрываются без участия вашей команды",
+  },
+  "of handed-over chats arrive with the full conversation": {
+    uz: "uzatilgan suhbatlar to'liq yozishma bilan keladi",
+    ru: "переданных диалогов приходят с полной перепиской",
+  },
+  "Walk through it": {
+    uz: "Bosqichma-bosqich ko'ring",
+    ru: "Пройдите по шагам",
+  },
+  "Follow one customer question from start to finish.": {
+    uz: "Bitta mijoz savolini boshidan oxirigacha kuzating.",
+    ru: "Проследите путь одного вопроса клиента от начала до конца.",
+  },
+  "Click each step to see what happens between your customer asking and getting an answer — and what happens when Osonflow decides a person should take it.": {
+    uz: "Mijoz savol berganidan javob olgunicha nima sodir bo'lishini va Osonflow ishni odamga topshirishga qaror qilganda nima bo'lishini ko'rish uchun har bir bosqichni bosing.",
+    ru: "Нажмите на каждый шаг, чтобы увидеть, что происходит между вопросом клиента и ответом — и что происходит, когда Osonflow решает передать диалог человеку.",
+  },
+  "You add your content": {
+    uz: "Siz kontentingizni qo'shasiz",
+    ru: "Вы добавляете свой контент",
+  },
+  "Upload PDFs and documents, or just point Osonflow at your website and help centre.": {
+    uz: "PDF va hujjatlarni yuklang yoki shunchaki Osonflow'ga saytingiz va yordam markazingizni ko'rsating.",
+    ru: "Загрузите PDF и документы или просто укажите Osonflow на ваш сайт и справочный центр.",
+  },
+  "Osonflow reads it": {
+    uz: "Osonflow uni o'qib chiqadi",
+    ru: "Osonflow это читает",
+  },
+  "Your content is organised so the right paragraph can be found in milliseconds.": {
+    uz: "Kontentingiz shunday tartibga solinadiki, kerakli xatboshi millisekundlarda topiladi.",
+    ru: "Ваш контент упорядочивается так, чтобы нужный абзац находился за миллисекунды.",
+  },
+  "It answers — or it stops": {
+    uz: "U javob beradi — yoki to'xtaydi",
+    ru: "Он отвечает — или останавливается",
+  },
+  "Osonflow scores how sure it is. Below the level you set, it stays quiet instead of guessing.": {
+    uz: "Osonflow o'zi qanchalik ishonchli ekanini baholaydi. Siz belgilagan darajadan past bo'lsa, taxmin qilish o'rniga jim turadi.",
+    ru: "Osonflow оценивает свою уверенность. Ниже заданного вами уровня он молчит, а не гадает.",
+  },
+  "Your team steps in": {
+    uz: "Jamoangiz ishga kirishadi",
+    ru: "Подключается ваша команда",
+  },
+  "The chat lands in your team's inbox with the whole conversation already attached.": {
+    uz: "Suhbat jamoangiz pochta qutisiga butun yozishma bilan birga tushadi.",
+    ru: "Диалог попадает в ящик вашей команды вместе со всей перепиской.",
+  },
+  "What happens behind the scenes": {
+    uz: "Parda ortida nima bo'ladi",
+    ru: "Что происходит за кулисами",
+  },
+  "180ms average reply": {
+    uz: "o'rtacha 180ms javob",
+    ru: "ответ в среднем за 180 мс",
+  },
+  "your data stays yours": {
+    uz: "ma'lumotlaringiz sizniki bo'lib qoladi",
+    ru: "ваши данные остаются вашими",
+  },
+  "always a person as backup": {
+    uz: "har doim odam zaxirada",
+    ru: "человек всегда на подстраховке",
+  },
+  "Answers that come from your own content.": {
+    uz: "Sizning kontentingizdan olingan javoblar.",
+    ru: "Ответы, которые берутся из вашего же контента.",
+  },
+  "Connect your help docs, upload files, point at your website, and save customer details. Osonflow answers from what's actually true for your business — and shows the source for every reply, so your team can check it.": {
+    uz: "Yordam hujjatlaringizni ulang, fayllarni yuklang, saytingizni ko'rsating va mijoz ma'lumotlarini saqlang. Osonflow biznesingiz uchun haqiqatan to'g'ri bo'lgan narsadan javob beradi va har bir javobning manbasini ko'rsatadi, shunda jamoangiz tekshira oladi.",
+    ru: "Подключите справочные документы, загрузите файлы, укажите свой сайт и сохраните данные клиентов. Osonflow отвечает тем, что действительно верно для вашего бизнеса, и показывает источник каждого ответа, чтобы команда могла его проверить.",
+  },
+  "Files, website pages, and help centre in one place": {
+    uz: "Fayllar, sayt sahifalari va yordam markazi bir joyda",
+    ru: "Файлы, страницы сайта и справочный центр в одном месте",
+  },
+  "Remembers each customer across every conversation": {
+    uz: "Har bir mijozni barcha suhbatlarda eslab qoladi",
+    ru: "Помнит каждого клиента во всех диалогах",
+  },
+  "Learned": {
+    uz: "O'rganildi",
+    ru: "Изучено",
+  },
+  "Try it yourself": {
+    uz: "O'zingiz sinab ko'ring",
+    ru: "Попробуйте сами",
+  },
+  "Don't take our word for it. Try it right here.": {
+    uz: "Bizning gapimizga ishonmang. Shu yerda sinab ko'ring.",
+    ru: "Не верьте на слово. Попробуйте прямо здесь.",
+  },
+  "Ask the assistant a question, teach it something new, then watch that same conversation show up in your team's inbox — all running right here in your browser.": {
+    uz: "Assistentga savol bering, unga yangi narsa o'rgating, so'ng o'sha suhbat jamoangiz pochta qutisida paydo bo'lishini kuzating — hammasi shu yerda, brauzeringizda.",
+    ru: "Задайте ассистенту вопрос, научите его чему-то новому и посмотрите, как тот же диалог появится в ящике вашей команды — всё прямо здесь, в браузере.",
+  },
+  "Teach it something": {
+    uz: "Nimadir o'rgating",
+    ru: "Научите его",
+  },
+  "AI assistant · Online": {
+    uz: "AI assistent · Onlayn",
+    ru: "ИИ-ассистент · В сети",
+  },
+  "Hi! Try": {
+    uz: "Salom! Sinab ko'ring:",
+    ru: "Привет! Попробуйте",
+  },
+  "— I answer from the help content listed on the right.": {
+    uz: "— men o'ngdagi yordam kontentidan javob beraman.",
+    ru: "— я отвечаю по справочным материалам, перечисленным справа.",
+  },
+  "Tap a prompt below to hear how a spoken support call would go.": {
+    uz: "Ovozli qo'ng'iroq qanday o'tishini eshitish uchun quyidagi savolni bosing.",
+    ru: "Нажмите на подсказку ниже, чтобы услышать, как прошёл бы голосовой звонок в поддержку.",
+  },
+  "Where the answer came from": {
+    uz: "Javob qayerdan olingan",
+    ru: "Откуда взят ответ",
+  },
+  "What they are asking about": {
+    uz: "Nima haqida so'rayapti",
+    ru: "О чём спрашивают",
+  },
+  "How sure Osonflow is": {
+    uz: "Osonflow qanchalik ishonchli",
+    ru: "Насколько уверен Osonflow",
+  },
+  ". Anything below that, and the chat goes to a person instead.": {
+    uz: ". Undan past bo'lsa, suhbat odamga uzatiladi.",
+    ru: ". Всё, что ниже, — диалог уходит человеку.",
+  },
+  "Teach it something new": {
+    uz: "Unga yangi narsa o'rgating",
+    ru: "Научите его новому",
+  },
+  "Add a web page, or paste in some text. Then switch to": {
+    uz: "Veb-sahifa qo'shing yoki matn joylashtiring. So'ng shu bo'limga o'ting:",
+    ru: "Добавьте веб-страницу или вставьте текст. Затем перейдите в",
+  },
+  "and ask about it — the assistant will answer from what you just gave it.": {
+    uz: "va u haqida so'rang — assistent siz bergan ma'lumotdan javob beradi.",
+    ru: "и спросите об этом — ассистент ответит по тому, что вы только что дали.",
+  },
+  "Text or file": {
+    uz: "Matn yoki fayl",
+    ru: "Текст или файл",
+  },
+  "Where it came from": {
+    uz: "Qayerdan olingan",
+    ru: "Откуда это",
+  },
+  "What should it know?": {
+    uz: "U nimani bilishi kerak?",
+    ru: "Что он должен знать?",
+  },
+  "Teach Osonflow": {
+    uz: "Osonflow'ga o'rgating",
+    ru: "Научить Osonflow",
+  },
+  "Saved! Open Customer chat and ask about it.": {
+    uz: "Saqlandi! Mijoz chatini oching va shu haqda so'rang.",
+    ru: "Сохранено! Откройте чат с клиентом и спросите об этом.",
+  },
+  "What Osonflow knows": {
+    uz: "Osonflow nimani biladi",
+    ru: "Что знает Osonflow",
+  },
+  "Everything the assistant on the left can answer from right now.": {
+    uz: "Chapdagi assistent hozir javob bera oladigan hamma narsa.",
+    ru: "Всё, по чему ассистент слева может ответить прямо сейчас.",
+  },
+  "Reporting": {
+    uz: "Hisobotlar",
+    ru: "Отчёты",
+  },
+  "Solved by AI": {
+    uz: "AI hal qilgan",
+    ru: "Решено ИИ",
+  },
+  "Closed by AI with nobody from your team involved": {
+    uz: "Jamoangizdan hech kim aralashmasdan AI yopgan",
+    ru: "Закрыто ИИ без участия вашей команды",
+  },
+  "Average reply time": {
+    uz: "O'rtacha javob vaqti",
+    ru: "Среднее время ответа",
+  },
+  "From question to spoken answer": {
+    uz: "Savoldan ovozli javobgacha",
+    ru: "От вопроса до ответа голосом",
+  },
+  "Rated the same way for voice and chat": {
+    uz: "Ovoz va chat bir xil baholanadi",
+    ru: "Голос и чат оцениваются одинаково",
+  },
+  "Busy hours": {
+    uz: "Band soatlar",
+    ru: "Часы загрузки",
+  },
+  "Answered by AI versus passed to your team, over 24 hours.": {
+    uz: "24 soat davomida AI javob berganlar va jamoangizga uzatilganlar.",
+    ru: "Ответы ИИ и передачи вашей команде за 24 часа.",
+  },
+  "What people ask about": {
+    uz: "Odamlar nima haqida so'raydi",
+    ru: "О чём спрашивают люди",
+  },
+  "Where conversations are landing right now.": {
+    uz: "Hozir suhbatlar qayerga tushmoqda.",
+    ru: "Куда сейчас приходят обращения.",
+  },
+  "Nothing made up": {
+    uz: "Hech narsa o'ylab topilmagan",
+    ru: "Ничего не выдумано",
+  },
+  "No answer went outside your approved content in the last 120 hours.": {
+    uz: "So'nggi 120 soat ichida biror javob siz tasdiqlagan kontentdan chetga chiqmadi.",
+    ru: "За последние 120 часов ни один ответ не вышел за пределы одобренного вами контента.",
+  },
+  "Start free. Pay once AI is carrying real work.": {
+    uz: "Bepul boshlang. AI haqiqiy ish bajara boshlaganda to'lang.",
+    ru: "Начните бесплатно. Платите, когда ИИ возьмёт на себя реальную работу.",
+  },
+  "Every plan includes the whole thing — chat widget, shared inbox, routing, and human handover.": {
+    uz: "Har bir tarifda hammasi bor — chat oynasi, umumiy pochta qutisi, yo'naltirish va odamga uzatish.",
+    ru: "В каждом тарифе есть всё — чат-виджет, общий ящик, маршрутизация и передача человеку.",
+  },
+  "For small teams trying AI on their website.": {
+    uz: "Saytida AI'ni sinab ko'rayotgan kichik jamoalar uchun.",
+    ru: "Для небольших команд, которые пробуют ИИ на своём сайте.",
+  },
+  "Answers from your files and website": {
+    uz: "Fayllaringiz va saytingizdan javoblar",
+    ru: "Ответы по вашим файлам и сайту",
+  },
+  "Routing by topic and confidence": {
+    uz: "Mavzu va ishonch darajasi bo'yicha yo'naltirish",
+    ru: "Маршрутизация по теме и уверенности",
+  },
+  "What support teams ask us before letting AI talk to their customers.": {
+    uz: "Qo'llab-quvvatlash jamoalari AI'ga mijozlari bilan gaplashishga ruxsat berishdan oldin bizdan so'raydigan savollar.",
+    ru: "Что спрашивают команды поддержки, прежде чем доверить ИИ разговор с клиентами.",
+  },
+  "How do you stop the AI making things up?": {
+    uz: "AI o'zidan to'qib chiqarishining oldini qanday olasiz?",
+    ru: "Как вы не даёте ИИ выдумывать?",
+  },
+  "Osonflow only answers from the content you give it — your documents, your website, your policies. If a question can't be answered from that, it doesn't guess: it flags the chat and passes it to your team.": {
+    uz: "Osonflow faqat siz bergan kontentdan — hujjatlaringiz, saytingiz, qoidalaringizdan javob beradi. Agar savolga shundan javob topilmasa, u taxmin qilmaydi: suhbatni belgilab, jamoangizga uzatadi.",
+    ru: "Osonflow отвечает только по тому контенту, который вы ему дали, — вашим документам, сайту, правилам. Если ответа там нет, он не гадает: помечает диалог и передаёт его вашей команде.",
+  },
+  "How does voice support work?": {
+    uz: "Ovozli qo'llab-quvvatlash qanday ishlaydi?",
+    ru: "Как работает голосовая поддержка?",
+  },
+  "Customers can speak instead of typing. Osonflow listens, finds the answer in your content, and replies out loud — usually in under 400ms. Voice chats land in the same inbox as text, so your team handles both in one place.": {
+    uz: "Mijozlar yozish o'rniga gapira oladi. Osonflow tinglaydi, javobni kontentingizdan topadi va ovoz bilan javob beradi — odatda 400ms dan tez. Ovozli suhbatlar matnli suhbatlar bilan bitta pochta qutisiga tushadi, shuning uchun jamoangiz ikkalasini bir joyda boshqaradi.",
+    ru: "Клиенты могут говорить, а не печатать. Osonflow слушает, находит ответ в вашем контенте и отвечает вслух — обычно быстрее 400 мс. Голосовые диалоги попадают в тот же ящик, что и текстовые, поэтому команда работает с ними в одном месте.",
+  },
+  "Is my data safe?": {
+    uz: "Ma'lumotlarim xavfsizmi?",
+    ru: "Мои данные в безопасности?",
+  },
+  "Your files and uploads stay inside your own workspace. They are never shared with other customers, and never used to train public AI models.": {
+    uz: "Fayllaringiz va yuklamalaringiz o'z ish maydoningiz ichida qoladi. Ular boshqa mijozlarga hech qachon berilmaydi va ommaviy AI modellarini o'qitish uchun ishlatilmaydi.",
+    ru: "Ваши файлы и загрузки остаются в вашем рабочем пространстве. Они никогда не передаются другим клиентам и не используются для обучения публичных ИИ-моделей.",
+  },
+  "How does my team take over?": {
+    uz: "Jamoam qanday qilib ishni o'z qo'liga oladi?",
+    ru: "Как моя команда перехватывает диалог?",
+  },
+  "Whenever a customer asks for a person — or Osonflow isn't confident enough — the chat is flagged and your team is notified. They open it and see the whole conversation, so nobody has to start over.": {
+    uz: "Mijoz odam so'raganda yoki Osonflow yetarlicha ishonchli bo'lmaganda, suhbat belgilanadi va jamoangizga xabar beriladi. Ular ochib, butun yozishmani ko'radi, shuning uchun hech kim boshidan boshlashi shart emas.",
+    ru: "Как только клиент просит человека — или Osonflow недостаточно уверен — диалог помечается и команда получает уведомление. Они открывают его и видят всю переписку, поэтому начинать заново никому не нужно.",
+  },
+  "Is there a limit on how many chats I can have?": {
+    uz: "Suhbatlar soniga cheklov bormi?",
+    ru: "Есть ли лимит на количество диалогов?",
+  },
+  "We charge for team seats, not conversations. Starter includes 2 seats for your team; Growth includes up to 10.": {
+    uz: "Biz suhbatlar uchun emas, jamoa o'rinlari uchun haq olamiz. Starter jamoangiz uchun 2 ta o'rinni, Growth esa 10 tagacha o'rinni o'z ichiga oladi.",
+    ru: "Мы берём плату за места в команде, а не за диалоги. В Starter входят 2 места, в Growth — до 10.",
+  },
+  "Faster answers for your customers. A quieter day for your team.": {
+    uz: "Mijozlaringizga tezroq javob. Jamoangizga tinchroq kun.",
+    ru: "Клиентам — ответы быстрее. Команде — спокойнее день.",
+  },
+  "AI that answers your customers on chat and voice, with your team one click away.": {
+    uz: "Mijozlaringizga chat va ovozda javob beradigan AI, jamoangiz esa bir bosish narida.",
+    ru: "ИИ, который отвечает вашим клиентам в чате и голосом, а команда — в одном клике.",
+  },
+  "Paste one line of code into your site and the chat widget goes live.": {
+    uz: "Saytingizga bitta qator kod joylashtiring va chat oynasi ishga tushadi.",
+    ru: "Вставьте одну строку кода на сайт — и чат-виджет заработает.",
+  },
+
+  "See it working": {
+    uz: "Ish jarayonini ko'ring",
+    ru: "Посмотреть в деле",
+  },
 }

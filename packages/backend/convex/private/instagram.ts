@@ -1,4 +1,4 @@
-import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
+import { requireOrganizationIdentity } from "../lib/organizationIdentity"
 import {
   fetchInstagramAccountIdentity,
   instagramGraphUrl,
@@ -13,7 +13,7 @@ import { getInstagramWebhookBaseUrl } from "../lib/webhookBaseUrl"
 import { ConvexError, v } from "convex/values"
 import { internal } from "../_generated/api"
 import { Doc } from "../_generated/dataModel"
-import { action, query } from "../_generated/server"
+import { action, query, type ActionCtx } from "../_generated/server"
 
 type InstagramProfileResponse = {
   id?: string
@@ -49,29 +49,13 @@ type ConnectInstagramResult = {
   verifyToken: string
 }
 
-const getAuthContext = async (ctx: {
-  auth: { getUserIdentity: () => Promise<any> }
-}) => {
-  const identity = await ctx.auth.getUserIdentity()
-
-  if (identity === null) {
-    throw new ConvexError({
-      code: "UNAUTHORIZED",
-      message: "Identity not found",
-    })
-  }
-
-  const organizationId = getOrganizationIdFromIdentity(identity)
-
-  if (!organizationId) {
-    throw new ConvexError({
-      code: "UNAUTHORIZED",
-      message: "Organization not found",
-    })
-  }
+const getAuthContext = async (
+  ctx: Parameters<typeof requireOrganizationIdentity>[0]
+) => {
+  const { identity, orgId } = await requireOrganizationIdentity(ctx)
 
   return {
-    organizationId,
+    organizationId: orgId,
     actorId: identity.subject as string | undefined,
   }
 }
@@ -272,10 +256,7 @@ const toConnectResult = (result: ConnectInstagramResult) => ({
 })
 
 const runConnectWithOAuthCode = async (
-  ctx: {
-    auth: { getUserIdentity: () => Promise<any> }
-    runMutation: (reference: any, args: any) => Promise<any>
-  },
+  ctx: ActionCtx,
   args: { code: string; state: string }
 ) => {
   const { organizationId } = await getAuthContext(ctx)

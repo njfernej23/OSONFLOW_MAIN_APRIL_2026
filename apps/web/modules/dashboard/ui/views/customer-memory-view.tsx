@@ -31,11 +31,14 @@ import {
   TabsTrigger,
 } from "@workspace/ui/components/tabs"
 import { cn } from "@workspace/ui/lib/utils"
+import {
+  formatCsvTimestamp,
+  stringifyCsvRows,
+} from "../lib/conversation-export"
 
 const CUSTOMER_MEMORY_EXPORT_LIMIT = 5000
 
 type CustomerMemory = Doc<"customerMemories">
-type CsvValue = string | number | null | undefined
 type MemoryTab = "all" | "attention" | "recent" | "resolved"
 
 const formatIntent = (intent: string) =>
@@ -54,16 +57,6 @@ const formatDate = (timestamp: number) =>
 
 const isRecentlySeen = (timestamp: number) =>
   Date.now() - timestamp <= 30 * 24 * 60 * 60 * 1000
-
-const formatCsvTimestamp = (timestamp: number) =>
-  Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : ""
-
-const escapeCsvCell = (value: CsvValue) => {
-  const raw = String(value ?? "")
-  const safe = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw
-
-  return `"${safe.replaceAll('"', '""')}"`
-}
 
 const joinList = (items: string[]) => items.filter(Boolean).join("; ")
 
@@ -116,7 +109,7 @@ const buildCustomerMemoryCsv = (memories: CustomerMemory[]) => {
     ]),
   ]
 
-  return rows.map((row) => row.map(escapeCsvCell).join(",")).join("\n")
+  return stringifyCsvRows(rows)
 }
 
 const SectionHeader = ({

@@ -59,13 +59,13 @@ html.mo-on .japandi-landing .mo-child:not(.mo-in) {
    ============================================================ */
 .japandi-landing .mo-word {
   display: inline-block;
-  will-change: transform, opacity, filter;
   transition:
     opacity .75s var(--mo-out) calc(var(--mo-wi, 0) * 42ms + var(--mo-delay, 0ms)),
     transform .95s var(--mo-out) calc(var(--mo-wi, 0) * 42ms + var(--mo-delay, 0ms)),
     filter .75s var(--mo-out) calc(var(--mo-wi, 0) * 42ms + var(--mo-delay, 0ms));
 }
 html.mo-on .japandi-landing .mo-host:not(.mo-in) .mo-word {
+  will-change: transform, opacity, filter;
   opacity: 0;
   transform: translate3d(0, .62em, 0) rotate(2deg) scale(.97);
   filter: blur(9px);
@@ -87,7 +87,7 @@ html.mo-on .japandi-landing .mo-host:not(.mo-in) .mo-word {
   background-clip: text;
   color: transparent;
   -webkit-text-fill-color: transparent;
-  animation: moAccentFlow 9s linear infinite;
+  animation: moAccentFlow 9s linear 2;
 }
 @keyframes moAccentFlow {
   from { background-position: 0% 50%; }
@@ -484,4 +484,19 @@ html.mo-on body { animation: moPageIn .7s var(--mo-soft) both; }
   .japandi-landing .opsmetric__spark-fill,
   .japandi-landing .opschart__node { opacity: 1; transform: none; animation: none; }
   html.mo-on body { animation: none; }
+}
+
+/* ============================================================
+   14 · REST — no animation work outside the viewport
+   JS (motion.js §14) puts .mo-rest on every section that is off
+   screen. Looping keyframes otherwise repaint at 60fps for the
+   whole session, even for sections the visitor never reaches.
+   ============================================================ */
+.japandi-landing .mo-rest,
+.japandi-landing .mo-rest::before,
+.japandi-landing .mo-rest::after,
+.japandi-landing .mo-rest *,
+.japandi-landing .mo-rest *::before,
+.japandi-landing .mo-rest *::after {
+  animation-play-state: paused !important;
 }

@@ -163,7 +163,7 @@ ${htmlBody}
 
 fs.writeFileSync(path.join(out, "index.html"), indexHtml);
 fs.copyFileSync(
-  path.join(root, "modules/marketing/ui/styles/japandi-landing.css"),
+  path.join(root, "public/landing/japandi-landing.css"),
   path.join(out, "japandi-landing.css"),
 );
 fs.copyFileSync(path.join(root, "public/landing/main.js"), path.join(out, "main.js"));

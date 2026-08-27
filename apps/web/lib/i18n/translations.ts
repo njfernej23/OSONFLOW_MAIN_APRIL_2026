@@ -16,7 +16,7 @@ type TranslationValue = {
   ru: string
 }
 
-export const translations: Record<string, TranslationValue> = {
+const translations: Record<string, TranslationValue> = {
   Language: {
     uz: "Til",
     ru: "Язык",

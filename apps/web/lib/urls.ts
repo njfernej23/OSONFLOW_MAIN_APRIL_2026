@@ -1,4 +1,3 @@
-const DEFAULT_APP_ORIGIN = "https://app.osonflow.uz"
 const DEFAULT_APP_HOSTNAME = "app.osonflow.uz"
 const DEFAULT_MARKETING_ORIGIN = "https://www.osonflow.uz"
 
@@ -79,7 +78,7 @@ export const getMarketingOrigin = (fallback?: string | null) => {
   return DEFAULT_MARKETING_ORIGIN
 }
 
-export const getAppHostname = () => {
+const getAppHostname = () => {
   try {
     return new URL(getAppOrigin()).hostname.toLowerCase()
   } catch {
@@ -135,5 +134,3 @@ export const shouldSplitByHost = (hostname: string) => {
   return isAppHost(normalized) || isMarketingHost(normalized)
 }
 
-/** @deprecated Use getAppOrigin instead */
-export const getAppUrl = getAppOrigin

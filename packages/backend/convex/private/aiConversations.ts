@@ -1,7 +1,5 @@
 import {
   paginationOptsValidator,
-  PaginationOptions,
-  PaginationResult,
 } from "convex/server"
 import { ConvexError, v } from "convex/values"
 import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server"
@@ -11,6 +9,7 @@ import {
   getOrganizationIdFromIdentity,
   requireOrganizationIdentity,
 } from "../lib/organizationIdentity"
+import { paginateArray } from "../lib/paginateArray"
 
 const getOrganizationIdentity = async (ctx: QueryCtx) => {
   return requireOrganizationIdentity(ctx)
@@ -52,25 +51,6 @@ const getSearchSnippet = (
   const suffix = end < value.length ? " ..." : ""
 
   return `${prefix}${value.slice(start, end)}${suffix}`
-}
-
-const paginateArray = <T>(
-  items: T[],
-  paginationOpts: PaginationOptions
-): PaginationResult<T> => {
-  const start = paginationOpts.cursor
-    ? Number.parseInt(paginationOpts.cursor, 10)
-    : 0
-  const safeStart = Number.isFinite(start) ? start : 0
-  const end = safeStart + paginationOpts.numItems
-  const isDone = end >= items.length
-
-  return {
-    page: items.slice(safeStart, end),
-    isDone,
-    continueCursor: isDone ? "" : String(end),
-    splitCursor: null,
-  }
 }
 
 const withLinkedHandoffStatus = async (

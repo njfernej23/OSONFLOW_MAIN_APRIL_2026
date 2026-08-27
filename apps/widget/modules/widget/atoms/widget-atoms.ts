@@ -45,7 +45,6 @@ export const contactSessionIdAtomFamily = atomFamily(
 )
 
 export const errorMessageAtom = atom<string | null>(null)
-export const loadingMessageAtom = atom<string | null>(null)
 export const conversationIdAtom = atom<Id<"conversations"> | null>(null)
 export const chatReturnScreenAtom = atom<ChatReturnScreen>("selection")
 export const pendingInitialMessageAtom = atom<string | null>(null)

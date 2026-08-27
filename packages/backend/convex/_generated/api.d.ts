@@ -25,6 +25,7 @@ import type * as lib_metaWebhook from "../lib/metaWebhook.js";
 import type * as lib_openai from "../lib/openai.js";
 import type * as lib_organizationIdentity from "../lib/organizationIdentity.js";
 import type * as lib_outboundUrl from "../lib/outboundUrl.js";
+import type * as lib_paginateArray from "../lib/paginateArray.js";
 import type * as lib_polarWebhook from "../lib/polarWebhook.js";
 import type * as lib_rateLimits from "../lib/rateLimits.js";
 import type * as lib_secrets from "../lib/secrets.js";
@@ -34,7 +35,6 @@ import type * as lib_voiceToolDeclarations from "../lib/voiceToolDeclarations.js
 import type * as lib_webhookBaseUrl from "../lib/webhookBaseUrl.js";
 import type * as lib_widgetAuth from "../lib/widgetAuth.js";
 import type * as lib_workflowEngine from "../lib/workflowEngine.js";
-import type * as migrations_stripVapiSettings from "../migrations/stripVapiSettings.js";
 import type * as private_aiConversations from "../private/aiConversations.js";
 import type * as private_analytics from "../private/analytics.js";
 import type * as private_assistantTools from "../private/assistantTools.js";
@@ -119,6 +119,7 @@ declare const fullApi: ApiFromModules<{
   "lib/openai": typeof lib_openai;
   "lib/organizationIdentity": typeof lib_organizationIdentity;
   "lib/outboundUrl": typeof lib_outboundUrl;
+  "lib/paginateArray": typeof lib_paginateArray;
   "lib/polarWebhook": typeof lib_polarWebhook;
   "lib/rateLimits": typeof lib_rateLimits;
   "lib/secrets": typeof lib_secrets;
@@ -128,7 +129,6 @@ declare const fullApi: ApiFromModules<{
   "lib/webhookBaseUrl": typeof lib_webhookBaseUrl;
   "lib/widgetAuth": typeof lib_widgetAuth;
   "lib/workflowEngine": typeof lib_workflowEngine;
-  "migrations/stripVapiSettings": typeof migrations_stripVapiSettings;
   "private/aiConversations": typeof private_aiConversations;
   "private/analytics": typeof private_analytics;
   "private/assistantTools": typeof private_assistantTools;

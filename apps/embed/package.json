@@ -5,7 +5,8 @@
     "private": true,
     "scripts": {
         "dev": "vite --port 3002",
-        "build": "vite build"
+        "build": "vite build",
+        "typecheck": "tsc --noEmit"
     },
     "devDependencies": {
         "@types/node": "^25.9.2",

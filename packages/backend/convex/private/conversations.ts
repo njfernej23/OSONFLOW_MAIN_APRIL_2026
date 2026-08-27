@@ -4,7 +4,6 @@ import { v, ConvexError } from "convex/values"
 import { MessageDoc } from "@convex-dev/agent"
 import {
   paginationOptsValidator,
-  PaginationOptions,
   PaginationResult,
 } from "convex/server"
 import { Doc } from "../_generated/dataModel"
@@ -19,6 +18,7 @@ import {
   extractAgentMessageText,
   getLatestTextAgentMessage,
 } from "../lib/agentMessageText"
+import { paginateArray } from "../lib/paginateArray"
 
 const assignmentFilterValidator = v.union(
   v.literal("all"),
@@ -68,25 +68,6 @@ const getSearchSnippet = (
   const suffix = end < value.length ? " ..." : ""
 
   return `${prefix}${value.slice(start, end)}${suffix}`
-}
-
-const paginateArray = <T>(
-  items: T[],
-  paginationOpts: PaginationOptions
-): PaginationResult<T> => {
-  const start = paginationOpts.cursor
-    ? Number.parseInt(paginationOpts.cursor, 10)
-    : 0
-  const safeStart = Number.isFinite(start) ? start : 0
-  const end = safeStart + paginationOpts.numItems
-  const isDone = end >= items.length
-
-  return {
-    page: items.slice(safeStart, end),
-    isDone,
-    continueCursor: isDone ? "" : String(end),
-    splitCursor: null,
-  }
 }
 
 export const updateStatus = mutation({

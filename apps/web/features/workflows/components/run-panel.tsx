@@ -270,22 +270,11 @@ const RunPanel = ({
   }, [])
 
   const activeNodes = runGraphRef.current?.nodes ?? nodes
-  const activeEdges = runGraphRef.current?.edges ?? edges
 
   const nodeMap = useMemo(
     () => new Map(activeNodes.map((node) => [node.id, node])),
     [activeNodes]
   )
-
-  const edgesBySource = useMemo(() => {
-    const map = new Map<string, Edge[]>()
-    for (const edge of activeEdges) {
-      const list = map.get(edge.source) ?? []
-      list.push(edge)
-      map.set(edge.source, list)
-    }
-    return map
-  }, [activeEdges])
 
   const getNextNodeId = useCallback(
     (sourceId: string, handleId?: string | null) => {

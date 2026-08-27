@@ -1,7 +1,6 @@
 import { v, ConvexError } from "convex/values"
 import { internalQuery, internalMutation } from "../_generated/server"
 import { internal } from "../_generated/api"
-import { extractAgentMessageText } from "../lib/agentMessageText"
 import { supportAgent } from "./ai/agents/supportAgent"
 
 export const escalate = internalMutation({
@@ -169,50 +168,6 @@ export const touchCustomerMessage = internalMutation({
   },
 })
 
-export const touchOperatorMessage = internalMutation({
-  args: {
-    conversationId: v.id("conversations"),
-    timestamp: v.optional(v.number()),
-    operatorId: v.optional(v.string()),
-    operatorName: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const conversation = await ctx.db.get(args.conversationId)
-
-    if (!conversation) {
-      throw new ConvexError({
-        code: "NOT_FOUND",
-        message: "Conversation not found",
-      })
-    }
-
-    const timestamp = args.timestamp ?? Date.now()
-    const operatorName =
-      args.operatorName?.trim() ||
-      conversation.assignedToName ||
-      "Telegram operator"
-
-    await ctx.db.patch(args.conversationId, {
-      status:
-        conversation.status === "unresolved"
-          ? "escalated"
-          : conversation.status,
-      assignedToId: conversation.assignedToId ?? args.operatorId ?? null,
-      assignedToName: conversation.assignedToName ?? operatorName,
-      assignedAt: conversation.assignedAt ?? timestamp,
-      escalatedAt:
-        conversation.status === "unresolved"
-          ? (conversation.escalatedAt ?? timestamp)
-          : conversation.escalatedAt,
-      operatorLastReadAt: timestamp,
-      firstHumanResponseAt: conversation.firstHumanResponseAt ?? timestamp,
-      lastOperatorMessageAt: timestamp,
-      unreadForContactCount: (conversation.unreadForContactCount ?? 0) + 1,
-      unreadForOperatorCount: 0,
-    })
-  },
-})
-
 export const touchAssistantMessage = internalMutation({
   args: {
     conversationId: v.id("conversations"),
@@ -248,38 +203,5 @@ export const getByThreadId = internalQuery({
       .unique()
 
     return conversation
-  },
-})
-
-export const getLatestUserMessageByThreadId = internalQuery({
-  args: {
-    threadId: v.string(),
-  },
-  returns: v.union(v.string(), v.null()),
-  handler: async (ctx, args): Promise<string | null> => {
-    const messages = await supportAgent.listMessages(ctx, {
-      threadId: args.threadId,
-      excludeToolMessages: true,
-      paginationOpts: { numItems: 20, cursor: null },
-    })
-
-    for (const message of messages.page) {
-      const role =
-        typeof message?.message?.role === "string"
-          ? message.message.role
-          : "assistant"
-
-      if (role !== "user") {
-        continue
-      }
-
-      const text = extractAgentMessageText(message).trim()
-
-      if (text) {
-        return text
-      }
-    }
-
-    return null
   },
 })

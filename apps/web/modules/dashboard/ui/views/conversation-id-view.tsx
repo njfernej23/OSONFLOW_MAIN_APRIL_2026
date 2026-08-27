@@ -996,7 +996,7 @@ export const ConversationIdView = ({
   )
 }
 
-export const ConversationIdViewLoading = () => {
+const ConversationIdViewLoading = () => {
   const loadingMessages = [
     { from: "user" as const, width: "w-[min(260px,62vw)]" },
     { from: "assistant" as const, width: "w-[min(180px,52vw)]" },
