@@ -3,7 +3,6 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -42,7 +41,6 @@ import ReactFlow, {
 import "reactflow/dist/style.css"
 import { useAuth, useOrganization } from "@clerk/nextjs"
 import { useMutation, useQuery } from "convex/react"
-import { useAtomValue } from "jotai"
 import { api } from "@workspace/backend/_generated/api"
 import type { Id } from "@workspace/backend/_generated/dataModel"
 import { toast } from "sonner"
@@ -63,9 +61,24 @@ import {
   type NodeType,
   type PromptNodeData,
   type SetVariableNodeData,
+  type ApiNodeData,
+  type CarouselCard,
+  type CarouselNodeData,
+  type CustomActionNodeData,
+  type JavascriptNodeData,
+  type ToolNodeData,
+  type ComponentNodeData,
+  type BlockNodeData,
+  type BlockStep,
+  type FunctionNodeData,
   type WorkflowDefinition,
   type WorkflowEdgeData,
 } from "../lib/types"
+import { API_METHODS, isTerminalStepType, stepPorts } from "../lib/types"
+import {
+  validateWorkflow,
+  type ValidationIssue,
+} from "../lib/validate-workflow"
 import StartNode from "../nodes/StartNode"
 import MessageNode from "../nodes/MessageNode"
 import ImageNode from "../nodes/ImageNode"
@@ -75,17 +88,21 @@ import CaptureNode from "../nodes/CaptureNode"
 import ChoiceNode from "../nodes/ChoiceNode"
 import SetVariableNode from "../nodes/SetVariableNode"
 import ConditionNode from "../nodes/ConditionNode"
+import ApiNode from "../nodes/ApiNode"
+import CarouselNode from "../nodes/CarouselNode"
+import JavascriptNode from "../nodes/JavascriptNode"
+import CustomActionNode from "../nodes/CustomActionNode"
+import ToolNode from "../nodes/ToolNode"
+import ComponentNode from "../nodes/ComponentNode"
+import BlockNode, { BlockStepSelectionContext } from "../nodes/BlockNode"
+import FunctionNode from "../nodes/FunctionNode"
 import GenericStepNode from "../nodes/GenericStepNode"
 import { NodeRenameContext } from "../nodes/NodeRenameContext"
+import Icon, { type IconName } from "../nodes/StepIcon"
 import RunPanel from "./run-panel"
-import { WorkflowLiveRoom } from "./workflow-live-room"
-import { LivePresenceBridge } from "./workflow-presence-bridge"
-import { LiveCollaboratorAvatars } from "./live-collaborator-avatars"
-import {
-  livePresenceConnectedAtom,
-  livePresenceMembersAtom,
-  livePresenceUpdatersRef,
-} from "../lib/live-presence-store"
+import { MessageEditorInput } from "./message-editor-input"
+import { VariableInput } from "./variable-input"
+import { collectWorkflowVariables } from "../lib/variable-tokens"
 
 type WorkflowSummary = {
   id: Id<"workflows">
@@ -124,6 +141,26 @@ type RemoteCursor = {
   y: number
 }
 
+type ComponentCandidate = {
+  id: Id<"workflows">
+  name: string
+  isPublished: boolean
+  publishedAt: number | null
+}
+
+type AssistantToolSummary = {
+  _id: string
+  name: string
+  description: string
+  isEnabled: boolean
+  parameters?: Array<{
+    name: string
+    description: string
+    type: "string" | "number" | "boolean"
+    required: boolean
+  }>
+}
+
 type OrganizationCollaborator = {
   id: string
   name: string
@@ -131,6 +168,11 @@ type OrganizationCollaborator = {
   identifier: string
   role: string
   isActive: boolean
+}
+
+type GraphSnapshot = {
+  nodes: DefinitionNode[]
+  edges: DefinitionEdge[]
 }
 
 type WorkflowNode = Node<NodeData>
@@ -143,14 +185,6 @@ type ConnectCategoryId = CategoryId | "actions"
 type DrawerMode = "run" | "library" | "settings" | null
 type MessageFormat = "bold" | "italic" | "underline" | "strike" | "link"
 type CanvasNavigationMode = "trackpad" | "mouse"
-
-type MessageEditorInputProps = {
-  nodeId: string
-  value: string
-  placeholder: string
-  ariaLabel: string
-  onSync: (nodeId: string, html: string) => void
-}
 
 type NodeActionMenuState = {
   nodeId: string
@@ -172,14 +206,20 @@ const WORKFLOW_FIT_VIEW_OPTIONS: FitViewOptions = {
   padding: 0.45,
   maxZoom: 0.88,
 }
-const CANVAS_DOT_GAP = 28
-const CANVAS_DOT_SIZE = 2.8
-const CANVAS_DOT_COLOR = "rgba(91, 111, 123, 0.19)"
+const CANVAS_DOT_GAP = 24
+const CANVAS_DOT_SIZE = 1.4
+const CANVAS_DOT_COLOR = "rgba(26, 29, 35, 0.14)"
 const CONNECT_MENU_WIDTH = 246
 const CONNECT_SUBMENU_WIDTH = 228
 const CONNECT_MENU_GAP = 10
 const CONNECT_MENU_HEIGHT = 292
 const CONNECT_MENU_PLUS_CENTER_OFFSET = { x: -3, y: 1 }
+
+/* Presence pacing. Every cursor broadcast is a Convex write that fans out to
+   each subscriber, so it is deliberately coarser than a render frame. */
+const CURSOR_BROADCAST_MS = 120
+const CURSOR_MOVE_EPSILON = 1.5
+const PRESENCE_HEARTBEAT_MS = 15_000
 
 type EdgeActionMenuState = {
   edgeId: string
@@ -235,49 +275,6 @@ type ConnectCategory = {
   steps: ConnectStepOption[]
 }
 
-type IconName =
-  | "agent"
-  | "talk"
-  | "listen"
-  | "logic"
-  | "dev"
-  | "message"
-  | "prompt"
-  | "image"
-  | "card"
-  | "carousel"
-  | "buttons"
-  | "choice"
-  | "capture"
-  | "condition"
-  | "set"
-  | "component"
-  | "end"
-  | "tool"
-  | "function"
-  | "api"
-  | "javascript"
-  | "kb"
-  | "call"
-  | "custom"
-  | "plus"
-  | "play"
-  | "publish"
-  | "library"
-  | "navigation"
-  | "fit"
-  | "close"
-  | "chevronRight"
-  | "link"
-  | "settings"
-  | "workflow"
-  | "crew"
-  | "operator"
-  | "lineText"
-  | "trash"
-  | "palette"
-  | "check"
-  | "more"
 
 const genericNodeTypes = {
   playbook: GenericStepNode,
@@ -285,18 +282,11 @@ const genericNodeTypes = {
   crew: GenericStepNode,
   operator: GenericStepNode,
   prompt: GenericStepNode,
-  carousel: GenericStepNode,
   choice: ChoiceNode,
   capture: CaptureNode,
-  component: GenericStepNode,
   end: GenericStepNode,
-  tool: GenericStepNode,
-  function: GenericStepNode,
-  api: GenericStepNode,
-  javascript: GenericStepNode,
   kbSearch: GenericStepNode,
   callForward: GenericStepNode,
-  customAction: GenericStepNode,
 }
 
 const nodeTypes = {
@@ -307,6 +297,14 @@ const nodeTypes = {
   buttons: ButtonsNode,
   setVariable: SetVariableNode,
   condition: ConditionNode,
+  api: ApiNode,
+  carousel: CarouselNode,
+  javascript: JavascriptNode,
+  customAction: CustomActionNode,
+  tool: ToolNode,
+  component: ComponentNode,
+  block: BlockNode,
+  function: FunctionNode,
   ...genericNodeTypes,
 }
 
@@ -389,13 +387,17 @@ const createWorkflowEdge = (
   },
   data?: Partial<WorkflowEdgeData>
 ): WorkflowEdge => {
-  const color = data?.color ?? DEFAULT_EDGE_COLOR
+  // Graphs saved before the palette change carry the old slate default; treat
+  // it as "unset" so they pick up the current neutral instead of staying dark.
+  const savedColor = data?.color === LEGACY_EDGE_COLOR ? undefined : data?.color
+  const color = savedColor ?? DEFAULT_EDGE_COLOR
 
   return {
     ...edge,
     id: edge.id ?? createId("edge"),
     type: "workflow",
-    animated: true,
+    // Dashes are the run overlay's signal; a resting graph draws solid.
+    animated: false,
     data: {
       color,
       label: data?.label,
@@ -540,68 +542,6 @@ const DynamicConnectionLine = ({
   )
 }
 
-const MessageEditorInput = ({
-  nodeId,
-  value,
-  placeholder,
-  ariaLabel,
-  onSync,
-}: MessageEditorInputProps) => {
-  const editorRef = useRef<HTMLDivElement | null>(null)
-  const previousNodeIdRef = useRef(nodeId)
-
-  useLayoutEffect(() => {
-    const editor = editorRef.current
-
-    if (!editor) {
-      return
-    }
-
-    const nextHtml = value || ""
-    const nodeChanged = previousNodeIdRef.current !== nodeId
-    const editorFocused = document.activeElement === editor
-
-    if (nodeChanged || (!editorFocused && editor.innerHTML !== nextHtml)) {
-      editor.innerHTML = nextHtml
-    }
-
-    previousNodeIdRef.current = nodeId
-  }, [nodeId, value])
-
-  const handleInput = useCallback(
-    (event: FormEvent<HTMLDivElement>) => {
-      const editor = event.currentTarget
-      const isEmpty = editor.textContent?.trim().length === 0
-      const html = isEmpty ? "" : editor.innerHTML
-
-      editor.dir = "ltr"
-      onSync(nodeId, html)
-    },
-    [nodeId, onSync]
-  )
-
-  return (
-    <div
-      ref={editorRef}
-      className="message-editor-input"
-      contentEditable
-      dir="ltr"
-      lang="en"
-      data-empty={!value}
-      data-placeholder={placeholder}
-      role="textbox"
-      aria-label={ariaLabel}
-      style={{
-        direction: "ltr",
-        textAlign: "left",
-        unicodeBidi: "isolate",
-      }}
-      suppressContentEditableWarning
-      onInput={handleInput}
-    />
-  )
-}
-
 const colorOptions: Array<{ value: BlockColor; label: string; hex: string }> = [
   { value: "default", label: "Default", hex: "#d5dfe1" },
   { value: "blue", label: "Blue", hex: "#4385f5" },
@@ -611,15 +551,16 @@ const colorOptions: Array<{ value: BlockColor; label: string; hex: string }> = [
   { value: "rose", label: "Rose", hex: "#bd4d68" },
 ]
 
-const DEFAULT_EDGE_COLOR = "#395064"
+const DEFAULT_EDGE_COLOR = "#b0b6c0"
+const LEGACY_EDGE_COLOR = "#395064"
 
 const edgeColorOptions: Array<{ value: string; label: string; hex: string }> = [
   { value: DEFAULT_EDGE_COLOR, label: "Default", hex: DEFAULT_EDGE_COLOR },
-  { value: "#3f73f6", label: "Blue", hex: "#3f73f6" },
-  { value: "#2f946f", label: "Green", hex: "#2f946f" },
-  { value: "#d69526", label: "Orange", hex: "#d69526" },
-  { value: "#a855c5", label: "Purple", hex: "#a855c5" },
-  { value: "#c44865", label: "Rose", hex: "#c44865" },
+  { value: "#397dff", label: "Blue", hex: "#397dff" },
+  { value: "#039855", label: "Green", hex: "#039855" },
+  { value: "#dc6803", label: "Orange", hex: "#dc6803" },
+  { value: "#7a5af8", label: "Purple", hex: "#7a5af8" },
+  { value: "#d92d20", label: "Rose", hex: "#d92d20" },
 ]
 
 const stepsByCategory: Category[] = [
@@ -864,6 +805,7 @@ const createStarterGraph = () => {
       type: "start",
       position: { x: 420, y: 260 },
       data: { label: "Start" },
+      deletable: false,
     },
   ]
 
@@ -957,6 +899,71 @@ const createNodeData = (type: NodeType): NodeData => {
         useKnowledgeBase: true,
         outputVariable: "lastAiResponse",
         accent: "agent",
+      }
+    case "api":
+      return {
+        label: "API",
+        method: "GET",
+        url: "",
+        headers: [],
+        body: "",
+        responseVariable: "apiResponse",
+        statusVariable: "apiStatus",
+      }
+    case "carousel":
+      return {
+        label: "Carousel",
+        cards: [
+          {
+            id: createId("card"),
+            title: "First option",
+            description: "",
+            url: "",
+            buttons: [createButton("Choose this")],
+          },
+        ],
+      }
+    case "component":
+      return {
+        label: "Component",
+        workflowId: "",
+        inputs: [],
+      }
+    case "tool":
+      return {
+        label: "Tool",
+        toolName: "",
+        arguments: [],
+        outputVariable: "toolResult",
+      }
+    case "customAction":
+      return {
+        label: "Custom action",
+        actionName: "custom_action",
+        payload: '{\n  "source": "workflow"\n}',
+      }
+    case "function":
+      return {
+        label: "Function",
+        code: [
+          "// Return { next, outputs } to choose a path and set variables.",
+          "const tier = variables.tier ?? \"free\";",
+          "return {",
+          "  next: tier === \"pro\" ? \"pro\" : \"standard\",",
+          "  outputs: { greeting: `Hello ${tier} customer` },",
+          "};",
+        ].join("\n"),
+        paths: [
+          { id: createId("path"), name: "pro" },
+          { id: createId("path"), name: "standard" },
+          { id: createId("path"), name: "error" },
+        ],
+      }
+    case "javascript":
+      return {
+        label: "JavaScript",
+        code: "// variables holds the workflow state as strings.\n// Assign to it, or return an object, to set variables.\nreturn { greeting: `Hello ${variables.name ?? \"there\"}` };",
+        outputVariables: [],
       }
     case "callForward":
       return {
@@ -1272,6 +1279,9 @@ const nodesFromDefinition = (definition: WorkflowDefinition): WorkflowNode[] =>
     ...node,
     type: node.type,
     data: node.data,
+    // The block menu already refuses to delete Start; keep the keyboard in
+    // step with it instead of letting Backspace orphan the whole graph.
+    deletable: node.type !== "start",
   }))
 
 const edgesFromDefinition = (definition: WorkflowDefinition): WorkflowEdge[] =>
@@ -1317,7 +1327,6 @@ const connectReleaseBlockerSelector = [
   ".step-popover",
   ".canvas-navigation-panel",
   ".node-action-menu",
-  ".fit-button",
   ".collaboration-strip",
 ].join(", ")
 
@@ -1392,350 +1401,6 @@ const getSourceHandleScreenPoint = (
   }
 }
 
-const Icon = ({ name, size = 24 }: { name: IconName; size?: number }) => {
-  const common = {
-    width: size,
-    height: size,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 2,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-    "aria-hidden": true,
-  }
-
-  switch (name) {
-    case "agent":
-      return (
-        <svg {...common}>
-          <rect x="6" y="5" width="12" height="8" rx="3" />
-          <path d="M9 3v2m6-2v2M8 18c1.2-2 2.5-3 4-3s2.8 1 4 3" />
-          <path d="M8 21c.6-1.2 1.3-2 2.1-2.4M16 21c-.6-1.2-1.3-2-2.1-2.4" />
-          <path d="M10 9h.01M14 9h.01" />
-        </svg>
-      )
-    case "talk":
-      return (
-        <svg {...common}>
-          <path d="M5.5 16.5 4 21l4.2-1.8A8 8 0 1 0 5.5 16.5Z" />
-          <path d="M15 6.5c1.5.6 2.5 1.7 3 3.2M11 5.2c1.1 0 2.1.2 3 .7" />
-        </svg>
-      )
-    case "listen":
-      return (
-        <svg {...common}>
-          <path d="M12 3 5 7v7c0 4 3.1 6.2 7 7 3.9-.8 7-3 7-7V7l-7-4Z" />
-          <circle cx="12" cy="10" r="2.5" />
-          <path d="M8 16c.9-1.7 2.2-2.5 4-2.5s3.1.8 4 2.5" />
-        </svg>
-      )
-    case "logic":
-      return (
-        <svg {...common}>
-          <rect
-            x="4"
-            y="4"
-            width="16"
-            height="16"
-            rx="4"
-            transform="rotate(45 12 12)"
-          />
-          <path d="m9 12-2 2 2 2M15 8l2 2-2 2M8 14h8" />
-        </svg>
-      )
-    case "dev":
-      return (
-        <svg {...common}>
-          <rect x="5" y="4" width="14" height="16" rx="4" />
-          <path d="m10 9-2 3 2 3M14 9l2 3-2 3" />
-          <path d="m13 8-2 8" />
-        </svg>
-      )
-    case "message":
-      return (
-        <svg {...common}>
-          <path d="M4 6.5A3.5 3.5 0 0 1 7.5 3h9A3.5 3.5 0 0 1 20 6.5v5A3.5 3.5 0 0 1 16.5 15H10l-4 4v-4.4A3.5 3.5 0 0 1 4 11.5v-5Z" />
-          <path d="M8 8h.01M12 8h.01M16 8h.01" />
-        </svg>
-      )
-    case "prompt":
-      return (
-        <svg {...common}>
-          <path d="m12 3 1.3 4.2L17 9l-3.7 1.8L12 15l-1.3-4.2L7 9l3.7-1.8L12 3Z" />
-          <path d="m5 13 .7 2.3L8 16l-2.3.7L5 19l-.7-2.3L2 16l2.3-.7L5 13ZM19 13l.6 1.8L21 15.5l-1.4.7L19 18l-.6-1.8-1.4-.7 1.4-.7L19 13Z" />
-        </svg>
-      )
-    case "image":
-      return (
-        <svg {...common}>
-          <rect x="4" y="5" width="16" height="14" rx="2" />
-          <circle cx="9" cy="10" r="1.5" />
-          <path d="m7 17 4.2-4.2 2.8 2.8 1.4-1.4L18 17" />
-        </svg>
-      )
-    case "card":
-      return (
-        <svg {...common}>
-          <rect x="5" y="4" width="14" height="16" rx="3" />
-          <path d="M8 8h8M8 12h8M8 16h5" />
-        </svg>
-      )
-    case "carousel":
-      return (
-        <svg {...common}>
-          <rect x="9" y="5" width="10" height="14" rx="2" />
-          <path d="M5 7v10M2 9v6" />
-        </svg>
-      )
-    case "buttons":
-      return (
-        <svg {...common}>
-          <path d="M7 8a4 4 0 0 1 4-4h2a4 4 0 0 1 1.5 7.7L14 17l-3.4-4.7H11A4 4 0 0 1 7 8Z" />
-          <path d="M7 12H5a3 3 0 0 0 0 6h6" />
-        </svg>
-      )
-    case "choice":
-      return (
-        <svg {...common}>
-          <path d="M6 17c5 0 3-10 8-10h3" />
-          <path d="m15 4 3 3-3 3M6 7h3M14 17h3M15 14l3 3-3 3" />
-        </svg>
-      )
-    case "capture":
-      return (
-        <svg {...common}>
-          <path d="M4 9V7a3 3 0 0 1 3-3h2M15 4h2a3 3 0 0 1 3 3v2M20 15v2a3 3 0 0 1-3 3h-2M9 20H7a3 3 0 0 1-3-3v-2" />
-          <path d="M9 12h.01M12 12h.01M15 12h.01" />
-        </svg>
-      )
-    case "condition":
-      return (
-        <svg {...common}>
-          <rect
-            x="5"
-            y="5"
-            width="14"
-            height="14"
-            rx="3"
-            transform="rotate(45 12 12)"
-          />
-          <path d="M9 12h6M9 9h6" />
-        </svg>
-      )
-    case "set":
-      return (
-        <svg {...common}>
-          <path d="M8 5H6a2 2 0 0 0-2 2v2M8 19H6a2 2 0 0 1-2-2v-2M16 5h2a2 2 0 0 1 2 2v2M16 19h2a2 2 0 0 0 2-2v-2" />
-          <path d="m9 12 2 2 4-5" />
-        </svg>
-      )
-    case "component":
-      return (
-        <svg {...common}>
-          <rect
-            x="5"
-            y="5"
-            width="6"
-            height="6"
-            rx="1"
-            transform="rotate(45 8 8)"
-          />
-          <rect
-            x="13"
-            y="5"
-            width="6"
-            height="6"
-            rx="1"
-            transform="rotate(45 16 8)"
-          />
-          <rect
-            x="9"
-            y="13"
-            width="6"
-            height="6"
-            rx="1"
-            transform="rotate(45 12 16)"
-          />
-        </svg>
-      )
-    case "end":
-      return (
-        <svg {...common}>
-          <path d="M7 6H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2M12 5v14M17 6h2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2" />
-        </svg>
-      )
-    case "tool":
-      return (
-        <svg {...common}>
-          <path d="m13 2-8 12h6l-1 8 8-12h-6l1-8Z" />
-        </svg>
-      )
-    case "function":
-      return (
-        <svg {...common}>
-          <path d="M9 4c-3 1-3 5-1 6-2 1-2 5 1 6M15 4c3 1 3 5 1 6 2 1 2 5-1 6" />
-          <path d="M11 12h2" />
-        </svg>
-      )
-    case "api":
-      return (
-        <svg {...common}>
-          <circle cx="12" cy="5" r="2" />
-          <circle cx="5" cy="19" r="2" />
-          <circle cx="19" cy="19" r="2" />
-          <path d="M12 7v4M12 11 6.4 17M12 11l5.6 6" />
-        </svg>
-      )
-    case "javascript":
-      return (
-        <svg {...common}>
-          <rect x="4" y="4" width="16" height="16" rx="5" />
-          <path d="M9 9v5a2 2 0 0 1-2 2M13 16c2 0 3-.7 3-2s-1-2-3-2c-1.2 0-2-.5-2-1.5S12 9 14 9" />
-        </svg>
-      )
-    case "kb":
-      return (
-        <svg {...common}>
-          <path d="M12 4a5 5 0 0 0-4 8v3h8v-3a5 5 0 0 0-4-8Z" />
-          <path d="M9 19h6M10 15v4M14 15v4M7 9H5M19 9h-2M8 4.5 6.5 3M16 4.5 17.5 3" />
-        </svg>
-      )
-    case "call":
-      return (
-        <svg {...common}>
-          <path d="M7 4h4L9.5 8C10.6 10.5 13.5 13.4 16 14.5L20 13v4c0 1.7-1.4 3-3.1 2.8C9.9 18.9 5.1 14.1 4.2 7.1 4 5.4 5.3 4 7 4Z" />
-          <path d="M15 4h5v5M14 10l6-6" />
-        </svg>
-      )
-    case "custom":
-      return (
-        <svg {...common}>
-          <path d="M4 12h4l2-3 4 6 2-3h4M6 6a8 8 0 0 1 12 0M6 18a8 8 0 0 0 12 0" />
-        </svg>
-      )
-    case "plus":
-      return (
-        <svg {...common}>
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-      )
-    case "play":
-      return (
-        <svg {...common}>
-          <path d="m8 5 11 7-11 7V5Z" />
-        </svg>
-      )
-    case "publish":
-      return (
-        <svg {...common}>
-          <path d="m13 2-3 9h5l-4 11 10-14h-6l3-6h-5Z" />
-          <path d="M4 13h4M4 17h6" />
-        </svg>
-      )
-    case "library":
-      return (
-        <svg {...common}>
-          <path d="M4 5h12a4 4 0 0 1 4 4v10H8a4 4 0 0 1-4-4V5Z" />
-          <path d="M8 9h8M8 13h6" />
-        </svg>
-      )
-    case "fit":
-      return (
-        <svg {...common}>
-          <path d="M8 4H4v4M16 4h4v4M20 16v4h-4M4 16v4h4" />
-          <path d="m9 9-5-5M15 9l5-5M15 15l5 5M9 15l-5 5" />
-        </svg>
-      )
-    case "navigation":
-      return (
-        <svg {...common}>
-          <path d="M12 3v6M12 15v6M3 12h6M15 12h6" />
-          <path d="m8 7 4-4 4 4M8 17l4 4 4-4M7 8l-4 4 4 4M17 8l4 4-4 4" />
-        </svg>
-      )
-    case "close":
-      return (
-        <svg {...common}>
-          <path d="m6 6 12 12M18 6 6 18" />
-        </svg>
-      )
-    case "chevronRight":
-      return (
-        <svg {...common}>
-          <path d="m9 18 6-6-6-6" />
-        </svg>
-      )
-    case "link":
-      return (
-        <svg {...common}>
-          <path d="M10 13a5 5 0 0 0 7.1 0l1.4-1.4a5 5 0 0 0-7.1-7.1L10.6 5.3" />
-          <path d="M14 11a5 5 0 0 0-7.1 0l-1.4 1.4a5 5 0 0 0 7.1 7.1l.8-.8" />
-        </svg>
-      )
-    case "settings":
-      return (
-        <svg {...common}>
-          <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2 3-.2-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21h-3.4v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.2.1-2-3 .1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H4v-3.4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1 2-3 .2.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V3h3.4v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.2-.1 2 3-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.2v3.4H20a1.7 1.7 0 0 0-1.5 1Z" />
-        </svg>
-      )
-    case "workflow":
-      return (
-        <svg {...common}>
-          <path d="M6 5h8l4 4-4 4H6l4-4-4-4Z" />
-          <path d="M6 19h12M12 13v6" />
-        </svg>
-      )
-    case "crew":
-      return (
-        <svg {...common}>
-          <circle cx="8" cy="8" r="3" />
-          <circle cx="16" cy="8" r="3" />
-          <path d="M3.5 19c.8-3 2.3-4.5 4.5-4.5S11.7 16 12.5 19M11.5 19c.8-3 2.3-4.5 4.5-4.5S19.7 16 20.5 19" />
-        </svg>
-      )
-    case "operator":
-      return (
-        <svg {...common}>
-          <path d="M4 12h5l2-7 2 14 2-7h5" />
-        </svg>
-      )
-    case "lineText":
-      return (
-        <svg {...common}>
-          <path d="M4 7h10M4 17h16" />
-          <path d="M17 7h4M19 7v8M17 15h4" />
-        </svg>
-      )
-    case "trash":
-      return (
-        <svg {...common}>
-          <path d="M4 7h16M10 11v6M14 11v6" />
-          <path d="M6 7l1 14h10l1-14M9 7V4h6v3" />
-        </svg>
-      )
-    case "palette":
-      return (
-        <svg {...common}>
-          <path d="M12 3a9 9 0 0 0 0 18h1.5a2 2 0 0 0 1.4-3.4 1.8 1.8 0 0 1 1.3-3.1H18a3 3 0 0 0 3-3A8.5 8.5 0 0 0 12 3Z" />
-          <path d="M7.5 11h.01M9.5 7.5h.01M14 7.5h.01M16.5 11h.01" />
-        </svg>
-      )
-    case "check":
-      return (
-        <svg {...common}>
-          <path d="m5 12 4 4L19 6" />
-        </svg>
-      )
-    case "more":
-      return (
-        <svg {...common}>
-          <path d="M5 12h.01M12 12h.01M19 12h.01" />
-        </svg>
-      )
-  }
-}
 
 export const WorkflowBuilderView = ({
   initialWorkflowId,
@@ -1756,11 +1421,18 @@ export const WorkflowBuilderView = ({
   const workflowList = useQuery(api.private.workflows.list) as
     | WorkflowSummary[]
     | undefined
+  const assistantTools = useQuery(api.private.assistantTools.list) as
+    | AssistantToolSummary[]
+    | undefined
+  const componentCandidates = useQuery(
+    api.private.workflows.listComponentCandidates
+  ) as ComponentCandidate[] | undefined
   const saveWorkflow = useMutation(api.private.workflows.save)
   const publishWorkflow = useMutation(api.private.workflows.publish)
   const deactivateWorkflow = useMutation(api.private.workflows.deactivate)
   const syncLiveWorkflow = useMutation(api.private.workflows.syncLive)
   const heartbeatPresence = useMutation(api.private.workflows.heartbeatPresence)
+  const leavePresence = useMutation(api.private.workflows.leavePresence)
   const movePresenceCursor = useMutation(
     api.private.workflows.movePresenceCursor
   )
@@ -1781,17 +1453,44 @@ export const WorkflowBuilderView = ({
   const lastRemoteUpdatedAtRef = useRef(0)
   const lastCursorSentAtRef = useRef(0)
   const selectedNodeIdRef = useRef<string | null>(null)
+  const nodesRef = useRef<WorkflowNode[]>([])
   const categoryCloseTimerRef = useRef<number | null>(null)
   const runLaunchTimerRef = useRef<number | null>(null)
   const loadedWorkflowRef = useRef<string | null>(null)
+  /**
+   * Undo history. Snapshots are taken at rest rather than per change, so a
+   * drag or a burst of typing collapses into one undoable step.
+   */
+  const historyRef = useRef<{
+    past: GraphSnapshot[]
+    future: GraphSnapshot[]
+  }>({ past: [], future: [] })
+  const lastSettledGraphRef = useRef<GraphSnapshot | null>(null)
+  const isRestoringHistoryRef = useRef(false)
+
+  /**
+   * Reflect the open workflow in the address bar so a refresh reopens it.
+   * history.replaceState is used on purpose: router.replace would swap the
+   * /workflows route segment for /workflows/[workflowId] and remount the
+   * canvas mid-edit.
+   */
+  const syncWorkflowUrl = useCallback((id: Id<"workflows"> | null) => {
+    // /workflows is the list; an unsaved draft lives at /workflows/new.
+    const nextPath = id ? `/workflows/${id}` : "/workflows/new"
+
+    if (window.location.pathname !== nextPath) {
+      window.history.replaceState(null, "", nextPath)
+    }
+  }, [])
   const [nodes, setNodes] = useState<WorkflowNode[]>(() => initialGraph.nodes)
   const [edges, setEdges] = useState<WorkflowEdge[]>(() => initialGraph.edges)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
   const [workflowId, setWorkflowId] = useState<Id<"workflows"> | null>(null)
   const [loadWorkflowId, setLoadWorkflowId] = useState<Id<"workflows"> | null>(
     (initialWorkflowId as Id<"workflows"> | undefined) ?? null
   )
-  const [workflowName, setWorkflowName] = useState("New workflow")
+  const [workflowName, setWorkflowName] = useState("Untitled workflow")
   const [workflowDescription, setWorkflowDescription] = useState(
     "Route users through deterministic steps with agent handoffs where needed."
   )
@@ -1800,6 +1499,16 @@ export const WorkflowBuilderView = ({
   const [isSavingWorkflow, setIsSavingWorkflow] = useState(false)
   const [isPublishingWorkflow, setIsPublishingWorkflow] = useState(false)
   const [isDeactivatingWorkflow, setIsDeactivatingWorkflow] = useState(false)
+  const [isPublishingComponent, setIsPublishingComponent] = useState(false)
+  const [isCreatingComponent, setIsCreatingComponent] = useState(false)
+  const [validationIssues, setValidationIssues] = useState<
+    ValidationIssue[] | null
+  >(null)
+  const [historyVersion, setHistoryVersion] = useState(0)
+  const [blockStepSelection, setBlockStepSelection] = useState<{
+    nodeId: string
+    stepId: string
+  } | null>(null)
   const [activeCategory, setActiveCategory] = useState<CategoryId | null>(null)
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null)
   const [nodeMenu, setNodeMenu] = useState<NodeActionMenuState | null>(null)
@@ -1835,28 +1544,12 @@ export const WorkflowBuilderView = ({
     api.private.workflows.get,
     loadWorkflowId ? { workflowId: loadWorkflowId } : "skip"
   ) as WorkflowRecord | null | undefined
-  const convexPresenceMembers = useQuery(
+  // Presence rides on Convex: listPresence is a live query, so cursors and
+  // avatars arrive on the same subscription the graph itself uses.
+  const presenceMembers = useQuery(
     api.private.workflows.listPresence,
     workflowId ? { workflowId, now: presenceNow } : "skip"
   ) as WorkflowPresenceMember[] | undefined
-  const liveMembers = useAtomValue(livePresenceMembersAtom)
-  const liveConnected = useAtomValue(livePresenceConnectedAtom)
-  const usingLiveblocks = liveMembers !== null && liveConnected
-  const presenceMembers = useMemo<WorkflowPresenceMember[] | undefined>(() => {
-    if (liveMembers !== null) {
-      return liveMembers.map((member) => ({
-        userId: member.userId,
-        name: member.name,
-        initials: member.initials,
-        imageUrl: member.imageUrl,
-        color: member.color,
-        cursor: member.cursor,
-        selectedNodeId: member.selectedNodeId,
-        isSelf: member.isSelf,
-      }))
-    }
-    return convexPresenceMembers
-  }, [convexPresenceMembers, liveMembers])
   const library = workflowList ?? []
   const currentWorkflowIsActive = Boolean(
     workflowId &&
@@ -1920,6 +1613,10 @@ export const WorkflowBuilderView = ({
   useEffect(() => {
     selectedNodeIdRef.current = selectedNodeId
   }, [selectedNodeId])
+
+  useEffect(() => {
+    nodesRef.current = nodes
+  }, [nodes])
 
   const remoteSelectionByNodeId = useMemo(() => {
     const selections = new Map<string, WorkflowPresenceMember>()
@@ -2108,6 +1805,7 @@ export const WorkflowBuilderView = ({
 
   const clearSelectedNode = useCallback(() => {
     setSelectedNodeId(null)
+    setSelectedNodeIds([])
     setNodes((next) => {
       let changed = false
       const cleared = next.map((node) => {
@@ -2125,6 +1823,7 @@ export const WorkflowBuilderView = ({
 
   const openSelectedNode = useCallback((node: WorkflowNode) => {
     setSelectedNodeId(node.id)
+    setSelectedNodeIds([node.id])
     setNodes((next) => {
       let changed = false
       const selected = next.map((candidate) => {
@@ -2173,118 +1872,496 @@ export const WorkflowBuilderView = ({
     setIsRunLaunching(false)
   }, [])
 
-  const focusSelectedNodeBesideChat = useCallback(
-    (node: WorkflowNode) => {
+  /**
+   * Bring a block into the strip of canvas that is not covered by the open
+   * side panel. Blocks that are already fully visible are left alone: yanking
+   * the viewport on every selection (and on every keystroke in the inspector)
+   * made the canvas feel like it was fighting the user.
+   */
+  const revealNodeBesidePanel = useCallback(
+    (node: WorkflowNode, duration: number) => {
       if (!reactFlow) {
         return
       }
 
-      const width = node.width ?? (node.type === "start" ? 148 : 300)
-      const height = node.height ?? (node.type === "start" ? 56 : 126)
-      const chatWidth = Math.min(430, Math.max(0, window.innerWidth - 36))
-      const availableWidth = Math.max(320, window.innerWidth - chatWidth - 78)
-      const targetScreenX = Math.min(
-        96 + availableWidth * 0.56,
-        window.innerWidth - chatWidth - 96
+      const zoom = reactFlow.getZoom()
+      const width = (node.width ?? (node.type === "start" ? 148 : 300)) * zoom
+      const height = (node.height ?? (node.type === "start" ? 56 : 126)) * zoom
+      const topLeft = reactFlow.flowToScreenPosition(node.position)
+      const panelWidth = Math.min(430, Math.max(0, window.innerWidth - 36))
+      const safeLeft = 132
+      const safeRight = Math.max(
+        safeLeft + 160,
+        window.innerWidth - panelWidth - 24
       )
-      const targetScreenY = window.innerHeight / 2
-      const zoom = Math.min(1, Math.max(0.65, reactFlow.getZoom()))
-      const centerX = node.position.x + width / 2
-      const centerY = node.position.y + height / 2
+      const safeTop = 88
+      const safeBottom = Math.max(safeTop + 120, window.innerHeight - 24)
 
-      reactFlow.setViewport(
-        {
-          x: targetScreenX - centerX * zoom,
-          y: targetScreenY - centerY * zoom,
-          zoom,
-        },
-        { duration: 360 }
-      )
-    },
-    [reactFlow]
-  )
+      const isVisible =
+        topLeft.x >= safeLeft &&
+        topLeft.x + width <= safeRight &&
+        topLeft.y >= safeTop &&
+        topLeft.y + height <= safeBottom
 
-  const focusSelectedNodeBesideInspector = useCallback(
-    (node: WorkflowNode) => {
-      if (!reactFlow || node.type === "start") {
+      if (isVisible) {
         return
       }
 
-      const width = node.width ?? 300
-      const height = node.height ?? 126
-      const inspectorWidth = Math.min(430, Math.max(0, window.innerWidth - 36))
-      const availableWidth = Math.max(
-        280,
-        window.innerWidth - inspectorWidth - 48
-      )
-      const targetScreenX = Math.max(
-        132,
-        Math.min(availableWidth * 0.5, availableWidth - 92)
-      )
-      const targetScreenY = window.innerHeight / 2
-      const zoom = Math.min(1, Math.max(0.65, reactFlow.getZoom()))
-      const centerX = node.position.x + width / 2
-      const centerY = node.position.y + height / 2
+      const nextZoom = Math.min(1, Math.max(0.65, zoom))
+      const centerX = node.position.x + width / (2 * zoom)
+      const centerY = node.position.y + height / (2 * zoom)
 
       reactFlow.setViewport(
         {
-          x: targetScreenX - centerX * zoom,
-          y: targetScreenY - centerY * zoom,
-          zoom,
+          x: (safeLeft + safeRight) / 2 - centerX * nextZoom,
+          y: (safeTop + safeBottom) / 2 - centerY * nextZoom,
+          zoom: nextZoom,
         },
-        { duration: 320 }
+        { duration }
       )
     },
     [reactFlow]
   )
 
   useEffect(() => {
-    if (drawerMode !== "run" || !selectedNode || !reactFlow) {
+    if (!selectedNodeId || !reactFlow) {
+      return
+    }
+
+    const node = nodesRef.current.find(
+      (candidate) => candidate.id === selectedNodeId
+    )
+
+    if (!node || (drawerMode !== "run" && node.type === "start")) {
       return
     }
 
     const frame = window.requestAnimationFrame(() => {
-      focusSelectedNodeBesideChat(selectedNode)
+      revealNodeBesidePanel(node, drawerMode === "run" ? 360 : 320)
     })
 
     return () => window.cancelAnimationFrame(frame)
-  }, [drawerMode, focusSelectedNodeBesideChat, reactFlow, selectedNode])
-
-  useEffect(() => {
-    if (
-      drawerMode === "run" ||
-      !selectedNode ||
-      selectedNode.type === "start" ||
-      !reactFlow
-    ) {
-      return
-    }
-
-    const frame = window.requestAnimationFrame(() => {
-      focusSelectedNodeBesideInspector(selectedNode)
-    })
-
-    return () => window.cancelAnimationFrame(frame)
-  }, [drawerMode, focusSelectedNodeBesideInspector, reactFlow, selectedNode])
+    // Deliberately keyed on the selected id, not the node object: the node
+    // identity changes on every inspector keystroke.
+  }, [drawerMode, reactFlow, revealNodeBesidePanel, selectedNodeId])
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     setNodes((next) => applyNodeChanges(changes, next))
   }, [])
 
   const handleNodeDragStart = useCallback<NodeDragHandler>(() => {
+    // Keep the block selected through the drag; only transient popovers close.
     suppressSelectionRef.current = true
-    clearSelectedNode()
     setNodeMenu(null)
     setCanvasMenu(null)
     setEdgeMenu(null)
     setConnectMenu(null)
-  }, [clearSelectedNode])
-
-  const handleNodeDragStop = useCallback<NodeDragHandler>(() => {
-    window.setTimeout(() => {
-      suppressSelectionRef.current = false
-    }, 160)
   }, [])
+
+  /** Vertical gap under a node that counts as "drop it onto this block". */
+  const DOCK_GAP = 46
+
+  const toBlockSteps = (node: WorkflowNode): BlockStep[] =>
+    node.type === "block"
+      ? ((node.data as BlockNodeData).steps ?? [])
+      : [
+          {
+            id: createId("step"),
+            type: node.type as NodeType,
+            data: node.data,
+          },
+        ]
+
+  /**
+   * Merge the dragged node into the node it was dropped under, producing a
+   * Block whose steps run top-to-bottom with no wires between them.
+   */
+  const mergeIntoBlock = (targetId: string, draggedId: string) => {
+    const target = nodes.find((entry) => entry.id === targetId)
+    const dragged = nodes.find((entry) => entry.id === draggedId)
+
+    if (!target || !dragged) {
+      return false
+    }
+
+    const targetSteps = toBlockSteps(target)
+    const draggedSteps = toBlockSteps(dragged)
+    const targetLast = targetSteps[targetSteps.length - 1]
+
+    // Branching steps end a block: nothing can follow them inside it.
+    if (targetLast && isTerminalStepType(targetLast.type)) {
+      setStatus(
+        `${targetLast.data.customName || targetLast.type} branches, so nothing can stack under it.`
+      )
+      return false
+    }
+
+    if (draggedSteps.slice(0, -1).some((step) => isTerminalStepType(step.type))) {
+      setStatus("That block branches partway through, so it can't be merged.")
+      return false
+    }
+
+    const steps = [...targetSteps, ...draggedSteps]
+    const newLast = steps[steps.length - 1]!
+    const lastHasPorts = stepPorts(newLast).length > 0
+
+    setNodes((next) =>
+      next
+        .filter((entry) => entry.id !== draggedId)
+        .map((entry) =>
+          entry.id === targetId
+            ? {
+                ...entry,
+                type: "block",
+                data: {
+                  label: "Block",
+                  customName: target.data.customName,
+                  blockColor: target.data.blockColor,
+                  steps,
+                } as NodeData,
+              }
+            : entry
+        )
+    )
+
+    setEdges((next) =>
+      next
+        // The wire between the two merged nodes becomes implicit.
+        .filter(
+          (edge) =>
+            !(edge.source === targetId && edge.target === draggedId) &&
+            !(edge.source === draggedId && edge.target === targetId)
+        )
+        .map((edge) => {
+          if (edge.source === draggedId) {
+            // The dragged node is now the block's last step, so its ports are
+            // the block's ports.
+            return { ...edge, source: targetId }
+          }
+
+          if (edge.target === draggedId) {
+            return { ...edge, target: targetId, targetHandle: null }
+          }
+
+          return edge
+        })
+        .filter((edge) => edge.source !== edge.target)
+        // If the new last step branches, the block exits by its ports only.
+        .filter(
+          (edge) =>
+            !(lastHasPorts && edge.source === targetId && !edge.sourceHandle)
+        )
+    )
+
+    setSelectedNodeId(targetId)
+    setStatus("Steps merged into one block.")
+    return true
+  }
+
+  /** A block holding a single step is just that step again. */
+  const collapseSingleStepBlock = (node: WorkflowNode): WorkflowNode => {
+    if (node.type !== "block") {
+      return node
+    }
+
+    const steps = (node.data as BlockNodeData).steps ?? []
+    const only = steps[0]
+
+    if (steps.length !== 1 || !only) {
+      return node
+    }
+
+    return {
+      ...node,
+      type: only.type,
+      data: {
+        ...only.data,
+        customName: only.data.customName ?? node.data.customName,
+        blockColor: node.data.blockColor,
+      } as NodeData,
+    }
+  }
+
+  const writeBlockSteps = (nodeId: string, steps: BlockStep[]) => {
+    if (steps.length === 0) {
+      setNodes((next) => next.filter((entry) => entry.id !== nodeId))
+      setEdges((next) =>
+        next.filter(
+          (edge) => edge.source !== nodeId && edge.target !== nodeId
+        )
+      )
+      setBlockStepSelection(null)
+      return
+    }
+
+    setNodes((next) =>
+      next.map((entry) =>
+        entry.id === nodeId
+          ? collapseSingleStepBlock({
+              ...entry,
+              type: "block",
+              data: { ...(entry.data as BlockNodeData), steps } as NodeData,
+            })
+          : entry
+      )
+    )
+  }
+
+  /** Append a step to a node, turning it into a block if it is not one yet. */
+  const appendStepToNode = (nodeId: string, type: NodeType) => {
+    const target = nodes.find((entry) => entry.id === nodeId)
+
+    if (!target || target.type === "start") {
+      return false
+    }
+
+    const steps = toBlockSteps(target)
+    const last = steps[steps.length - 1]
+
+    if (last && isTerminalStepType(last.type)) {
+      setStatus(
+        `${last.data.customName || last.type} branches, so nothing can stack under it.`
+      )
+      return false
+    }
+
+    const step: BlockStep = {
+      id: createId("step"),
+      type,
+      data: createNodeData(type),
+    }
+    const nextSteps = [...steps, step]
+
+    setNodes((next) =>
+      next.map((entry) =>
+        entry.id === nodeId
+          ? {
+              ...entry,
+              type: "block",
+              data: {
+                label: "Block",
+                customName: target.data.customName,
+                blockColor: target.data.blockColor,
+                steps: nextSteps,
+              } as NodeData,
+            }
+          : entry
+      )
+    )
+
+    // A branching step takes over the block's exit.
+    if (stepPorts(step).length > 0) {
+      setEdges((next) =>
+        next.filter((edge) => !(edge.source === nodeId && !edge.sourceHandle))
+      )
+    }
+
+    setSelectedNodeId(nodeId)
+    setBlockStepSelection({ nodeId, stepId: step.id })
+    setStatus(`${getStepOption(type)?.label ?? "Step"} added to the block.`)
+    return true
+  }
+
+  /** Pull a step back out of its block into a standalone node. */
+  const extractStepFromBlock = (nodeId: string, stepId: string) => {
+    const block = nodes.find((entry) => entry.id === nodeId)
+
+    if (!block || block.type !== "block") {
+      return
+    }
+
+    const steps = (block.data as BlockNodeData).steps ?? []
+    const index = steps.findIndex((step) => step.id === stepId)
+    const step = steps[index]
+
+    if (!step) {
+      return
+    }
+
+    const wasLast = index === steps.length - 1
+    const newId = createId(step.type)
+
+    setNodes((next) => [
+      ...next,
+      {
+        id: newId,
+        type: step.type,
+        position: {
+          x: block.position.x + 360,
+          y: block.position.y + index * 40,
+        },
+        data: step.data,
+        deletable: true,
+      } as WorkflowNode,
+    ])
+
+    if (wasLast) {
+      // The block's exits belonged to this step, so they travel with it.
+      setEdges((next) => [
+        ...next.map((edge) =>
+          edge.source === nodeId ? { ...edge, source: newId } : edge
+        ),
+        createWorkflowEdge({ source: nodeId, target: newId }),
+      ])
+    }
+
+    writeBlockSteps(
+      nodeId,
+      steps.filter((entry) => entry.id !== stepId)
+    )
+    setBlockStepSelection(null)
+    setSelectedNodeId(newId)
+    setStatus(
+      wasLast
+        ? "Step moved out and reconnected."
+        : "Step moved out of the block. Connect it where you need it."
+    )
+  }
+
+  /** Reorder within a block; the branching last step stays pinned. */
+  const moveStepInBlock = (
+    nodeId: string,
+    stepId: string,
+    direction: -1 | 1
+  ) => {
+    const block = nodes.find((entry) => entry.id === nodeId)
+
+    if (!block || block.type !== "block") {
+      return
+    }
+
+    const steps = [...((block.data as BlockNodeData).steps ?? [])]
+    const index = steps.findIndex((step) => step.id === stepId)
+    const target = index + direction
+    const moving = steps[index]
+    const displaced = steps[target]
+
+    if (!moving || !displaced) {
+      return
+    }
+
+    if (isTerminalStepType(moving.type) || isTerminalStepType(displaced.type)) {
+      setStatus("A branching step has to stay last in its block.")
+      return
+    }
+
+    steps[index] = displaced
+    steps[target] = moving
+    writeBlockSteps(nodeId, steps)
+    setStatus("Step reordered.")
+  }
+
+  /** Break a block back into separate wired nodes. */
+  const splitBlock = (node: WorkflowNode) => {
+    if (node.type !== "block") {
+      setStatus("Only blocks can be split.")
+      setNodeMenu(null)
+      return
+    }
+
+    const steps = (node.data as BlockNodeData).steps ?? []
+
+    if (steps.length < 2) {
+      setStatus("This block only has one step.")
+      setNodeMenu(null)
+      return
+    }
+
+    const ids = steps.map((step, index) =>
+      index === 0 ? node.id : createId(step.type)
+    )
+
+    setNodes((next) => [
+      ...next.map((entry) =>
+        entry.id === node.id
+          ? ({
+              ...entry,
+              type: steps[0]!.type,
+              data: steps[0]!.data,
+            } as WorkflowNode)
+          : entry
+      ),
+      ...steps.slice(1).map(
+        (step, offset) =>
+          ({
+            id: ids[offset + 1]!,
+            type: step.type,
+            position: {
+              x: node.position.x + (offset + 1) * 340,
+              y: node.position.y,
+            },
+            data: step.data,
+            deletable: true,
+          }) as WorkflowNode
+      ),
+    ])
+
+    setEdges((next) => [
+      // The block's exits belonged to its last step.
+      ...next.map((edge) =>
+        edge.source === node.id
+          ? { ...edge, source: ids[ids.length - 1]! }
+          : edge
+      ),
+      ...ids.slice(0, -1).map((id, index) =>
+        createWorkflowEdge({ source: id, target: ids[index + 1]! })
+      ),
+    ])
+
+    setBlockStepSelection(null)
+    setNodeMenu(null)
+    setStatus("Block split into separate steps.")
+  }
+
+  const findDockTarget = (dragged: WorkflowNode) => {
+    const draggedBounds = getNodeBounds(dragged)
+
+    if (!draggedBounds) {
+      return null
+    }
+
+    return (
+      nodes.find((candidate) => {
+        if (candidate.id === dragged.id || candidate.type === "start") {
+          return false
+        }
+
+        const bounds = getNodeBounds(candidate)
+
+        if (!bounds) {
+          return false
+        }
+
+        const aligned =
+          Math.abs(bounds.x - draggedBounds.x) < bounds.width * 0.6
+        const gap = draggedBounds.y - (bounds.y + bounds.height)
+
+        return aligned && gap > -bounds.height * 0.55 && gap < DOCK_GAP
+      }) ?? null
+    )
+  }
+
+  // Not memoised on purpose: docking reads the live node list.
+  const handleNodeDragStop: NodeDragHandler = (_event, node) => {
+    const releaseSelection = () => {
+      window.setTimeout(() => {
+        suppressSelectionRef.current = false
+      }, 160)
+    }
+
+    // Dropped just under another node? Stack them into one block.
+    const dockTarget = findDockTarget(node as WorkflowNode)
+
+    if (dockTarget && mergeIntoBlock(dockTarget.id, node.id)) {
+      releaseSelection()
+      return
+    }
+
+    // Selection is frozen during the drag so the inspector cannot re-frame the
+    // canvas underneath the pointer; adopt the dragged block once it lands.
+    setSelectedNodeId(node.id)
+    releaseSelection()
+  }
 
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
     setEdges((next) => applyEdgeChanges(changes, next))
@@ -2321,7 +2398,10 @@ export const WorkflowBuilderView = ({
         return
       }
 
-      setSelectedNodeId(selected[0]?.id ?? null)
+      setSelectedNodeIds(selected.map((node) => node.id))
+      // The inspector edits one block at a time; a multi-selection shows the
+      // bulk bar instead.
+      setSelectedNodeId(selected.length === 1 ? selected[0]!.id : null)
       setInspectorMenuOpen(false)
     },
     []
@@ -2333,69 +2413,64 @@ export const WorkflowBuilderView = ({
     )
   }, [])
 
-  const readImageFile = useCallback(
-    (nodeId: string, data: ImageNodeData, file?: File) => {
-      if (!file) {
-        return
-      }
+  /**
+   * Deleting a button or choice used to leave its wire behind, still drawn on
+   * the canvas and still reachable by the runtime's handle lookup. Drop any
+   * connection whose handle no longer exists on the block.
+   */
+  const pruneNodeHandleEdges = useCallback(
+    (nodeId: string, keptHandleIds: string[]) => {
+      const kept = new Set(keptHandleIds)
 
-      if (!file.type.startsWith("image/")) {
-        setStatus("Choose an image or GIF file.")
-        return
-      }
-
-      const reader = new FileReader()
-      reader.onload = () => {
-        updateNodeData(nodeId, {
-          ...data,
-          source: "upload",
-          url: String(reader.result ?? ""),
-          alt: data.alt || file.name,
-          fileName: file.name,
-        })
-        setStatus("Image uploaded.")
-      }
-      reader.readAsDataURL(file)
-    },
-    [updateNodeData]
-  )
-
-  const readCardImageFile = useCallback(
-    (nodeId: string, data: CardNodeData, file?: File) => {
-      if (!file) {
-        return
-      }
-
-      if (!file.type.startsWith("image/")) {
-        setStatus("Choose an image or GIF file.")
-        return
-      }
-
-      const reader = new FileReader()
-      reader.onload = () => {
-        updateNodeData(nodeId, {
-          ...data,
-          source: "upload",
-          url: String(reader.result ?? ""),
-          alt: data.alt || file.name,
-          fileName: file.name,
-        })
-        setStatus("Card image uploaded.")
-      }
-      reader.readAsDataURL(file)
-    },
-    [updateNodeData]
-  )
-
-  const syncMessageEditor = useCallback((nodeId: string, html: string) => {
-    setNodes((next) =>
-      next.map((node) =>
-        node.id === nodeId
-          ? { ...node, data: { ...node.data, text: html } as NodeData }
-          : node
+      setEdges((next) =>
+        next.filter(
+          (edge) =>
+            edge.source !== nodeId ||
+            !edge.sourceHandle ||
+            kept.has(edge.sourceHandle)
+        )
       )
-    )
-  }, [])
+    },
+    []
+  )
+
+  /**
+   * Reads an image into whichever inspector target is open — a standalone
+   * node, or one step inside a Block.
+   */
+  const readImageIntoInspector = (
+    data: ImageNodeData | CardNodeData,
+    file: File | undefined,
+    doneMessage: string
+  ) => {
+    if (!file) {
+      return
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setStatus("Choose an image or GIF file.")
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      updateInspectorData({
+        ...data,
+        source: "upload",
+        url: String(reader.result ?? ""),
+        alt: data.alt || file.name,
+        fileName: file.name,
+      } as NodeData)
+      setStatus(doneMessage)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const readImageFile = (data: ImageNodeData, file?: File) =>
+    readImageIntoInspector(data, file, "Image uploaded.")
+
+  const readCardImageFile = (data: CardNodeData, file?: File) =>
+    readImageIntoInspector(data, file, "Card image uploaded.")
 
   const formatRichText = useCallback(
     (
@@ -2435,13 +2510,6 @@ export const WorkflowBuilderView = ({
     []
   )
 
-  const formatMessageText = useCallback(
-    (nodeId: string, format: MessageFormat, editor: HTMLElement | null) => {
-      formatRichText(format, editor, (html) => syncMessageEditor(nodeId, html))
-    },
-    [formatRichText, syncMessageEditor]
-  )
-
   const patchNodeData = useCallback(
     (nodeId: string, patch: Partial<NodeData>) => {
       setNodes((next) =>
@@ -2478,6 +2546,7 @@ export const WorkflowBuilderView = ({
       type,
       position,
       data: createNodeData(type),
+      deletable: type !== "start",
     }
 
     setNodes((next) => [...next, node])
@@ -2558,6 +2627,31 @@ export const WorkflowBuilderView = ({
       y: event.clientY,
     })
 
+    // Dropped on top of a node? Stack into it instead of making a new node.
+    const dropTarget = nodes.find((candidate) => {
+      if (candidate.type === "start") {
+        return false
+      }
+
+      const bounds = getNodeBounds(candidate)
+
+      if (!bounds) {
+        return false
+      }
+
+      return (
+        position.x >= bounds.x &&
+        position.x <= bounds.x + bounds.width &&
+        position.y >= bounds.y &&
+        position.y <= bounds.y + bounds.height
+      )
+    })
+
+    if (dropTarget && type !== "start") {
+      appendStepToNode(dropTarget.id, type)
+      return
+    }
+
     createCanvasNode(type, position)
   }
 
@@ -2575,21 +2669,25 @@ export const WorkflowBuilderView = ({
       }
 
       const flowPoint = reactFlow.screenToFlowPosition(screenPoint)
+      const previous = lastFlowCursorRef.current
       lastFlowCursorRef.current = flowPoint
       const now = Date.now()
 
-      if (now - lastCursorSentAtRef.current < 90) {
+      // Each broadcast is a Convex write that every subscriber re-reads, so
+      // rate-limit it and drop sub-pixel jitter rather than streaming frames.
+      if (now - lastCursorSentAtRef.current < CURSOR_BROADCAST_MS) {
+        return
+      }
+
+      if (
+        previous &&
+        Math.abs(previous.x - flowPoint.x) < CURSOR_MOVE_EPSILON &&
+        Math.abs(previous.y - flowPoint.y) < CURSOR_MOVE_EPSILON
+      ) {
         return
       }
 
       lastCursorSentAtRef.current = now
-      if (usingLiveblocks && livePresenceUpdatersRef.current) {
-        livePresenceUpdatersRef.current.updateCursor(
-          flowPoint,
-          selectedNodeIdRef.current
-        )
-        return
-      }
       void movePresenceCursor({
         workflowId,
         cursorX: flowPoint.x,
@@ -2597,7 +2695,7 @@ export const WorkflowBuilderView = ({
         selectedNodeId: selectedNodeIdRef.current,
       }).catch(() => undefined)
     },
-    [movePresenceCursor, reactFlow, usingLiveblocks, workflowId]
+    [movePresenceCursor, reactFlow, workflowId]
   )
 
   const openConnectActionMenu = useCallback(
@@ -3114,33 +3212,120 @@ export const WorkflowBuilderView = ({
     setStatus(direction === "in" ? "Zoomed in." : "Zoomed out.")
   }
 
-  const createComponentFromNode = (node: WorkflowNode) => {
+  /**
+   * Extracts a block into its own reusable workflow and leaves a Component
+   * block referencing it. This used to overwrite the block's data with a stub,
+   * destroying whatever was configured on it.
+   */
+  const createComponentFromNode = async (node: WorkflowNode) => {
     if (node.type === "start") {
       setStatus("Start cannot be converted into a component.")
       setNodeMenu(null)
       return
     }
 
-    const previousName = getNodeDisplayName(node)
-    setNodes((next) =>
-      next.map((candidate) =>
-        candidate.id === node.id
-          ? {
-              ...candidate,
-              type: "component",
-              data: {
-                label: "Component",
-                customName: previousName,
-                description: `Component created from ${previousName}.`,
-                accent: "logic",
-                blockColor: candidate.data.blockColor,
-              },
-            }
-          : candidate
+    // A component returns to a single point, so a block whose exits fan out
+    // cannot survive extraction. Refuse rather than silently drop branches.
+    const outgoing = edges.filter((edge) => edge.source === node.id)
+
+    if (outgoing.length > 1) {
+      setStatus(
+        "Blocks with more than one outgoing connection can't become a component."
       )
-    )
-    setStatus("Component created.")
+      toast.error("That block has multiple exits")
+      setNodeMenu(null)
+      return
+    }
+
+    if (isCreatingComponent) {
+      return
+    }
+
+    setIsCreatingComponent(true)
     setNodeMenu(null)
+    setStatus("Creating component...")
+
+    const previousName = getNodeDisplayName(node)
+    const componentName = `${previousName} component`
+
+    try {
+      const startNodeId = createId("start")
+      const innerNodeId = createId(node.type ?? "node")
+      const definition: WorkflowDefinition = {
+        schemaVersion: WORKFLOW_SCHEMA_VERSION,
+        name: componentName,
+        description: `Extracted from ${workflowName.trim() || "a workflow"}.`,
+        nodes: [
+          {
+            id: startNodeId,
+            type: "start",
+            position: { x: 160, y: 220 },
+            data: { label: "Start" },
+          },
+          {
+            id: innerNodeId,
+            type: node.type as NodeType,
+            position: { x: 460, y: 190 },
+            data: cloneNodeData(node.data),
+          },
+        ],
+        edges: [
+          {
+            id: createId("edge"),
+            source: startNodeId,
+            target: innerNodeId,
+            sourceHandle: null,
+            targetHandle: null,
+            data: null,
+          },
+        ],
+      }
+
+      const saved = (await saveWorkflow({
+        name: componentName,
+        description: definition.description ?? null,
+        definition,
+      })) as WorkflowRecord
+
+      // activate:false so extracting a block never steals activation from the
+      // workflow that is actually live.
+      await publishWorkflow({ workflowId: saved.id, activate: false })
+
+      // Keep the node id so existing connections stay attached.
+      setNodes((next) =>
+        next.map((candidate) =>
+          candidate.id === node.id
+            ? {
+                ...candidate,
+                type: "component",
+                data: {
+                  label: "Component",
+                  customName: previousName,
+                  blockColor: candidate.data.blockColor,
+                  workflowId: saved.id,
+                  workflowName: componentName,
+                  inputs: [],
+                } as NodeData,
+              }
+            : candidate
+        )
+      )
+      // The single remaining exit leaves the component's unnamed handle.
+      setEdges((next) =>
+        next.map((edge) =>
+          edge.source === node.id ? { ...edge, sourceHandle: null } : edge
+        )
+      )
+
+      setStatus("Component created.")
+      toast.success(`${componentName} created`)
+    } catch (error) {
+      console.error("Failed to create component", error)
+      setStatus("Could not create the component.")
+      toast.error("Could not create component")
+    } finally {
+      setIsCreatingComponent(false)
+    }
   }
 
   const submitRename = (event: FormEvent<HTMLFormElement>) => {
@@ -3199,6 +3384,29 @@ export const WorkflowBuilderView = ({
     setStatus("Block duplicated.")
   }
 
+  const deleteSelectedNodes = () => {
+    const removable = nodes.filter(
+      (node) => selectedNodeIds.includes(node.id) && node.type !== "start"
+    )
+
+    if (removable.length === 0) {
+      setStatus("Nothing selected to delete.")
+      return
+    }
+
+    const ids = new Set(removable.map((node) => node.id))
+
+    setNodes((next) => next.filter((node) => !ids.has(node.id)))
+    setEdges((next) =>
+      next.filter((edge) => !ids.has(edge.source) && !ids.has(edge.target))
+    )
+    clearSelectedNode()
+    setBlockStepSelection(null)
+    setStatus(
+      `${removable.length} block${removable.length === 1 ? "" : "s"} deleted.`
+    )
+  }
+
   const deleteNode = (node: WorkflowNode) => {
     if (node.type === "start") {
       setStatus("Start cannot be deleted.")
@@ -3215,6 +3423,116 @@ export const WorkflowBuilderView = ({
     setInspectorMenuOpen(false)
     setStatus("Block deleted.")
   }
+
+  const captureGraph = useCallback(
+    (): GraphSnapshot => ({
+      nodes: nodes.map((node) => ({
+        id: node.id,
+        type: node.type as NodeType,
+        position: { ...node.position },
+        data: node.data,
+      })),
+      edges: edges.map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        sourceHandle: edge.sourceHandle ?? null,
+        targetHandle: edge.targetHandle ?? null,
+        data: edge.data ?? null,
+      })),
+    }),
+    [edges, nodes]
+  )
+
+  const restoreGraph = useCallback((snapshot: GraphSnapshot) => {
+    isRestoringHistoryRef.current = true
+    setNodes(
+      nodesFromDefinition({
+        schemaVersion: WORKFLOW_SCHEMA_VERSION,
+        name: "",
+        nodes: snapshot.nodes,
+        edges: snapshot.edges,
+      })
+    )
+    setEdges(
+      edgesFromDefinition({
+        schemaVersion: WORKFLOW_SCHEMA_VERSION,
+        name: "",
+        nodes: snapshot.nodes,
+        edges: snapshot.edges,
+      })
+    )
+    clearSelectedNode()
+    setBlockStepSelection(null)
+  }, [clearSelectedNode])
+
+  // Snapshot once the graph stops changing, so a drag or a burst of typing is
+  // a single undo step rather than dozens.
+  useEffect(() => {
+    if (isRestoringHistoryRef.current) {
+      isRestoringHistoryRef.current = false
+      lastSettledGraphRef.current = captureGraph()
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      const current = captureGraph()
+      const previous = lastSettledGraphRef.current
+
+      if (!previous) {
+        lastSettledGraphRef.current = current
+        return
+      }
+
+      if (stableSerialize(previous) === stableSerialize(current)) {
+        return
+      }
+
+      historyRef.current.past.push(previous)
+
+      if (historyRef.current.past.length > 60) {
+        historyRef.current.past.shift()
+      }
+
+      historyRef.current.future = []
+      lastSettledGraphRef.current = current
+      setHistoryVersion((version) => version + 1)
+    }, 420)
+
+    return () => window.clearTimeout(timer)
+  }, [captureGraph])
+
+  const undoGraph = useCallback(() => {
+    const previous = historyRef.current.past.pop()
+
+    if (!previous) {
+      setStatus("Nothing to undo.")
+      return
+    }
+
+    historyRef.current.future.push(captureGraph())
+    restoreGraph(previous)
+    setHistoryVersion((version) => version + 1)
+    setStatus("Undone.")
+  }, [captureGraph, restoreGraph])
+
+  const redoGraph = useCallback(() => {
+    const next = historyRef.current.future.pop()
+
+    if (!next) {
+      setStatus("Nothing to redo.")
+      return
+    }
+
+    historyRef.current.past.push(captureGraph())
+    restoreGraph(next)
+    setHistoryVersion((version) => version + 1)
+    setStatus("Redone.")
+  }, [captureGraph, restoreGraph])
+
+  const canUndo = historyRef.current.past.length > 0
+  const canRedo = historyRef.current.future.length > 0
+  void historyVersion
 
   useEffect(() => {
     const getPastePosition = () => {
@@ -3260,6 +3578,24 @@ export const WorkflowBuilderView = ({
 
         event.preventDefault()
         pasteCopiedNode(getPastePosition())
+        return
+      }
+
+      if (key === "z") {
+        event.preventDefault()
+
+        if (event.shiftKey) {
+          redoGraph()
+        } else {
+          undoGraph()
+        }
+
+        return
+      }
+
+      if (key === "y") {
+        event.preventDefault()
+        redoGraph()
       }
     }
 
@@ -3268,7 +3604,15 @@ export const WorkflowBuilderView = ({
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
     }
-  }, [copiedNode, copyNode, pasteCopiedNode, reactFlow, selectedNode])
+  }, [
+    copiedNode,
+    copyNode,
+    pasteCopiedNode,
+    reactFlow,
+    redoGraph,
+    selectedNode,
+    undoGraph,
+  ])
 
   const toDefinition = useCallback(
     (): WorkflowDefinition =>
@@ -3276,7 +3620,7 @@ export const WorkflowBuilderView = ({
         JSON.stringify({
           schemaVersion: WORKFLOW_SCHEMA_VERSION,
           id: workflowId ?? undefined,
-          name: workflowName.trim() || "Untitled Workflow",
+          name: workflowName.trim() || "Untitled workflow",
           description: workflowDescription.trim() || undefined,
           nodes: nodes.map((node) => ({
             id: node.id,
@@ -3504,7 +3848,7 @@ export const WorkflowBuilderView = ({
   }, [])
 
   useEffect(() => {
-    if (!workflowId || usingLiveblocks) {
+    if (!workflowId) {
       return
     }
 
@@ -3519,18 +3863,32 @@ export const WorkflowBuilderView = ({
     }
 
     sendHeartbeat()
-    const timer = window.setInterval(sendHeartbeat, 15_000)
+    const timer = window.setInterval(sendHeartbeat, PRESENCE_HEARTBEAT_MS)
 
     return () => window.clearInterval(timer)
-  }, [heartbeatPresence, usingLiveblocks, workflowId])
+  }, [heartbeatPresence, workflowId])
 
+  // Drop out of the room promptly instead of leaving a ghost avatar behind
+  // until the stale cutoff catches it.
   useEffect(() => {
-    if (!workflowId || !hasLoadedWorkflowRef.current) {
+    if (!workflowId) {
       return
     }
 
-    if (usingLiveblocks && livePresenceUpdatersRef.current) {
-      livePresenceUpdatersRef.current.updateSelectedNode(selectedNodeId)
+    const leave = () => {
+      void leavePresence({ workflowId }).catch(() => undefined)
+    }
+
+    window.addEventListener("pagehide", leave)
+
+    return () => {
+      window.removeEventListener("pagehide", leave)
+      leave()
+    }
+  }, [leavePresence, workflowId])
+
+  useEffect(() => {
+    if (!workflowId || !hasLoadedWorkflowRef.current) {
       return
     }
 
@@ -3541,7 +3899,7 @@ export const WorkflowBuilderView = ({
       cursorY: cursor?.y,
       selectedNodeId,
     }).catch(() => undefined)
-  }, [heartbeatPresence, selectedNodeId, usingLiveblocks, workflowId])
+  }, [heartbeatPresence, selectedNodeId, workflowId])
 
   const refreshLibrary = useCallback(() => {
     if (workflowList) {
@@ -3594,6 +3952,7 @@ export const WorkflowBuilderView = ({
 
       setWorkflowId(saved.id)
       setLoadWorkflowId(saved.id)
+      syncWorkflowUrl(saved.id)
       applyDefinitionToState(savedDefinition)
       lastSyncedDefinitionRef.current = savedDefinition
       hasLoadedWorkflowRef.current = true
@@ -3614,9 +3973,38 @@ export const WorkflowBuilderView = ({
     }
   }
 
-  const handlePublish = async () => {
+  const runValidation = () => {
+    const componentStatus = new Map(
+      (componentCandidates ?? []).map((candidate) => [
+        candidate.id as string,
+        { name: candidate.name, isPublished: candidate.isPublished },
+      ])
+    )
+
+    return validateWorkflow(nodes, edges, componentStatus)
+  }
+
+  const handlePublish = async ({
+    skipValidation = false,
+  }: { skipValidation?: boolean } = {}) => {
     if (isSavingWorkflow || isPublishingWorkflow || isDeactivatingWorkflow) {
       return null
+    }
+
+    if (!skipValidation) {
+      const issues = runValidation()
+      const blocking = issues.some((issue) => issue.level === "error")
+
+      // Errors stop the publish; warnings are shown but can be waved through.
+      if (issues.length > 0) {
+        setValidationIssues(issues)
+        setStatus(
+          blocking
+            ? "Fix the blocking issues before publishing."
+            : "Review these warnings before publishing."
+        )
+        return null
+      }
     }
 
     setIsPublishingWorkflow(true)
@@ -3639,6 +4027,7 @@ export const WorkflowBuilderView = ({
 
       setWorkflowId(published.id)
       setLoadWorkflowId(published.id)
+      syncWorkflowUrl(published.id)
       applyDefinitionToState(publishedDefinition)
       lastSyncedDefinitionRef.current = publishedDefinition
       hasLoadedWorkflowRef.current = true
@@ -3679,6 +4068,7 @@ export const WorkflowBuilderView = ({
 
       setWorkflowId(deactivated.id)
       setLoadWorkflowId(deactivated.id)
+      syncWorkflowUrl(deactivated.id)
       applyDefinitionToState(deactivatedDefinition)
       lastSyncedDefinitionRef.current = deactivatedDefinition
       hasLoadedWorkflowRef.current = true
@@ -3704,6 +4094,7 @@ export const WorkflowBuilderView = ({
     clearSelectedNode()
     setWorkflowId(null)
     setLoadWorkflowId(null)
+    syncWorkflowUrl(null)
     loadedWorkflowRef.current = null
     hasLoadedWorkflowRef.current = false
     latestDefinitionRef.current = null
@@ -3735,8 +4126,32 @@ export const WorkflowBuilderView = ({
     liveSyncInFlightRef.current = false
     pendingLiveSyncRef.current = false
     setLoadWorkflowId(id)
+    syncWorkflowUrl(id)
     setStatus("Loading workflow...")
     setCollaboratorsPanelOpen(false)
+  }
+
+  const publishComponent = async (
+    componentId: Id<"workflows">,
+    name: string
+  ) => {
+    if (isPublishingComponent) {
+      return
+    }
+
+    setIsPublishingComponent(true)
+
+    try {
+      // activate:false keeps the live workflow live.
+      await publishWorkflow({ workflowId: componentId, activate: false })
+      toast.success(`${name} published as a component`)
+      setStatus("Component published.")
+    } catch (error) {
+      console.error("Failed to publish component", error)
+      toast.error("Could not publish that component")
+    } finally {
+      setIsPublishingComponent(false)
+    }
   }
 
   const handleCollaboratorsClick = () => {
@@ -3754,7 +4169,92 @@ export const WorkflowBuilderView = ({
     setCollaboratorsPanelOpen((current) => !current)
   }
 
-  const selectedGenericData = selectedNode?.data as GenericNodeData | undefined
+  // --- inspector target: a whole node, or one step inside a Block ---
+  const selectedBlockSteps =
+    selectedNode?.type === "block"
+      ? ((selectedNode.data as BlockNodeData).steps ?? [])
+      : []
+  const selectedStep =
+    selectedBlockSteps.length > 0
+      ? (blockStepSelection?.nodeId === selectedNode?.id
+          ? selectedBlockSteps.find(
+              (step) => step.id === blockStepSelection?.stepId
+            )
+          : undefined) ?? selectedBlockSteps[0]
+      : undefined
+  const inspectorType = (selectedStep?.type ?? selectedNode?.type) as
+    | NodeType
+    | undefined
+  const inspectorData = (selectedStep?.data ?? selectedNode?.data) as NodeData
+  const inspectorGenericData = inspectorData as GenericNodeData | undefined
+  // Everything this graph can produce, for the {{variable}} pills and picker.
+  const workflowVariables = useMemo(
+    () => collectWorkflowVariables(nodes),
+    [nodes]
+  )
+
+  const updateBlockStepData = (
+    nodeId: string,
+    stepId: string,
+    data: NodeData
+  ) => {
+    setNodes((next) =>
+      next.map((node) => {
+        if (node.id !== nodeId) {
+          return node
+        }
+
+        const blockData = node.data as BlockNodeData
+
+        return {
+          ...node,
+          data: {
+            ...blockData,
+            steps: (blockData.steps ?? []).map((step) =>
+              step.id === stepId ? { ...step, data } : step
+            ),
+          } as NodeData,
+        }
+      })
+    )
+  }
+
+  /** Writes to the selected step when a Block is open, else to the node. */
+  const blockStepSelectionValue = useMemo(
+    () => ({
+      selected: blockStepSelection,
+      select: (nodeId: string, stepId: string) => {
+        setBlockStepSelection({ nodeId, stepId })
+        setSelectedNodeId(nodeId)
+      },
+    }),
+    [blockStepSelection]
+  )
+
+  const formatInspectorMessage = (
+    format: MessageFormat,
+    editor: HTMLElement | null
+  ) => {
+    formatRichText(format, editor, (html) =>
+      updateInspectorData({
+        ...(inspectorData as MessageNodeData),
+        text: html,
+      })
+    )
+  }
+
+  const updateInspectorData = (data: NodeData) => {
+    if (!selectedNode) {
+      return
+    }
+
+    if (selectedStep) {
+      updateBlockStepData(selectedNode.id, selectedStep.id, data)
+      return
+    }
+
+    updateNodeData(selectedNode.id, data)
+  }
   const isStartMenu = menuNode?.type === "start"
   const inspectorOpen = Boolean(
     selectedNode && selectedNode.type !== "start" && !nodeMenu
@@ -3842,85 +4342,7 @@ export const WorkflowBuilderView = ({
         </section>
       )}
 
-      <div className="top-actions" aria-label="Workflow actions">
-        <button
-          className="round-button"
-          onClick={handleNew}
-          title="New workflow"
-          aria-label="New workflow"
-        >
-          <Icon name="plus" size={20} />
-        </button>
-        <button
-          className={`toolbar-button run ${isRunLaunching ? "loading" : ""}`}
-          onClick={handleRun}
-          aria-label="Run"
-          aria-busy={isRunLaunching}
-        >
-          {isRunLaunching ? (
-            <i className="button-spinner" aria-hidden />
-          ) : (
-            <Icon name="play" size={18} />
-          )}
-          <span>{isRunLaunching ? "Running" : "Run"}</span>
-        </button>
-        <button
-          className="toolbar-button publish"
-          disabled={
-            isSavingWorkflow || isPublishingWorkflow || isDeactivatingWorkflow
-          }
-          onClick={() => void handleSave()}
-          aria-label="Save"
-          aria-busy={isSavingWorkflow}
-        >
-          {isSavingWorkflow ? (
-            <i className="button-spinner" aria-hidden />
-          ) : (
-            <Icon name="publish" size={18} />
-          )}
-          <span>{isSavingWorkflow ? "Saving" : "Save"}</span>
-        </button>
-        <button
-          className="toolbar-button publish"
-          disabled={
-            isSavingWorkflow || isPublishingWorkflow || isDeactivatingWorkflow
-          }
-          onClick={handlePublish}
-          aria-label="Publish"
-          aria-busy={isPublishingWorkflow}
-        >
-          {isPublishingWorkflow ? (
-            <i className="button-spinner" aria-hidden />
-          ) : (
-            <Icon name="check" size={18} />
-          )}
-          <span>{isPublishingWorkflow ? "Publishing" : "Publish"}</span>
-        </button>
-        {currentWorkflowIsActive && (
-          <button
-            className="toolbar-button deactivate"
-            disabled={
-              isSavingWorkflow || isPublishingWorkflow || isDeactivatingWorkflow
-            }
-            onClick={handleDeactivate}
-            aria-label="Deactivate workflow"
-            aria-busy={isDeactivatingWorkflow}
-          >
-            {isDeactivatingWorkflow ? (
-              <i className="button-spinner" aria-hidden />
-            ) : (
-              <Icon name="close" size={18} />
-            )}
-            <span>
-              {isDeactivatingWorkflow ? "Deactivating" : "Deactivate"}
-            </span>
-          </button>
-        )}
-        <span className="workflow-status-pill" aria-live="polite">
-          {status}
-        </span>
-      </div>
-
+      <div className="top-bar">
       <div className="collaboration-strip" aria-label="Workflow collaborators">
         <button
           type="button"
@@ -3936,30 +4358,24 @@ export const WorkflowBuilderView = ({
         >
           <Icon name="plus" size={20} />
         </button>
-        {workflowId ? (
-          <LiveCollaboratorAvatars />
-        ) : (
-          <>
-            {visiblePresenceMembers.map((member) => (
-              <span
-                key={member.userId}
-                className={`collaborator-avatar ${member.isSelf ? "self" : ""}`}
-                title={`${member.name}${member.isSelf ? " (you)" : ""}`}
-                style={{ "--avatar-color": member.color } as CSSProperties}
-              >
-                <span>{member.initials}</span>
-              </span>
-            ))}
-            {hiddenPresenceCount > 0 ? (
-              <span
-                className="collaborator-avatar overflow"
-                title={`${hiddenPresenceCount} more`}
-              >
-                +{hiddenPresenceCount}
-              </span>
-            ) : null}
-          </>
-        )}
+        {visiblePresenceMembers.map((member) => (
+          <span
+            key={member.userId}
+            className={`collaborator-avatar ${member.isSelf ? "self" : ""}`}
+            title={`${member.name}${member.isSelf ? " (you)" : ""}`}
+            style={{ "--avatar-color": member.color } as CSSProperties}
+          >
+            <span>{member.initials}</span>
+          </span>
+        ))}
+        {hiddenPresenceCount > 0 ? (
+          <span
+            className="collaborator-avatar overflow"
+            title={`${hiddenPresenceCount} more`}
+          >
+            +{hiddenPresenceCount}
+          </span>
+        ) : null}
         {collaboratorsPanelOpen && (
           <div
             className="collaborators-panel"
@@ -4041,6 +4457,185 @@ export const WorkflowBuilderView = ({
         )}
       </div>
 
+
+      <div className="top-actions" aria-label="Workflow actions">
+        <input
+          className="workflow-name-input"
+          value={workflowName}
+          title={workflowName}
+          placeholder="Untitled workflow"
+          aria-label="Workflow name"
+          onChange={(event) => setWorkflowName(event.target.value)}
+          onBlur={() =>
+            setWorkflowName((current) => current.trim() || "Untitled workflow")
+          }
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.currentTarget.blur()
+            }
+          }}
+        />
+        <button
+          className="round-button"
+          onClick={handleNew}
+          title="New workflow"
+          aria-label="New workflow"
+        >
+          <Icon name="plus" size={20} />
+        </button>
+        <button
+          className={`toolbar-button run ${isRunLaunching ? "loading" : ""}`}
+          onClick={handleRun}
+          aria-label="Run"
+          aria-busy={isRunLaunching}
+        >
+          {isRunLaunching ? (
+            <i className="button-spinner" aria-hidden />
+          ) : (
+            <Icon name="play" size={18} />
+          )}
+          <span>{isRunLaunching ? "Running" : "Run"}</span>
+        </button>
+        <button
+          className="toolbar-button"
+          disabled={
+            isSavingWorkflow || isPublishingWorkflow || isDeactivatingWorkflow
+          }
+          onClick={() => void handleSave()}
+          aria-label="Save"
+          aria-busy={isSavingWorkflow}
+        >
+          {isSavingWorkflow ? (
+            <i className="button-spinner" aria-hidden />
+          ) : (
+            <Icon name="publish" size={18} />
+          )}
+          <span>{isSavingWorkflow ? "Saving" : "Save"}</span>
+        </button>
+        <button
+          className="toolbar-button primary"
+          disabled={
+            isSavingWorkflow || isPublishingWorkflow || isDeactivatingWorkflow
+          }
+          onClick={() => void handlePublish()}
+          aria-label="Publish"
+          aria-busy={isPublishingWorkflow}
+        >
+          {isPublishingWorkflow ? (
+            <i className="button-spinner" aria-hidden />
+          ) : (
+            <Icon name="check" size={18} />
+          )}
+          <span>{isPublishingWorkflow ? "Publishing" : "Publish"}</span>
+        </button>
+        {currentWorkflowIsActive && (
+          <button
+            className="toolbar-button danger"
+            disabled={
+              isSavingWorkflow || isPublishingWorkflow || isDeactivatingWorkflow
+            }
+            onClick={handleDeactivate}
+            aria-label="Deactivate workflow"
+            aria-busy={isDeactivatingWorkflow}
+          >
+            {isDeactivatingWorkflow ? (
+              <i className="button-spinner" aria-hidden />
+            ) : (
+              <Icon name="close" size={18} />
+            )}
+            <span>
+              {isDeactivatingWorkflow ? "Deactivating" : "Deactivate"}
+            </span>
+          </button>
+        )}
+        <span className="workflow-status-pill" aria-live="polite">
+          {status}
+        </span>
+      </div>
+      </div>
+
+      {validationIssues !== null && (
+        <section className="validation-panel" aria-label="Publish checks">
+          <div className="validation-header">
+            <div>
+              <strong>
+                {validationIssues.some((issue) => issue.level === "error")
+                  ? "This workflow can't be published yet"
+                  : "Publish checks"}
+              </strong>
+              <span>
+                {validationIssues.filter((i) => i.level === "error").length}{" "}
+                blocking ·{" "}
+                {validationIssues.filter((i) => i.level === "warning").length}{" "}
+                warnings
+              </span>
+            </div>
+            <button
+              type="button"
+              className="validation-close"
+              aria-label="Close publish checks"
+              onClick={() => setValidationIssues(null)}
+            >
+              <Icon name="close" size={16} />
+            </button>
+          </div>
+
+          <div className="validation-list">
+            {validationIssues.map((issue) => (
+              <button
+                key={issue.id}
+                type="button"
+                className={`validation-row ${issue.level}`}
+                onClick={() => {
+                  if (!issue.nodeId) return
+                  const node = nodes.find((entry) => entry.id === issue.nodeId)
+                  if (!node) return
+                  openSelectedNode(node)
+                  reactFlow?.setCenter(
+                    node.position.x + 150,
+                    node.position.y + 60,
+                    { zoom: 0.9, duration: 320 }
+                  )
+                }}
+              >
+                <span className="validation-dot" aria-hidden />
+                <span>
+                  <strong>{issue.title}</strong>
+                  <em>{issue.detail}</em>
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {!validationIssues.some((issue) => issue.level === "error") && (
+            <button
+              type="button"
+              className="validation-publish"
+              onClick={() => {
+                setValidationIssues(null)
+                void handlePublish({ skipValidation: true })
+              }}
+            >
+              Publish anyway
+            </button>
+          )}
+        </section>
+      )}
+
+      {selectedNodeIds.length > 1 && (
+        <div className="multi-select-bar" role="status">
+          <span>
+            {selectedNodeIds.length} blocks selected
+          </span>
+          <button type="button" onClick={deleteSelectedNodes}>
+            Delete
+          </button>
+          <button type="button" onClick={clearSelectedNode}>
+            Clear
+          </button>
+        </div>
+      )}
+
       <div className="remote-cursor-layer" aria-hidden>
         {remoteCursors.map((cursor) => (
           <div
@@ -4064,6 +4659,7 @@ export const WorkflowBuilderView = ({
         aria-label="Workflow canvas"
         onPointerMove={handleCanvasPointerMove}
       >
+        <BlockStepSelectionContext.Provider value={blockStepSelectionValue}>
         <NodeRenameContext.Provider value={renameNodeInline}>
           <ReactFlow
             nodes={renderedNodes}
@@ -4091,6 +4687,9 @@ export const WorkflowBuilderView = ({
               setViewportVersion((version) => version + 1)
             }}
             connectionLineComponent={DynamicConnectionLine}
+            deleteKeyCode={["Backspace", "Delete"]}
+            selectionKeyCode="Shift"
+            multiSelectionKeyCode={["Meta", "Shift"]}
             defaultViewport={DEFAULT_CANVAS_VIEWPORT}
             panOnDrag={!isTrackpadNavigation}
             panOnScroll={isTrackpadNavigation}
@@ -4109,9 +4708,57 @@ export const WorkflowBuilderView = ({
             />
           </ReactFlow>
         </NodeRenameContext.Provider>
+        </BlockStepSelectionContext.Provider>
       </main>
 
       <nav className="bottom-tools" aria-label="Canvas tools">
+        <button
+          title="Undo (⌘Z)"
+          aria-label="Undo"
+          disabled={!canUndo}
+          onClick={undoGraph}
+        >
+          <Icon name="undo" size={19} />
+        </button>
+        <button
+          title="Redo (⇧⌘Z)"
+          aria-label="Redo"
+          disabled={!canRedo}
+          onClick={redoGraph}
+        >
+          <Icon name="redo" size={19} />
+        </button>
+        <span className="bottom-tools-divider" aria-hidden />
+        <button
+          title="Zoom out"
+          aria-label="Zoom out"
+          onClick={() => reactFlow?.zoomOut({ duration: 160 })}
+        >
+          <Icon name="zoomOut" size={19} />
+        </button>
+        <button
+          className="zoom-readout"
+          title="Reset zoom to 100%"
+          aria-label="Reset zoom"
+          onClick={() => reactFlow?.zoomTo(1, { duration: 160 })}
+        >
+          {Math.round(canvasViewport.zoom * 100)}%
+        </button>
+        <button
+          title="Zoom in"
+          aria-label="Zoom in"
+          onClick={() => reactFlow?.zoomIn({ duration: 160 })}
+        >
+          <Icon name="zoomIn" size={19} />
+        </button>
+        <button
+          title="Fit canvas"
+          aria-label="Fit canvas"
+          onClick={() => reactFlow?.fitView(WORKFLOW_FIT_VIEW_OPTIONS)}
+        >
+          <Icon name="fit" size={19} />
+        </button>
+        <span className="bottom-tools-divider" aria-hidden />
         <button
           className={navigationPanelOpen ? "active" : ""}
           title="Canvas navigation"
@@ -4177,14 +4824,6 @@ export const WorkflowBuilderView = ({
           </button>
         </section>
       )}
-
-      <button
-        className="fit-button"
-        onClick={() => reactFlow?.fitView(WORKFLOW_FIT_VIEW_OPTIONS)}
-        title="Fit canvas"
-      >
-        <Icon name="fit" size={18} />
-      </button>
 
       {connectPreviewPath && (
         <svg className="connect-preview-line" aria-hidden>
@@ -4505,11 +5144,20 @@ export const WorkflowBuilderView = ({
             <>
               <button
                 className="node-menu-row"
-                onClick={() => createComponentFromNode(menuNode)}
+                disabled={isCreatingComponent}
+                onClick={() => void createComponentFromNode(menuNode)}
               >
                 <span>Create component</span>
                 <span className="node-menu-shortcut">⇧⌘C</span>
               </button>
+              {menuNode.type === "block" && (
+                <button
+                  className="node-menu-row"
+                  onClick={() => splitBlock(menuNode)}
+                >
+                  <span>Split block</span>
+                </button>
+              )}
 
               <div className="node-menu-separator" />
             </>
@@ -4590,18 +5238,84 @@ export const WorkflowBuilderView = ({
       {selectedNode && selectedNode.type !== "start" && !nodeMenu && (
         <aside
           className={`inspector-sheet visible ${
-            selectedNode.type === "message" ||
-            selectedNode.type === "image" ||
-            selectedNode.type === "card"
+            inspectorType === "message" ||
+            inspectorType === "image" ||
+            inspectorType === "card"
               ? "message-editor-sheet"
               : ""
-          } ${selectedNode.type === "image" ? "image-editor-sheet" : ""} ${
-            selectedNode.type === "card" ? "card-editor-sheet" : ""
+          } ${inspectorType === "image" ? "image-editor-sheet" : ""} ${
+            inspectorType === "card" ? "card-editor-sheet" : ""
           }`}
         >
-          {selectedNode.type === "message" ? (
+          {selectedBlockSteps.length > 1 && (
+            <section className="block-step-list" aria-label="Block steps">
+              <div className="block-step-list-header">
+                <strong>Steps</strong>
+                <span>{selectedBlockSteps.length} in this block</span>
+              </div>
+              {selectedBlockSteps.map((step, index) => (
+                <div
+                  key={step.id}
+                  className={`block-step-list-row ${
+                    step.id === selectedStep?.id ? "active" : ""
+                  }`}
+                >
+                  <button
+                    type="button"
+                    className="block-step-list-name"
+                    onClick={() =>
+                      setBlockStepSelection({
+                        nodeId: selectedNode.id,
+                        stepId: step.id,
+                      })
+                    }
+                  >
+                    {step.data.customName?.trim() ||
+                      getStepOption(step.type)?.label ||
+                      step.type}
+                  </button>
+                  <button
+                    type="button"
+                    className="block-step-list-action"
+                    title="Move up"
+                    aria-label="Move step up"
+                    disabled={index === 0}
+                    onClick={() =>
+                      moveStepInBlock(selectedNode.id, step.id, -1)
+                    }
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="block-step-list-action"
+                    title="Move down"
+                    aria-label="Move step down"
+                    disabled={index === selectedBlockSteps.length - 1}
+                    onClick={() =>
+                      moveStepInBlock(selectedNode.id, step.id, 1)
+                    }
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    className="block-step-list-action"
+                    title="Move out of block"
+                    aria-label="Move step out of block"
+                    onClick={() =>
+                      extractStepFromBlock(selectedNode.id, step.id)
+                    }
+                  >
+                    ⇥
+                  </button>
+                </div>
+              ))}
+            </section>
+          )}
+          {inspectorType === "message" ? (
             (() => {
-              const data = selectedNode.data as MessageNodeData
+              const data = inspectorData as MessageNodeData
 
               return (
                 <section className="message-editor-panel">
@@ -4627,8 +5341,7 @@ export const WorkflowBuilderView = ({
                         title="Bold"
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={(event) =>
-                          formatMessageText(
-                            selectedNode.id,
+                          formatInspectorMessage(
                             "bold",
                             event.currentTarget
                               .closest(".message-editor-panel")
@@ -4645,8 +5358,7 @@ export const WorkflowBuilderView = ({
                         title="Italic"
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={(event) =>
-                          formatMessageText(
-                            selectedNode.id,
+                          formatInspectorMessage(
                             "italic",
                             event.currentTarget
                               .closest(".message-editor-panel")
@@ -4663,8 +5375,7 @@ export const WorkflowBuilderView = ({
                         title="Underline"
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={(event) =>
-                          formatMessageText(
-                            selectedNode.id,
+                          formatInspectorMessage(
                             "underline",
                             event.currentTarget
                               .closest(".message-editor-panel")
@@ -4681,8 +5392,7 @@ export const WorkflowBuilderView = ({
                         title="Strikethrough"
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={(event) =>
-                          formatMessageText(
-                            selectedNode.id,
+                          formatInspectorMessage(
                             "strike",
                             event.currentTarget
                               .closest(".message-editor-panel")
@@ -4700,8 +5410,7 @@ export const WorkflowBuilderView = ({
                         title="Insert link"
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={(event) =>
-                          formatMessageText(
-                            selectedNode.id,
+                          formatInspectorMessage(
                             "link",
                             event.currentTarget
                               .closest(".message-editor-panel")
@@ -4719,15 +5428,21 @@ export const WorkflowBuilderView = ({
                       value={data.text ?? ""}
                       placeholder="Enter message"
                       ariaLabel="Message"
-                      onSync={syncMessageEditor}
+                      variables={workflowVariables}
+                      onSync={(_nodeId, html) =>
+                        updateInspectorData({
+                          ...(inspectorData as MessageNodeData),
+                          text: html,
+                        })
+                      }
                     />
                   </div>
                 </section>
               )
             })()
-          ) : selectedNode.type === "image" ? (
+          ) : inspectorType === "image" ? (
             (() => {
-              const data = selectedNode.data as ImageNodeData
+              const data = inspectorData as ImageNodeData
               const imageUrl = data.url ?? ""
               const imageSource = data.source ?? "upload"
               const uploadInputId = `image-upload-${selectedNode.id}`
@@ -4747,7 +5462,7 @@ export const WorkflowBuilderView = ({
                         type="button"
                         className={imageSource === "upload" ? "active" : ""}
                         onClick={() =>
-                          updateNodeData(selectedNode.id, {
+                          updateInspectorData( {
                             ...data,
                             source: "upload",
                           })
@@ -4759,7 +5474,7 @@ export const WorkflowBuilderView = ({
                         type="button"
                         className={imageSource === "link" ? "active" : ""}
                         onClick={() =>
-                          updateNodeData(selectedNode.id, {
+                          updateInspectorData( {
                             ...data,
                             source: "link",
                           })
@@ -4776,7 +5491,7 @@ export const WorkflowBuilderView = ({
                           value={imageUrl}
                           placeholder="Enter file URL or {variable}"
                           onChange={(event) =>
-                            updateNodeData(selectedNode.id, {
+                            updateInspectorData( {
                               ...data,
                               source: "link",
                               url: event.target.value,
@@ -4792,7 +5507,6 @@ export const WorkflowBuilderView = ({
                         onDrop={(event) => {
                           event.preventDefault()
                           readImageFile(
-                            selectedNode.id,
                             data,
                             event.dataTransfer.files[0]
                           )
@@ -4820,11 +5534,7 @@ export const WorkflowBuilderView = ({
                           type="file"
                           accept="image/*,.gif"
                           onChange={(event) =>
-                            readImageFile(
-                              selectedNode.id,
-                              data,
-                              event.target.files?.[0]
-                            )
+                            readImageFile(data, event.target.files?.[0])
                           }
                         />
                       </div>
@@ -4838,9 +5548,9 @@ export const WorkflowBuilderView = ({
                 </section>
               )
             })()
-          ) : selectedNode.type === "card" ? (
+          ) : inspectorType === "card" ? (
             (() => {
-              const data = selectedNode.data as CardNodeData
+              const data = inspectorData as CardNodeData
               const imageUrl = data.url ?? ""
               const imageSource = data.source ?? "upload"
               const uploadInputId = `card-upload-${selectedNode.id}`
@@ -4854,7 +5564,7 @@ export const WorkflowBuilderView = ({
               const addCardButton = () => {
                 const button = createButton("New button")
 
-                updateNodeData(selectedNode.id, {
+                updateInspectorData( {
                   ...data,
                   buttons: [...data.buttons, button],
                 })
@@ -4895,7 +5605,7 @@ export const WorkflowBuilderView = ({
                               : button
                           )
 
-                          updateNodeData(selectedNode.id, {
+                          updateInspectorData( {
                             ...data,
                             buttons: nextButtons,
                           })
@@ -4938,7 +5648,7 @@ export const WorkflowBuilderView = ({
                         type="button"
                         className={imageSource === "upload" ? "active" : ""}
                         onClick={() =>
-                          updateNodeData(selectedNode.id, {
+                          updateInspectorData( {
                             ...data,
                             source: "upload",
                           })
@@ -4950,7 +5660,7 @@ export const WorkflowBuilderView = ({
                         type="button"
                         className={imageSource === "link" ? "active" : ""}
                         onClick={() =>
-                          updateNodeData(selectedNode.id, {
+                          updateInspectorData( {
                             ...data,
                             source: "link",
                           })
@@ -4967,7 +5677,7 @@ export const WorkflowBuilderView = ({
                           value={imageUrl}
                           placeholder="Enter image URL or {variable}"
                           onChange={(event) =>
-                            updateNodeData(selectedNode.id, {
+                            updateInspectorData( {
                               ...data,
                               source: "link",
                               url: event.target.value,
@@ -4985,7 +5695,6 @@ export const WorkflowBuilderView = ({
                         onDrop={(event) => {
                           event.preventDefault()
                           readCardImageFile(
-                            selectedNode.id,
                             data,
                             event.dataTransfer.files[0]
                           )
@@ -5013,11 +5722,7 @@ export const WorkflowBuilderView = ({
                           type="file"
                           accept="image/*,.gif"
                           onChange={(event) =>
-                            readCardImageFile(
-                              selectedNode.id,
-                              data,
-                              event.target.files?.[0]
-                            )
+                            readCardImageFile(data, event.target.files?.[0])
                           }
                         />
                       </div>
@@ -5029,7 +5734,7 @@ export const WorkflowBuilderView = ({
                       placeholder="Enter card title, { to add variable"
                       aria-label="Card title"
                       onChange={(event) =>
-                        updateNodeData(selectedNode.id, {
+                        updateInspectorData( {
                           ...data,
                           title: event.target.value,
                         })
@@ -5042,8 +5747,9 @@ export const WorkflowBuilderView = ({
                         value={data.description ?? ""}
                         placeholder="Enter card description, { to add variable"
                         ariaLabel="Card description"
+                        variables={workflowVariables}
                         onSync={(_nodeId, html) =>
-                          updateNodeData(selectedNode.id, {
+                          updateInspectorData( {
                             ...data,
                             description: html,
                           })
@@ -5066,7 +5772,7 @@ export const WorkflowBuilderView = ({
                                   ".message-editor-input"
                                 ) ?? null,
                               (html) =>
-                                updateNodeData(selectedNode.id, {
+                                updateInspectorData( {
                                   ...data,
                                   description: html,
                                 })
@@ -5088,7 +5794,7 @@ export const WorkflowBuilderView = ({
                                   ".message-editor-input"
                                 ) ?? null,
                               (html) =>
-                                updateNodeData(selectedNode.id, {
+                                updateInspectorData( {
                                   ...data,
                                   description: html,
                                 })
@@ -5110,7 +5816,7 @@ export const WorkflowBuilderView = ({
                                   ".message-editor-input"
                                 ) ?? null,
                               (html) =>
-                                updateNodeData(selectedNode.id, {
+                                updateInspectorData( {
                                   ...data,
                                   description: html,
                                 })
@@ -5132,7 +5838,7 @@ export const WorkflowBuilderView = ({
                                   ".message-editor-input"
                                 ) ?? null,
                               (html) =>
-                                updateNodeData(selectedNode.id, {
+                                updateInspectorData( {
                                   ...data,
                                   description: html,
                                 })
@@ -5155,7 +5861,7 @@ export const WorkflowBuilderView = ({
                                   ".message-editor-input"
                                 ) ?? null,
                               (html) =>
-                                updateNodeData(selectedNode.id, {
+                                updateInspectorData( {
                                   ...data,
                                   description: html,
                                 })
@@ -5202,12 +5908,17 @@ export const WorkflowBuilderView = ({
                           title="Remove button"
                           aria-label={`Remove ${button.label || "button"}`}
                           onClick={() => {
-                            updateNodeData(selectedNode.id, {
+                            const nextButtons = data.buttons.filter(
+                              (candidate) => candidate.id !== button.id
+                            )
+                            updateInspectorData( {
                               ...data,
-                              buttons: data.buttons.filter(
-                                (candidate) => candidate.id !== button.id
-                              ),
+                              buttons: nextButtons,
                             })
+                            pruneNodeHandleEdges(
+                              selectedNode.id,
+                              nextButtons.map((entry) => entry.id)
+                            )
                           }}
                         >
                           -
@@ -5232,20 +5943,19 @@ export const WorkflowBuilderView = ({
               )
             })()
           ) : (
-            <>
+            <section className="message-editor-panel">
               <div className="sheet-header">
                 <div>
-                  <h2>{selectedGenericData?.label}</h2>
+                  <h2>{inspectorGenericData?.label}</h2>
                   <p>Configure the selected step.</p>
                 </div>
                 {renderInspectorActions(selectedNode)}
               </div>
 
-              <div className="form">
-                <div className="helper">Node id: {selectedNode.id}</div>
-                {selectedNode.type === "buttons" &&
+              <div className="inspector-body form">
+                {inspectorType === "buttons" &&
                   (() => {
-                    const data = selectedNode.data as ButtonsNodeData
+                    const data = inspectorData as ButtonsNodeData
 
                     return (
                       <div className="stack">
@@ -5266,7 +5976,7 @@ export const WorkflowBuilderView = ({
                                   ...currentButton,
                                   label: event.target.value,
                                 }
-                                updateNodeData(selectedNode.id, {
+                                updateInspectorData( {
                                   ...data,
                                   buttons: nextButtons,
                                 })
@@ -5278,10 +5988,14 @@ export const WorkflowBuilderView = ({
                                 const nextButtons = data.buttons.filter(
                                   (_, btnIndex) => btnIndex !== index
                                 )
-                                updateNodeData(selectedNode.id, {
+                                updateInspectorData( {
                                   ...data,
                                   buttons: nextButtons,
                                 })
+                                pruneNodeHandleEdges(
+                                  selectedNode.id,
+                                  nextButtons.map((entry) => entry.id)
+                                )
                               }}
                             >
                               Remove
@@ -5291,7 +6005,7 @@ export const WorkflowBuilderView = ({
                         <button
                           className="secondary-button"
                           onClick={() => {
-                            updateNodeData(selectedNode.id, {
+                            updateInspectorData( {
                               ...data,
                               buttons: [
                                 ...data.buttons,
@@ -5305,9 +6019,9 @@ export const WorkflowBuilderView = ({
                       </div>
                     )
                   })()}
-                {selectedNode.type === "choice" &&
+                {inspectorType === "choice" &&
                   (() => {
-                    const data = selectedNode.data as ChoiceNodeData
+                    const data = inspectorData as ChoiceNodeData
 
                     return (
                       <div className="stack">
@@ -5316,7 +6030,7 @@ export const WorkflowBuilderView = ({
                           <textarea
                             value={data.prompt ?? ""}
                             onChange={(event) =>
-                              updateNodeData(selectedNode.id, {
+                              updateInspectorData( {
                                 ...data,
                                 prompt: event.target.value,
                               })
@@ -5328,7 +6042,7 @@ export const WorkflowBuilderView = ({
                           <input
                             value={data.variableKey ?? ""}
                             onChange={(event) =>
-                              updateNodeData(selectedNode.id, {
+                              updateInspectorData( {
                                 ...data,
                                 variableKey: event.target.value,
                               })
@@ -5348,7 +6062,7 @@ export const WorkflowBuilderView = ({
                                   ...current,
                                   label: event.target.value,
                                 }
-                                updateNodeData(selectedNode.id, {
+                                updateInspectorData( {
                                   ...data,
                                   choices: nextChoices,
                                 })
@@ -5357,12 +6071,17 @@ export const WorkflowBuilderView = ({
                             <button
                               className="mini-button"
                               onClick={() => {
-                                updateNodeData(selectedNode.id, {
+                                const nextChoices = (
+                                  data.choices ?? []
+                                ).filter((_, i) => i !== index)
+                                updateInspectorData( {
                                   ...data,
-                                  choices: (data.choices ?? []).filter(
-                                    (_, i) => i !== index
-                                  ),
+                                  choices: nextChoices,
                                 })
+                                pruneNodeHandleEdges(
+                                  selectedNode.id,
+                                  nextChoices.map((entry) => entry.id)
+                                )
                               }}
                             >
                               Remove
@@ -5372,7 +6091,7 @@ export const WorkflowBuilderView = ({
                         <button
                           className="secondary-button"
                           onClick={() => {
-                            updateNodeData(selectedNode.id, {
+                            updateInspectorData( {
                               ...data,
                               choices: [
                                 ...(data.choices ?? []),
@@ -5386,9 +6105,9 @@ export const WorkflowBuilderView = ({
                       </div>
                     )
                   })()}
-                {selectedNode.type === "capture" &&
+                {inspectorType === "capture" &&
                   (() => {
-                    const data = selectedNode.data as CaptureNodeData
+                    const data = inspectorData as CaptureNodeData
 
                     return (
                       <>
@@ -5397,7 +6116,7 @@ export const WorkflowBuilderView = ({
                           <input
                             value={data.variableKey ?? ""}
                             onChange={(event) =>
-                              updateNodeData(selectedNode.id, {
+                              updateInspectorData( {
                                 ...data,
                                 variableKey: event.target.value,
                               })
@@ -5409,7 +6128,7 @@ export const WorkflowBuilderView = ({
                           <textarea
                             value={data.prompt ?? ""}
                             onChange={(event) =>
-                              updateNodeData(selectedNode.id, {
+                              updateInspectorData( {
                                 ...data,
                                 prompt: event.target.value,
                               })
@@ -5419,9 +6138,9 @@ export const WorkflowBuilderView = ({
                       </>
                     )
                   })()}
-                {selectedNode.type === "prompt" &&
+                {inspectorType === "prompt" &&
                   (() => {
-                    const data = selectedNode.data as PromptNodeData
+                    const data = inspectorData as PromptNodeData
 
                     return (
                       <>
@@ -5430,7 +6149,7 @@ export const WorkflowBuilderView = ({
                           <textarea
                             value={data.instructions ?? ""}
                             onChange={(event) =>
-                              updateNodeData(selectedNode.id, {
+                              updateInspectorData( {
                                 ...data,
                                 instructions: event.target.value,
                               })
@@ -5442,7 +6161,7 @@ export const WorkflowBuilderView = ({
                           <input
                             value={data.outputVariable ?? ""}
                             onChange={(event) =>
-                              updateNodeData(selectedNode.id, {
+                              updateInspectorData( {
                                 ...data,
                                 outputVariable: event.target.value,
                               })
@@ -5454,7 +6173,7 @@ export const WorkflowBuilderView = ({
                             type="checkbox"
                             checked={Boolean(data.useKnowledgeBase)}
                             onChange={(event) =>
-                              updateNodeData(selectedNode.id, {
+                              updateInspectorData( {
                                 ...data,
                                 useKnowledgeBase: event.target.checked,
                               })
@@ -5465,9 +6184,9 @@ export const WorkflowBuilderView = ({
                       </>
                     )
                   })()}
-                {selectedNode.type === "kbSearch" &&
+                {inspectorType === "kbSearch" &&
                   (() => {
-                    const data = selectedNode.data as KbSearchNodeData
+                    const data = inspectorData as KbSearchNodeData
 
                     return (
                       <>
@@ -5477,7 +6196,7 @@ export const WorkflowBuilderView = ({
                             value={data.query ?? ""}
                             placeholder="{{lastInput}}"
                             onChange={(event) =>
-                              updateNodeData(selectedNode.id, {
+                              updateInspectorData( {
                                 ...data,
                                 query: event.target.value,
                               })
@@ -5489,7 +6208,7 @@ export const WorkflowBuilderView = ({
                           <input
                             value={data.outputVariable ?? "kbAnswer"}
                             onChange={(event) =>
-                              updateNodeData(selectedNode.id, {
+                              updateInspectorData( {
                                 ...data,
                                 outputVariable: event.target.value,
                               })
@@ -5501,7 +6220,7 @@ export const WorkflowBuilderView = ({
                             type="checkbox"
                             checked={data.sendAsMessage !== false}
                             onChange={(event) =>
-                              updateNodeData(selectedNode.id, {
+                              updateInspectorData( {
                                 ...data,
                                 sendAsMessage: event.target.checked,
                               })
@@ -5516,7 +6235,7 @@ export const WorkflowBuilderView = ({
                   selectedNode.type ?? ""
                 ) &&
                   (() => {
-                    const data = selectedNode.data as GenericNodeData
+                    const data = inspectorData as GenericNodeData
 
                     return (
                       <>
@@ -5525,7 +6244,7 @@ export const WorkflowBuilderView = ({
                           <textarea
                             value={data.instructions ?? data.description ?? ""}
                             onChange={(event) =>
-                              updateNodeData(selectedNode.id, {
+                              updateInspectorData( {
                                 ...data,
                                 instructions: event.target.value,
                               })
@@ -5537,7 +6256,7 @@ export const WorkflowBuilderView = ({
                           <input
                             value={data.outputVariable ?? "lastAiResponse"}
                             onChange={(event) =>
-                              updateNodeData(selectedNode.id, {
+                              updateInspectorData( {
                                 ...data,
                                 outputVariable: event.target.value,
                               })
@@ -5549,7 +6268,7 @@ export const WorkflowBuilderView = ({
                             type="checkbox"
                             checked={data.talksFirst !== false}
                             onChange={(event) =>
-                              updateNodeData(selectedNode.id, {
+                              updateInspectorData( {
                                 ...data,
                                 talksFirst: event.target.checked,
                               })
@@ -5562,7 +6281,7 @@ export const WorkflowBuilderView = ({
                             type="checkbox"
                             checked={data.useKnowledgeBase !== false}
                             onChange={(event) =>
-                              updateNodeData(selectedNode.id, {
+                              updateInspectorData( {
                                 ...data,
                                 useKnowledgeBase: event.target.checked,
                               })
@@ -5573,9 +6292,9 @@ export const WorkflowBuilderView = ({
                       </>
                     )
                   })()}
-                {selectedNode.type === "setVariable" &&
+                {inspectorType === "setVariable" &&
                   (() => {
-                    const data = selectedNode.data as SetVariableNodeData
+                    const data = inspectorData as SetVariableNodeData
 
                     return (
                       <>
@@ -5584,7 +6303,7 @@ export const WorkflowBuilderView = ({
                           <input
                             value={data.key ?? ""}
                             onChange={(event) =>
-                              updateNodeData(selectedNode.id, {
+                              updateInspectorData( {
                                 ...data,
                                 key: event.target.value,
                               })
@@ -5593,22 +6312,22 @@ export const WorkflowBuilderView = ({
                         </label>
                         <label>
                           Value
-                          <input
+                          <VariableInput
                             value={data.value ?? ""}
-                            onChange={(event) =>
-                              updateNodeData(selectedNode.id, {
-                                ...data,
-                                value: event.target.value,
-                              })
+                            ariaLabel="Variable value"
+                            placeholder="value or {{otherVariable}}"
+                            variables={workflowVariables}
+                            onChange={(next) =>
+                              updateInspectorData( { ...data, value: next })
                             }
                           />
                         </label>
                       </>
                     )
                   })()}
-                {selectedNode.type === "condition" &&
+                {inspectorType === "condition" &&
                   (() => {
-                    const data = selectedNode.data as ConditionNodeData
+                    const data = inspectorData as ConditionNodeData
 
                     return (
                       <>
@@ -5617,7 +6336,7 @@ export const WorkflowBuilderView = ({
                           <input
                             value={data.key ?? ""}
                             onChange={(event) =>
-                              updateNodeData(selectedNode.id, {
+                              updateInspectorData( {
                                 ...data,
                                 key: event.target.value,
                               })
@@ -5629,7 +6348,7 @@ export const WorkflowBuilderView = ({
                           <select
                             value={data.operator ?? "equals"}
                             onChange={(event) =>
-                              updateNodeData(selectedNode.id, {
+                              updateInspectorData( {
                                 ...data,
                                 operator: event.target
                                   .value as ConditionNodeData["operator"],
@@ -5648,17 +6367,751 @@ export const WorkflowBuilderView = ({
                           data.operator !== "not_exists" && (
                             <label>
                               Value
-                              <input
+                              <VariableInput
                                 value={data.value ?? ""}
-                                onChange={(event) =>
-                                  updateNodeData(selectedNode.id, {
-                                    ...data,
-                                    value: event.target.value,
-                                  })
+                                ariaLabel="Comparison value"
+                                placeholder="value or {{otherVariable}}"
+                                variables={workflowVariables}
+                                onChange={(next) =>
+                                  updateInspectorData( { ...data, value: next })
                                 }
                               />
                             </label>
                           )}
+                      </>
+                    )
+                  })()}
+                {inspectorType === "component" &&
+                  (() => {
+                    const data = inspectorData as ComponentNodeData
+                    const inputs = data.inputs ?? []
+                    // A component cannot run itself, and the flow being edited
+                    // has no published snapshot to descend into anyway.
+                    const candidates = (componentCandidates ?? []).filter(
+                      (candidate) => candidate.id !== workflowId
+                    )
+                    const selected = candidates.find(
+                      (candidate) => candidate.id === data.workflowId
+                    )
+
+                    return (
+                      <>
+                        <label>
+                          Workflow
+                          <select
+                            value={data.workflowId ?? ""}
+                            onChange={(event) => {
+                              const nextId = event.target.value
+                              const next = candidates.find(
+                                (candidate) => candidate.id === nextId
+                              )
+                              updateInspectorData( {
+                                ...data,
+                                workflowId: nextId,
+                                workflowName: next?.name,
+                              })
+                            }}
+                          >
+                            <option value="">Select a workflow…</option>
+                            {candidates.map((candidate) => (
+                              <option key={candidate.id} value={candidate.id}>
+                                {candidate.name}
+                                {candidate.isPublished ? "" : " (not published)"}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        {componentCandidates === undefined ? (
+                          <p className="helper">Loading workflows…</p>
+                        ) : candidates.length === 0 ? (
+                          <p className="helper">
+                            Save another workflow first, then reuse it here.
+                          </p>
+                        ) : null}
+
+                        {selected && !selected.isPublished ? (
+                          <>
+                            <p className="helper">
+                              {selected.name} has never been published, so there
+                              is no runnable version to step into.
+                            </p>
+                            <button
+                              className="secondary-button"
+                              disabled={isPublishingComponent}
+                              onClick={() =>
+                                void publishComponent(selected.id, selected.name)
+                              }
+                            >
+                              {isPublishingComponent
+                                ? "Publishing…"
+                                : "Publish as component"}
+                            </button>
+                            <p className="helper">
+                              This snapshots it for reuse without making it the
+                              live workflow.
+                            </p>
+                          </>
+                        ) : null}
+
+                        <div className="stack">
+                          <span className="helper">
+                            Inputs (set before the component runs)
+                          </span>
+                          {inputs.map((input, index) => (
+                            <div className="field-row" key={input.id}>
+                              <input
+                                value={input.name}
+                                placeholder="variable"
+                                onChange={(event) => {
+                                  const next = [...inputs]
+                                  const current = next[index]
+                                  if (!current) return
+                                  next[index] = {
+                                    ...current,
+                                    name: event.target.value,
+                                  }
+                                  updateInspectorData( {
+                                    ...data,
+                                    inputs: next,
+                                  })
+                                }}
+                              />
+                              <button
+                                className="mini-button"
+                                onClick={() =>
+                                  updateInspectorData( {
+                                    ...data,
+                                    inputs: inputs.filter(
+                                      (_, i) => i !== index
+                                    ),
+                                  })
+                                }
+                              >
+                                Remove
+                              </button>
+                              <VariableInput
+                                value={input.value}
+                                ariaLabel={`${input.name || "input"} value`}
+                                placeholder="{{sourceVariable}}"
+                                variables={workflowVariables}
+                                onChange={(nextValue) => {
+                                  const next = [...inputs]
+                                  const current = next[index]
+                                  if (!current) return
+                                  next[index] = {
+                                    ...current,
+                                    value: nextValue,
+                                  }
+                                  updateInspectorData( {
+                                    ...data,
+                                    inputs: next,
+                                  })
+                                }}
+                              />
+                            </div>
+                          ))}
+                          <button
+                            className="secondary-button"
+                            onClick={() =>
+                              updateInspectorData( {
+                                ...data,
+                                inputs: [
+                                  ...inputs,
+                                  { id: createId("in"), name: "", value: "" },
+                                ],
+                              })
+                            }
+                          >
+                            Add input
+                          </button>
+                        </div>
+
+                        <p className="helper">
+                          The component shares this run&apos;s variables, so
+                          anything it sets is readable after it returns. Nesting
+                          is capped at 5 levels and a component cannot call
+                          itself.
+                        </p>
+                      </>
+                    )
+                  })()}
+                {inspectorType === "tool" &&
+                  (() => {
+                    const data = inspectorData as ToolNodeData
+                    const args = data.arguments ?? []
+                    const tools = assistantTools ?? []
+                    const selectedTool = tools.find(
+                      (tool) => tool.name === data.toolName
+                    )
+
+                    return (
+                      <>
+                        <label>
+                          Tool
+                          <select
+                            value={data.toolName ?? ""}
+                            onChange={(event) => {
+                              const nextName = event.target.value
+                              const nextTool = tools.find(
+                                (tool) => tool.name === nextName
+                              )
+                              // Seed a row per declared parameter so the
+                              // mapping starts from the tool's own contract.
+                              updateInspectorData( {
+                                ...data,
+                                toolName: nextName,
+                                arguments: (nextTool?.parameters ?? []).map(
+                                  (parameter) => ({
+                                    id: createId("arg"),
+                                    name: parameter.name,
+                                    value: "",
+                                  })
+                                ),
+                              })
+                            }}
+                          >
+                            <option value="">Select a tool…</option>
+                            {tools.map((tool) => (
+                              <option key={tool._id} value={tool.name}>
+                                {tool.name}
+                                {tool.isEnabled ? "" : " (disabled)"}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        {assistantTools === undefined ? (
+                          <p className="helper">Loading tools…</p>
+                        ) : tools.length === 0 ? (
+                          <p className="helper">
+                            No assistant tools yet. Create one under Assistant
+                            tools, then pick it here.
+                          </p>
+                        ) : null}
+
+                        {selectedTool?.description ? (
+                          <p className="helper">{selectedTool.description}</p>
+                        ) : null}
+
+                        {args.length > 0 && (
+                          <div className="stack">
+                            <span className="helper">Arguments</span>
+                            {args.map((argument, index) => {
+                              const parameter = selectedTool?.parameters?.find(
+                                (entry) => entry.name === argument.name
+                              )
+
+                              return (
+                                <label key={argument.id}>
+                                  {argument.name}
+                                  {parameter?.required ? " *" : ""}
+                                  <VariableInput
+                                    value={argument.value}
+                                    ariaLabel={`${argument.name} value`}
+                                    placeholder={
+                                      parameter?.description || "{{variable}}"
+                                    }
+                                    variables={workflowVariables}
+                                    onChange={(nextValue) => {
+                                      const next = [...args]
+                                      const current = next[index]
+                                      if (!current) return
+                                      next[index] = {
+                                        ...current,
+                                        value: nextValue,
+                                      }
+                                      updateInspectorData( {
+                                        ...data,
+                                        arguments: next,
+                                      })
+                                    }}
+                                  />
+                                </label>
+                              )
+                            })}
+                          </div>
+                        )}
+
+                        <label>
+                          Result variable
+                          <input
+                            value={data.outputVariable ?? ""}
+                            placeholder="toolResult"
+                            onChange={(event) =>
+                              updateInspectorData( {
+                                ...data,
+                                outputVariable: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                      </>
+                    )
+                  })()}
+                {inspectorType === "function" &&
+                  (() => {
+                    const data = inspectorData as FunctionNodeData
+                    const paths = data.paths ?? []
+
+                    return (
+                      <>
+                        <label>
+                          Code
+                          <textarea
+                            className="code-input"
+                            spellCheck={false}
+                            value={data.code ?? ""}
+                            onChange={(event) =>
+                              updateInspectorData({
+                                ...data,
+                                code: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+
+                        <div className="stack">
+                          <span className="helper">Paths</span>
+                          {paths.map((path, index) => (
+                            <div className="field-row" key={path.id}>
+                              <input
+                                value={path.name}
+                                placeholder="path name"
+                                onChange={(event) => {
+                                  const next = [...paths]
+                                  const current = next[index]
+                                  if (!current) return
+                                  next[index] = {
+                                    ...current,
+                                    name: event.target.value,
+                                  }
+                                  updateInspectorData({
+                                    ...data,
+                                    paths: next,
+                                  })
+                                }}
+                              />
+                              <button
+                                className="mini-button"
+                                onClick={() => {
+                                  const next = paths.filter(
+                                    (_, i) => i !== index
+                                  )
+                                  updateInspectorData({ ...data, paths: next })
+                                  pruneNodeHandleEdges(
+                                    selectedNode.id,
+                                    next.map((entry) => entry.id)
+                                  )
+                                }}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            className="secondary-button"
+                            onClick={() =>
+                              updateInspectorData({
+                                ...data,
+                                paths: [
+                                  ...paths,
+                                  {
+                                    id: createId("path"),
+                                    name: `path ${paths.length + 1}`,
+                                  },
+                                ],
+                              })
+                            }
+                          >
+                            Add path
+                          </button>
+                        </div>
+
+                        <p className="helper">
+                          Runs server-side with a 2s limit. Return{" "}
+                          <code>{"{ next, outputs }"}</code> to pick a path and
+                          set variables. An unknown name falls back to the first
+                          path; a thrown error takes a path named
+                          &quot;error&quot; if you declare one.
+                        </p>
+                      </>
+                    )
+                  })()}
+                {inspectorType === "carousel" &&
+                  (() => {
+                    const data = inspectorData as CarouselNodeData
+                    const cards = data.cards ?? []
+
+                    const patchCard = (
+                      index: number,
+                      patch: Partial<CarouselCard>
+                    ) => {
+                      const next = [...cards]
+                      const current = next[index]
+                      if (!current) return
+                      next[index] = { ...current, ...patch }
+                      updateInspectorData( { ...data, cards: next })
+                    }
+
+                    return (
+                      <>
+                        {cards.map((card, index) => (
+                          <div className="stack" key={card.id}>
+                            <div className="field-row">
+                              <span className="helper">Card {index + 1}</span>
+                              <button
+                                className="mini-button"
+                                onClick={() => {
+                                  const next = cards.filter(
+                                    (_, i) => i !== index
+                                  )
+                                  updateInspectorData( {
+                                    ...data,
+                                    cards: next,
+                                  })
+                                  pruneNodeHandleEdges(
+                                    selectedNode.id,
+                                    next.flatMap((entry) =>
+                                      entry.buttons.map((b) => b.id)
+                                    )
+                                  )
+                                }}
+                              >
+                                Remove card
+                              </button>
+                            </div>
+                            <label>
+                              Title
+                              <input
+                                value={card.title}
+                                onChange={(event) =>
+                                  patchCard(index, { title: event.target.value })
+                                }
+                              />
+                            </label>
+                            <label>
+                              Description
+                              <textarea
+                                value={card.description}
+                                onChange={(event) =>
+                                  patchCard(index, {
+                                    description: event.target.value,
+                                  })
+                                }
+                              />
+                            </label>
+                            <label>
+                              Image URL
+                              <input
+                                value={card.url}
+                                onChange={(event) =>
+                                  patchCard(index, { url: event.target.value })
+                                }
+                              />
+                            </label>
+                            {card.buttons.map((button, buttonIndex) => (
+                              <div className="field-row" key={button.id}>
+                                <input
+                                  value={button.label}
+                                  onChange={(event) => {
+                                    const nextButtons = [...card.buttons]
+                                    const currentButton =
+                                      nextButtons[buttonIndex]
+                                    if (!currentButton) return
+                                    nextButtons[buttonIndex] = {
+                                      ...currentButton,
+                                      label: event.target.value,
+                                    }
+                                    patchCard(index, { buttons: nextButtons })
+                                  }}
+                                />
+                                <button
+                                  className="mini-button"
+                                  onClick={() => {
+                                    const nextButtons = card.buttons.filter(
+                                      (_, i) => i !== buttonIndex
+                                    )
+                                    patchCard(index, { buttons: nextButtons })
+                                    pruneNodeHandleEdges(
+                                      selectedNode.id,
+                                      cards.flatMap((entry, i) =>
+                                        (i === index
+                                          ? nextButtons
+                                          : entry.buttons
+                                        ).map((b) => b.id)
+                                      )
+                                    )
+                                  }}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            ))}
+                            <button
+                              className="secondary-button"
+                              onClick={() =>
+                                patchCard(index, {
+                                  buttons: [
+                                    ...card.buttons,
+                                    createButton("New button"),
+                                  ],
+                                })
+                              }
+                            >
+                              Add button
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          className="secondary-button"
+                          onClick={() =>
+                            updateInspectorData( {
+                              ...data,
+                              cards: [
+                                ...cards,
+                                {
+                                  id: createId("card"),
+                                  title: `Option ${cards.length + 1}`,
+                                  description: "",
+                                  url: "",
+                                  buttons: [createButton("Choose this")],
+                                },
+                              ],
+                            })
+                          }
+                        >
+                          Add card
+                        </button>
+                      </>
+                    )
+                  })()}
+                {inspectorType === "customAction" &&
+                  (() => {
+                    const data = inspectorData as CustomActionNodeData
+
+                    return (
+                      <>
+                        <label>
+                          Action name
+                          <input
+                            value={data.actionName ?? ""}
+                            placeholder="custom_action"
+                            onChange={(event) =>
+                              updateInspectorData( {
+                                ...data,
+                                actionName: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <label>
+                          Payload (JSON)
+                          <textarea
+                            value={data.payload ?? ""}
+                            onChange={(event) =>
+                              updateInspectorData( {
+                                ...data,
+                                payload: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <p className="helper">
+                          Published runs dispatch this as a
+                          &quot;workflow.action&quot; webhook event. Test runs
+                          only record it, so integrations are never fired from
+                          the builder.
+                        </p>
+                      </>
+                    )
+                  })()}
+                {inspectorType === "javascript" &&
+                  (() => {
+                    const data = inspectorData as JavascriptNodeData
+
+                    return (
+                      <>
+                        <label>
+                          Code
+                          <textarea
+                            className="code-input"
+                            spellCheck={false}
+                            value={data.code ?? ""}
+                            onChange={(event) =>
+                              updateInspectorData( {
+                                ...data,
+                                code: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <p className="helper">
+                          Runs server-side with a 2s limit. Read and write
+                          workflow state through <code>variables</code>, or
+                          return an object of values to set. No network or file
+                          access. Throwing takes the error branch.
+                        </p>
+                      </>
+                    )
+                  })()}
+                {inspectorType === "api" &&
+                  (() => {
+                    const data = inspectorData as ApiNodeData
+                    const headers = data.headers ?? []
+                    const sendsBody =
+                      data.method !== "GET" && data.method !== "DELETE"
+
+                    return (
+                      <>
+                        <label>
+                          Method
+                          <select
+                            value={data.method ?? "GET"}
+                            onChange={(event) =>
+                              updateInspectorData( {
+                                ...data,
+                                method: event.target
+                                  .value as ApiNodeData["method"],
+                              })
+                            }
+                          >
+                            {API_METHODS.map((method) => (
+                              <option key={method} value={method}>
+                                {method}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          URL
+                          <VariableInput
+                            value={data.url ?? ""}
+                            ariaLabel="Request URL"
+                            placeholder="https://api.example.com/{{userId}}"
+                            variables={workflowVariables}
+                            onChange={(next) =>
+                              updateInspectorData( { ...data, url: next })
+                            }
+                          />
+                        </label>
+
+                        <div className="stack">
+                          <span className="helper">Headers</span>
+                          {headers.map((header, index) => (
+                            <div className="field-row" key={header.id}>
+                              <input
+                                value={header.key}
+                                placeholder="Authorization"
+                                onChange={(event) => {
+                                  const next = [...headers]
+                                  const current = next[index]
+                                  if (!current) return
+                                  next[index] = {
+                                    ...current,
+                                    key: event.target.value,
+                                  }
+                                  updateInspectorData( {
+                                    ...data,
+                                    headers: next,
+                                  })
+                                }}
+                              />
+                              <button
+                                className="mini-button"
+                                onClick={() =>
+                                  updateInspectorData( {
+                                    ...data,
+                                    headers: headers.filter(
+                                      (_, i) => i !== index
+                                    ),
+                                  })
+                                }
+                              >
+                                Remove
+                              </button>
+                              <input
+                                value={header.value}
+                                placeholder="Bearer {{apiKey}}"
+                                onChange={(event) => {
+                                  const next = [...headers]
+                                  const current = next[index]
+                                  if (!current) return
+                                  next[index] = {
+                                    ...current,
+                                    value: event.target.value,
+                                  }
+                                  updateInspectorData( {
+                                    ...data,
+                                    headers: next,
+                                  })
+                                }}
+                              />
+                            </div>
+                          ))}
+                          <button
+                            className="secondary-button"
+                            onClick={() =>
+                              updateInspectorData( {
+                                ...data,
+                                headers: [
+                                  ...headers,
+                                  { id: createId("hdr"), key: "", value: "" },
+                                ],
+                              })
+                            }
+                          >
+                            Add header
+                          </button>
+                        </div>
+
+                        {sendsBody && (
+                          <label>
+                            Body
+                            <textarea
+                              value={data.body ?? ""}
+                              placeholder={'{ "email": "{{email}}" }'}
+                              onChange={(event) =>
+                                updateInspectorData( {
+                                  ...data,
+                                  body: event.target.value,
+                                })
+                              }
+                            />
+                          </label>
+                        )}
+
+                        <label>
+                          Response variable
+                          <input
+                            value={data.responseVariable ?? ""}
+                            placeholder="apiResponse"
+                            onChange={(event) =>
+                              updateInspectorData( {
+                                ...data,
+                                responseVariable: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <label>
+                          Status variable
+                          <input
+                            value={data.statusVariable ?? ""}
+                            placeholder="apiStatus"
+                            onChange={(event) =>
+                              updateInspectorData( {
+                                ...data,
+                                statusVariable: event.target.value,
+                              })
+                            }
+                          />
+                        </label>
+                        <p className="helper">
+                          JSON responses are flattened, so a downstream step can
+                          read {"{{"}
+                          {data.responseVariable || "apiResponse"}.field{"}}"}.
+                        </p>
                       </>
                     )
                   })()}
@@ -5677,16 +7130,23 @@ export const WorkflowBuilderView = ({
                   "agent",
                   "crew",
                   "operator",
+                  "api",
+                  "carousel",
+                  "customAction",
+                  "javascript",
+                  "function",
+                  "tool",
+                  "component",
                   "start",
                 ].includes(selectedNode.type ?? "") && (
                   <>
                     <label>
                       Label
                       <input
-                        value={selectedGenericData?.label ?? ""}
+                        value={inspectorGenericData?.label ?? ""}
                         onChange={(event) =>
-                          updateNodeData(selectedNode.id, {
-                            ...(selectedGenericData ?? {}),
+                          updateInspectorData( {
+                            ...(inspectorGenericData ?? {}),
                             label: event.target.value,
                           })
                         }
@@ -5695,14 +7155,14 @@ export const WorkflowBuilderView = ({
                     <label>
                       Description
                       <textarea
-                        value={selectedGenericData?.description ?? ""}
+                        value={inspectorGenericData?.description ?? ""}
                         onChange={(event) =>
-                          updateNodeData(selectedNode.id, {
-                            ...(selectedGenericData ?? {}),
-                            label: selectedGenericData?.label ?? "Step",
+                          updateInspectorData( {
+                            ...(inspectorGenericData ?? {}),
+                            label: inspectorGenericData?.label ?? "Step",
                             description: event.target.value,
                             accent:
-                              selectedGenericData?.accent ??
+                              inspectorGenericData?.accent ??
                               getAccent(selectedNode.type as NodeType),
                           })
                         }
@@ -5710,8 +7170,11 @@ export const WorkflowBuilderView = ({
                     </label>
                   </>
                 )}
+                <div className="inspector-footnote">
+                  Node id <code>{selectedNode.id}</code>
+                </div>
               </div>
-            </>
+            </section>
           )}
         </aside>
       )}
@@ -5755,7 +7218,7 @@ export const WorkflowBuilderView = ({
               }}
             />
           ) : drawerMode === "library" ? (
-            <div className="library-list">
+            <div className="inspector-body library-list">
               <button className="secondary-button" onClick={refreshLibrary}>
                 Refresh library
               </button>
@@ -5778,7 +7241,20 @@ export const WorkflowBuilderView = ({
               )}
             </div>
           ) : (
-            <div className="form">
+            <div className="inspector-body form">
+              <label>
+                Name
+                <input
+                  value={workflowName}
+                  onChange={(event) => setWorkflowName(event.target.value)}
+                  onBlur={() =>
+                    setWorkflowName(
+                      (current) => current.trim() || "Untitled workflow"
+                    )
+                  }
+                  placeholder="Untitled workflow"
+                />
+              </label>
               <label>
                 Description
                 <textarea
@@ -5795,18 +7271,6 @@ export const WorkflowBuilderView = ({
       )}
     </div>
   )
-
-  if (organization?.id && workflowId) {
-    return (
-      <WorkflowLiveRoom
-        organizationId={organization.id}
-        workflowId={workflowId}
-      >
-        <LivePresenceBridge />
-        {shell}
-      </WorkflowLiveRoom>
-    )
-  }
 
   return shell
 }

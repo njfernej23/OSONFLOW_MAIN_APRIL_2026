@@ -4,6 +4,11 @@ import { useCallback, useState } from "react"
 import { api } from "@workspace/backend/_generated/api"
 import { useQuery } from "convex/react"
 import { Loader2Icon, PaletteIcon } from "lucide-react"
+
+import {
+  ConsoleHeader,
+  ConsoleMeta,
+} from "@/modules/dashboard/ui/components/console"
 import { AgentSwitcher } from "../components/agent-switcher"
 import { CustomizationForm } from "../components/customization-form"
 
@@ -23,79 +28,65 @@ export const CustomizationView = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-y-3 bg-transparent px-4">
-        <div className="surface-frosted rounded-full p-4">
-          <Loader2Icon className="size-6 animate-spin text-muted-foreground" />
-        </div>
+      <div className="console-page flex h-full min-h-0 flex-col items-center justify-center gap-3 px-4">
+        <span className="console-medallion size-12">
+          <Loader2Icon className="size-5 animate-spin" />
+        </span>
         <p className="text-sm text-muted-foreground">
-          Loading your widget settings...
+          Loading your widget settings…
         </p>
       </div>
     )
   }
+
   return (
-    <div className="relative flex h-full min-h-0 flex-col overflow-x-hidden overflow-y-auto bg-transparent">
-      <div className="mx-auto w-full max-w-[1540px] px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
-        <div className="surface-frosted mb-4 rounded-[22px] px-4 py-4 sm:px-5">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex min-w-0 items-start gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background shadow-sm">
-                  <PaletteIcon className="size-4 text-muted-foreground" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                    Visual system
-                  </p>
-                  <h1 className="mt-1 text-xl font-semibold tracking-tight">
-                    Widget customization
-                  </h1>
-                  <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                    Manage the chat widget, launcher, voice settings, and publish
-                    workflow from a cleaner control surface.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-border/70 bg-background/60">
-                <div className="border-r border-border/70 px-3 py-2 text-center">
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase">
-                    Published
-                  </p>
-                  <p className="mt-0.5 text-sm font-semibold tabular-nums">
-                    v{customizationState.publishedVersion}
-                  </p>
-                </div>
-                <div className="px-3 py-2 text-center">
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase">
-                    Draft
-                  </p>
-                  <p className="mt-0.5 text-sm font-semibold">
-                    {customizationState.isDraftDifferentFromPublished
-                      ? "Pending"
-                      : "Synced"}
-                  </p>
-                </div>
-              </div>
-            </div>
-
+    <div className="console-page relative flex h-full min-h-0 flex-col overflow-x-hidden overflow-y-auto">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-5 px-4 py-5 sm:px-6 sm:py-7">
+        <ConsoleHeader
+          actions={
             <AgentSwitcher
               agentId={agentId}
               onAgentIdChange={handleAgentIdChange}
             />
-          </div>
-        </div>
+          }
+          description="The chat widget, launcher, brand kit, and voice settings — edited as a draft, published when you're ready."
+          eyebrow="Visual system"
+          icon={PaletteIcon}
+          meta={
+            <>
+              <ConsoleMeta
+                label="Published"
+                value={`v${customizationState.publishedVersion}`}
+              />
+              <ConsoleMeta
+                dot
+                label="Draft"
+                tone={
+                  customizationState.isDraftDifferentFromPublished
+                    ? "warning"
+                    : "positive"
+                }
+                value={
+                  customizationState.isDraftDifferentFromPublished
+                    ? "Pending"
+                    : "Synced"
+                }
+              />
+            </>
+          }
+          title="Widget customization"
+        />
 
         <CustomizationForm
-          key={agentId}
           agentId={agentId}
           draftData={customizationState.draft}
-          publishedVersion={customizationState.publishedVersion}
-          publishedAt={customizationState.publishedAt}
           draftUpdatedAt={customizationState.draftUpdatedAt}
           isDraftDifferentFromPublished={
             customizationState.isDraftDifferentFromPublished
           }
+          key={agentId}
+          publishedAt={customizationState.publishedAt}
+          publishedVersion={customizationState.publishedVersion}
           versions={customizationState.versions}
         />
       </div>

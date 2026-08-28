@@ -18,12 +18,12 @@ const AIConversationsError = ({
   }, [error])
 
   return (
-    <div className="flex h-full w-full items-center justify-center bg-transparent p-6">
-      <div className="surface-frosted flex w-full max-w-[440px] flex-col items-center gap-4 rounded-[32px] px-10 py-12 text-center">
-        <p className="text-[18px] font-semibold text-foreground">
+    <div className="console-page flex h-full w-full items-center justify-center p-6">
+      <div className="console-card flex w-full max-w-[26rem] flex-col items-center gap-4 px-8 py-10 text-center">
+        <p className="text-[0.95rem] font-semibold text-foreground">
           This voicechat couldn’t load
         </p>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm leading-relaxed text-muted-foreground">
           Try again, or go back to the AI voicechats list.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-2">

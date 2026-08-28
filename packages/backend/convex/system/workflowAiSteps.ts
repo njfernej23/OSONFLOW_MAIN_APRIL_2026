@@ -1,4 +1,3 @@
-import { generateText } from "ai"
 import { v } from "convex/values"
 import { internal } from "../_generated/api"
 import {
@@ -16,18 +15,11 @@ import {
   type WorkflowDefinition,
   type WorkflowNode,
 } from "../lib/workflowEngine"
-import { getRagForOrganization } from "./ai/rag"
-import { SEARCH_INTERPRETER_PROMPT } from "./ai/constants"
 import {
-  OPENAI_CHAT_MODEL,
-  getOpenAIChatModelFromSecretValue,
-} from "../lib/openai"
-
-const WORKFLOW_PROMPT_SYSTEM = `You are an AI step inside a deterministic support workflow.
-Follow the step instructions carefully.
-Use conversation variables and the latest user message when relevant.
-Keep replies concise and helpful.
-Never invent policy, pricing, or product facts that are not provided in the instructions or knowledge context.`
+  generatePromptReply,
+  searchKnowledgeBase,
+} from "../lib/workflowAiGeneration"
+import { OPENAI_CHAT_MODEL } from "../lib/openai"
 
 type SessionContext = {
   organizationId: string
@@ -94,119 +86,6 @@ export const getSessionContext = internalQuery({
   },
 })
 
-const searchKnowledgeBase = async (
-  ctx: any,
-  organizationId: string,
-  query: string,
-  model?: string
-) => {
-  if (!query.trim()) {
-    return "I couldn't find specific information about that in our knowledge base."
-  }
-
-  const openAIPlugin = await ctx.runQuery(
-    internal.system.plugins.getByOrganizationIdAndService,
-    {
-      organizationId,
-      service: "openai_realtime",
-    }
-  )
-
-  const rag = await getRagForOrganization(openAIPlugin?.secretValue)
-  const searchResult = await rag.search(ctx, {
-    namespace: organizationId,
-    query,
-    limit: 5,
-  })
-
-  if (!searchResult.entries.length) {
-    return "I couldn't find specific information about that in our knowledge base."
-  }
-
-  const contextText = `Found results in ${searchResult.entries
-    .map((entry: { title?: string | null }) => entry.title || null)
-    .filter((title: string | null) => title !== null)
-    .join(", ")}. Here is the context:\n\n${searchResult.text}`
-
-  const response = await generateText({
-    system: SEARCH_INTERPRETER_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: `User asked: "${query}"\n\nSearch results: ${contextText}`,
-      },
-    ],
-    model: getOpenAIChatModelFromSecretValue(
-      openAIPlugin?.secretValue,
-      model || OPENAI_CHAT_MODEL
-    ),
-  })
-
-  return response.text
-}
-
-const generatePromptReply = async (
-  ctx: any,
-  args: {
-    organizationId: string
-    instructions: string
-    variables: RuntimeVariables
-    useKnowledgeBase: boolean
-    chatModel: string
-  }
-) => {
-  const openAIPlugin = await ctx.runQuery(
-    internal.system.plugins.getByOrganizationIdAndService,
-    {
-      organizationId: args.organizationId,
-      service: "openai_realtime",
-    }
-  )
-
-  let knowledgeContext = ""
-
-  if (args.useKnowledgeBase) {
-    const query =
-      args.variables.lastInput ||
-      args.variables.lastUserMessage ||
-      args.instructions
-
-    knowledgeContext = await searchKnowledgeBase(
-      ctx,
-      args.organizationId,
-      query,
-      args.chatModel
-    )
-  }
-
-  const variableLines = Object.entries(args.variables)
-    .filter(([key]) => !key.startsWith("__"))
-    .map(([key, value]) => `${key}: ${value}`)
-    .join("\n")
-
-  const userContent = [
-    `Step instructions:\n${args.instructions}`,
-    variableLines ? `Workflow variables:\n${variableLines}` : "",
-    knowledgeContext ? `Knowledge base context:\n${knowledgeContext}` : "",
-    args.variables.lastUserMessage
-      ? `Latest user message:\n${args.variables.lastUserMessage}`
-      : "",
-  ]
-    .filter(Boolean)
-    .join("\n\n")
-
-  const response = await generateText({
-    system: WORKFLOW_PROMPT_SYSTEM,
-    messages: [{ role: "user", content: userContent }],
-    model: getOpenAIChatModelFromSecretValue(
-      openAIPlugin?.secretValue,
-      args.chatModel
-    ),
-  })
-
-  return response.text
-}
-
 export const runNode = internalAction({
   args: {
     sessionId: v.id("workflowSessions"),
@@ -232,6 +111,14 @@ export const runNode = internalAction({
     }
 
     try {
+      const openAIPlugin = await ctx.runQuery(
+        internal.system.plugins.getByOrganizationIdAndService,
+        {
+          organizationId: session.organizationId,
+          service: "openai_realtime",
+        }
+      )
+      const secretValue = openAIPlugin?.secretValue
       const node = getNode(session.definition, args.nodeId)
       const data = isRecord(node?.data) ? node!.data! : {}
       const type = asString(node?.type)
@@ -243,11 +130,11 @@ export const runNode = internalAction({
 
       if (type === "kbSearch") {
         const query = buildKbQuery(data, variables)
-        assistantText = await searchKnowledgeBase(
-          ctx,
-          session.organizationId,
-          query
-        )
+        assistantText = await searchKnowledgeBase(ctx, {
+          organizationId: session.organizationId,
+          query,
+          secretValue,
+        })
         outputVariable = getOutputVariableKey(data, "kbAnswer")
         sendMessage = asBoolean(data.sendAsMessage, true)
       } else {
@@ -263,6 +150,7 @@ export const runNode = internalAction({
           variables,
           useKnowledgeBase,
           chatModel: OPENAI_CHAT_MODEL,
+          secretValue,
         })
       }
 

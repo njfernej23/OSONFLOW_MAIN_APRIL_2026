@@ -14,18 +14,21 @@ import {
   getNodeMap,
   getStartNodeId,
   isAiNodeType,
-  isPassThroughNodeType,
+  isBlockNodeType,
   isRecord,
+  getBlockSteps,
   matchChoice,
   normalizeButtons,
   renderTemplate,
   stripHtml,
+  type JsonRecord,
   type RuntimeVariables,
   type WaitingMode,
   type WorkflowDefinition,
 } from "../lib/workflowEngine"
 
 const MAX_TRACE_EVENTS = 80
+const MAX_COMPONENT_DEPTH = 5
 
 type TraceLevel =
   | "info"
@@ -74,6 +77,21 @@ const getPublishedDefinition = (
   }
 
   return workflow.publishedDefinition as WorkflowDefinition
+}
+
+/**
+ * The graph a session is currently inside. Inside a component this is the
+ * child workflow, not the one the conversation started on.
+ */
+const getActiveDefinition = async (
+  ctx: any,
+  session: Doc<"workflowSessions">
+): Promise<WorkflowDefinition | null> => {
+  const workflow = await ctx.db.get(
+    session.activeWorkflowId ?? session.workflowId
+  )
+
+  return workflow ? getPublishedDefinition(workflow) : null
 }
 
 const getActiveWorkflow = async (
@@ -130,6 +148,13 @@ const clearWaitState = () => ({
   pendingCaptureKey: undefined as string | undefined,
   pendingPrompt: undefined as string | undefined,
   pendingAiNodeId: null as string | null,
+  pendingApiNodeId: null as string | null,
+  pendingActionKind: undefined as
+    | "api"
+    | "javascript"
+    | "tool"
+    | "function"
+    | undefined,
 })
 
 const patchSession = async (
@@ -189,10 +214,8 @@ const formatCardMessage = (
   data: Record<string, unknown>,
   variables: RuntimeVariables
 ) => {
-  const title = stripHtml(renderTemplate(asString(data.title), variables))
-  const description = stripHtml(
-    renderTemplate(asString(data.description), variables)
-  )
+  const title = renderTemplate(stripHtml(asString(data.title)), variables)
+  const description = renderTemplate(stripHtml(asString(data.description)), variables)
   const url = renderTemplate(asString(data.url), variables).trim()
   const parts = [title, description, url ? `Image: ${url}` : ""]
     .map((part) => part.trim())
@@ -201,12 +224,44 @@ const formatCardMessage = (
   return parts.join("\n\n")
 }
 
+const formatCarouselMessage = (
+  data: JsonRecord,
+  variables: RuntimeVariables
+) => {
+  const cards = Array.isArray(data.cards) ? data.cards : []
+  const intro = renderTemplate(stripHtml(asString(data.description)), variables)
+  const blocks = cards
+    .filter(isRecord)
+    .map((card: JsonRecord, index: number) => {
+      const title =
+        renderTemplate(stripHtml(asString(card.title)), variables) ||
+        `Option ${index + 1}`
+      const description = renderTemplate(stripHtml(asString(card.description)), variables)
+      const url = renderTemplate(asString(card.url), variables).trim()
+
+      return [title, description, url ? `Image: ${url}` : ""]
+        .filter(Boolean)
+        .join("\n")
+    })
+    .filter(Boolean)
+
+  return [intro, ...blocks].filter(Boolean).join("\n\n")
+}
+
+const getCarouselButtons = (data: JsonRecord) => {
+  const cards = Array.isArray(data.cards) ? data.cards : []
+
+  return cards
+    .filter(isRecord)
+    .flatMap((card: JsonRecord) => normalizeButtons(card.buttons))
+}
+
 const formatImageMessage = (
   data: Record<string, unknown>,
   variables: RuntimeVariables
 ) => {
   const url = renderTemplate(asString(data.url), variables).trim()
-  const alt = stripHtml(renderTemplate(asString(data.alt), variables))
+  const alt = renderTemplate(stripHtml(asString(data.alt)), variables)
 
   if (!url) {
     return alt || ""
@@ -228,12 +283,21 @@ const executeFromNode = async (
     session: Doc<"workflowSessions">
     definition: WorkflowDefinition
     startNodeId: string | null
+    startStepIndex?: number
     variables: RuntimeVariables
   }
 ): Promise<ExecuteResult> => {
-  const nodeMap = getNodeMap(args.definition)
-  const edgesBySource = getEdgesBySource(args.definition)
+  // The walk can move between workflows: a Component block pushes a frame and
+  // continues in the child graph, so the definition is not fixed for the call.
+  let currentDefinition = args.definition
+  let nodeMap = getNodeMap(currentDefinition)
+  let edgesBySource = getEdgesBySource(currentDefinition)
+  let callStack = [...(args.session.callStack ?? [])]
+  let activeWorkflowId: Id<"workflows"> =
+    args.session.activeWorkflowId ?? args.session.workflowId
   let currentNodeId = args.startNodeId
+  /** Position inside the current Block; always 0 for standalone nodes. */
+  let currentStepIndex = args.startStepIndex ?? 0
   let variables = { ...args.variables }
   let steps = 0
   let assistantMessagesSent = 0
@@ -254,13 +318,65 @@ const executeFromNode = async (
       record(event)
     }
     await ctx.db.patch(args.session._id, {
+      callStack,
+      activeWorkflowId,
+      pendingStepIndex: currentStepIndex,
       ...patch,
       executionTrace: traceBuffer,
       updatedAt: Date.now(),
     })
   }
 
-  while (currentNodeId) {
+  while (true) {
+    if (!currentNodeId) {
+      if (callStack.length === 0) {
+        break
+      }
+
+      // The child graph ran out of steps: return to the caller and continue
+      // past its Component block.
+      const frame = callStack[callStack.length - 1]!
+      callStack = callStack.slice(0, -1)
+
+      const parentWorkflow = await ctx.db.get(frame.workflowId)
+      const parentDefinition = parentWorkflow
+        ? getPublishedDefinition(parentWorkflow)
+        : null
+
+      if (!parentDefinition) {
+        record({
+          level: "error",
+          nodeId: frame.returnNodeId,
+          title: "Component caller is unavailable",
+        })
+        break
+      }
+
+      currentDefinition = parentDefinition
+      nodeMap = getNodeMap(currentDefinition)
+      edgesBySource = getEdgesBySource(currentDefinition)
+      activeWorkflowId = frame.workflowId
+
+      record({
+        level: "info",
+        nodeId: frame.returnNodeId,
+        title: "Returned from component",
+      })
+
+      const returnNode = nodeMap.get(frame.returnNodeId)
+
+      if (isBlockNodeType(asString(returnNode?.type))) {
+        // The Component was a step inside a block: carry on with the block.
+        currentNodeId = frame.returnNodeId
+        currentStepIndex = (frame.returnStepIndex ?? 0) + 1
+      } else {
+        currentNodeId = getNextNodeId(edgesBySource, frame.returnNodeId)
+        currentStepIndex = 0
+      }
+
+      continue
+    }
+
     steps += 1
 
     if (steps > MAX_STEPS_PER_TURN) {
@@ -308,14 +424,52 @@ const executeFromNode = async (
       return { handled: true, assistantMessagesSent }
     }
 
-    const data = isRecord(node.data) ? node.data : {}
-    const type = asString(node.type).trim() || asString(data.label).trim().toLowerCase()
+    const nodeData = isRecord(node.data) ? node.data : {}
+    const nodeType = asString(node.type).trim()
+
+    // A Block holds an ordered step list and is wired as a single unit; every
+    // other node is one step in itself.
+    const blockSteps = isBlockNodeType(nodeType)
+      ? getBlockSteps(nodeData)
+      : null
+
+    if (blockSteps && currentStepIndex >= blockSteps.length) {
+      // Ran off the end of the block: leave by the block's own edge.
+      currentNodeId = getNextNodeId(edgesBySource, node.id)
+      currentStepIndex = 0
+      continue
+    }
+
+    const blockStep = blockSteps ? blockSteps[currentStepIndex]! : null
+    const data = blockStep ? blockStep.data : nodeData
+    const type = blockStep
+      ? blockStep.type
+      : nodeType || asString(data.label).trim().toLowerCase()
+
+    /** Continue inside the block, or follow the node's outgoing edge. */
+    const advance = () => {
+      if (blockSteps) {
+        currentStepIndex += 1
+      } else {
+        currentNodeId = getNextNodeId(edgesBySource, node.id)
+      }
+    }
+
+    /**
+     * Leave by a named port. Branching steps are always last in a block, so
+     * this exits the block rather than continuing inside it.
+     */
+    const advanceVia = (handle: string) => {
+      currentNodeId = getNextNodeId(edgesBySource, node.id, handle)
+      currentStepIndex = 0
+    }
 
     record({
       level: "step",
       nodeId: node.id,
       nodeType: type,
       title: `Enter ${type || "step"}`,
+      detail: blockSteps ? `Block step ${currentStepIndex + 1}` : undefined,
     })
 
     switch (type) {
@@ -326,12 +480,12 @@ const executeFromNode = async (
           nodeType: type,
           title: "Workflow started",
         })
-        currentNodeId = getNextNodeId(edgesBySource, node.id)
+        advance()
         break
       }
 
       case "message": {
-        const text = stripHtml(renderTemplate(asString(data.text), variables))
+        const text = renderTemplate(stripHtml(asString(data.text)), variables)
 
         if (await saveAssistantMessage(ctx, args.conversation.threadId, text)) {
           assistantMessagesSent += 1
@@ -344,7 +498,7 @@ const executeFromNode = async (
           title: "Sent message",
           detail: text.slice(0, 160) || "(empty)",
         })
-        currentNodeId = getNextNodeId(edgesBySource, node.id)
+        advance()
         break
       }
 
@@ -362,7 +516,7 @@ const executeFromNode = async (
           title: text ? "Sent image" : "Image missing URL",
           detail: text.slice(0, 160) || undefined,
         })
-        currentNodeId = getNextNodeId(edgesBySource, node.id)
+        advance()
         break
       }
 
@@ -380,7 +534,7 @@ const executeFromNode = async (
           })
         }
 
-        currentNodeId = getNextNodeId(edgesBySource, node.id)
+        advance()
         break
       }
 
@@ -394,7 +548,7 @@ const executeFromNode = async (
           title: `Branch → ${handle}`,
           detail: `${asString(data.key)} ${asString(data.operator) || "equals"} ${asString(data.value)}`,
         })
-        currentNodeId = getNextNodeId(edgesBySource, node.id, handle)
+        advanceVia(handle)
         break
       }
 
@@ -423,7 +577,7 @@ const executeFromNode = async (
         }
 
         if (buttons.length === 0) {
-          currentNodeId = getNextNodeId(edgesBySource, node.id)
+          advance()
           break
         }
 
@@ -453,9 +607,7 @@ const executeFromNode = async (
 
       case "choice": {
         const choices = normalizeButtons(data.choices ?? data.buttons)
-        const prompt = stripHtml(
-          renderTemplate(asString(data.prompt), variables)
-        )
+        const prompt = renderTemplate(stripHtml(asString(data.prompt)), variables)
 
         if (
           prompt &&
@@ -465,7 +617,7 @@ const executeFromNode = async (
         }
 
         if (choices.length === 0) {
-          currentNodeId = getNextNodeId(edgesBySource, node.id)
+          advance()
           break
         }
 
@@ -494,9 +646,7 @@ const executeFromNode = async (
       }
 
       case "capture": {
-        const prompt = stripHtml(
-          renderTemplate(asString(data.prompt), variables)
-        )
+        const prompt = renderTemplate(stripHtml(asString(data.prompt)), variables)
 
         if (
           prompt &&
@@ -530,13 +680,8 @@ const executeFromNode = async (
       }
 
       case "callForward": {
-        const message = stripHtml(
-          renderTemplate(
-            asString(data.description) ||
-              "Connecting you with a human operator now.",
-            variables
-          )
-        )
+        const message = renderTemplate(stripHtml(asString(data.description) ||
+              "Connecting you with a human operator now."), variables)
 
         if (
           await saveAssistantMessage(ctx, args.conversation.threadId, message)
@@ -567,9 +712,7 @@ const executeFromNode = async (
       }
 
       case "end": {
-        const endMessage = stripHtml(
-          renderTemplate(asString(data.description), variables)
-        )
+        const endMessage = renderTemplate(stripHtml(asString(data.description)), variables)
 
         if (
           await saveAssistantMessage(
@@ -599,6 +742,301 @@ const executeFromNode = async (
         )
         await markConversationResolvedByWorkflow(ctx, args.conversation)
         return { handled: true, assistantMessagesSent }
+      }
+
+      case "carousel": {
+        const text = formatCarouselMessage(data, variables)
+        const buttons = getCarouselButtons(data)
+
+        if (await saveAssistantMessage(ctx, args.conversation.threadId, text)) {
+          assistantMessagesSent += 1
+        }
+
+        record({
+          level: "info",
+          nodeId: node.id,
+          nodeType: type,
+          title: "Showed carousel",
+          detail: `${(Array.isArray(data.cards) ? data.cards : []).length} card(s)`,
+        })
+
+        if (buttons.length === 0) {
+          advance()
+          break
+        }
+
+        await flushPatch(
+          {
+            status: "waiting",
+            currentNodeId: node.id,
+            pendingNodeId: node.id,
+            pendingButtons: buttons,
+            waitingMode: "buttons",
+            pendingCaptureKey: undefined,
+            pendingPrompt: undefined,
+            pendingAiNodeId: null,
+            variables,
+          },
+          {
+            level: "wait",
+            nodeId: node.id,
+            nodeType: type,
+            title: "Waiting for carousel button",
+            detail: buttons
+              .map((button: { label: string }) => button.label)
+              .join(" · "),
+          }
+        )
+
+        return { handled: true, assistantMessagesSent }
+      }
+
+      case "customAction": {
+        const actionName =
+          renderTemplate(asString(data.actionName), variables).trim() ||
+          "custom_action"
+        const rawPayload = renderTemplate(asString(data.payload), variables)
+
+        let payload: unknown = rawPayload
+
+        if (rawPayload.trim()) {
+          try {
+            payload = JSON.parse(rawPayload)
+          } catch {
+            // Not JSON — forward the interpolated string as-is.
+          }
+        } else {
+          payload = {}
+        }
+
+        await ctx.runMutation(
+          (internal as any).system.integrationWebhooks.dispatchEvent,
+          {
+            organizationId: args.conversation.organizationId,
+            eventType: "workflow.action",
+            payload: {
+              action: actionName,
+              data: payload,
+              conversationId: args.conversation._id,
+              threadId: args.conversation.threadId,
+              nodeId: node.id,
+            },
+          }
+        )
+
+        record({
+          level: "info",
+          nodeId: node.id,
+          nodeType: type,
+          title: `Dispatched ${actionName}`,
+          detail: rawPayload.slice(0, 160) || undefined,
+        })
+
+        advance()
+        break
+      }
+
+      case "component": {
+        const targetId = asString(data.workflowId).trim()
+        const componentFailure = (detail: string) => {
+          record({
+            level: "error",
+            nodeId: node.id,
+            nodeType: type,
+            title: "Component skipped",
+            detail,
+          })
+        }
+
+        if (!targetId) {
+          componentFailure("No workflow is selected for this component.")
+          advance()
+          break
+        }
+
+        if (callStack.length >= MAX_COMPONENT_DEPTH) {
+          componentFailure(
+            `Component nesting is capped at ${MAX_COMPONENT_DEPTH} levels.`
+          )
+          advance()
+          break
+        }
+
+        const wouldRecurse =
+          targetId === activeWorkflowId ||
+          callStack.some((frame) => frame.workflowId === targetId)
+
+        if (wouldRecurse) {
+          componentFailure("That component is already running (recursion).")
+          advance()
+          break
+        }
+
+        const childWorkflow = await ctx.db.get(
+          targetId as Id<"workflows">
+        )
+
+        if (
+          !childWorkflow ||
+          childWorkflow.organizationId !== args.conversation.organizationId
+        ) {
+          componentFailure("That component workflow no longer exists.")
+          advance()
+          break
+        }
+
+        const childDefinition = getPublishedDefinition(childWorkflow)
+
+        if (!childDefinition) {
+          componentFailure(
+            `"${childWorkflow.name}" has never been published, so it has no runnable version.`
+          )
+          advance()
+          break
+        }
+
+        const childStartId = getStartNodeId(childDefinition)
+
+        if (!childStartId) {
+          componentFailure(`"${childWorkflow.name}" has no Start block.`)
+          advance()
+          break
+        }
+
+        // Inputs are plain variable assignments: the child shares the parent's
+        // variable scope, which keeps {{templates}} working across the call.
+        const inputs = Array.isArray(data.inputs) ? data.inputs : []
+
+        for (const input of inputs) {
+          if (!isRecord(input)) {
+            continue
+          }
+
+          const name = asString(input.name).trim()
+
+          if (name) {
+            variables[name] = renderTemplate(asString(input.value), variables)
+          }
+        }
+
+        callStack = [
+          ...callStack,
+          {
+            workflowId: activeWorkflowId,
+            returnNodeId: node.id,
+            returnStepIndex: currentStepIndex,
+          },
+        ]
+        activeWorkflowId = childWorkflow._id
+        currentDefinition = childDefinition
+        nodeMap = getNodeMap(currentDefinition)
+        edgesBySource = getEdgesBySource(currentDefinition)
+
+        record({
+          level: "info",
+          nodeId: node.id,
+          nodeType: type,
+          title: `Entering component ${childWorkflow.name}`,
+        })
+
+        currentNodeId = childStartId
+        break
+      }
+
+      case "tool": {
+        await flushPatch(
+          {
+            status: "active",
+            currentNodeId: node.id,
+            ...clearWaitState(),
+            pendingApiNodeId: node.id,
+            pendingActionKind: "tool",
+            variables,
+          },
+          {
+            level: "step",
+            nodeId: node.id,
+            nodeType: type,
+            title: "Running tool",
+            detail: asString(data.toolName) || undefined,
+          }
+        )
+
+        await ctx.scheduler.runAfter(
+          0,
+          internal.system.workflowToolSteps.runNode,
+          {
+            sessionId: args.session._id,
+            conversationId: args.conversation._id,
+            nodeId: node.id,
+          }
+        )
+
+        return { handled: true, assistantMessagesSent, awaitingAi: true }
+      }
+
+      case "function":
+      case "javascript": {
+        await flushPatch(
+          {
+            status: "active",
+            currentNodeId: node.id,
+            ...clearWaitState(),
+            pendingApiNodeId: node.id,
+            pendingActionKind: type === "function" ? "function" : "javascript",
+            variables,
+          },
+          {
+            level: "step",
+            nodeId: node.id,
+            nodeType: type,
+            title: type === "function" ? "Running function" : "Running JavaScript",
+          }
+        )
+
+        await ctx.scheduler.runAfter(
+          0,
+          internal.system.workflowJsSteps.runNode,
+          {
+            sessionId: args.session._id,
+            conversationId: args.conversation._id,
+            nodeId: node.id,
+          }
+        )
+
+        return { handled: true, assistantMessagesSent, awaitingAi: true }
+      }
+
+      case "api": {
+        await flushPatch(
+          {
+            status: "active",
+            currentNodeId: node.id,
+            ...clearWaitState(),
+            pendingApiNodeId: node.id,
+            pendingActionKind: "api",
+            variables,
+          },
+          {
+            level: "step",
+            nodeId: node.id,
+            nodeType: type,
+            title: "Calling API",
+            detail: asString(data.url) || undefined,
+          }
+        )
+
+        await ctx.scheduler.runAfter(
+          0,
+          internal.system.workflowApiSteps.runNode,
+          {
+            sessionId: args.session._id,
+            conversationId: args.conversation._id,
+            nodeId: node.id,
+          }
+        )
+
+        return { handled: true, assistantMessagesSent, awaitingAi: true }
       }
 
       default: {
@@ -669,37 +1107,6 @@ const executeFromNode = async (
             assistantMessagesSent,
             awaitingAi: true,
           }
-        }
-
-        if (isPassThroughNodeType(type)) {
-          if (type === "carousel") {
-            const note = stripHtml(
-              renderTemplate(
-                asString(data.description) || "Here are a few options:",
-                variables
-              )
-            )
-            if (
-              note &&
-              (await saveAssistantMessage(
-                ctx,
-                args.conversation.threadId,
-                note
-              ))
-            ) {
-              assistantMessagesSent += 1
-            }
-          }
-
-          record({
-            level: "warn",
-            nodeId: node.id,
-            nodeType: type,
-            title: `${type} stub`,
-            detail: "Pass-through until integration is wired.",
-          })
-          currentNodeId = getNextNodeId(edgesBySource, node.id)
-          break
         }
 
         await saveAssistantMessage(
@@ -851,7 +1258,7 @@ export const continueAfterAi = internalMutation({
     }
 
     const workflow = await ctx.db.get(session.workflowId)
-    const definition = workflow ? getPublishedDefinition(workflow) : null
+    const definition = await getActiveDefinition(ctx, session)
 
     if (!workflow || !definition) {
       return { handled: false, assistantMessagesSent: 0 }
@@ -881,10 +1288,14 @@ export const continueAfterAi = internalMutation({
       variables.lastAiResponse = storedValue
     }
 
-    const nextNodeId = getNextNodeId(
-      getEdgesBySource(definition),
-      args.nodeId
-    )
+    const aiNode = getNodeMap(definition).get(args.nodeId)
+    const aiInBlock = isBlockNodeType(asString(aiNode?.type))
+    // An AI step never branches, so inside a block the run continues with the
+    // next step rather than leaving through an edge.
+    const nextNodeId = aiInBlock
+      ? args.nodeId
+      : getNextNodeId(getEdgesBySource(definition), args.nodeId)
+    const nextStepIndex = aiInBlock ? (session.pendingStepIndex ?? 0) + 1 : 0
 
     await patchSession(
       ctx,
@@ -908,6 +1319,7 @@ export const continueAfterAi = internalMutation({
       session: updatedSession,
       definition,
       startNodeId: nextNodeId,
+      startStepIndex: nextStepIndex,
       variables,
     })
 
@@ -960,13 +1372,13 @@ export const handleUserMessage = internalMutation({
       return { handled: false }
     }
 
-    // AI step is still generating — ignore concurrent user messages briefly.
-    if (session.pendingAiNodeId) {
+    // An out-of-band step is still running — ignore concurrent user messages.
+    if (session.pendingAiNodeId || session.pendingApiNodeId) {
       return { handled: true }
     }
 
     const workflow = await ctx.db.get(session.workflowId)
-    const definition = workflow ? getPublishedDefinition(workflow) : null
+    const definition = await getActiveDefinition(ctx, session)
 
     if (!workflow || !definition) {
       return { handled: false }
@@ -1020,9 +1432,17 @@ export const handleUserMessage = internalMutation({
 
     let variables: RuntimeVariables = baseVariables
     let nextNodeId: string | null = null
+    let nextStepIndex = 0
     const edgesBySource = getEdgesBySource(definition)
     const pendingNode = getNodeMap(definition).get(session.pendingNodeId)
-    const pendingData = isRecord(pendingNode?.data) ? pendingNode!.data! : {}
+    const pendingNodeData = isRecord(pendingNode?.data) ? pendingNode!.data! : {}
+    // Inside a block the waiting step is the one that owns the pending state.
+    const pendingBlockStep = isBlockNodeType(asString(pendingNode?.type))
+      ? getBlockSteps(pendingNodeData)[session.pendingStepIndex ?? 0]
+      : undefined
+    const pendingData = pendingBlockStep?.data ?? pendingNodeData
+
+    const pendingInBlock = isBlockNodeType(asString(pendingNode?.type))
 
     if (waitingMode === "capture" || waitingMode === "ai_turn") {
       const key =
@@ -1033,10 +1453,18 @@ export const handleUserMessage = internalMutation({
         [key]: prompt,
         ...(waitingMode === "ai_turn" ? { __aiTurnReady: "1" } : {}),
       }
-      nextNodeId =
-        waitingMode === "ai_turn"
-          ? session.pendingNodeId
-          : getNextNodeId(edgesBySource, session.pendingNodeId)
+
+      if (waitingMode === "ai_turn") {
+        // Re-enter the same AI step now that the user has spoken.
+        nextNodeId = session.pendingNodeId
+        nextStepIndex = session.pendingStepIndex ?? 0
+      } else if (pendingInBlock) {
+        // Capture is not terminal: carry on with the next step of the block.
+        nextNodeId = session.pendingNodeId
+        nextStepIndex = (session.pendingStepIndex ?? 0) + 1
+      } else {
+        nextNodeId = getNextNodeId(edgesBySource, session.pendingNodeId)
+      }
     } else if (waitingMode === "choice") {
       const choices = normalizeButtons(
         pendingData.choices ?? pendingButtons
@@ -1138,6 +1566,7 @@ export const handleUserMessage = internalMutation({
       session: updatedSession,
       definition,
       startNodeId: nextNodeId,
+      startStepIndex: nextStepIndex,
       variables,
     })
 
@@ -1184,3 +1613,108 @@ export const handleUserMessage = internalMutation({
   },
 })
 
+export const continueAfterAction = internalMutation({
+  args: {
+    sessionId: v.id("workflowSessions"),
+    conversationId: v.id("conversations"),
+    nodeId: v.string(),
+    kind: v.union(
+      v.literal("api"),
+      v.literal("javascript"),
+      v.literal("tool"),
+      v.literal("function")
+    ),
+    ok: v.boolean(),
+    status: v.number(),
+    resultVariables: v.any(),
+    /** Explicit port to leave by; falls back to success/fail when absent. */
+    handle: v.optional(v.string()),
+    /** Human-readable name of that port, for the trace. */
+    handleLabel: v.optional(v.string()),
+    error: v.optional(v.string()),
+  },
+  returns: v.object({
+    handled: v.boolean(),
+    assistantMessagesSent: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const conversation = await ctx.db.get(args.conversationId)
+    const session = await ctx.db.get(args.sessionId)
+
+    if (!conversation || !session || session.status === "ended") {
+      return { handled: false, assistantMessagesSent: 0 }
+    }
+
+    if (session.pendingApiNodeId && session.pendingApiNodeId !== args.nodeId) {
+      return { handled: false, assistantMessagesSent: 0 }
+    }
+
+    const workflow = await ctx.db.get(session.workflowId)
+    const definition = await getActiveDefinition(ctx, session)
+
+    if (!workflow || !definition) {
+      return { handled: false, assistantMessagesSent: 0 }
+    }
+
+    const variables: RuntimeVariables = {
+      ...((isRecord(session.variables)
+        ? session.variables
+        : {}) as RuntimeVariables),
+      ...((isRecord(args.resultVariables)
+        ? args.resultVariables
+        : {}) as RuntimeVariables),
+    }
+
+    const handle = args.handle ?? (args.ok ? "success" : "fail")
+    const nextNodeId = getNextNodeId(
+      getEdgesBySource(definition),
+      args.nodeId,
+      handle
+    )
+
+    await patchSession(
+      ctx,
+      session._id,
+      {
+        status: "active",
+        ...clearWaitState(),
+        variables,
+      },
+      {
+        level: args.ok ? "branch" : "warn",
+        nodeId: args.nodeId,
+        title:
+          args.kind === "api"
+            ? `API ${handle} (${args.status})`
+            : args.kind === "function"
+              ? `Function → ${args.handleLabel ?? handle}`
+              : `${args.kind} ${handle}`,
+        detail: args.error,
+      }
+    )
+
+    const updatedSession = (await ctx.db.get(session._id))!
+    const result = await executeFromNode(ctx, {
+      conversation,
+      session: updatedSession,
+      definition,
+      startNodeId: nextNodeId,
+      variables,
+    })
+
+    if (result.assistantMessagesSent > 0) {
+      await ctx.runMutation(
+        internal.system.conversations.touchAssistantMessage,
+        {
+          conversationId: conversation._id,
+          timestamp: Date.now(),
+        }
+      )
+    }
+
+    return {
+      handled: true,
+      assistantMessagesSent: result.assistantMessagesSent,
+    }
+  },
+})

@@ -1,13 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import { useConvex, usePaginatedQuery, useQuery } from "convex/react"
 import {
+  ArrowUpRightIcon,
+  ClockIcon,
   DownloadIcon,
-  ExternalLinkIcon,
+  GlobeIcon,
+  LinkIcon,
   MailIcon,
-  SearchIcon,
+  MessagesSquareIcon,
+  PhoneIcon,
   SparklesIcon,
   UserPlusIcon,
   UsersIcon,
@@ -16,10 +20,7 @@ import { toast } from "sonner"
 
 import { api } from "@workspace/backend/_generated/api"
 import type { Id } from "@workspace/backend/_generated/dataModel"
-import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
-import { Input } from "@workspace/ui/components/input"
-import { Skeleton } from "@workspace/ui/components/skeleton"
 import {
   Tabs,
   TabsContent,
@@ -33,6 +34,23 @@ import {
   formatCsvTimestamp,
   stringifyCsvRows,
 } from "../lib/conversation-export"
+import {
+  ConsoleHeader,
+  ConsoleMeta,
+  ConsolePage,
+  ConsoleSearch,
+  ConsoleSkeleton,
+  consoleTabsListClass,
+  consoleTabsTriggerClass,
+  EmptyState,
+  Panel,
+  PanelHeader,
+  Pill,
+  Stat,
+  StatGrid,
+  TabCount,
+  type ConsoleTone,
+} from "../components/console"
 
 const LEADS_EXPORT_LIMIT = 5000
 
@@ -55,14 +73,37 @@ type LeadRecord = {
   isNewcomer: boolean
 }
 
+const CHANNEL_TONES: Record<string, ConsoleTone> = {
+  Widget: "accent",
+  Voice: "info",
+  Telegram: "info",
+  WhatsApp: "positive",
+  Instagram: "critical",
+}
+
 const formatDate = (timestamp: number) =>
   new Intl.DateTimeFormat(undefined, {
     month: "short",
     day: "numeric",
     year: "numeric",
+  }).format(timestamp)
+
+const formatTime = (timestamp: number) =>
+  new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
     minute: "2-digit",
   }).format(timestamp)
+
+const initialsOf = (name: string, email: string) => {
+  const source = name?.trim() || email?.trim() || "?"
+  const parts = source.split(/[\s@._-]+/).filter(Boolean)
+
+  if (parts.length >= 2) {
+    return `${parts[0]![0]}${parts[1]![0]}`.toUpperCase()
+  }
+
+  return source.slice(0, 2).toUpperCase()
+}
 
 const buildLeadsCsv = (leads: LeadRecord[]) => {
   const rows = [
@@ -101,81 +142,177 @@ const buildLeadsCsv = (leads: LeadRecord[]) => {
   return stringifyCsvRows(rows)
 }
 
-const StatTile = ({
-  label,
-  value,
-  tone = "default",
+/** Hairline bar showing how leads split across the connected channels. */
+const ChannelSplit = ({
+  counts,
+  total,
 }: {
-  label: string
-  value: string | number
-  tone?: "default" | "green" | "blue"
-}) => (
-  <div className="surface-frosted rounded-[18px] px-4 py-3.5">
-    <p className="text-xs font-medium text-muted-foreground">{label}</p>
-    <p
-      className={cn(
-        "mt-1 text-2xl font-semibold",
-        tone === "green" && "text-emerald-600 dark:text-emerald-400",
-        tone === "blue" && "text-sky-600 dark:text-sky-400"
-      )}
-    >
-      {value}
-    </p>
+  counts: Record<string, number>
+  total: number
+}) => {
+  const segments = useMemo(
+    () =>
+      (
+        [
+          ["Widget", "widget", "console-series-1"],
+          ["Voice", "voice", "console-series-2"],
+          ["Telegram", "telegram", "console-series-3"],
+          ["WhatsApp", "whatsapp", "console-series-4"],
+          ["Instagram", "instagram", "console-series-5"],
+          ["Other", "web", "console-series-6"],
+        ] as const
+      )
+        .map(([label, key, series]) => ({
+          label,
+          series,
+          count: counts[key] ?? 0,
+        }))
+        .filter((segment) => segment.count > 0),
+    [counts]
+  )
+
+  if (!segments.length) {
+    return null
+  }
+
+  return (
+    <Panel>
+      <PanelHeader
+        description="Where the people in this list first reached you."
+        icon={GlobeIcon}
+        title="Channel mix"
+      />
+      <div className="px-4 py-4 sm:px-5">
+        <div className="console-stack w-full">
+          {segments.map((segment) => (
+            <div
+              className={segment.series}
+              key={segment.label}
+              style={{ width: `${(segment.count / total) * 100}%` }}
+              title={`${segment.label}: ${segment.count}`}
+            />
+          ))}
+        </div>
+        <div className="mt-3.5 flex flex-wrap gap-x-5 gap-y-2">
+          {segments.map((segment) => (
+            <span
+              className="flex items-center gap-2 text-xs"
+              key={segment.label}
+            >
+              <span aria-hidden className={cn("console-dot", segment.series)} />
+              <span className="text-muted-foreground">{segment.label}</span>
+              <span className="console-numeral text-xs">{segment.count}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </Panel>
+  )
+}
+
+/** One template for the header and every row, so columns cannot drift apart. */
+const LEAD_COLUMNS =
+  "md:grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
+
+const LeadTableHead = () => (
+  <div
+    className={cn(
+      "hidden border-b border-[var(--console-hairline-soft)] px-4 py-2.5 sm:px-5 md:grid md:items-center md:gap-4",
+      LEAD_COLUMNS
+    )}
+  >
+    <span className="console-label">Lead</span>
+    <span className="console-label">Channel</span>
+    <span className="console-label">Activity</span>
+    <span className="console-label text-right">Chat</span>
   </div>
 )
 
 const LeadRow = ({ lead }: { lead: LeadRecord }) => {
-  const secondaryLine =
-    lead.socialHandle ?? lead.phone ?? lead.referrer ?? lead.currentUrl
+  const contactLine = lead.socialHandle ?? lead.phone
+  const sourceLine = lead.currentUrl ?? lead.referrer
 
   return (
-    <article className="surface-frosted rounded-[18px] px-4 py-4 sm:px-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-sm font-semibold text-foreground">
-              {lead.name}
+    <article
+      className={cn(
+        "console-row grid grid-cols-1 gap-3 border-b border-[var(--console-hairline-soft)] px-4 py-3.5 last:border-b-0 sm:px-5 md:items-center md:gap-4",
+        LEAD_COLUMNS
+      )}
+    >
+      {/* identity */}
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="console-medallion console-numeral size-9 shrink-0 text-[0.7rem]">
+          {initialsOf(lead.name, lead.email)}
+        </span>
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-2">
+            <h3 className="truncate text-sm font-medium text-foreground">
+              {lead.name || "Unnamed visitor"}
             </h3>
-            <Badge variant="outline">{lead.channel}</Badge>
             {lead.isNewcomer ? (
-              <Badge className="bg-emerald-500/12 text-emerald-700 hover:bg-emerald-500/12 dark:text-emerald-300">
-                Newcomer
-              </Badge>
+              <span
+                aria-label="Newcomer"
+                className="console-dot console-tone-positive shrink-0"
+              />
             ) : null}
           </div>
-
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <MailIcon className="size-3.5" />
-              {lead.email}
-            </span>
-            {secondaryLine ? (
-              <span className="truncate">{secondaryLine}</span>
-            ) : null}
+          <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+            <MailIcon className="size-3 shrink-0" />
+            <span className="truncate">{lead.email}</span>
           </div>
-
-          <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-            <span>First seen {formatDate(lead.firstSeenAt)}</span>
-            {lead.timezone ? <span>{lead.timezone}</span> : null}
-            {lead.language ? <span>{lead.language}</span> : null}
-          </div>
-        </div>
-
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <Badge variant="secondary">
-            {lead.conversationCount}{" "}
-            {lead.conversationCount === 1 ? "chat" : "chats"}
-          </Badge>
-          {lead.latestConversationId ? (
-            <Button asChild size="sm" variant="outline">
-              <Link href={`/conversations/${lead.latestConversationId}`}>
-                Open chat
-                <ExternalLinkIcon data-icon="inline-end" />
-              </Link>
-            </Button>
-          ) : null}
         </div>
       </div>
+
+      {/* channel + contact */}
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+        <Pill tone={CHANNEL_TONES[lead.channel] ?? "neutral"}>
+          {lead.channel}
+        </Pill>
+        {contactLine ? (
+          <Pill icon={lead.phone ? PhoneIcon : LinkIcon}>{contactLine}</Pill>
+        ) : null}
+      </div>
+
+      {/* activity */}
+      <div className="flex min-w-0 flex-col gap-1">
+        <span className="flex items-center gap-1.5 text-xs text-foreground">
+          <MessagesSquareIcon className="size-3 shrink-0 text-muted-foreground" />
+          <span className="console-numeral text-xs">
+            {lead.conversationCount}
+          </span>
+          <span className="text-muted-foreground">
+            {lead.conversationCount === 1 ? "chat" : "chats"}
+          </span>
+        </span>
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <ClockIcon className="size-3 shrink-0" />
+          <span className="truncate">
+            {formatDate(lead.firstSeenAt)} · {formatTime(lead.firstSeenAt)}
+          </span>
+        </span>
+      </div>
+
+      {/* action */}
+      <div className="flex shrink-0 items-center justify-start md:justify-end">
+        {lead.latestConversationId ? (
+          <Button asChild size="sm" variant="ghost">
+            <Link href={`/conversations/${lead.latestConversationId}`}>
+              Open
+              <ArrowUpRightIcon data-icon="inline-end" />
+            </Link>
+          </Button>
+        ) : (
+          <span className="px-2 text-xs text-muted-foreground/70">
+            No chat yet
+          </span>
+        )}
+      </div>
+
+      {sourceLine ? (
+        <p className="col-span-full truncate text-[0.7rem] text-muted-foreground/70">
+          {sourceLine}
+        </p>
+      ) : null}
     </article>
   )
 }
@@ -232,7 +369,7 @@ export const LeadsView = () => {
       }
 
       const csv = buildLeadsCsv(exportLeads)
-      const blob = new Blob(["\uFEFF", csv], {
+      const blob = new Blob(["﻿", csv], {
         type: "text/csv;charset=utf-8",
       })
       const url = URL.createObjectURL(blob)
@@ -254,142 +391,165 @@ export const LeadsView = () => {
   }
 
   if (summary === undefined || leads.results === undefined) {
-    return (
-      <div className="h-full overflow-auto p-4 sm:p-6">
-        <div className="mx-auto flex min-w-0 w-full max-w-7xl flex-col gap-4">
-          <Skeleton className="h-24 rounded-2xl" />
-          <div className="grid min-w-0 gap-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <Skeleton key={index} className="h-28 rounded-2xl" />
-            ))}
-          </div>
-        </div>
-      </div>
-    )
+    return <ConsoleSkeleton />
   }
 
+  const engagementRate = summary.totalLeads
+    ? Math.round((summary.withConversationsCount / summary.totalLeads) * 100)
+    : 0
+
   return (
-    <div className="h-full overflow-auto p-3 sm:p-5">
-      <div className="mx-auto flex min-w-0 w-full max-w-7xl flex-col gap-4">
-        <section className="surface-frosted rounded-[18px] px-3.5 py-4 sm:rounded-[22px] sm:px-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                <span className="inline-flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <UserPlusIcon className="size-4" />
-                </span>
-                <span className="font-medium">Chat signups and newcomers</span>
-                <span className="hidden text-muted-foreground/50 sm:inline">
-                  /
-                </span>
-                <span>{summary.totalLeads} leads captured</span>
-              </div>
-              <h1 className="mt-3 text-xl font-semibold text-foreground sm:text-3xl">
-                Leads
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                See everyone who shared contact details through your widget,
-                Telegram, WhatsApp, Instagram, or other chat channels. Download
-                the list for follow-up.
-              </p>
-            </div>
+    <ConsolePage>
+      <ConsoleHeader
+        actions={
+          <>
+            <ConsoleSearch
+              className="w-full sm:w-72"
+              onChange={setSearchQuery}
+              placeholder="Search name, email, channel, page"
+              value={searchQuery}
+            />
+            <Button
+              disabled={isExporting}
+              onClick={handleDownloadCsv}
+              variant="outline"
+            >
+              <DownloadIcon data-icon="inline-start" />
+              {isExporting ? "Exporting…" : "Export CSV"}
+            </Button>
+          </>
+        }
+        description="Everyone who shared contact details through your widget, voice line, or a connected messaging channel — ready for follow-up."
+        eyebrow="Customer support"
+        icon={UserPlusIcon}
+        meta={
+          <>
+            <ConsoleMeta label="Captured" value={summary.totalLeads} />
+            <ConsoleMeta
+              dot
+              label="New this week"
+              tone="positive"
+              value={summary.newcomerCount}
+            />
+            <ConsoleMeta label="Engaged" value={`${engagementRate}%`} />
+          </>
+        }
+        title="Leads"
+      />
 
-            <div className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row">
-              <div className="relative min-w-0 flex-1">
-                <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  className="pl-9"
-                  placeholder="Search name, email, channel, or page"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                />
-              </div>
-              <Button
-                disabled={isExporting}
-                onClick={handleDownloadCsv}
-                variant="outline"
-                className="w-full shrink-0 sm:w-auto"
-              >
-                <DownloadIcon data-icon="inline-start" />
-                {isExporting ? "Exporting..." : "Download CSV"}
-              </Button>
-            </div>
-          </div>
-        </section>
+      <StatGrid>
+        <Stat
+          hint="Unique contacts captured across every channel"
+          icon={UsersIcon}
+          label="Total leads"
+          value={summary.totalLeads}
+        />
+        <Stat
+          hint="First seen in the last 7 days"
+          icon={SparklesIcon}
+          label="Newcomers"
+          tone="positive"
+          value={summary.newcomerCount}
+        />
+        <Stat
+          hint={`${engagementRate}% of all captured leads`}
+          icon={MessagesSquareIcon}
+          label="Started a chat"
+          progress={engagementRate}
+          tone="info"
+          value={summary.withConversationsCount}
+        />
+        <Stat
+          hint="Captured by the on-site chat widget"
+          icon={GlobeIcon}
+          label="Widget leads"
+          tone="accent"
+          value={summary.channelCounts.widget}
+        />
+      </StatGrid>
 
-        <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-          <StatTile label="Total leads" value={summary.totalLeads} />
-          <StatTile
-            label="Newcomers (7d)"
-            value={summary.newcomerCount}
-            tone="green"
-          />
-          <StatTile
-            label="Started a chat"
-            value={summary.withConversationsCount}
-            tone="blue"
-          />
-          <StatTile
-            label="Widget leads"
-            value={summary.channelCounts.widget}
-          />
-        </section>
+      {summary.totalLeads > 0 ? (
+        <ChannelSplit
+          counts={summary.channelCounts}
+          total={summary.totalLeads}
+        />
+      ) : null}
 
-        <Tabs
-          value={activeTab}
-          onValueChange={(value) => setActiveTab(value as LeadTab)}
-        >
-          <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-muted/40 p-1">
-            <TabsTrigger value="all" className="gap-1.5">
-              <UsersIcon className="size-3.5" />
-              All leads
-            </TabsTrigger>
-            <TabsTrigger value="newcomers" className="gap-1.5">
-              <SparklesIcon className="size-3.5" />
-              Newcomers
-              {summary.newcomerCount > 0 ? (
-                <Badge variant="secondary" className="ml-1">
-                  {summary.newcomerCount}
-                </Badge>
-              ) : null}
-            </TabsTrigger>
-            <TabsTrigger value="with_chats" className="gap-1.5">
-              With chats
-              {summary.withConversationsCount > 0 ? (
-                <Badge variant="secondary" className="ml-1">
-                  {summary.withConversationsCount}
-                </Badge>
-              ) : null}
-            </TabsTrigger>
-          </TabsList>
+      <Tabs
+        onValueChange={(value) => setActiveTab(value as LeadTab)}
+        value={activeTab}
+      >
+        <TabsList className={consoleTabsListClass}>
+          <TabsTrigger className={consoleTabsTriggerClass} value="all">
+            <UsersIcon />
+            All leads
+            <TabCount>{summary.totalLeads}</TabCount>
+          </TabsTrigger>
+          <TabsTrigger className={consoleTabsTriggerClass} value="newcomers">
+            <SparklesIcon />
+            Newcomers
+            <TabCount tone={summary.newcomerCount ? "positive" : "neutral"}>
+              {summary.newcomerCount}
+            </TabCount>
+          </TabsTrigger>
+          <TabsTrigger className={consoleTabsTriggerClass} value="with_chats">
+            <MessagesSquareIcon />
+            With chats
+            <TabCount>{summary.withConversationsCount}</TabCount>
+          </TabsTrigger>
+        </TabsList>
 
-          <TabsContent value={activeTab} className="mt-4 space-y-3">
+        <TabsContent className="mt-1" value={activeTab}>
+          <Panel>
+            <PanelHeader
+              actions={
+                <Pill>
+                  {visibleLeads.length}
+                  {canLoadMore ? "+" : ""} shown
+                </Pill>
+              }
+              description={
+                normalizedSearchQuery
+                  ? `Matching “${normalizedSearchQuery}”`
+                  : "Sorted by most recently captured."
+              }
+              title={
+                activeTab === "newcomers"
+                  ? "Newcomers"
+                  : activeTab === "with_chats"
+                    ? "Leads with conversations"
+                    : "All leads"
+              }
+            />
+
             {visibleLeads.length === 0 && !isLoadingFirstPage ? (
-              <div className="surface-frosted rounded-[18px] px-5 py-10 text-center">
-                <UserPlusIcon className="mx-auto size-8 text-muted-foreground/60" />
-                <p className="mt-3 text-sm font-medium text-foreground">
-                  No leads yet
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Leads appear when visitors share contact details in your chat
-                  widget or connected channels.
-                </p>
-              </div>
+              <EmptyState
+                description={
+                  normalizedSearchQuery
+                    ? "No lead matches that search. Try a different name, email, or channel."
+                    : "Leads appear here as soon as visitors share contact details in your chat widget or a connected channel."
+                }
+                icon={UserPlusIcon}
+                title="No leads yet"
+              />
             ) : (
-              visibleLeads.map((lead) => (
-                <LeadRow key={lead.contactSessionId} lead={lead} />
-              ))
+              <div>
+                <LeadTableHead />
+                {visibleLeads.map((lead) => (
+                  <LeadRow key={lead.contactSessionId} lead={lead} />
+                ))}
+              </div>
             )}
 
             <InfiniteScrollTrigger
-              ref={topElementRef}
               canLoadMore={canLoadMore}
               isLoadingMore={isLoadingMore}
               onLoadMore={handleLoadMore}
+              ref={topElementRef}
             />
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
+          </Panel>
+        </TabsContent>
+      </Tabs>
+    </ConsolePage>
   )
 }

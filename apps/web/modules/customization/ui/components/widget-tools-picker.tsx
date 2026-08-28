@@ -74,7 +74,7 @@ export const WidgetToolsPicker = ({ value, onChange }: WidgetToolsPickerProps) =
 
   if (tools === undefined) {
     return (
-      <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/10 px-4 py-6 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/10 px-4 py-6 text-sm text-muted-foreground">
         <Loader2Icon className="size-4 animate-spin" />
         Loading assistant tools...
       </div>
@@ -83,7 +83,7 @@ export const WidgetToolsPicker = ({ value, onChange }: WidgetToolsPickerProps) =
 
   if (chatTools.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-border/70 bg-muted/10 px-4 py-5 text-sm text-muted-foreground">
+      <div className="rounded-2xl border border-dashed border-[var(--console-hairline-soft)] bg-muted/10 px-4 py-5 text-sm text-muted-foreground">
         No chat-enabled tools found. Configure tools in Assistant Tools first, then
         choose which ones this widget can use.
       </div>
@@ -91,7 +91,7 @@ export const WidgetToolsPicker = ({ value, onChange }: WidgetToolsPickerProps) =
   }
 
   return (
-    <div className="space-y-3 rounded-2xl border border-border/70 bg-muted/10 p-4">
+    <div className="space-y-3 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/10 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium">Assistant tools</p>
@@ -120,7 +120,7 @@ export const WidgetToolsPicker = ({ value, onChange }: WidgetToolsPickerProps) =
                 "flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition-colors",
                 checked
                   ? "border-primary/30 bg-primary/5"
-                  : "border-border/60 bg-background/60"
+                  : "border-[var(--console-hairline-soft)] bg-card"
               )}
             >
               <Checkbox

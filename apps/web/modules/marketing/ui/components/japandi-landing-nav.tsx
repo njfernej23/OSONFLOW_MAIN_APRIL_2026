@@ -5,6 +5,7 @@ import { UserButton, useOrganization, useUser } from "@clerk/nextjs"
 import { AnimatePresence, motion } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 
 import { LanguageSwitcher } from "@/components/i18n/language-switcher"
 import { appPath } from "@/lib/urls"
@@ -16,6 +17,20 @@ const NAV_LINKS = [
   { href: "#pricing", label: "Pricing" },
   { href: "#faq", label: "Resources" },
 ] as const
+
+// The nav points at sections of the landing page. On a secondary page (privacy,
+// terms, 404) a bare "#pricing" resolves to nothing, so the links are made
+// absolute there. On "/" they stay bare hashes, leaving the existing
+// smooth-scroll behaviour untouched.
+const useNavLinks = () => {
+  const pathname = usePathname()
+  const isLanding = pathname === "/"
+
+  return NAV_LINKS.map((item) => ({
+    ...item,
+    href: isLanding ? item.href : "/" + item.href,
+  }))
+}
 
 function SignedOutNav({
   mobile = false,
@@ -117,6 +132,7 @@ function NavAuthActions({
 }
 
 export const JapandiLandingNav = () => {
+  const navLinks = useNavLinks()
   const [isOpen, setIsOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
 
@@ -164,7 +180,7 @@ export const JapandiLandingNav = () => {
 
             <nav aria-label="Primary" className="nav__links">
               <div className="nav__menu" id="navMenu">
-                {NAV_LINKS.map((item) => (
+                {navLinks.map((item) => (
                   <Link href={item.href} key={item.href}>
                     {item.label}
                   </Link>
@@ -215,7 +231,7 @@ export const JapandiLandingNav = () => {
               initial={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
             >
-              {NAV_LINKS.map((item) => (
+              {navLinks.map((item) => (
                 <Link
                   href={item.href}
                   key={item.href}

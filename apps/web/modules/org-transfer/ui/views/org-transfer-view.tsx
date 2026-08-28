@@ -34,6 +34,10 @@ import Link from "next/link"
 import { useRef, useState } from "react"
 import { toast } from "sonner"
 import { copyTextToClipboard } from "@/lib/clipboard"
+import {
+  ConsoleHeader,
+  ConsolePage,
+} from "@/modules/dashboard/ui/components/console"
 
 type ExportSummary = {
   widgetSettings: boolean
@@ -289,24 +293,13 @@ export const OrgTransferView = () => {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 sm:p-6">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-primary">
-          <ArrowLeftRightIcon className="size-5" />
-          <p className="text-sm font-semibold tracking-[0.12em] uppercase">
-            Data transfer
-          </p>
-        </div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Copy organization setup
-        </h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          Export this organization&apos;s configuration before switching Convex
-          environments or paste it into another Clerk organization. This includes
-          widget customization, knowledge base sources, saved replies, workflows,
-          integration keys, and outbound webhooks.
-        </p>
-      </div>
+    <ConsolePage width="narrow" className="max-w-5xl">
+      <ConsoleHeader
+        description="Export this organization's configuration before switching Convex environments, or paste it into another Clerk organization. Covers widget customization, knowledge base sources, saved replies, workflows, integration keys, and outbound webhooks."
+        eyebrow="Data transfer"
+        icon={ArrowLeftRightIcon}
+        title="Copy organization setup"
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
@@ -325,8 +318,8 @@ export const OrgTransferView = () => {
             </ul>
 
             {lastExportSummary ? (
-              <div className="rounded-xl border border-border/70 bg-muted/30 p-3 text-sm">
-                <p className="font-medium">Last export</p>
+              <div className="console-inset p-3 text-sm">
+                <p className="console-label">Last export</p>
                 <p className="mt-1 text-muted-foreground">
                   {formatSummaryLines(lastExportSummary).join(" · ") ||
                     "No organization data found"}
@@ -414,7 +407,7 @@ export const OrgTransferView = () => {
           </DialogHeader>
 
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-border/70 p-3">
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--console-hairline-soft)] p-3">
               <div>
                 <Label htmlFor="publish-widget-settings">
                   Publish widget settings after import
@@ -430,7 +423,7 @@ export const OrgTransferView = () => {
               />
             </div>
 
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-border/70 p-3">
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--console-hairline-soft)] p-3">
               <div>
                 <Label htmlFor="replace-knowledge-base">
                   Replace existing knowledge base
@@ -473,6 +466,6 @@ export const OrgTransferView = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </ConsolePage>
   )
 }

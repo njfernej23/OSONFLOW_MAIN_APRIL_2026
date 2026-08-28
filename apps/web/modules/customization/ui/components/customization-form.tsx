@@ -10,7 +10,6 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import {
-  CheckCircle2Icon,
   ChevronRightIcon,
   ClipboardCopyIcon,
   ClipboardPasteIcon,
@@ -647,8 +646,8 @@ const RichArticleEditor = ({
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-input bg-background/70">
-      <div className="flex flex-wrap items-center gap-1 border-b border-border/70 bg-muted/30 p-1.5">
+    <div className="overflow-hidden rounded-lg border border-input bg-card">
+      <div className="flex flex-wrap items-center gap-1 border-b border-[var(--console-hairline-soft)] bg-muted/35 p-1.5">
         {richTextFormats.map((format) => {
           const Icon = format.icon
           return (
@@ -743,7 +742,7 @@ const HelpTopicEditor = ({
     `helpTopics.${topicIndex}.excerpt` as Path<FormSchema>
 
   return (
-    <div className="space-y-4 rounded-2xl border border-border/70 bg-muted/10 p-4">
+    <div className="space-y-4 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/10 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-background text-xs font-semibold text-muted-foreground">
@@ -776,7 +775,7 @@ const HelpTopicEditor = ({
             <FormControl>
               <Input
                 {...field}
-                className="bg-background/70"
+                className="bg-card"
                 placeholder="Getting started"
                 value={typeof field.value === "string" ? field.value : ""}
               />
@@ -795,7 +794,7 @@ const HelpTopicEditor = ({
             <FormControl>
               <Textarea
                 {...field}
-                className="resize-none bg-background/70"
+                className="resize-none bg-card"
                 placeholder="Short preview shown on the Home card"
                 rows={2}
                 value={typeof field.value === "string" ? field.value : ""}
@@ -806,7 +805,7 @@ const HelpTopicEditor = ({
         )}
       />
 
-      <div className="space-y-3 border-t border-border/70 pt-4">
+      <div className="space-y-3 border-t border-[var(--console-hairline-soft)] pt-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold text-muted-foreground">
@@ -841,7 +840,7 @@ const HelpTopicEditor = ({
 
           return (
             <div
-              className="space-y-3 rounded-xl border border-border/60 bg-background/55 p-3"
+              className="space-y-3 rounded-xl border border-[var(--console-hairline-soft)] bg-background/55 p-3"
               key={articleField.id}
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -871,7 +870,7 @@ const HelpTopicEditor = ({
                     <FormControl>
                       <Input
                         {...field}
-                        className="bg-background/70"
+                        className="bg-card"
                         placeholder="When should I set my date?"
                         value={
                           typeof field.value === "string" ? field.value : ""
@@ -894,7 +893,7 @@ const HelpTopicEditor = ({
                     <FormControl>
                       <Textarea
                         {...field}
-                        className="resize-none bg-background/70"
+                        className="resize-none bg-card"
                         placeholder="Short summary shown in the topic article list"
                         rows={2}
                         value={
@@ -1262,92 +1261,70 @@ export const CustomizationForm = ({
           value={activeTab}
           onValueChange={setActiveTab}
         >
-          <aside className="surface-sidebar animate-enter min-w-0 rounded-[22px] p-3 xl:sticky xl:top-4">
+          <aside className="console-card animate-enter min-w-0 p-3 xl:sticky xl:top-4">
             <div className="px-1 py-1">
-              <p className="text-[10px] font-semibold tracking-[0.12em] text-sidebar-foreground/46 uppercase">
-                Builder
-              </p>
-              <h2 className="mt-1 text-base font-semibold text-sidebar-foreground">
-                Widget settings
-              </h2>
-              <p className="mt-1 text-xs leading-relaxed text-sidebar-foreground/58">
-                Configure behavior, brand, launcher, and voice in one place.
+              <p className="console-eyebrow">Builder</p>
+              <h2 className="console-section-title mt-1.5">Widget settings</h2>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                Behavior, brand, launcher, and voice in one place.
               </p>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-xl border border-sidebar-border/70 bg-sidebar-accent/55">
-              <div className="border-r border-sidebar-border/70 px-3 py-2">
-                <p className="text-[10px] font-medium text-sidebar-foreground/48 uppercase">
-                  Live
-                </p>
-                <p className="mt-0.5 text-sm font-semibold tabular-nums">
+            <div className="console-inset mt-3 grid grid-cols-2 divide-x divide-[var(--console-hairline-soft)] overflow-hidden">
+              <div className="px-3 py-2">
+                <p className="console-label">Live</p>
+                <p className="console-numeral mt-1 text-sm">
                   v{publishedVersion}
                 </p>
               </div>
               <div className="px-3 py-2">
-                <p className="text-[10px] font-medium text-sidebar-foreground/48 uppercase">
-                  Draft
-                </p>
-                <p className="mt-0.5 text-sm font-semibold">
+                <p className="console-label">Draft</p>
+                <p className="mt-1 flex items-center gap-1.5 text-sm font-medium">
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "console-dot",
+                      isDraftDifferentFromPublished
+                        ? "console-tone-warning"
+                        : "console-tone-positive"
+                    )}
+                  />
                   {isDraftDifferentFromPublished ? "Changed" : "Current"}
                 </p>
               </div>
             </div>
 
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              <Badge className="gap-1.5 text-xs" variant="secondary">
-                <CheckCircle2Icon className="size-3" />
-                Published
-              </Badge>
-              <Badge
-                className="gap-1.5 text-xs"
-                variant={isDraftDifferentFromPublished ? "default" : "outline"}
-              >
-                {isDraftDifferentFromPublished ? (
-                  <>
-                    <span className="inline-block size-1.5 animate-pulse rounded-full bg-amber-400" />
-                    Unpublished
-                  </>
-                ) : (
-                  <>
-                    <span className="inline-block size-1.5 rounded-full bg-green-400" />
-                    Up to date
-                  </>
-                )}
-              </Badge>
-            </div>
-
-            <TabsList className="mt-4 grid h-auto w-full grid-cols-2 gap-1 rounded-2xl border border-sidebar-border/70 bg-sidebar/58 p-1 xl:flex xl:flex-col">
+            <TabsList className="console-segment mt-3 grid h-auto w-full grid-cols-2 gap-1 xl:flex xl:flex-col">
               <TabsTrigger
-                className="h-10 justify-start rounded-xl px-3 text-xs data-[state=active]:bg-sidebar-primary data-[state=active]:text-sidebar-primary-foreground data-[state=active]:shadow-sm"
+                className="console-segment-item h-9 justify-start border border-transparent px-3 text-xs font-medium data-active:bg-card data-active:shadow-none dark:data-active:bg-card"
                 value="chat"
               >
                 <MessageSquareTextIcon className="size-3.5" />
                 Chat
               </TabsTrigger>
               <TabsTrigger
-                className="h-10 justify-start rounded-xl px-3 text-xs data-[state=active]:bg-sidebar-primary data-[state=active]:text-sidebar-primary-foreground data-[state=active]:shadow-sm"
+                className="console-segment-item h-9 justify-start border border-transparent px-3 text-xs font-medium data-active:bg-card data-active:shadow-none dark:data-active:bg-card"
                 value="help"
               >
                 <FileTextIcon className="size-3.5" />
                 Help Center
               </TabsTrigger>
               <TabsTrigger
-                className="h-10 justify-start rounded-xl px-3 text-xs data-[state=active]:bg-sidebar-primary data-[state=active]:text-sidebar-primary-foreground data-[state=active]:shadow-sm"
+                className="console-segment-item h-9 justify-start border border-transparent px-3 text-xs font-medium data-active:bg-card data-active:shadow-none dark:data-active:bg-card"
                 value="brand"
               >
                 <PaletteIcon className="size-3.5" />
                 Brand Kit
               </TabsTrigger>
               <TabsTrigger
-                className="h-10 justify-start rounded-xl px-3 text-xs data-[state=active]:bg-sidebar-primary data-[state=active]:text-sidebar-primary-foreground data-[state=active]:shadow-sm"
+                className="console-segment-item h-9 justify-start border border-transparent px-3 text-xs font-medium data-active:bg-card data-active:shadow-none dark:data-active:bg-card"
                 value="appearance"
               >
                 <SparklesIcon className="size-3.5" />
                 Appearance
               </TabsTrigger>
               <TabsTrigger
-                className="h-10 justify-start rounded-xl px-3 text-xs data-[state=active]:bg-sidebar-primary data-[state=active]:text-sidebar-primary-foreground data-[state=active]:shadow-sm"
+                className="console-segment-item h-9 justify-start border border-transparent px-3 text-xs font-medium data-active:bg-card data-active:shadow-none dark:data-active:bg-card"
                 value="voice"
               >
                 <MicIcon className="size-3.5" />
@@ -1355,24 +1332,24 @@ export const CustomizationForm = ({
               </TabsTrigger>
             </TabsList>
 
-            <div className="mt-4 space-y-3 rounded-2xl border border-sidebar-border/70 bg-sidebar/58 p-3">
+            <div className="console-inset mt-3 space-y-3 p-3">
               <div className="flex items-center gap-2">
-                <ClockIcon className="size-3.5 text-sidebar-foreground/50" />
-                <p className="text-xs font-semibold text-sidebar-foreground">
+                <ClockIcon className="size-3.5 text-muted-foreground" />
+                <p className="text-xs font-semibold text-foreground">
                   Release
                 </p>
               </div>
               <div className="grid gap-2 text-xs">
-                <div className="rounded-lg bg-sidebar-accent/60 px-2.5 py-2">
-                  <p className="text-[10px] font-medium text-sidebar-foreground/46 uppercase">
+                <div className="console-inset px-2.5 py-2">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase">
                     Last published
                   </p>
                   <p className="mt-0.5 truncate font-medium">
                     {formatRelativeTime(publishedAt)}
                   </p>
                 </div>
-                <div className="rounded-lg bg-sidebar-accent/60 px-2.5 py-2">
-                  <p className="text-[10px] font-medium text-sidebar-foreground/46 uppercase">
+                <div className="console-inset px-2.5 py-2">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase">
                     Draft saved
                   </p>
                   <p className="mt-0.5 truncate font-medium">
@@ -1382,10 +1359,10 @@ export const CustomizationForm = ({
               </div>
             </div>
 
-            <div className="mt-3 space-y-2 rounded-2xl border border-sidebar-border/70 bg-sidebar/58 p-3">
+            <div className="mt-3 space-y-2 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/35 p-3">
               <div className="flex items-center gap-2">
-                <RotateCcwIcon className="size-3.5 text-sidebar-foreground/50" />
-                <p className="text-xs font-semibold text-sidebar-foreground">
+                <RotateCcwIcon className="size-3.5 text-muted-foreground" />
+                <p className="text-xs font-semibold text-foreground">
                   Rollback
                 </p>
               </div>
@@ -1394,7 +1371,7 @@ export const CustomizationForm = ({
                 onValueChange={setSelectedRollbackVersion}
                 value={selectedRollbackVersion}
               >
-                <SelectTrigger className="h-9 w-full border-sidebar-border/70 bg-sidebar-accent/70 text-xs">
+                <SelectTrigger className="h-9 w-full border-[var(--console-hairline-soft)] bg-muted/55 text-xs">
                   <SelectValue placeholder="Select version" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1417,20 +1394,20 @@ export const CustomizationForm = ({
                 {isRollingBack ? "Rolling back..." : "Rollback"}
               </Button>
               {rollbackCandidates.length === 0 ? (
-                <p className="text-[11px] text-sidebar-foreground/55">
+                <p className="text-[11px] text-muted-foreground">
                   Publish an update to enable rollback.
                 </p>
               ) : null}
             </div>
 
-            <div className="mt-3 space-y-2 rounded-2xl border border-sidebar-border/70 bg-sidebar/58 p-3">
+            <div className="mt-3 space-y-2 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/35 p-3">
               <div className="flex items-center gap-2">
-                <ClipboardCopyIcon className="size-3.5 text-sidebar-foreground/50" />
-                <p className="text-xs font-semibold text-sidebar-foreground">
+                <ClipboardCopyIcon className="size-3.5 text-muted-foreground" />
+                <p className="text-xs font-semibold text-foreground">
                   Transfer
                 </p>
               </div>
-              <p className="text-[11px] leading-relaxed text-sidebar-foreground/55">
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
                 Copy settings from this org and paste them into another org or
                 environment. For knowledge base, workflows, and API keys, use{" "}
                 <a className="underline" href="/org-transfer">
@@ -1465,8 +1442,8 @@ export const CustomizationForm = ({
             </div>
 
             {recentVersions.length > 0 ? (
-              <div className="mt-3 space-y-2 rounded-2xl border border-sidebar-border/70 bg-sidebar/58 p-3">
-                <p className="text-[10px] font-semibold tracking-[0.1em] text-sidebar-foreground/50 uppercase">
+              <div className="mt-3 space-y-2 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/35 p-3">
+                <p className="text-[10px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
                   Version history
                 </p>
                 <div className="space-y-1.5">
@@ -1475,8 +1452,8 @@ export const CustomizationForm = ({
                       className={cn(
                         "rounded-lg border px-2.5 py-2",
                         version.version === publishedVersion
-                          ? "border-sidebar-primary/25 bg-sidebar-primary/10"
-                          : "border-sidebar-border/60 bg-sidebar-accent/45"
+                          ? "border-[var(--console-hairline)] bg-muted/60"
+                          : "border-[var(--console-hairline-soft)] bg-muted/35"
                       )}
                       key={version.version}
                     >
@@ -1484,11 +1461,11 @@ export const CustomizationForm = ({
                         <span className="font-mono text-[11px] font-semibold">
                           v{version.version}
                         </span>
-                        <span className="truncate text-[10px] text-sidebar-foreground/48">
+                        <span className="truncate text-[10px] text-muted-foreground">
                           {formatRelativeTime(version.publishedAt)}
                         </span>
                       </div>
-                      <p className="mt-0.5 truncate text-[11px] text-sidebar-foreground/58">
+                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                         {describeVersionAction(version)}
                       </p>
                     </div>
@@ -1499,31 +1476,26 @@ export const CustomizationForm = ({
           </aside>
 
           <main className="animate-enter min-w-0 space-y-4">
-            <section className="surface-panel overflow-hidden rounded-[22px] shadow-sm">
-              <div className="flex items-start justify-between gap-3 border-b border-border/70 bg-background/62 px-4 py-4 sm:px-5">
+            <section className="console-card overflow-hidden">
+              <div className="flex items-start justify-between gap-3 border-b border-[var(--console-hairline-soft)] px-4 py-4 sm:px-5">
                 <div className="flex min-w-0 items-start gap-3">
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background shadow-sm">
-                    <SettingsIcon className="size-4 text-muted-foreground" />
-                  </div>
+                  <span className="console-medallion size-9 shrink-0">
+                    <SettingsIcon className="size-4" />
+                  </span>
                   <div className="min-w-0">
-                    <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                      Editor
-                    </p>
-                    <h3 className="mt-1 text-base font-semibold text-foreground">
+                    <p className="console-eyebrow">Editor</p>
+                    <h3 className="console-section-title mt-1.5">
                       Widget configuration
                     </h3>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Update the customer-facing widget without changing embed
                       code.
                     </p>
                   </div>
                 </div>
-                <Badge
-                  className="hidden text-xs sm:inline-flex"
-                  variant="outline"
-                >
+                <span className="console-label hidden shrink-0 sm:block">
                   Auto-save on
-                </Badge>
+                </span>
               </div>
 
               <div className="p-4 sm:p-5">
@@ -1542,7 +1514,7 @@ export const CustomizationForm = ({
                         <FormControl>
                           <Textarea
                             {...field}
-                            className="resize-none bg-muted/20"
+                            className="resize-none bg-muted/35"
                             placeholder="Welcome message shown when chat opens"
                             rows={3}
                           />
@@ -1589,7 +1561,7 @@ export const CustomizationForm = ({
                             value={field.value}
                           >
                             <FormControl>
-                              <SelectTrigger className="h-11 w-full bg-muted/20 px-3">
+                              <SelectTrigger className="h-11 w-full bg-muted/35 px-3">
                                 <SelectValue placeholder="Select a chat model">
                                   {selectedModel?.label}
                                 </SelectValue>
@@ -1633,7 +1605,7 @@ export const CustomizationForm = ({
                     control={form.control}
                     name="appearance.showChatHistoryDownload"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between gap-4 rounded-2xl border border-border/70 bg-muted/10 px-4 py-3.5">
+                      <FormItem className="flex flex-row items-center justify-between gap-4 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/10 px-4 py-3.5">
                         <div className="flex min-w-0 flex-col gap-1">
                           <FormLabel className="text-sm font-semibold">
                             Chat History Download
@@ -1664,7 +1636,7 @@ export const CustomizationForm = ({
                         <FormControl>
                           <Textarea
                             {...field}
-                            className="min-h-[220px] bg-muted/20 font-mono text-xs"
+                            className="min-h-[220px] bg-muted/35 font-mono text-xs"
                             placeholder="Set the assistant's default behavior and rules"
                             value={field.value ?? ""}
                           />
@@ -1741,7 +1713,7 @@ export const CustomizationForm = ({
                           name={suggestionField.name}
                           render={({ field }) => (
                             <FormItem>
-                              <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/10 px-3 py-2.5">
+                              <div className="flex items-center gap-3 rounded-xl border border-[var(--console-hairline-soft)] bg-muted/10 px-3 py-2.5">
                                 <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-background text-xs font-medium text-muted-foreground">
                                   {index + 1}
                                 </div>
@@ -1783,7 +1755,7 @@ export const CustomizationForm = ({
                     control={form.control}
                     name="appearance.showHelpCenter"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between gap-4 rounded-2xl border border-border/70 bg-muted/10 px-4 py-3.5">
+                      <FormItem className="flex flex-row items-center justify-between gap-4 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/10 px-4 py-3.5">
                         <div className="flex min-w-0 flex-col gap-1">
                           <FormLabel className="text-sm font-semibold">
                             Show Help Center in widget
@@ -1803,7 +1775,7 @@ export const CustomizationForm = ({
                     )}
                   />
 
-                  <div className="space-y-3 rounded-2xl border border-border/70 bg-muted/10 p-4">
+                  <div className="space-y-3 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/10 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold">Home cards</p>
@@ -1841,7 +1813,7 @@ export const CustomizationForm = ({
 
                           return (
                             <div
-                              className="grid gap-3 rounded-xl border border-border/60 bg-background/60 p-3 md:grid-cols-[1fr_1fr_auto]"
+                              className="grid gap-3 rounded-xl border border-[var(--console-hairline-soft)] bg-card p-3 md:grid-cols-[1fr_1fr_auto]"
                               key={homeCard.id}
                             >
                               <FormField
@@ -1867,7 +1839,7 @@ export const CustomizationForm = ({
                                       value={String(field.value ?? 0)}
                                     >
                                       <FormControl>
-                                        <SelectTrigger className="bg-background/80">
+                                        <SelectTrigger className="bg-card">
                                           <SelectValue />
                                         </SelectTrigger>
                                       </FormControl>
@@ -1905,7 +1877,7 @@ export const CustomizationForm = ({
                                       value={String(field.value ?? 0)}
                                     >
                                       <FormControl>
-                                        <SelectTrigger className="bg-background/80">
+                                        <SelectTrigger className="bg-card">
                                           <SelectValue />
                                         </SelectTrigger>
                                       </FormControl>
@@ -1947,7 +1919,7 @@ export const CustomizationForm = ({
                         })}
                       </div>
                     ) : (
-                      <div className="rounded-xl border border-dashed border-border/80 bg-background/50 px-4 py-5 text-center">
+                      <div className="rounded-xl border border-dashed border-[var(--console-hairline-soft)] bg-background/50 px-4 py-5 text-center">
                         <p className="text-sm font-medium">
                           Help Center is removed
                         </p>
@@ -1958,7 +1930,7 @@ export const CustomizationForm = ({
                     )}
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/70 bg-muted/10 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/10 p-3">
                     <div>
                       <p className="text-xs font-semibold">
                         {helpTopicsArray.fields.length} topic
@@ -2004,7 +1976,7 @@ export const CustomizationForm = ({
                       ))}
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-dashed border-border/80 bg-muted/10 px-5 py-8 text-center">
+                    <div className="rounded-2xl border border-dashed border-[var(--console-hairline-soft)] bg-muted/10 px-5 py-8 text-center">
                       <p className="text-sm font-semibold">
                         No help topics or articles
                       </p>
@@ -2066,7 +2038,7 @@ export const CustomizationForm = ({
                         <FormControl>
                           <Input
                             {...field}
-                            className="bg-muted/20"
+                            className="bg-muted/35"
                             placeholder="Talk with us"
                           />
                         </FormControl>
@@ -2095,19 +2067,18 @@ export const CustomizationForm = ({
             </div>
 
             <div className="sticky bottom-0 z-10 sm:bottom-4">
-              <div className="surface-frosted flex flex-wrap items-center justify-between gap-3 rounded-[22px] border-0 px-4 py-3 sm:px-5">
+              <div className="console-card flex flex-wrap items-center justify-between gap-3 px-4 py-3 shadow-[var(--console-shadow-lift)] sm:px-5">
                 <div className="flex items-center gap-3">
                   {autoSaveStatus === "saving" ? (
                     <Loader2Icon className="size-3 animate-spin text-muted-foreground" />
                   ) : (
-                    <div
+                    <span
+                      aria-hidden
                       className={cn(
-                        "size-2.5 rounded-full transition-colors duration-300",
-                        autoSaveStatus === "saved"
-                          ? "bg-green-500"
-                          : form.formState.isDirty
-                            ? "animate-pulse bg-amber-400"
-                            : "bg-green-500"
+                        "console-dot",
+                        autoSaveStatus === "saved" || !form.formState.isDirty
+                          ? "console-tone-positive"
+                          : "console-tone-warning"
                       )}
                     />
                   )}

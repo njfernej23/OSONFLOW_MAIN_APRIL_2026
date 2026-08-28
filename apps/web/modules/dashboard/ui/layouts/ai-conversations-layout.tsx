@@ -21,7 +21,7 @@ export const AIConversationsLayout = ({
     const isDetailPage = pathname !== "/ai-conversations"
 
     return (
-      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="console-page flex h-full min-h-0 flex-1 flex-col overflow-hidden">
         {isDetailPage ? (
           <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
             {children}
@@ -37,7 +37,7 @@ export const AIConversationsLayout = ({
 
   return (
     <ResizablePanelGroup
-      className="h-full min-h-0 flex-1 gap-3 px-3 pt-3 pb-3"
+      className="console-page h-full min-h-0 flex-1 gap-3 p-3"
       orientation="horizontal"
     >
       <ResizablePanel
@@ -52,7 +52,7 @@ export const AIConversationsLayout = ({
       </ResizablePanel>
       <ResizableHandle
         withHandle
-        className="w-0 bg-transparent [&>div]:h-12 [&>div]:w-4 [&>div]:rounded-full [&>div]:border-border/70 [&>div]:bg-background/92 [&>div]:shadow-sm"
+        className="w-0 bg-transparent [&>div]:h-12 [&>div]:w-4 [&>div]:rounded-full [&>div]:border-[var(--console-hairline)] [&>div]:bg-card [&>div]:shadow-none"
       />
       <ResizablePanel
         id="ai-conversations-content"

@@ -64,9 +64,7 @@ const SESSION_FILTER_OPTIONS: Array<{
 const highlightMatch = (value: string | undefined, query: string) => {
   if (!value) {
     return (
-      <span className="text-sidebar-foreground/55 italic">
-        No transcript yet
-      </span>
+      <span className="text-muted-foreground/70 italic">No transcript yet</span>
     )
   }
 
@@ -122,7 +120,7 @@ const getProviderBadgeClassName = (provider: string) => {
   return (
     AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES[
       provider as keyof typeof AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES
-    ] ?? "border-sidebar-border bg-sidebar-accent/70 text-sidebar-foreground"
+    ] ?? "border-[var(--console-hairline)] bg-muted/60 text-foreground/80"
   )
 }
 
@@ -313,46 +311,34 @@ export const AIConversationsPanel = () => {
   }
 
   return (
-    <div className="surface-sidebar flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[22px] text-sidebar-foreground">
-      <div className="shrink-0 border-b border-sidebar-border/70 bg-sidebar/78 px-3 pt-4 pb-3 backdrop-blur-xl sm:px-4">
+    <div className="console-card flex h-full min-h-0 w-full flex-col overflow-hidden">
+      <div className="shrink-0 border-b border-[var(--console-hairline-soft)] px-3.5 pt-4 pb-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold tracking-[0.12em] text-sidebar-foreground/46 uppercase">
-              Inbox
-            </p>
-            <h2 className="mt-1 truncate text-[16px] font-semibold text-sidebar-foreground">
+            <p className="console-eyebrow">Voice inbox</p>
+            <h2 className="console-section-title mt-1.5 truncate text-[0.95rem]">
               AI voicechats
             </h2>
-            <p className="mt-0.5 truncate text-[12px] text-sidebar-foreground/58">
-              {summary.total} total, {summary.live} live
-            </p>
           </div>
 
-          <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-xl border border-sidebar-border/70 bg-sidebar-accent/55">
-            <div className="border-r border-sidebar-border/70 px-2.5 py-1.5 text-center">
-              <p className="text-[13px] font-semibold tabular-nums">
-                {summary.live}
-              </p>
-              <p className="text-[9px] font-medium text-sidebar-foreground/48 uppercase">
-                Live
-              </p>
-            </div>
-            <div className="px-2.5 py-1.5 text-center">
-              <p className="text-[13px] font-semibold tabular-nums">
-                {filteredConversations.length}
-              </p>
-              <p className="text-[9px] font-medium text-sidebar-foreground/48 uppercase">
-                Shown
-              </p>
-            </div>
-          </div>
+          <span className="flex shrink-0 items-center gap-1.5 text-xs">
+            <span
+              aria-hidden
+              className={cn(
+                "console-dot",
+                summary.live ? "console-tone-positive" : "console-tone-neutral"
+              )}
+            />
+            <span className="console-numeral text-xs">{summary.live}</span>
+            <span className="text-muted-foreground">live</span>
+          </span>
         </div>
 
         <div className="relative mt-3">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-sidebar-foreground/55" />
+          <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             aria-label="Search AI voicechats"
-            className="h-10 rounded-xl border border-sidebar-border/70 bg-sidebar-accent/70 pr-14 pl-9 text-sm text-sidebar-foreground shadow-none transition-all placeholder:text-sidebar-foreground/42 focus-visible:border-sidebar-ring focus-visible:bg-sidebar focus-visible:ring-0"
+            className="console-inset h-9 rounded-[10px] pr-14 pl-9 text-sm shadow-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40"
             onChange={(event) => setSearchQuery(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Escape" && searchQuery) {
@@ -379,36 +365,44 @@ export const AIConversationsPanel = () => {
                 size="icon"
                 type="button"
                 variant="ghost"
-                className="size-7 text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                className="size-7 text-muted-foreground hover:text-foreground"
               >
                 <XIcon className="size-3.5" />
                 <span className="sr-only">Clear search</span>
               </Button>
             ) : (
-              <Kbd className="hidden bg-sidebar-accent text-[10px] text-sidebar-foreground/70 md:inline-flex">
+              <Kbd className="hidden text-[10px] md:inline-flex">
                 ⌘K
               </Kbd>
             )}
           </div>
         </div>
 
-        <div className="-mx-0.5 mt-3 flex gap-1 overflow-x-auto px-0.5 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="console-segment mt-3 flex gap-1">
           {SESSION_FILTER_OPTIONS.map((option) => {
             const isActive = sessionFilter === option.value
+            const count =
+              option.value === "live"
+                ? summary.live
+                : option.value === "ended"
+                  ? summary.ended
+                  : summary.total
 
             return (
               <button
+                className={cn(
+                  "console-segment-item flex flex-1 items-center justify-center gap-1.5 border border-transparent px-2 py-1 text-[0.72rem] font-medium",
+                  isActive ? "text-foreground" : "text-muted-foreground"
+                )}
+                data-active={isActive || undefined}
                 key={option.value}
                 onClick={() => setSessionFilter(option.value)}
                 type="button"
-                className={cn(
-                  "flex shrink-0 items-center rounded-full px-2.5 py-1 text-[11px] font-medium transition-all duration-150",
-                  isActive
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-[0_14px_28px_-20px_color-mix(in_srgb,var(--sidebar-primary)_70%,transparent)]"
-                    : "bg-sidebar-accent/82 text-sidebar-foreground/72 hover:bg-sidebar-accent/94 hover:text-sidebar-accent-foreground"
-                )}
               >
                 {option.label}
+                <span className="console-numeral text-[0.68rem] text-muted-foreground">
+                  {count}
+                </span>
               </button>
             )
           })}
@@ -422,14 +416,14 @@ export const AIConversationsPanel = () => {
           <div className="p-2 sm:p-2.5">
             {!conversations.results.length && !normalizedSearchQuery ? (
               <div className="mx-auto mt-10 flex max-w-[220px] flex-col items-center gap-3 text-center">
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-sidebar-accent/70">
-                  <BotIcon className="size-5 text-sidebar-foreground/55" />
-                </div>
+                <span className="console-medallion size-12">
+                  <BotIcon className="size-5" />
+                </span>
                 <div>
-                  <p className="text-sm font-medium text-sidebar-foreground">
+                  <p className="text-sm font-medium text-foreground">
                     No AI voicechats yet
                   </p>
-                  <p className="mt-1 text-[12px] text-sidebar-foreground/60">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     OpenAI realtime and Gemini live transcripts will appear
                     here.
                   </p>
@@ -438,14 +432,14 @@ export const AIConversationsPanel = () => {
             ) : !hasSearchResults &&
               (normalizedSearchQuery || hasActiveFilters) ? (
               <div className="mx-auto mt-10 flex max-w-[220px] flex-col items-center gap-3 text-center">
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-sidebar-accent/70">
-                  <BotIcon className="size-5 text-sidebar-foreground/55" />
-                </div>
+                <span className="console-medallion size-12">
+                  <BotIcon className="size-5" />
+                </span>
                 <div>
-                  <p className="text-sm font-medium text-sidebar-foreground">
+                  <p className="text-sm font-medium text-foreground">
                     No results found
                   </p>
-                  <p className="mt-1 text-[12px] text-sidebar-foreground/60">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Try a wider search or reset the filters.
                   </p>
                 </div>
@@ -467,11 +461,9 @@ export const AIConversationsPanel = () => {
                 {groupedConversations.map((group) => (
                   <div key={group.label}>
                     <div className="mb-1.5 flex items-center gap-2 px-2">
-                      <p className="shrink-0 text-[10px] font-semibold tracking-[0.08em] text-sidebar-foreground/46 uppercase">
-                        {group.label}
-                      </p>
-                      <div className="h-px flex-1 bg-sidebar-border/60" />
-                      <span className="text-[10px] text-sidebar-foreground/42 tabular-nums">
+                      <p className="console-eyebrow shrink-0">{group.label}</p>
+                      <div className="console-rule flex-1" />
+                      <span className="console-numeral text-[0.66rem] text-muted-foreground/70">
                         {group.items.length}
                       </span>
                     </div>
@@ -501,19 +493,19 @@ export const AIConversationsPanel = () => {
                             <ContextMenuTrigger asChild>
                               <Link
                                 className={cn(
-                                  "group relative block rounded-2xl border px-3 py-3 transition-all duration-200 hover:-translate-y-0.5",
+                                  "group relative block rounded-[10px] border px-3 py-2.5 transition-colors duration-200",
                                   isActive
-                                    ? "border-sidebar-primary/20 bg-sidebar-accent/95 shadow-[0_18px_34px_-26px_rgba(15,23,42,0.5)]"
-                                    : "border-transparent bg-transparent hover:border-sidebar-border/70 hover:bg-sidebar-accent/58 hover:shadow-sm"
+                                    ? "border-[var(--console-hairline)] bg-muted/55"
+                                    : "border-transparent hover:bg-muted/35"
                                 )}
                                 href={`/ai-conversations/${conversation._id}`}
                               >
                                 <div
                                   className={cn(
-                                    "absolute top-3 bottom-3 left-0 w-1 rounded-r-full bg-sidebar-primary transition-opacity",
+                                    "absolute top-2.5 bottom-2.5 -left-px w-0.5 rounded-r-full bg-foreground transition-opacity",
                                     isActive
                                       ? "opacity-100"
-                                      : "opacity-0 group-hover:opacity-30"
+                                      : "opacity-0 group-hover:opacity-25"
                                   )}
                                 />
 
@@ -531,13 +523,13 @@ export const AIConversationsPanel = () => {
                                   <div className="min-w-0 flex-1">
                                     <div className="flex items-start justify-between gap-2.5">
                                       <div className="min-w-0 flex-1">
-                                        <p className="truncate text-[13px] leading-snug font-semibold text-sidebar-foreground">
+                                        <p className="truncate text-[0.8rem] leading-snug font-medium text-foreground">
                                           {highlightMatch(
                                             visitorLabel,
                                             normalizedSearchQuery
                                           )}
                                         </p>
-                                        <p className="mt-0.5 truncate text-[11px] text-sidebar-foreground/54">
+                                        <p className="mt-0.5 truncate text-[0.7rem] text-muted-foreground">
                                           {highlightMatch(
                                             getVisitorDetail(conversation),
                                             normalizedSearchQuery
@@ -545,14 +537,14 @@ export const AIConversationsPanel = () => {
                                         </p>
                                       </div>
 
-                                      <span className="shrink-0 text-[10px] text-sidebar-foreground/50 tabular-nums">
+                                      <span className="console-numeral shrink-0 text-[0.66rem] text-muted-foreground/70">
                                         {formatConversationTime(
                                           conversation.lastActivityAt
                                         )}
                                       </span>
                                     </div>
 
-                                    <p className="mt-2 line-clamp-2 text-[12px] leading-relaxed text-sidebar-foreground/62">
+                                    <p className="mt-1.5 line-clamp-2 text-[0.72rem] leading-relaxed text-muted-foreground">
                                       {highlightMatch(
                                         conversation.searchMatchPreview ??
                                           conversation.lastMessagePreview,
@@ -563,38 +555,35 @@ export const AIConversationsPanel = () => {
                                     <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                                       <Badge
                                         className={cn(
-                                          "h-5 rounded-md border px-1.5 text-[10px] font-medium",
+                                          "h-5 rounded-full border px-2 text-[0.66rem] font-medium",
                                           providerBadgeClassName
                                         )}
                                         variant="outline"
                                       >
                                         {providerLabel}
                                       </Badge>
-                                      <div className="flex h-5 items-center gap-1 rounded-md bg-sidebar-accent/68 px-1.5 text-[10px] font-medium text-sidebar-foreground/58">
-                                        <CircleIcon
-                                          className={cn(
-                                            "size-1.5 fill-current",
-                                            conversation.endedAt
-                                              ? "text-sidebar-foreground/35"
-                                              : "text-emerald-500"
-                                          )}
-                                        />
-                                        <span>
+                                      <span
+                                        className={cn(
+                                          "console-tone-wash flex h-5 items-center gap-1.5 rounded-full border px-2 text-[0.66rem] font-medium",
+                                          conversation.endedAt
+                                            ? "console-tone-neutral"
+                                            : "console-tone-positive"
+                                        )}
+                                      >
+                                        <CircleIcon className="size-1.5 fill-current" />
+                                        <span className="text-foreground/80">
                                           {conversation.endedAt
                                             ? "Ended"
                                             : "Live"}
                                         </span>
-                                      </div>
+                                      </span>
                                       {unreadCount > 0 ? (
-                                        <Badge
-                                          className="h-5 rounded-md bg-rose-500 px-1.5 text-[10px] font-medium text-white hover:bg-rose-500"
-                                          variant="default"
-                                        >
+                                        <span className="console-numeral console-tone-critical console-tone-wash flex h-5 items-center rounded-full border px-2 text-[0.66rem]">
                                           {unreadCount > 99
                                             ? "99+"
                                             : unreadCount}{" "}
                                           new
-                                        </Badge>
+                                        </span>
                                       ) : null}
                                     </div>
                                   </div>

@@ -121,7 +121,7 @@ export const AgentSwitcher = ({
 
   if (agentsState === undefined) {
     return (
-      <div className="flex h-10 items-center gap-2 rounded-xl border border-border/70 bg-background/60 px-3 text-sm text-muted-foreground">
+      <div className="flex h-10 items-center gap-2 rounded-xl border border-[var(--console-hairline-soft)] bg-card px-3 text-sm text-muted-foreground">
         <Loader2Icon className="size-3.5 animate-spin" />
         Loading agents...
       </div>
@@ -137,7 +137,7 @@ export const AgentSwitcher = ({
           </Label>
           <div className="flex items-center gap-2">
             <Select value={agentId} onValueChange={onAgentIdChange}>
-              <SelectTrigger className="h-10 bg-background/70">
+              <SelectTrigger className="h-10 bg-card">
                 <div className="flex min-w-0 items-center gap-2">
                   <BotIcon className="size-3.5 shrink-0 text-muted-foreground" />
                   <SelectValue placeholder="Select agent" />

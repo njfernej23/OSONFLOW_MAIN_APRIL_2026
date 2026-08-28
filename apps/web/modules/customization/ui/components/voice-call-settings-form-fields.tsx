@@ -54,7 +54,7 @@ export const VoiceCallSettingsFormFields = ({
         control={form.control}
         name="voiceCallSettings.autoEndOnGoodbye"
         render={({ field }) => (
-          <FormItem className="flex items-center justify-between gap-4 rounded-xl border bg-muted/20 px-3 py-3">
+          <FormItem className="flex items-center justify-between gap-4 rounded-xl border bg-muted/35 px-3 py-3">
             <div className="space-y-0.5">
               <FormLabel>End when visitor says goodbye</FormLabel>
               <FormDescription className="text-xs">
@@ -145,7 +145,7 @@ export const VoiceCallSettingsFormFields = ({
             <FormControl>
               <Textarea
                 {...field}
-                className="min-h-24 bg-muted/20"
+                className="min-h-24 bg-muted/35"
                 placeholder={"thanks AIST\nthat's everything I needed"}
               />
             </FormControl>

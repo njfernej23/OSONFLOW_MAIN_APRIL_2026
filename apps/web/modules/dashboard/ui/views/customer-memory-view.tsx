@@ -12,29 +12,41 @@ import {
   LanguagesIcon,
   ListFilterIcon,
   MailIcon,
-  SearchIcon,
-  SparklesIcon,
-  UserRoundIcon,
+  MessagesSquareIcon,
+  QuoteIcon,
+  UsersIcon,
 } from "lucide-react"
 import { toast } from "sonner"
 
 import { api } from "@workspace/backend/_generated/api"
 import type { Doc } from "@workspace/backend/_generated/dataModel"
-import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
-import { Input } from "@workspace/ui/components/input"
-import { Skeleton } from "@workspace/ui/components/skeleton"
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@workspace/ui/components/tabs"
-import { cn } from "@workspace/ui/lib/utils"
 import {
   formatCsvTimestamp,
   stringifyCsvRows,
 } from "../lib/conversation-export"
+import {
+  ConsoleHeader,
+  ConsoleMeta,
+  ConsolePage,
+  ConsoleSearch,
+  ConsoleSkeleton,
+  consoleTabsListClass,
+  consoleTabsTriggerClass,
+  EmptyState,
+  Meter,
+  Panel,
+  Pill,
+  Stat,
+  StatGrid,
+  TabCount,
+} from "../components/console"
 
 const CUSTOMER_MEMORY_EXPORT_LIMIT = 5000
 
@@ -57,6 +69,17 @@ const formatDate = (timestamp: number) =>
 
 const isRecentlySeen = (timestamp: number) =>
   Date.now() - timestamp <= 30 * 24 * 60 * 60 * 1000
+
+const initialsOf = (name: string | undefined, email: string) => {
+  const source = name?.trim() || email?.trim() || "?"
+  const parts = source.split(/[\s@._-]+/).filter(Boolean)
+
+  if (parts.length >= 2) {
+    return `${parts[0]![0]}${parts[1]![0]}`.toUpperCase()
+  }
+
+  return source.slice(0, 2).toUpperCase()
+}
 
 const joinList = (items: string[]) => items.filter(Boolean).join("; ")
 
@@ -112,67 +135,6 @@ const buildCustomerMemoryCsv = (memories: CustomerMemory[]) => {
   return stringifyCsvRows(rows)
 }
 
-const SectionHeader = ({
-  title,
-  description,
-  icon: Icon,
-}: {
-  title: string
-  description: string
-  icon: React.ComponentType<{ className?: string }>
-}) => (
-  <div className="flex items-start justify-between gap-3 sm:gap-4">
-    <div>
-      <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-      <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
-        {description}
-      </p>
-    </div>
-    <div className="hidden size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground sm:flex">
-      <Icon className="size-4" />
-    </div>
-  </div>
-)
-
-const StatTile = ({
-  label,
-  value,
-  tone = "default",
-}: {
-  label: string
-  value: string | number
-  tone?: "default" | "green" | "amber" | "blue"
-}) => {
-  const valueClass = {
-    default: "text-foreground",
-    green: "text-emerald-700 dark:text-emerald-300",
-    amber: "text-amber-700 dark:text-amber-300",
-    blue: "text-sky-700 dark:text-sky-300",
-  }[tone]
-
-  return (
-    <div className="surface-panel rounded-xl p-3.5 sm:p-4">
-      <p className="text-[11px] font-medium text-muted-foreground uppercase sm:text-xs">
-        {label}
-      </p>
-      <p className={cn("mt-2 text-xl font-semibold sm:text-2xl", valueClass)}>
-        {value}
-      </p>
-    </div>
-  )
-}
-
-const EmptyState = ({ children }: { children: React.ReactNode }) => (
-  <section className="flex min-h-[320px] items-center justify-center rounded-xl border border-dashed border-border/80 bg-background/58 p-8 text-center">
-    <div className="max-w-sm">
-      <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-        <BrainIcon className="size-5" />
-      </div>
-      {children}
-    </div>
-  </section>
-)
-
 const MemoryCard = ({ memory }: { memory: CustomerMemory }) => {
   const hasEscalations = memory.totalEscalations > 0
   const resolvedRate =
@@ -181,113 +143,100 @@ const MemoryCard = ({ memory }: { memory: CustomerMemory }) => {
       : 0
 
   return (
-    <article className="surface-panel min-w-0 overflow-hidden rounded-xl">
-      <div className="border-b border-border/70 p-4 sm:p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <UserRoundIcon className="size-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-foreground">
-                {memory.name || "Unknown customer"}
-              </p>
-              <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-                <MailIcon className="size-3.5 shrink-0" />
-                <span className="truncate">{memory.email}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex min-w-0 flex-wrap gap-2 sm:justify-end">
-            <Badge variant="secondary">
-              {memory.totalConversations} conversations
-            </Badge>
-            <Badge variant={hasEscalations ? "destructive" : "outline"}>
-              {hasEscalations
-                ? `${memory.totalEscalations} escalated`
-                : "No escalations"}
-            </Badge>
-            {memory.preferredLanguage ? (
-              <Badge variant="outline" className="gap-1">
-                <LanguagesIcon className="size-3" />
-                {memory.preferredLanguage}
-              </Badge>
-            ) : null}
+    <Panel className="console-interactive flex flex-col">
+      {/* identity */}
+      <div className="flex items-start justify-between gap-3 px-4 pt-4 sm:px-5 sm:pt-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="console-medallion console-numeral size-10 shrink-0 text-xs">
+            {initialsOf(memory.name, memory.email)}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-foreground">
+              {memory.name || "Unknown customer"}
+            </p>
+            <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+              <MailIcon className="size-3 shrink-0" />
+              <span className="truncate">{memory.email}</span>
+            </p>
           </div>
         </div>
-
-        <p className="mt-4 break-words text-sm leading-relaxed text-foreground">
-          {memory.summary}
-        </p>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          {memory.recentIntents.slice(0, 5).map((intent) => (
-            <Badge key={intent} variant="outline">
-              {formatIntent(intent)}
-            </Badge>
-          ))}
-        </div>
+        {hasEscalations ? (
+          <Pill icon={AlertTriangleIcon} tone="critical">
+            {memory.totalEscalations}
+          </Pill>
+        ) : null}
       </div>
 
-      <div className="grid min-w-0 gap-0">
-        <div className="min-w-0 border-b border-border/70 p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-medium text-muted-foreground uppercase">
-              Notable facts
-            </p>
-            <Badge variant="ghost">{memory.notableFacts.length}</Badge>
-          </div>
-          <div className="mt-3 space-y-2">
+      {/* summary */}
+      <div className="px-4 pt-4 sm:px-5">
+        <p className="border-l-2 border-[var(--console-hairline)] pl-3 text-sm leading-relaxed break-words text-foreground/90">
+          {memory.summary}
+        </p>
+      </div>
+
+      {/* intents */}
+      {memory.recentIntents.length ? (
+        <div className="flex flex-wrap gap-1.5 px-4 pt-4 sm:px-5">
+          {memory.recentIntents.slice(0, 4).map((intent) => (
+            <Pill key={intent} tone="info">
+              {formatIntent(intent)}
+            </Pill>
+          ))}
+        </div>
+      ) : null}
+
+      {/* facts + history */}
+      <div className="mt-4 grid flex-1 gap-px border-y border-[var(--console-hairline-soft)] bg-[var(--console-hairline-soft)] sm:grid-cols-2">
+        <div className="min-w-0 bg-card px-4 py-3.5 sm:px-5">
+          <p className="console-label flex items-center gap-1.5">
+            <QuoteIcon className="size-3" />
+            Notable facts
+          </p>
+          <div className="mt-2.5 space-y-1.5">
             {memory.notableFacts.length ? (
-              memory.notableFacts.slice(0, 4).map((fact) => (
+              memory.notableFacts.slice(0, 3).map((fact) => (
                 <p
+                  className="console-inset px-2.5 py-1.5 text-xs leading-relaxed break-words text-foreground/90"
                   key={fact}
-                  className="rounded-lg bg-muted/45 px-3 py-2 text-xs leading-relaxed break-words text-foreground"
                 >
                   {fact}
                 </p>
               ))
             ) : (
-              <p className="rounded-lg bg-muted/25 px-3 py-6 text-center text-xs text-muted-foreground">
-                No facts captured yet.
+              <p className="py-3 text-xs text-muted-foreground/70">
+                Nothing captured yet.
               </p>
             )}
           </div>
         </div>
 
-        <div className="min-w-0 p-4 sm:p-5">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-            <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase">
-              <HistoryIcon className="size-3.5" />
-              Recent history
-            </p>
-            <Badge variant="ghost" className="w-fit shrink-0">
-              Last seen {formatDate(memory.lastSeenAt)}
-            </Badge>
-          </div>
-          <div className="mt-3 space-y-2">
+        <div className="min-w-0 bg-card px-4 py-3.5 sm:px-5">
+          <p className="console-label flex items-center gap-1.5">
+            <HistoryIcon className="size-3" />
+            Recent history
+          </p>
+          <div className="mt-2.5 space-y-1.5">
             {memory.issueHistory.length ? (
-              memory.issueHistory.slice(0, 4).map((item) => (
+              memory.issueHistory.slice(0, 3).map((item) => (
                 <div
+                  className="console-inset px-2.5 py-1.5"
                   key={`${item.at}-${item.summary}`}
-                  className="min-w-0 rounded-lg border border-border/60 bg-background/70 px-3 py-2"
                 >
-                  <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-                    <Badge variant="secondary" className="min-w-0 max-w-full">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="truncate text-[0.72rem] font-medium text-foreground">
                       {formatIntent(item.intent)}
-                    </Badge>
-                    <span className="shrink-0 text-[11px] text-muted-foreground">
+                    </span>
+                    <span className="shrink-0 text-[0.68rem] text-muted-foreground">
                       {formatDate(item.at)}
                     </span>
                   </div>
-                  <p className="mt-2 line-clamp-2 text-xs leading-relaxed break-words text-foreground">
+                  <p className="mt-1 line-clamp-2 text-xs leading-relaxed break-words text-muted-foreground">
                     {item.summary}
                   </p>
                 </div>
               ))
             ) : (
-              <p className="rounded-lg border border-dashed border-border/70 px-3 py-6 text-center text-xs text-muted-foreground">
+              <p className="py-3 text-xs text-muted-foreground/70">
                 No issue history yet.
               </p>
             )}
@@ -295,12 +244,36 @@ const MemoryCard = ({ memory }: { memory: CustomerMemory }) => {
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-wrap items-center gap-2 border-t border-border/70 bg-muted/18 px-4 py-3 sm:px-5">
-        <Badge variant="outline">{memory.totalResolved} resolved</Badge>
-        <Badge variant="outline">{resolvedRate}% resolution rate</Badge>
-        <Badge variant="ghost">Updated {formatDate(memory.updatedAt)}</Badge>
+      {/* footer */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 sm:px-5">
+        <span className="flex min-w-[7rem] flex-1 items-center gap-2.5">
+          <span className="console-label shrink-0">Resolved</span>
+          <Meter
+            className="flex-1"
+            tone={resolvedRate >= 60 ? "positive" : "warning"}
+            value={resolvedRate}
+          />
+          <span className="console-numeral shrink-0 text-xs">
+            {resolvedRate}%
+          </span>
+        </span>
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <MessagesSquareIcon className="size-3" />
+          <span className="console-numeral text-xs">
+            {memory.totalConversations}
+          </span>
+        </span>
+        {memory.preferredLanguage ? (
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <LanguagesIcon className="size-3" />
+            {memory.preferredLanguage}
+          </span>
+        ) : null}
+        <span className="text-xs text-muted-foreground/70">
+          Seen {formatDate(memory.lastSeenAt)}
+        </span>
       </div>
-    </article>
+    </Panel>
   )
 }
 
@@ -396,7 +369,7 @@ export const CustomerMemoryView = () => {
       }
 
       const csv = buildCustomerMemoryCsv(exportMemories)
-      const blob = new Blob(["\uFEFF", csv], {
+      const blob = new Blob(["﻿", csv], {
         type: "text/csv;charset=utf-8",
       })
       const url = URL.createObjectURL(blob)
@@ -418,174 +391,149 @@ export const CustomerMemoryView = () => {
   }
 
   if (memories === undefined) {
-    return (
-      <div className="h-full overflow-auto p-4 sm:p-6">
-        <div className="mx-auto flex min-w-0 w-full max-w-7xl flex-col gap-4">
-          <Skeleton className="h-24 rounded-2xl" />
-          <div className="grid min-w-0 gap-4 xl:grid-cols-2">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <Skeleton key={index} className="h-64 rounded-2xl" />
-            ))}
-          </div>
-        </div>
-      </div>
-    )
+    return <ConsoleSkeleton rows={2} />
   }
 
+  const tabTitle =
+    activeTab === "all"
+      ? "All customer memories"
+      : activeTab === "attention"
+        ? "Needs attention"
+        : activeTab === "recent"
+          ? "Recently active"
+          : "Resolved-heavy"
+
+  const tabDescription =
+    activeTab === "all"
+      ? "Everything the AI has learned about your customers from chat and voice."
+      : activeTab === "attention"
+        ? "Records with escalations, so the team can prepare before replying."
+        : activeTab === "recent"
+          ? "Customers seen in the last 30 days — useful for live inbox work."
+          : "Customers whose recent history is mostly resolved."
+
   return (
-    <div className="h-full overflow-auto p-3 sm:p-5">
-      <div className="mx-auto flex min-w-0 w-full max-w-7xl flex-col gap-4">
-        <section className="surface-frosted rounded-[18px] px-3.5 py-4 sm:rounded-[22px] sm:px-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                <span className="inline-flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <BrainIcon className="size-4" />
-                </span>
-                <span className="font-medium">
-                  Memory-rich customer support
-                </span>
-                <span className="hidden text-muted-foreground/50 sm:inline">
-                  /
-                </span>
-                <span>{filteredMemories.length} customer records</span>
-              </div>
-              <h1 className="mt-3 text-xl font-semibold text-foreground sm:text-3xl">
-                Customer memory
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                Give operators fast context on who the customer is, what they
-                care about, and what happened recently.
-              </p>
-            </div>
-
-            <div className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row">
-              <div className="relative min-w-0 flex-1">
-                <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  className="pl-9"
-                  placeholder="Search customers, intents, or notes"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                />
-              </div>
-              <Button
-                disabled={isExporting}
-                onClick={handleDownloadCsv}
-                variant="outline"
-                className="w-full shrink-0 sm:w-auto"
-              >
-                <DownloadIcon data-icon="inline-start" />
-                {isExporting ? "Exporting..." : "Download CSV"}
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-          <StatTile label="Customers" value={filteredMemories.length} />
-          <StatTile
-            label="Conversations"
-            value={totalConversations}
-            tone="blue"
-          />
-          <StatTile label="Recent" value={recentCount} tone="green" />
-          <StatTile
-            label="Escalations"
-            value={totalEscalations}
-            tone={totalEscalations ? "amber" : "default"}
-          />
-        </section>
-
-        <Tabs
-          className="min-w-0 gap-3"
-          value={activeTab}
-          onValueChange={(value) => setActiveTab(value as MemoryTab)}
-        >
-          <div className="surface-panel overflow-x-auto overflow-y-hidden rounded-xl p-1.5">
-            <TabsList className="flex h-auto min-w-max gap-1 bg-transparent p-0 md:grid md:w-full md:min-w-0 md:grid-cols-4">
-              <TabsTrigger
-                className="h-10 min-w-[8.5rem] flex-none rounded-lg md:min-w-0 md:flex-1"
-                value="all"
-              >
-                <ListFilterIcon data-icon="inline-start" />
-                All
-                <Badge variant="secondary">{filteredMemories.length}</Badge>
-              </TabsTrigger>
-              <TabsTrigger
-                className="h-10 min-w-[9rem] flex-none rounded-lg md:min-w-0 md:flex-1"
-                value="attention"
-              >
-                <AlertTriangleIcon data-icon="inline-start" />
-                Attention
-                <Badge variant={attentionCount ? "destructive" : "secondary"}>
-                  {attentionCount}
-                </Badge>
-              </TabsTrigger>
-              <TabsTrigger
-                className="h-10 min-w-[8.5rem] flex-none rounded-lg md:min-w-0 md:flex-1"
-                value="recent"
-              >
-                <Clock3Icon data-icon="inline-start" />
-                Recent
-                <Badge variant="secondary">{recentCount}</Badge>
-              </TabsTrigger>
-              <TabsTrigger
-                className="h-10 min-w-[8.5rem] flex-none rounded-lg md:min-w-0 md:flex-1"
-                value="resolved"
-              >
-                <CheckCircle2Icon data-icon="inline-start" />
-                Resolved
-                <Badge variant="secondary">{resolvedCount}</Badge>
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          <TabsContent className="min-w-0" value={activeTab}>
-            <SectionHeader
-              title={
-                activeTab === "all"
-                  ? "All customer memories"
-                  : activeTab === "attention"
-                    ? "Needs attention"
-                    : activeTab === "recent"
-                      ? "Recently active customers"
-                      : "Resolved-heavy customers"
-              }
-              description={
-                activeTab === "all"
-                  ? "Browse the customer context your AI has learned from support conversations."
-                  : activeTab === "attention"
-                    ? "Records with escalations stay visible so the team can prepare before replying."
-                    : activeTab === "recent"
-                      ? "Customers seen in the last 30 days, useful for live inbox work."
-                      : "Customers whose recent history is mostly resolved, useful for pattern review."
-              }
-              icon={SparklesIcon}
+    <ConsolePage>
+      <ConsoleHeader
+        actions={
+          <>
+            <ConsoleSearch
+              className="w-full sm:w-72"
+              onChange={setSearchQuery}
+              placeholder="Search customers, intents, or notes"
+              value={searchQuery}
             />
+            <Button
+              disabled={isExporting}
+              onClick={handleDownloadCsv}
+              variant="outline"
+            >
+              <DownloadIcon data-icon="inline-start" />
+              {isExporting ? "Exporting…" : "Export CSV"}
+            </Button>
+          </>
+        }
+        description="Fast context on who the customer is, what they care about, and what happened the last time they got in touch."
+        eyebrow="Context"
+        icon={BrainIcon}
+        meta={
+          <>
+            <ConsoleMeta label="Records" value={filteredMemories.length} />
+            <ConsoleMeta
+              dot
+              label="Escalations"
+              tone={totalEscalations ? "critical" : "positive"}
+              value={totalEscalations}
+            />
+          </>
+        }
+        title="Customer memory"
+      />
 
-            {tabbedMemories.length ? (
-              <section className="mt-4 grid min-w-0 gap-4 xl:grid-cols-2">
-                {tabbedMemories.map((memory) => (
-                  <MemoryCard key={memory._id} memory={memory} />
-                ))}
-              </section>
-            ) : (
-              <div className="mt-4">
-                <EmptyState>
-                  <p className="mt-4 text-sm font-semibold text-foreground">
-                    No customer memory found
-                  </p>
-                  <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                    Try another tab or search term. New memories will build
-                    automatically from chat and voice conversations.
-                  </p>
-                </EmptyState>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
+      <StatGrid>
+        <Stat
+          hint="Distinct people with a memory record"
+          icon={UsersIcon}
+          label="Customers"
+          value={filteredMemories.length}
+        />
+        <Stat
+          hint="Across every remembered customer"
+          icon={MessagesSquareIcon}
+          label="Conversations"
+          tone="info"
+          value={totalConversations}
+        />
+        <Stat
+          hint="Seen in the last 30 days"
+          icon={Clock3Icon}
+          label="Recently active"
+          tone="positive"
+          value={recentCount}
+        />
+        <Stat
+          hint="Handed to a human at least once"
+          icon={AlertTriangleIcon}
+          label="Escalations"
+          tone={totalEscalations ? "critical" : "neutral"}
+          value={totalEscalations}
+        />
+      </StatGrid>
+
+      <Tabs
+        onValueChange={(value) => setActiveTab(value as MemoryTab)}
+        value={activeTab}
+      >
+        <TabsList className={consoleTabsListClass}>
+          <TabsTrigger className={consoleTabsTriggerClass} value="all">
+            <ListFilterIcon />
+            All
+            <TabCount>{filteredMemories.length}</TabCount>
+          </TabsTrigger>
+          <TabsTrigger className={consoleTabsTriggerClass} value="attention">
+            <AlertTriangleIcon />
+            Attention
+            <TabCount tone={attentionCount ? "critical" : "neutral"}>
+              {attentionCount}
+            </TabCount>
+          </TabsTrigger>
+          <TabsTrigger className={consoleTabsTriggerClass} value="recent">
+            <Clock3Icon />
+            Recent
+            <TabCount>{recentCount}</TabCount>
+          </TabsTrigger>
+          <TabsTrigger className={consoleTabsTriggerClass} value="resolved">
+            <CheckCircle2Icon />
+            Resolved
+            <TabCount>{resolvedCount}</TabCount>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent className="mt-1 min-w-0" value={activeTab}>
+          <div className="mb-4">
+            <h2 className="console-section-title">{tabTitle}</h2>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              {tabDescription}
+            </p>
+          </div>
+
+          {tabbedMemories.length ? (
+            <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+              {tabbedMemories.map((memory) => (
+                <MemoryCard key={memory._id} memory={memory} />
+              ))}
+            </div>
+          ) : (
+            <Panel>
+              <EmptyState
+                description="Try another tab or search term. Memories build automatically from chat and voice conversations."
+                icon={BrainIcon}
+                title="No customer memory found"
+              />
+            </Panel>
+          )}
+        </TabsContent>
+      </Tabs>
+    </ConsolePage>
   )
 }

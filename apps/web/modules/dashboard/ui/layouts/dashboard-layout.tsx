@@ -28,7 +28,10 @@ export const DashboardLayout = async ({
             <DashboardSidebar />
             <DashboardSwipeMenu />
             {/* main must be flex-col + h-svh so resizable panels inside get a real height */}
-            <main className="relative flex h-svh flex-1 flex-col overflow-hidden bg-transparent transition-colors">
+            <main
+              className="relative flex h-svh flex-1 flex-col overflow-hidden bg-transparent transition-colors"
+              id="main"
+            >
               <div className="pointer-events-none absolute inset-0 overflow-hidden">
                 <div className="animate-ambient absolute top-0 right-[-6rem] h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
                 <div className="animate-float absolute bottom-[-8rem] left-[-6rem] h-80 w-80 rounded-full bg-sky-400/10 blur-3xl" />

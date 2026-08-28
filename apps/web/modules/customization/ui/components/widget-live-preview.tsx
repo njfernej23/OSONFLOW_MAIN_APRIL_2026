@@ -85,7 +85,7 @@ const ChatWidget = ({
   const bgBase = darkMode ? "bg-zinc-900" : "bg-background"
   const borderBase = darkMode ? "border-zinc-700" : "border"
   const mutedText = darkMode ? "text-zinc-400" : "text-muted-foreground"
-  const inputBg = darkMode ? "bg-zinc-800" : "bg-muted/20"
+  const inputBg = darkMode ? "bg-zinc-800" : "bg-muted/35"
 
   return (
     <div className="flex flex-col items-end gap-3">
@@ -191,7 +191,7 @@ const ChatWidget = ({
                     "rounded-full border px-2 py-0.5 text-[9px]",
                     darkMode
                       ? "border-zinc-600 bg-zinc-800 text-zinc-400"
-                      : "border bg-muted/30 text-muted-foreground"
+                      : "border bg-muted/35 text-muted-foreground"
                   )}
                   key={suggestion}
                 >
@@ -341,11 +341,11 @@ export const WidgetLivePreview = ({
     appearance.voiceLauncherLabel.trim() || "Talk with us"
 
   return (
-    <Card className="surface-elevated overflow-hidden border-0 shadow-none">
-      <CardHeader className="border-b border-border/60 bg-muted/20 pb-4">
+    <Card className="console-card overflow-hidden">
+      <CardHeader className="border-b border-[var(--console-hairline-soft)] bg-muted/35 pb-4">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
-            <div className="flex size-9 items-center justify-center rounded-2xl border border-border/60 bg-background shadow-sm">
+            <div className="flex size-9 items-center justify-center rounded-2xl border border-[var(--console-hairline-soft)] bg-background shadow-sm">
               <EyeIcon className="size-4 text-muted-foreground" />
             </div>
             <div>
@@ -363,10 +363,10 @@ export const WidgetLivePreview = ({
               type="button"
               onClick={() => setDarkMode((d) => !d)}
               className={cn(
-                "flex size-8 items-center justify-center rounded-xl border text-xs transition-all duration-150 hover:-translate-y-0.5",
+                "console-segment-item flex size-8 items-center justify-center border text-xs",
                 darkMode
                   ? "border-zinc-700 bg-zinc-800 text-zinc-100"
-                  : "border-border bg-background text-muted-foreground"
+                  : "border-[var(--console-hairline)] bg-card text-muted-foreground"
               )}
               title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
             >
@@ -378,16 +378,17 @@ export const WidgetLivePreview = ({
             </button>
 
             {/* Device toggles */}
-            <div className="overflow-hidden rounded-xl border">
+            <div className="console-segment flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => setDeviceMode("desktop")}
                 className={cn(
-                  "flex size-8 items-center justify-center text-xs transition-colors duration-150",
+                  "console-segment-item flex size-8 items-center justify-center border border-transparent text-xs",
                   deviceMode === "desktop"
-                    ? "bg-background text-foreground"
-                    : "bg-transparent text-muted-foreground hover:text-foreground"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
+                data-active={deviceMode === "desktop" || undefined}
                 title="Desktop preview"
               >
                 <MonitorIcon className="size-3.5" />
@@ -396,11 +397,12 @@ export const WidgetLivePreview = ({
                 type="button"
                 onClick={() => setDeviceMode("mobile")}
                 className={cn(
-                  "flex size-8 items-center justify-center border-l text-xs transition-colors duration-150",
+                  "console-segment-item flex size-8 items-center justify-center border border-transparent text-xs",
                   deviceMode === "mobile"
-                    ? "bg-background text-foreground"
-                    : "bg-transparent text-muted-foreground hover:text-foreground"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
+                data-active={deviceMode === "mobile" || undefined}
                 title="Mobile preview"
               >
                 <SmartphoneIcon className="size-3.5" />
@@ -412,7 +414,7 @@ export const WidgetLivePreview = ({
 
       <CardContent className="space-y-5 p-5">
         {/* Device frame */}
-        <div className="surface-panel overflow-hidden rounded-[28px] border-0 shadow-none transition-all duration-300">
+        <div className="console-inset overflow-hidden rounded-[14px] transition-all duration-300">
           {deviceMode === "desktop" ? (
             <>
               {/* Browser chrome */}
@@ -432,7 +434,7 @@ export const WidgetLivePreview = ({
                     "mx-2 flex-1 rounded px-2 py-0.5 text-center text-[10px]",
                     darkMode
                       ? "bg-zinc-900 text-zinc-500"
-                      : "bg-background/80 text-muted-foreground/60"
+                      : "bg-card text-muted-foreground/60"
                   )}
                 >
                   yourwebsite.com
@@ -498,7 +500,7 @@ export const WidgetLivePreview = ({
             </>
           ) : (
             /* Mobile frame */
-            <div className="flex justify-center bg-muted/20 py-4">
+            <div className="flex justify-center bg-muted/35 py-4">
               <div
                 className={cn(
                   "relative overflow-hidden rounded-[32px] border-4 shadow-[0_34px_70px_-36px_rgba(15,23,42,0.55)] transition-colors duration-300",
@@ -595,10 +597,8 @@ export const WidgetLivePreview = ({
         </div>
 
         {/* Launcher standalone preview */}
-        <div className="surface-panel rounded-[24px] border-0 p-4">
-          <p className="mb-3 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-            Launcher standalone
-          </p>
+        <div className="console-inset p-4">
+          <p className="console-label mb-3">Launcher standalone</p>
           <div className="flex items-center gap-3">
             {voiceOnly ? (
               <VoiceLauncherButtonPreview label={voiceLauncherLabel} />

@@ -54,6 +54,10 @@ import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { cn } from "@workspace/ui/lib/utils"
 import {
+  ConsoleHeader,
+  ConsoleMeta,
+} from "@/modules/dashboard/ui/components/console"
+import {
   DEFAULT_WIDGET_SCRIPT_URL,
   type IntegrationId,
   INTEGRATIONS,
@@ -1054,90 +1058,61 @@ export const IntegrationsView = () => {
   ]
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-x-hidden overflow-y-auto bg-transparent">
-      <div className="mx-auto w-full max-w-[1540px] px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
-        <div className="surface-frosted mb-4 rounded-[22px] px-4 py-4 sm:px-5">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background shadow-sm">
-                <PlugZapIcon className="size-4 text-muted-foreground" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                  Setup
-                </p>
-                <h1 className="mt-1 text-xl font-semibold tracking-tight">
-                  Setup & integrations
-                </h1>
-                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                  Install the widget, generate embed code, and manage event
-                  destinations.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-              <div className="flex min-w-0 items-center gap-2 rounded-xl border border-border/70 bg-background/60 px-3 py-2">
+    <div className="console-page flex h-full min-h-0 flex-col overflow-x-hidden overflow-y-auto">
+      <div className="mx-auto w-full max-w-[1540px] px-4 py-5 sm:px-6 sm:py-7">
+        <div className="mb-5">
+          <ConsoleHeader
+            actions={
+              <div className="console-inset flex min-w-0 items-center gap-2 px-3 py-1.5">
                 <KeyRoundIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                <code className="min-w-0 flex-1 truncate font-mono text-xs text-foreground sm:max-w-[340px]">
+                <code className="min-w-0 flex-1 truncate font-mono text-xs text-foreground sm:max-w-[300px]">
                   {organization?.id ?? "—"}
                 </code>
                 <Button
-                  size="sm"
-                  variant="outline"
                   className="h-7 shrink-0 gap-1.5 px-2 text-xs"
                   onClick={handleCopyOrganizationId}
+                  size="sm"
                   type="button"
+                  variant="ghost"
                 >
                   <CopyIcon className="size-3.5" />
                   Copy
                 </Button>
               </div>
-              <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-xl border border-border/70 bg-background/60">
-                <div className="border-r border-border/70 px-3 py-2 text-center">
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase">
-                    Webhooks
-                  </p>
-                  <p className="mt-0.5 text-sm font-semibold tabular-nums">
-                    {webhookDestinations.length}
-                  </p>
-                </div>
-                <div className="px-3 py-2 text-center">
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase">
-                    Events
-                  </p>
-                  <p className="mt-0.5 text-sm font-semibold tabular-nums">
-                    {deliveryLogs.length}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+            }
+            description="Install the widget, generate embed code, and manage where events are delivered."
+            eyebrow="Setup"
+            icon={PlugZapIcon}
+            meta={
+              <>
+                <ConsoleMeta
+                  label="Webhooks"
+                  value={webhookDestinations.length}
+                />
+                <ConsoleMeta label="Events" value={deliveryLogs.length} />
+              </>
+            }
+            title="Setup & integrations"
+          />
 
-          <div className="mt-4 grid gap-1 rounded-2xl border border-border/70 bg-background/58 p-1 sm:inline-grid sm:grid-cols-6">
+          <div className="console-segment mt-5 grid gap-1 overflow-x-auto sm:inline-grid sm:grid-cols-6">
             {NAV_ITEMS.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setActiveSection(item.id)}
                 type="button"
                 className={cn(
-                  "flex min-w-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors",
+                  "console-segment-item flex min-w-0 items-center justify-center gap-2 border border-transparent px-3 py-2 text-[0.8rem] font-medium",
                   activeSection === item.id
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
+                data-active={activeSection === item.id || undefined}
               >
                 {item.icon}
                 <span className="truncate">{item.label}</span>
                 {item.count !== undefined && item.count > 0 && (
-                  <span
-                    className={cn(
-                      "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-                      activeSection === item.id
-                        ? "bg-primary-foreground/18 text-primary-foreground"
-                        : "bg-primary/10 text-primary"
-                    )}
-                  >
+                  <span className="console-numeral console-tone-neutral console-tone-wash rounded-full border px-1.5 text-[0.66rem] leading-4">
                     {item.count}
                   </span>
                 )}
@@ -1149,15 +1124,15 @@ export const IntegrationsView = () => {
         {/* ─── WIDGET SETUP ─── */}
         {activeSection === "widget" && (
           <div className="grid gap-4 xl:grid-cols-[minmax(0,430px)_minmax(0,1fr)]">
-            <section className="surface-sidebar min-w-0 rounded-[22px] p-3">
+            <section className="console-card min-w-0 p-3">
               <div className="px-1 py-1">
-                <p className="text-[10px] font-semibold tracking-[0.12em] text-sidebar-foreground/46 uppercase">
+                <p className="console-eyebrow">
                   Widget setup
                 </p>
-                <h2 className="mt-1 text-base font-semibold text-sidebar-foreground">
+                <h2 className="console-section-title mt-1.5 text-[0.95rem]">
                   Install target
                 </h2>
-                <p className="mt-1 text-xs leading-relaxed text-sidebar-foreground/58">
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                   Pick your environment, then tune the generated embed snippet.
                 </p>
               </div>
@@ -1174,8 +1149,8 @@ export const IntegrationsView = () => {
                         "group relative w-full min-w-0 rounded-xl border px-3 py-3 text-left",
                         "transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0",
                         isSelected
-                          ? "border-sidebar-primary/25 bg-sidebar-accent/95 shadow-sm"
-                          : "border-transparent bg-sidebar-accent/48 hover:border-sidebar-border/70 hover:bg-sidebar-accent/75"
+                          ? "border-[var(--console-hairline)] bg-muted/70"
+                          : "border-transparent bg-muted/35 hover:border-[var(--console-hairline-soft)] hover:bg-muted/55"
                       )}
                       onClick={() => setSelectedIntegration(integration.id)}
                       type="button"
@@ -1184,7 +1159,7 @@ export const IntegrationsView = () => {
                         <span className="absolute top-2.5 right-2.5 size-2 rounded-full bg-primary" />
                       )}
                       {isPopular && !isSelected && (
-                        <span className="absolute top-2 right-2 rounded-full bg-sidebar/80 px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-sidebar-foreground/58 uppercase">
+                        <span className="absolute top-2 right-2 rounded-full bg-card px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-muted-foreground uppercase">
                           Popular
                         </span>
                       )}
@@ -1197,11 +1172,11 @@ export const IntegrationsView = () => {
                             width={24}
                           />
                         </div>
-                        <span className="text-sm font-semibold text-sidebar-foreground">
+                        <span className="text-sm font-semibold text-foreground">
                           {integration.title}
                         </span>
                       </div>
-                      <p className="text-xs leading-relaxed text-sidebar-foreground/58">
+                      <p className="text-xs leading-relaxed text-muted-foreground">
                         {integration.description}
                       </p>
                     </button>
@@ -1209,12 +1184,12 @@ export const IntegrationsView = () => {
                 })}
               </div>
 
-              <div className="mt-3 space-y-4 rounded-2xl border border-sidebar-border/70 bg-sidebar/58 p-3">
+              <div className="mt-3 space-y-4 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/35 p-3">
                 <div>
-                  <p className="text-xs font-semibold text-sidebar-foreground">
+                  <p className="text-xs font-semibold text-foreground">
                     Configuration
                   </p>
-                  <p className="mt-0.5 text-[11px] text-sidebar-foreground/55">
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
                     Embed source and launcher placement.
                   </p>
                 </div>
@@ -1222,7 +1197,7 @@ export const IntegrationsView = () => {
                 <div className="space-y-2">
                   <Label
                     htmlFor="widget-script-url"
-                    className="text-xs text-sidebar-foreground/58"
+                    className="text-xs text-muted-foreground"
                   >
                     Script URL
                   </Label>
@@ -1232,7 +1207,7 @@ export const IntegrationsView = () => {
                     placeholder="https://widget.osonflow.uz/widget.js"
                     value={scriptUrl}
                     className={cn(
-                      "h-10 min-w-0 bg-sidebar-accent/70 font-mono text-xs",
+                      "h-10 min-w-0 bg-muted/55 font-mono text-xs",
                       scriptUrlIsValid &&
                         "border-green-500/50 focus-visible:ring-green-500/20"
                     )}
@@ -1254,7 +1229,7 @@ export const IntegrationsView = () => {
                 <div className="space-y-2">
                   <Label
                     htmlFor="launcher-position"
-                    className="text-xs text-sidebar-foreground/58"
+                    className="text-xs text-muted-foreground"
                   >
                     Launcher Position
                   </Label>
@@ -1263,7 +1238,7 @@ export const IntegrationsView = () => {
                     value={position}
                   >
                     <SelectTrigger
-                      className="h-10 w-full min-w-0 bg-sidebar-accent/70"
+                      className="h-10 w-full min-w-0 bg-muted/55"
                       id="launcher-position"
                     >
                       <SelectValue placeholder="Select position" />
@@ -1281,7 +1256,7 @@ export const IntegrationsView = () => {
                 <div className="space-y-2">
                   <Label
                     htmlFor="widget-agent"
-                    className="text-xs text-sidebar-foreground/58"
+                    className="text-xs text-muted-foreground"
                   >
                     Agent
                   </Label>
@@ -1291,7 +1266,7 @@ export const IntegrationsView = () => {
                     disabled={agentsState === undefined || agents.length === 0}
                   >
                     <SelectTrigger
-                      className="h-10 w-full min-w-0 bg-sidebar-accent/70"
+                      className="h-10 w-full min-w-0 bg-muted/55"
                       id="widget-agent"
                     >
                       <SelectValue placeholder="Select agent" />
@@ -1311,7 +1286,7 @@ export const IntegrationsView = () => {
                 </div>
 
                 <button
-                  className="text-xs font-medium text-sidebar-primary transition-colors hover:text-sidebar-primary/80"
+                  className="text-xs font-medium text-foreground underline-offset-4 transition-colors hover:underline"
                   onClick={resetGenerator}
                   type="button"
                 >
@@ -1320,13 +1295,13 @@ export const IntegrationsView = () => {
               </div>
             </section>
 
-            <section className="surface-panel min-w-0 overflow-hidden rounded-[22px] shadow-sm">
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/70 bg-background/62 px-4 py-4 sm:px-5">
+            <section className="console-card min-w-0 overflow-hidden">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--console-hairline-soft)] px-4 py-4 sm:px-5">
                 <div className="min-w-0">
-                  <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                  <p className="console-eyebrow">
                     Generated snippet
                   </p>
-                  <h2 className="mt-1 text-base font-semibold">
+                  <h2 className="console-section-title mt-1.5 text-[0.95rem]">
                     {selectedIntegrationItem?.title ?? "Framework"} install code
                   </h2>
                   <p className="text-sm text-muted-foreground">
@@ -1387,7 +1362,7 @@ export const IntegrationsView = () => {
                 </div>
               </div>
 
-              <div className="border-t border-border/70 bg-background/62 p-4 sm:p-5">
+              <div className="border-t border-[var(--console-hairline-soft)] bg-card p-4 sm:p-5">
                 <ol className="list-none space-y-2 text-sm text-muted-foreground">
                   {[
                     "Copy the snippet above.",
@@ -1417,28 +1392,28 @@ export const IntegrationsView = () => {
         {/* ─── TELEGRAM BOT ─── */}
         {activeSection === "telegram" && (
           <div className="grid gap-4 xl:grid-cols-[minmax(0,430px)_minmax(0,1fr)]">
-            <section className="surface-sidebar min-w-0 rounded-[22px] p-3">
+            <section className="console-card min-w-0 p-3">
               <div className="px-1 py-1">
-                <p className="text-[10px] font-semibold tracking-[0.12em] text-sidebar-foreground/46 uppercase">
+                <p className="console-eyebrow">
                   Channel
                 </p>
-                <h2 className="mt-1 text-base font-semibold text-sidebar-foreground">
+                <h2 className="console-section-title mt-1.5 text-[0.95rem]">
                   Connect Telegram
                 </h2>
-                <p className="mt-1 text-xs leading-relaxed text-sidebar-foreground/58">
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                   Add your BotFather token and route Telegram chats into the
                   Osonflow inbox.
                 </p>
               </div>
 
-              <div className="mt-3 space-y-4 rounded-2xl border border-sidebar-border/70 bg-sidebar/58 p-3">
-                <div className="flex items-center gap-3 rounded-xl border border-sidebar-border/70 bg-sidebar-accent/45 p-3">
+              <div className="mt-3 space-y-4 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/35 p-3">
+                <div className="flex items-center gap-3 console-inset p-3">
                   <ProviderIcon provider="telegram" size={30} />
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-sidebar-foreground">
+                    <p className="text-sm font-semibold text-foreground">
                       Telegram bot channel
                     </p>
-                    <p className="text-xs text-sidebar-foreground/58">
+                    <p className="text-xs text-muted-foreground">
                       Customer messages become support conversations.
                     </p>
                   </div>
@@ -1447,12 +1422,12 @@ export const IntegrationsView = () => {
                 <div className="space-y-2">
                   <Label
                     htmlFor="telegram-channel-token"
-                    className="text-xs text-sidebar-foreground/58"
+                    className="text-xs text-muted-foreground"
                   >
                     Bot Token
                   </Label>
                   <Input
-                    className="bg-sidebar-accent/70 font-mono text-xs"
+                    className="bg-muted/55 font-mono text-xs"
                     id="telegram-channel-token"
                     onChange={(e) => setTelegramChannelBotToken(e.target.value)}
                     placeholder="123456789:AA..."
@@ -1482,17 +1457,17 @@ export const IntegrationsView = () => {
               </div>
             </section>
 
-            <section className="surface-panel min-w-0 overflow-hidden rounded-[22px] shadow-sm">
-              <div className="flex items-center justify-between border-b border-border/70 bg-background/62 px-4 py-4 sm:px-5">
+            <section className="console-card min-w-0 overflow-hidden">
+              <div className="flex items-center justify-between border-b border-[var(--console-hairline-soft)] px-4 py-4 sm:px-5">
                 <div className="flex min-w-0 items-start gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background shadow-sm">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-[var(--console-hairline-soft)] bg-background shadow-sm">
                     <BotIcon className="size-4 text-muted-foreground" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                    <p className="console-eyebrow">
                       Telegram
                     </p>
-                    <h2 className="mt-1 text-base font-semibold">
+                    <h2 className="console-section-title mt-1.5 text-[0.95rem]">
                       Channel status
                     </h2>
                     <p className="mt-0.5 text-xs text-muted-foreground">
@@ -1523,7 +1498,7 @@ export const IntegrationsView = () => {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background/60 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-4">
                       <div className="flex min-w-0 items-center gap-3">
                         <ProviderIcon provider="telegram" size={34} />
                         <div className="min-w-0">
@@ -1575,41 +1550,41 @@ export const IntegrationsView = () => {
         {/* ─── INSTAGRAM ─── */}
         {activeSection === "instagram" && (
           <div className="grid gap-4 xl:grid-cols-[minmax(0,430px)_minmax(0,1fr)]">
-            <section className="surface-sidebar min-w-0 rounded-[22px] p-3">
+            <section className="console-card min-w-0 p-3">
               <div className="px-1 py-1">
-                <p className="text-[10px] font-semibold tracking-[0.12em] text-sidebar-foreground/46 uppercase">
+                <p className="console-eyebrow">
                   Channel
                 </p>
-                <h2 className="mt-1 text-base font-semibold text-sidebar-foreground">
+                <h2 className="console-section-title mt-1.5 text-[0.95rem]">
                   Connect Instagram
                 </h2>
-                <p className="mt-1 text-xs leading-relaxed text-sidebar-foreground/58">
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                   Sign in with Instagram to route DMs and comments into the
                   Osonflow inbox.
                 </p>
               </div>
 
-              <div className="mt-3 space-y-4 rounded-2xl border border-sidebar-border/70 bg-sidebar/58 p-3">
-                <div className="flex items-center gap-3 rounded-xl border border-sidebar-border/70 bg-sidebar-accent/45 p-3">
+              <div className="mt-3 space-y-4 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/35 p-3">
+                <div className="flex items-center gap-3 console-inset p-3">
                   <ChannelIcon channel="instagram" size={30} />
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-sidebar-foreground">
+                    <p className="text-sm font-semibold text-foreground">
                       Instagram DM channel
                     </p>
-                    <p className="text-xs text-sidebar-foreground/58">
+                    <p className="text-xs text-muted-foreground">
                       Customer DMs become support conversations.
                     </p>
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-sidebar-border/70 bg-sidebar-accent/35 p-3">
+                <div className="console-inset p-3">
                   <div className="flex items-start gap-2">
                     <ShieldCheckIcon className="mt-0.5 size-4 shrink-0 text-blue-500" />
                     <div className="space-y-2">
-                      <p className="text-xs font-medium text-sidebar-foreground">
+                      <p className="text-xs font-medium text-foreground">
                         Osonflow will request permission to:
                       </p>
-                      <ul className="space-y-1 text-xs text-sidebar-foreground/68">
+                      <ul className="space-y-1 text-xs text-muted-foreground">
                         <li>Read and reply to DM messages</li>
                         <li>Read and reply to post comments</li>
                         <li>Access account profile information</li>
@@ -1638,7 +1613,7 @@ export const IntegrationsView = () => {
                   )}
                 </Button>
 
-                <p className="text-center text-[11px] leading-relaxed text-sidebar-foreground/52">
+                <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
                   You will be redirected to Instagram to authorize access. You do
                   not need to add accounts manually in Meta&apos;s &quot;Generate
                   access tokens&quot; section.
@@ -1646,17 +1621,17 @@ export const IntegrationsView = () => {
               </div>
             </section>
 
-            <section className="surface-panel min-w-0 overflow-hidden rounded-[22px] shadow-sm">
-              <div className="flex items-center justify-between border-b border-border/70 bg-background/62 px-4 py-4 sm:px-5">
+            <section className="console-card min-w-0 overflow-hidden">
+              <div className="flex items-center justify-between border-b border-[var(--console-hairline-soft)] px-4 py-4 sm:px-5">
                 <div className="flex min-w-0 items-start gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background shadow-sm">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-[var(--console-hairline-soft)] bg-background shadow-sm">
                     <InstagramIcon className="size-4 text-muted-foreground" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                    <p className="console-eyebrow">
                       Instagram
                     </p>
-                    <h2 className="mt-1 text-base font-semibold">
+                    <h2 className="console-section-title mt-1.5 text-[0.95rem]">
                       Channel status
                     </h2>
                     <p className="mt-0.5 text-xs text-muted-foreground">
@@ -1695,7 +1670,7 @@ export const IntegrationsView = () => {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background/60 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-4">
                       <div className="flex min-w-0 items-center gap-3">
                         <ChannelIcon channel="instagram" size={34} />
                         <div className="min-w-0">
@@ -1788,28 +1763,28 @@ export const IntegrationsView = () => {
         {/* ─── WHATSAPP ─── */}
         {activeSection === "whatsapp" && (
           <div className="grid gap-4 xl:grid-cols-[minmax(0,430px)_minmax(0,1fr)]">
-            <section className="surface-sidebar min-w-0 rounded-[22px] p-3">
+            <section className="console-card min-w-0 p-3">
               <div className="px-1 py-1">
-                <p className="text-[10px] font-semibold tracking-[0.12em] text-sidebar-foreground/46 uppercase">
+                <p className="console-eyebrow">
                   Channel
                 </p>
-                <h2 className="mt-1 text-base font-semibold text-sidebar-foreground">
+                <h2 className="console-section-title mt-1.5 text-[0.95rem]">
                   Connect WhatsApp
                 </h2>
-                <p className="mt-1 text-xs leading-relaxed text-sidebar-foreground/58">
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                   Add your WhatsApp Cloud API number and route customer messages
                   into the Osonflow inbox.
                 </p>
               </div>
 
-              <div className="mt-3 space-y-4 rounded-2xl border border-sidebar-border/70 bg-sidebar/58 p-3">
-                <div className="flex items-center gap-3 rounded-xl border border-sidebar-border/70 bg-sidebar-accent/45 p-3">
+              <div className="mt-3 space-y-4 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/35 p-3">
+                <div className="flex items-center gap-3 console-inset p-3">
                   <ChannelIcon channel="whatsapp" size={30} />
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-sidebar-foreground">
+                    <p className="text-sm font-semibold text-foreground">
                       WhatsApp channel
                     </p>
-                    <p className="text-xs text-sidebar-foreground/58">
+                    <p className="text-xs text-muted-foreground">
                       Customer messages become support conversations.
                     </p>
                   </div>
@@ -1818,12 +1793,12 @@ export const IntegrationsView = () => {
                 <div className="space-y-2">
                   <Label
                     htmlFor="whatsapp-channel-phone-number-id"
-                    className="text-xs text-sidebar-foreground/58"
+                    className="text-xs text-muted-foreground"
                   >
                     Phone Number ID
                   </Label>
                   <Input
-                    className="bg-sidebar-accent/70 font-mono text-xs"
+                    className="bg-muted/55 font-mono text-xs"
                     id="whatsapp-channel-phone-number-id"
                     onChange={(e) =>
                       setWhatsappChannelPhoneNumberId(e.target.value)
@@ -1836,12 +1811,12 @@ export const IntegrationsView = () => {
                 <div className="space-y-2">
                   <Label
                     htmlFor="whatsapp-channel-access-token"
-                    className="text-xs text-sidebar-foreground/58"
+                    className="text-xs text-muted-foreground"
                   >
                     Access Token
                   </Label>
                   <Input
-                    className="bg-sidebar-accent/70 font-mono text-xs"
+                    className="bg-muted/55 font-mono text-xs"
                     id="whatsapp-channel-access-token"
                     onChange={(e) =>
                       setWhatsappChannelAccessToken(e.target.value)
@@ -1855,7 +1830,7 @@ export const IntegrationsView = () => {
                 <div className="space-y-2">
                   <Label
                     htmlFor="whatsapp-channel-business-account-id"
-                    className="text-xs text-sidebar-foreground/58"
+                    className="text-xs text-muted-foreground"
                   >
                     Business Account ID{" "}
                     <span className="text-muted-foreground/60">
@@ -1863,7 +1838,7 @@ export const IntegrationsView = () => {
                     </span>
                   </Label>
                   <Input
-                    className="bg-sidebar-accent/70 font-mono text-xs"
+                    className="bg-muted/55 font-mono text-xs"
                     id="whatsapp-channel-business-account-id"
                     onChange={(e) =>
                       setWhatsappChannelBusinessAccountId(e.target.value)
@@ -1894,17 +1869,17 @@ export const IntegrationsView = () => {
               </div>
             </section>
 
-            <section className="surface-panel min-w-0 overflow-hidden rounded-[22px] shadow-sm">
-              <div className="flex items-center justify-between border-b border-border/70 bg-background/62 px-4 py-4 sm:px-5">
+            <section className="console-card min-w-0 overflow-hidden">
+              <div className="flex items-center justify-between border-b border-[var(--console-hairline-soft)] px-4 py-4 sm:px-5">
                 <div className="flex min-w-0 items-start gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background shadow-sm">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-[var(--console-hairline-soft)] bg-background shadow-sm">
                     <ProviderIcon provider="whatsapp" size={20} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                    <p className="console-eyebrow">
                       WhatsApp
                     </p>
-                    <h2 className="mt-1 text-base font-semibold">
+                    <h2 className="console-section-title mt-1.5 text-[0.95rem]">
                       Channel status
                     </h2>
                     <p className="mt-0.5 text-xs text-muted-foreground">
@@ -1936,7 +1911,7 @@ export const IntegrationsView = () => {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background/60 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-4">
                       <div className="flex min-w-0 items-center gap-3">
                         <ChannelIcon channel="whatsapp" size={34} />
                         <div className="min-w-0">
@@ -1968,7 +1943,7 @@ export const IntegrationsView = () => {
                     </div>
 
                     {whatsappIntegration.webhookUrl && (
-                      <div className="rounded-lg border bg-background/60 p-4">
+                      <div className="rounded-lg border bg-card p-4">
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
                             <p className="text-xs font-semibold text-muted-foreground">
@@ -1998,7 +1973,7 @@ export const IntegrationsView = () => {
                       </div>
                     )}
 
-                    <div className="rounded-lg border bg-background/60 p-4">
+                    <div className="rounded-lg border bg-card p-4">
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-xs font-semibold text-muted-foreground">
@@ -2044,24 +2019,24 @@ export const IntegrationsView = () => {
         {activeSection === "webhooks" && (
           <div className="space-y-4">
             <div className="grid gap-4 xl:grid-cols-[minmax(0,430px)_minmax(0,1fr)]">
-              <section className="surface-sidebar min-w-0 rounded-[22px] p-3">
+              <section className="console-card min-w-0 p-3">
                 <div className="px-1 py-1">
-                  <p className="text-[10px] font-semibold tracking-[0.12em] text-sidebar-foreground/46 uppercase">
+                  <p className="console-eyebrow">
                     Event destination
                   </p>
-                  <h2 className="mt-1 text-base font-semibold text-sidebar-foreground">
+                  <h2 className="console-section-title mt-1.5 text-[0.95rem]">
                     New destination
                   </h2>
-                  <p className="mt-1 text-xs leading-relaxed text-sidebar-foreground/58">
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                     Connect a platform or custom endpoint to receive live
                     events.
                   </p>
                 </div>
 
-                <div className="mt-3 space-y-5 rounded-2xl border border-sidebar-border/70 bg-sidebar/58 p-3">
+                <div className="mt-3 space-y-5 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/35 p-3">
                   {/* Provider picker */}
                   <div className="space-y-2">
-                    <Label className="text-xs text-sidebar-foreground/58">
+                    <Label className="text-xs text-muted-foreground">
                       Destination Type
                     </Label>
                     <div className="grid grid-cols-2 gap-2">
@@ -2080,8 +2055,8 @@ export const IntegrationsView = () => {
                               "flex min-w-0 flex-col items-center gap-1.5 rounded-xl border p-2.5",
                               "transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0",
                               isActive
-                                ? "border-sidebar-primary/25 bg-sidebar-accent/95 shadow-sm"
-                                : "border-transparent bg-sidebar-accent/48 hover:border-sidebar-border/70 hover:bg-sidebar-accent/75"
+                                ? "border-[var(--console-hairline)] bg-muted/70"
+                                : "border-transparent bg-muted/35 hover:border-[var(--console-hairline-soft)] hover:bg-muted/55"
                             )}
                           >
                             <div className="flex size-9 items-center justify-center">
@@ -2094,8 +2069,8 @@ export const IntegrationsView = () => {
                               className={cn(
                                 "w-full truncate text-center text-[10px] leading-none font-medium",
                                 isActive
-                                  ? "text-sidebar-foreground"
-                                  : "text-sidebar-foreground/58"
+                                  ? "text-foreground"
+                                  : "text-muted-foreground"
                               )}
                             >
                               {provider.label}
@@ -2104,18 +2079,18 @@ export const IntegrationsView = () => {
                         )
                       })}
                     </div>
-                    <p className="text-xs text-sidebar-foreground/58">
+                    <p className="text-xs text-muted-foreground">
                       {selectedWebhookProviderItem.description}
                     </p>
                   </div>
 
-                  <div className="h-px bg-sidebar-border/70" />
+                  <div className="console-rule" />
 
                   {/* URL */}
                   <div className="space-y-2">
                     <Label
                       htmlFor="webhook-url"
-                      className="text-xs text-sidebar-foreground/58"
+                      className="text-xs text-muted-foreground"
                     >
                       {selectedWebhookProvider === "telegram" ||
                       selectedWebhookProvider === "whatsapp"
@@ -2127,9 +2102,9 @@ export const IntegrationsView = () => {
                       onChange={(e) => setWebhookUrl(e.target.value)}
                       placeholder={selectedWebhookProviderItem.defaultUrl}
                       value={webhookUrl}
-                      className="h-10 min-w-0 bg-sidebar-accent/70 font-mono text-xs"
+                      className="h-10 min-w-0 bg-muted/55 font-mono text-xs"
                     />
-                    <p className="text-xs text-sidebar-foreground/58">
+                    <p className="text-xs text-muted-foreground">
                       {selectedWebhookProvider === "telegram" ||
                       selectedWebhookProvider === "whatsapp"
                         ? "Leave as default unless using a custom relay endpoint."
@@ -2139,22 +2114,22 @@ export const IntegrationsView = () => {
 
                   {/* Telegram fields */}
                   {selectedWebhookProvider === "telegram" && (
-                    <div className="space-y-3 rounded-xl border border-sidebar-border/70 bg-sidebar-accent/45 p-3">
+                    <div className="space-y-3 console-inset p-3">
                       <div className="mb-1 flex items-center gap-2">
                         <ProviderIcon provider="telegram" size={14} />
-                        <span className="text-xs font-medium text-sidebar-foreground/58">
+                        <span className="text-xs font-medium text-muted-foreground">
                           Telegram Config
                         </span>
                       </div>
                       <div className="space-y-2">
                         <Label
                           htmlFor="telegram-bot-token"
-                          className="text-xs text-sidebar-foreground/58"
+                          className="text-xs text-muted-foreground"
                         >
                           Bot Token
                         </Label>
                         <Input
-                          className="bg-sidebar/70"
+                          className="bg-card"
                           id="telegram-bot-token"
                           onChange={(e) => setTelegramBotToken(e.target.value)}
                           placeholder="123456789:AA..."
@@ -2165,12 +2140,12 @@ export const IntegrationsView = () => {
                       <div className="space-y-2">
                         <Label
                           htmlFor="telegram-chat-id"
-                          className="text-xs text-sidebar-foreground/58"
+                          className="text-xs text-muted-foreground"
                         >
                           Chat ID
                         </Label>
                         <Input
-                          className="bg-sidebar/70"
+                          className="bg-card"
                           id="telegram-chat-id"
                           onChange={(e) => setTelegramChatId(e.target.value)}
                           placeholder="-1001234567890"
@@ -2182,22 +2157,22 @@ export const IntegrationsView = () => {
 
                   {/* WhatsApp fields */}
                   {selectedWebhookProvider === "whatsapp" && (
-                    <div className="space-y-3 rounded-xl border border-sidebar-border/70 bg-sidebar-accent/45 p-3">
+                    <div className="space-y-3 console-inset p-3">
                       <div className="mb-1 flex items-center gap-2">
                         <ProviderIcon provider="whatsapp" size={14} />
-                        <span className="text-xs font-medium text-sidebar-foreground/58">
+                        <span className="text-xs font-medium text-muted-foreground">
                           WhatsApp Config
                         </span>
                       </div>
                       <div className="space-y-2">
                         <Label
                           htmlFor="whatsapp-access-token"
-                          className="text-xs text-sidebar-foreground/58"
+                          className="text-xs text-muted-foreground"
                         >
                           Access Token
                         </Label>
                         <Input
-                          className="bg-sidebar/70"
+                          className="bg-card"
                           id="whatsapp-access-token"
                           onChange={(e) =>
                             setWhatsappAccessToken(e.target.value)
@@ -2210,12 +2185,12 @@ export const IntegrationsView = () => {
                       <div className="space-y-2">
                         <Label
                           htmlFor="whatsapp-phone-number-id"
-                          className="text-xs text-sidebar-foreground/58"
+                          className="text-xs text-muted-foreground"
                         >
                           Phone Number ID
                         </Label>
                         <Input
-                          className="bg-sidebar/70"
+                          className="bg-card"
                           id="whatsapp-phone-number-id"
                           onChange={(e) =>
                             setWhatsappPhoneNumberId(e.target.value)
@@ -2227,12 +2202,12 @@ export const IntegrationsView = () => {
                       <div className="space-y-2">
                         <Label
                           htmlFor="whatsapp-recipient-phone"
-                          className="text-xs text-sidebar-foreground/58"
+                          className="text-xs text-muted-foreground"
                         >
                           Recipient Phone
                         </Label>
                         <Input
-                          className="bg-sidebar/70"
+                          className="bg-card"
                           id="whatsapp-recipient-phone"
                           onChange={(e) =>
                             setWhatsappRecipientPhone(e.target.value)
@@ -2248,7 +2223,7 @@ export const IntegrationsView = () => {
                   <div className="space-y-2">
                     <Label
                       htmlFor="webhook-description"
-                      className="text-xs text-sidebar-foreground/58"
+                      className="text-xs text-muted-foreground"
                     >
                       Label{" "}
                       <span className="text-muted-foreground/60">
@@ -2256,7 +2231,7 @@ export const IntegrationsView = () => {
                       </span>
                     </Label>
                     <Input
-                      className="bg-sidebar-accent/70"
+                      className="bg-muted/55"
                       id="webhook-description"
                       onChange={(e) => setWebhookDescription(e.target.value)}
                       placeholder="e.g. Production alerts"
@@ -2266,7 +2241,7 @@ export const IntegrationsView = () => {
 
                   {/* Trigger events */}
                   <div className="space-y-2">
-                    <Label className="text-xs text-sidebar-foreground/58">
+                    <Label className="text-xs text-muted-foreground">
                       Trigger Events
                     </Label>
                     <div className="space-y-1.5">
@@ -2280,8 +2255,8 @@ export const IntegrationsView = () => {
                             className={cn(
                               "flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5 transition-colors",
                               checked
-                                ? "border-sidebar-primary/30 bg-sidebar-accent/82"
-                                : "border-sidebar-border/60 bg-sidebar-accent/36 hover:bg-sidebar-accent/62"
+                                ? "border-[var(--console-hairline)] bg-muted/65"
+                                : "border-[var(--console-hairline-soft)] bg-muted/35 hover:bg-muted/50"
                             )}
                           >
                             <Checkbox
@@ -2292,10 +2267,10 @@ export const IntegrationsView = () => {
                               className="mt-0.5"
                             />
                             <span className="space-y-0.5">
-                              <span className="block text-sm font-medium text-sidebar-foreground">
+                              <span className="block text-sm font-medium text-foreground">
                                 {eventType.label}
                               </span>
-                              <span className="block text-xs text-sidebar-foreground/58">
+                              <span className="block text-xs text-muted-foreground">
                                 {eventType.description}
                               </span>
                             </span>
@@ -2364,13 +2339,13 @@ export const IntegrationsView = () => {
                 )}
               </section>
 
-              <section className="surface-panel min-w-0 overflow-hidden rounded-[22px] shadow-sm">
-                <div className="flex items-center justify-between border-b border-border/70 bg-background/62 px-4 py-4 sm:px-5">
+              <section className="console-card min-w-0 overflow-hidden">
+                <div className="flex items-center justify-between border-b border-[var(--console-hairline-soft)] px-4 py-4 sm:px-5">
                   <div>
-                    <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                    <p className="console-eyebrow">
                       Integrations
                     </p>
-                    <h2 className="mt-1 text-base font-semibold">
+                    <h2 className="console-section-title mt-1.5 text-[0.95rem]">
                       Active destinations
                     </h2>
                     <p className="mt-0.5 text-xs text-muted-foreground">
@@ -2404,7 +2379,7 @@ export const IntegrationsView = () => {
                               role="button"
                               tabIndex={0}
                               aria-expanded={isExpanded}
-                              className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/30"
+                              className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/35"
                               onClick={() =>
                                 setExpandedWebhookId(
                                   isExpanded ? null : webhook._id
@@ -2605,14 +2580,14 @@ export const IntegrationsView = () => {
             </div>
 
             {/* ── Delivery History ── */}
-            <section className="surface-panel overflow-hidden rounded-[22px] shadow-sm">
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/70 bg-background/62 px-4 py-4 sm:px-5">
+            <section className="console-card overflow-hidden">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--console-hairline-soft)] px-4 py-4 sm:px-5">
                 <div className="flex items-start gap-3">
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background shadow-sm">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[var(--console-hairline-soft)] bg-background shadow-sm">
                     <ActivityIcon className="size-4 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                    <p className="console-eyebrow">
                       Event log
                     </p>
                     <div className="flex flex-wrap items-center gap-2">
@@ -2686,7 +2661,7 @@ export const IntegrationsView = () => {
                     {deliveryLogs.map((delivery) => (
                       <div
                         key={delivery._id}
-                        className="flex items-start gap-3 px-5 py-3.5 transition-colors hover:bg-muted/20"
+                        className="flex items-start gap-3 px-5 py-3.5 transition-colors hover:bg-muted/35"
                       >
                         <div
                           className={cn(

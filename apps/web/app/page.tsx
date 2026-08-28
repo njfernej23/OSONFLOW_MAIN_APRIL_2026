@@ -2,14 +2,16 @@ import type { Metadata } from "next"
 
 import { HomeLandingPage } from "@/modules/marketing/ui/components/home-landing"
 
-const title = "Osonflow — One calm front door for customer support"
+const title = "Osonflow — AI customer support for chat and voice"
 const description =
-  "AI answers grounded in trusted context. Humans take over with full history when judgment is needed. Chat, voice, routing, and analytics in one serene support layer."
+  "Osonflow answers your customers by chat and voice using your own help docs, prices, and policies — and hands the conversation to your team, with the full history, the moment a person is needed."
 
 export const metadata: Metadata = {
-  title,
-  description:
-    "Osonflow is the calm AI customer-support layer for your whole site. Customers reach you by chat or voice, AI answers from trusted context, and every hard question hands off to a human with the full history intact.",
+  // Absolute so the homepage does not render as "… | Osonflow | Osonflow"
+  // under the root layout's title template.
+  title: { absolute: title },
+  description,
+  alternates: { canonical: "/" },
   openGraph: {
     title,
     description,
@@ -20,7 +22,7 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Osonflow",
+        alt: "Osonflow — AI customer support for chat and voice",
       },
     ],
   },

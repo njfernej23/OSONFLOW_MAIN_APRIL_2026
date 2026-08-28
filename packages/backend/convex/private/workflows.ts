@@ -1,7 +1,30 @@
 import { getOrganizationIdFromIdentity } from "../lib/organizationIdentity"
 import { ConvexError, v } from "convex/values"
-import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server"
+import {
+  action,
+  mutation,
+  MutationCtx,
+  query,
+  QueryCtx,
+} from "../_generated/server"
+import { internal } from "../_generated/api"
 import type { Id } from "../_generated/dataModel"
+import {
+  asBoolean,
+  asString,
+  buildKbQuery,
+  buildPromptInstructions,
+  getOutputVariableKey,
+  isRecord,
+  type RuntimeVariables,
+} from "../lib/workflowEngine"
+import {
+  generatePromptReply,
+  searchKnowledgeBase,
+} from "../lib/workflowAiGeneration"
+import { runApiStep } from "../lib/workflowApiStep"
+import { buildToolArgs } from "../system/workflowToolSteps"
+import { OPENAI_CHAT_MODEL } from "../lib/openai"
 
 const PRESENCE_STALE_MS = 45_000
 const PRESENCE_CLEANUP_MS = 5 * 60_000
@@ -469,6 +492,54 @@ export const list = query({
   },
 })
 
+export const listComponentCandidates = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      id: v.id("workflows"),
+      name: v.string(),
+      isPublished: v.boolean(),
+      publishedAt: v.union(v.number(), v.null()),
+    })
+  ),
+  handler: async (ctx) => {
+    const { organizationId } = await getOrganizationIdentity(ctx)
+
+    const workflows = await ctx.db
+      .query("workflows")
+      .withIndex("by_organization_id_and_updated_at", (q) =>
+        q.eq("organizationId", organizationId)
+      )
+      .order("desc")
+      .collect()
+
+    return workflows.map((workflow) => ({
+      id: workflow._id,
+      name: workflow.name,
+      isPublished: Boolean(workflow.publishedDefinition),
+      publishedAt: workflow.publishedAt ?? null,
+    }))
+  },
+})
+
+/** Published snapshot of a component, for the builder's Run panel. */
+export const getPublishedDefinition = query({
+  args: {
+    workflowId: v.id("workflows"),
+  },
+  returns: v.union(v.any(), v.null()),
+  handler: async (ctx, args) => {
+    const { organizationId } = await getOrganizationIdentity(ctx)
+    const workflow = await ctx.db.get(args.workflowId)
+
+    if (!workflow || workflow.organizationId !== organizationId) {
+      return null
+    }
+
+    return workflow.publishedDefinition ?? null
+  },
+})
+
 export const get = query({
   args: {
     workflowId: v.id("workflows"),
@@ -562,6 +633,34 @@ export const movePresenceCursor = mutation({
     await assertWorkflowAccess(ctx, args.workflowId, organizationId)
 
     await upsertPresence(ctx, args, organizationId, identity)
+  },
+})
+
+/**
+ * Best-effort removal when a tab closes or the builder unmounts. Without it a
+ * ghost avatar lingers until the stale cutoff, which readers notice.
+ */
+export const leavePresence = mutation({
+  args: {
+    workflowId: v.id("workflows"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { identity, organizationId } = await getOrganizationIdentity(ctx)
+    await assertWorkflowAccess(ctx, args.workflowId, organizationId)
+
+    const existing = await ctx.db
+      .query("workflowPresence")
+      .withIndex("by_workflow_id_and_user_id", (q) =>
+        q.eq("workflowId", args.workflowId).eq("userId", identity.subject)
+      )
+      .unique()
+
+    if (existing) {
+      await ctx.db.delete(existing._id)
+    }
+
+    return null
   },
 })
 
@@ -697,6 +796,12 @@ export const save = mutation({
 export const publish = mutation({
   args: {
     workflowId: v.id("workflows"),
+    /**
+     * Whether this becomes the org's live workflow. Components are published
+     * with activate:false so they get a runnable snapshot without taking
+     * activation away from the flow that actually answers conversations.
+     */
+    activate: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { identity, organizationId } = await getOrganizationIdentity(ctx)
@@ -713,28 +818,32 @@ export const publish = mutation({
       workflow.definition as StoredWorkflowDefinition
     )
 
-    const activeWorkflows = await ctx.db
-      .query("workflows")
-      .withIndex("by_organization_id_and_active", (q) =>
-        q.eq("organizationId", organizationId).eq("isActive", true)
-      )
-      .collect()
+    const activate = args.activate ?? true
 
-    await Promise.all(
-      activeWorkflows
-        .filter((activeWorkflow) => activeWorkflow._id !== args.workflowId)
-        .map((activeWorkflow) =>
-          ctx.db.patch(activeWorkflow._id, {
-            isActive: false,
-            updatedAt: now,
-            updatedBy: identity.subject,
-          })
+    if (activate) {
+      const activeWorkflows = await ctx.db
+        .query("workflows")
+        .withIndex("by_organization_id_and_active", (q) =>
+          q.eq("organizationId", organizationId).eq("isActive", true)
         )
-    )
+        .collect()
+
+      await Promise.all(
+        activeWorkflows
+          .filter((activeWorkflow) => activeWorkflow._id !== args.workflowId)
+          .map((activeWorkflow) =>
+            ctx.db.patch(activeWorkflow._id, {
+              isActive: false,
+              updatedAt: now,
+              updatedBy: identity.subject,
+            })
+          )
+      )
+    }
 
     await ctx.db.patch(args.workflowId, {
       publishedDefinition: definition,
-      isActive: true,
+      ...(activate ? { isActive: true } : {}),
       publishedAt: now,
       publishedBy: identity.subject,
       updatedAt: now,
@@ -743,6 +852,130 @@ export const publish = mutation({
 
     const published = await ctx.db.get(args.workflowId)
     return toWorkflowRecord(published!)
+  },
+})
+
+export const rename = mutation({
+  args: {
+    workflowId: v.id("workflows"),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { identity, organizationId } = await getOrganizationIdentity(ctx)
+    const workflow = await assertWorkflowAccess(
+      ctx,
+      args.workflowId,
+      organizationId
+    )
+    const now = Date.now()
+    const name = normalizeName(args.name)
+
+    await ctx.db.patch(args.workflowId, {
+      name,
+      // The name is mirrored inside the stored definition.
+      definition: withWorkflowMetadata(
+        args.workflowId,
+        name,
+        workflow.description,
+        workflow.definition as StoredWorkflowDefinition
+      ),
+      updatedAt: now,
+      updatedBy: identity.subject,
+    })
+
+    const renamed = await ctx.db.get(args.workflowId)
+    return toWorkflowRecord(renamed!)
+  },
+})
+
+export const duplicate = mutation({
+  args: {
+    workflowId: v.id("workflows"),
+  },
+  handler: async (ctx, args) => {
+    const { identity, organizationId } = await getOrganizationIdentity(ctx)
+    const workflow = await assertWorkflowAccess(
+      ctx,
+      args.workflowId,
+      organizationId
+    )
+    const now = Date.now()
+    const name = normalizeName(`${workflow.name} copy`)
+
+    // A copy is never live and carries no published snapshot: publishing is a
+    // deliberate act on the copy itself.
+    const copyId = await ctx.db.insert("workflows", {
+      organizationId,
+      name,
+      description: workflow.description,
+      definition: withWorkflowMetadata(
+        undefined,
+        name,
+        workflow.description,
+        cloneJson(workflow.definition) as StoredWorkflowDefinition
+      ),
+      createdAt: now,
+      updatedAt: now,
+      createdBy: identity.subject,
+      updatedBy: identity.subject,
+    })
+
+    await ctx.db.patch(copyId, {
+      definition: withWorkflowMetadata(
+        copyId,
+        name,
+        workflow.description,
+        cloneJson(workflow.definition) as StoredWorkflowDefinition
+      ),
+    })
+
+    const created = await ctx.db.get(copyId)
+    return toWorkflowRecord(created!)
+  },
+})
+
+export const remove = mutation({
+  args: {
+    workflowId: v.id("workflows"),
+  },
+  handler: async (ctx, args) => {
+    const { organizationId } = await getOrganizationIdentity(ctx)
+    const workflow = await assertWorkflowAccess(
+      ctx,
+      args.workflowId,
+      organizationId
+    )
+
+    // Deleting the live workflow would strand conversations mid-run.
+    if (workflow.isActive) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: "Deactivate this workflow before deleting it.",
+      })
+    }
+
+    const sessions = await ctx.db
+      .query("workflowSessions")
+      .withIndex("by_organization_id", (q) =>
+        q.eq("organizationId", organizationId)
+      )
+      .collect()
+
+    await Promise.all(
+      sessions
+        .filter((session) => session.workflowId === args.workflowId)
+        .map((session) => ctx.db.delete(session._id))
+    )
+
+    const presence = await ctx.db
+      .query("workflowPresence")
+      .withIndex("by_workflow_id", (q) => q.eq("workflowId", args.workflowId))
+      .collect()
+
+    await Promise.all(presence.map((entry) => ctx.db.delete(entry._id)))
+    await ctx.db.delete(args.workflowId)
+
+    return { deleted: true }
   },
 })
 
@@ -763,5 +996,259 @@ export const deactivate = mutation({
 
     const deactivated = await ctx.db.get(args.workflowId)
     return toWorkflowRecord(deactivated!)
+  },
+})
+
+/**
+ * Run one AI step exactly the way a published workflow would, so the builder's
+ * Run panel tests the real model instead of echoing the step's own
+ * instructions back as the reply.
+ */
+export const previewAiStep = action({
+  args: {
+    nodeType: v.string(),
+    data: v.any(),
+    variables: v.any(),
+  },
+  returns: v.object({
+    text: v.string(),
+    outputVariable: v.string(),
+    sendMessage: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
+
+    if (identity === null) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Identity not found",
+      })
+    }
+
+    const organizationId = getOrganizationIdFromIdentity(identity)
+
+    if (!organizationId) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Organization not found",
+      })
+    }
+
+    const data = isRecord(args.data) ? args.data : {}
+    const variables = (
+      isRecord(args.variables) ? args.variables : {}
+    ) as RuntimeVariables
+    const type = asString(args.nodeType)
+
+    const openAIPlugin = await ctx.runQuery(
+      internal.system.plugins.getByOrganizationIdAndService,
+      {
+        organizationId,
+        service: "openai_realtime",
+      }
+    )
+    const secretValue = openAIPlugin?.secretValue
+
+    if (type === "kbSearch") {
+      const text = await searchKnowledgeBase(ctx, {
+        organizationId,
+        query: buildKbQuery(data, variables),
+        secretValue,
+      })
+
+      return {
+        text,
+        outputVariable: getOutputVariableKey(data, "kbAnswer"),
+        sendMessage: asBoolean(data.sendAsMessage, true),
+      }
+    }
+
+    const text = await generatePromptReply(ctx, {
+      organizationId,
+      instructions: buildPromptInstructions(data, variables),
+      useKnowledgeBase: asBoolean(
+        data.useKnowledgeBase,
+        type === "playbook" || type === "agent" || type === "operator"
+      ),
+      variables,
+      chatModel: OPENAI_CHAT_MODEL,
+      secretValue,
+    })
+
+    return {
+      text,
+      outputVariable: getOutputVariableKey(data, "lastAiResponse"),
+      sendMessage: true,
+    }
+  },
+})
+
+/**
+ * Run one API step for the builder's Run panel, through the same executor the
+ * published runtime uses.
+ */
+export const previewApiStep = action({
+  args: {
+    data: v.any(),
+    variables: v.any(),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    status: v.number(),
+    variables: v.any(),
+    error: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    // Gate on org identity: this action performs an outbound request with a
+    // caller-supplied URL, so it must never be reachable unauthenticated.
+    const identity = await ctx.auth.getUserIdentity()
+
+    if (identity === null || !getOrganizationIdFromIdentity(identity)) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Organization not found",
+      })
+    }
+
+    const result = await runApiStep(
+      isRecord(args.data) ? args.data : {},
+      (isRecord(args.variables) ? args.variables : {}) as RuntimeVariables
+    )
+
+    return {
+      ok: result.ok,
+      status: result.status,
+      variables: result.variables,
+      error: result.error,
+    }
+  },
+})
+
+/**
+ * Run one JavaScript step for the builder's Run panel, in the same sandbox the
+ * published runtime uses.
+ */
+export const previewJsStep = action({
+  args: {
+    code: v.string(),
+    variables: v.any(),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    variables: v.any(),
+    logs: v.array(v.string()),
+    next: v.optional(v.string()),
+    error: v.optional(v.string()),
+  }),
+  // Explicit annotation: the handler references `internal`, which includes this
+  // module, so inference would be circular.
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    ok: boolean
+    variables: unknown
+    logs: string[]
+    next?: string
+    error?: string
+  }> => {
+    const identity = await ctx.auth.getUserIdentity()
+
+    if (identity === null || !getOrganizationIdFromIdentity(identity)) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Organization not found",
+      })
+    }
+
+    return await ctx.runAction(internal.system.workflowJsSteps.runSnippet, {
+      code: args.code,
+      variables: isRecord(args.variables) ? args.variables : {},
+    })
+  },
+})
+
+/**
+ * Run one Tool step for the builder's Run panel, through the same assistant
+ * tool executor the published runtime and the AI agent use.
+ */
+export const previewToolStep = action({
+  args: {
+    data: v.any(),
+    variables: v.any(),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    result: v.string(),
+    outputVariable: v.string(),
+    error: v.optional(v.string()),
+  }),
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    ok: boolean
+    result: string
+    outputVariable: string
+    error?: string
+  }> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const organizationId = identity
+      ? getOrganizationIdFromIdentity(identity)
+      : null
+
+    if (!identity || !organizationId) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Organization not found",
+      })
+    }
+
+    const data = isRecord(args.data) ? args.data : {}
+    const variables = (
+      isRecord(args.variables) ? args.variables : {}
+    ) as RuntimeVariables
+    const toolName = asString(data.toolName).trim()
+    const outputVariable =
+      asString(data.outputVariable).trim() || "toolResult"
+
+    if (!toolName) {
+      return {
+        ok: false,
+        result: "",
+        outputVariable,
+        error: "This Tool step has no tool selected.",
+      }
+    }
+
+    try {
+      // No threadId in a builder preview: handoff/resolve tools report that
+      // themselves rather than mutating a real conversation.
+      const result: string = await ctx.runAction(
+        internal.system.assistantTools.execute.executeTool,
+        {
+          organizationId,
+          toolName,
+          args: buildToolArgs(data, variables),
+          channel: "chat",
+        }
+      )
+
+      const unavailable = /is not available\.$/.test(result.trim())
+
+      return {
+        ok: !unavailable,
+        result,
+        outputVariable,
+        error: unavailable ? result : undefined,
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        result: "",
+        outputVariable,
+        error: error instanceof Error ? error.message : "Tool step failed.",
+      }
+    }
   },
 })

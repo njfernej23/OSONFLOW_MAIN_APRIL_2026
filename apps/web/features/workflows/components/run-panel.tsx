@@ -9,8 +9,20 @@ import {
   type FormEvent,
 } from "react"
 import type { Edge, Node } from "reactflow"
+import { useAction, useConvex } from "convex/react"
+import { api } from "@workspace/backend/_generated/api"
+import { untokenizeVariables } from "../lib/variable-tokens"
+import type { Id } from "@workspace/backend/_generated/dataModel"
 import type {
+  ApiNodeData,
+  BlockNodeData,
   ButtonOption,
+  CarouselNodeData,
+  CustomActionNodeData,
+  FunctionNodeData,
+  JavascriptNodeData,
+  ToolNodeData,
+  ComponentNodeData,
   ButtonsNodeData,
   CaptureNodeData,
   CardNodeData,
@@ -76,6 +88,13 @@ type ExecuteState = {
   waitingNodeId: string | null
   waitingMode: WaitingMode | null
   activeNodeId: string | null
+  /** Set when the walk paused on a step the server has to run out of band. */
+  asyncNode: {
+    nodeId: string
+    kind: "ai" | "api" | "javascript" | "tool" | "component" | "function"
+  } | null
+  /** Step index inside the paused block; 0 for standalone nodes. */
+  pausedStepIndex: number
   ended: boolean
   stepCount: number
 }
@@ -85,8 +104,15 @@ type PanelTab = "chat" | "trace" | "vars"
 const createId = (prefix: string) =>
   `${prefix}_${Math.random().toString(36).slice(2, 10)}`
 
+/**
+ * Variable pills wrap {{name}} in markup, so unwrap before substituting.
+ * That also keeps chat bubbles free of the editor's pill styling.
+ */
 const renderTemplate = (value: string, variables: RuntimeVariables) =>
-  value.replace(/{{\s*([\w.-]+)\s*}}/g, (_match, key: string) => variables[key] ?? "")
+  untokenizeVariables(value).replace(
+    /{{\s*([\w.-]+)\s*}}/g,
+    (_match, key: string) => variables[key] ?? ""
+  )
 
 const stripHtmlPreview = (html: string) =>
   html
@@ -235,15 +261,40 @@ const RunPanel = ({
     null
   )
   const [pendingNodeId, setPendingNodeId] = useState<string | null>(null)
+  const [pendingStepIndex, setPendingStepIndex] = useState(0)
   const [waitingMode, setWaitingMode] = useState<WaitingMode | null>(null)
   const [draftInput, setDraftInput] = useState("")
   const [copied, setCopied] = useState(false)
-  // Freeze the graph for the lifetime of a run so Liveblocks/canvas edits
+  // Set while an AI step is generating server-side; keyed so a flow that loops
+  // back onto the same AI block still re-triggers the effect.
+  const [asyncRun, setAsyncRun] = useState<{
+    nodeId: string
+    kind: "ai" | "api" | "javascript" | "tool" | "component" | "function"
+    key: number
+    stepIndex: number
+  } | null>(null)
+  const asyncRunKeyRef = useRef(0)
+  const previewAiStep = useAction(api.private.workflows.previewAiStep)
+  const previewApiStep = useAction(api.private.workflows.previewApiStep)
+  const previewJsStep = useAction(api.private.workflows.previewJsStep)
+  const previewToolStep = useAction(api.private.workflows.previewToolStep)
+  // Component graphs are fetched on demand, so the query has to be imperative.
+  const convex = useConvex()
+  // Freeze the graph for the lifetime of a run so collaborator/canvas edits
   // cannot restart or rewire mid-conversation.
   const runGraphRef = useRef<{
     nodes: Node<NodeData>[]
     edges: Edge[]
   } | null>(null)
+  /** Caller graphs to return to, innermost last. */
+  const componentStackRef = useRef<
+    Array<{
+      graph: { nodes: Node<NodeData>[]; edges: Edge[] }
+      returnNodeId: string
+      returnStepIndex: number
+      workflowId: string
+    }>
+  >([])
   const [, setGraphEpoch] = useState(0)
   const bodyRef = useRef<HTMLDivElement>(null)
   const traceRef = useRef<HTMLDivElement>(null)
@@ -261,11 +312,13 @@ const RunPanel = ({
       })),
       edges: nextEdges.map((edge) => ({ ...edge })),
     }
+    componentStackRef.current = []
     setGraphEpoch((value) => value + 1)
   }, [])
 
   const clearFrozenGraph = useCallback(() => {
     runGraphRef.current = null
+    componentStackRef.current = []
     setGraphEpoch((value) => value + 1)
   }, [])
 
@@ -283,12 +336,12 @@ const RunPanel = ({
       const outgoing = edgeList.filter((edge) => edge.source === sourceId)
 
       if (handleId) {
-        const byHandle = outgoing.find(
-          (edge) => edge.sourceHandle === handleId
+        // Mirrors the published runtime: a branch handle only follows its own
+        // edge, never another handle's.
+        return (
+          outgoing.find((edge) => edge.sourceHandle === handleId)?.target ??
+          null
         )
-        if (byHandle?.target) {
-          return byHandle.target
-        }
       }
 
       return (
@@ -319,23 +372,83 @@ const RunPanel = ({
       startVars: RuntimeVariables,
       startBubbles: ChatBubble[],
       startTrace: TraceEvent[],
-      startStep = 0
+      startStep = 0,
+      startStepIndex = 0
     ): ExecuteState => {
-      const graphNodes = runGraphRef.current?.nodes ?? nodes
-      const graphNodeMap = new Map(graphNodes.map((node) => [node.id, node]))
+      let activeGraph = runGraphRef.current ?? { nodes, edges }
+      let graphNodeMap = new Map(
+        activeGraph.nodes.map((node) => [node.id, node])
+      )
+      let componentStack = [...componentStackRef.current]
+
+      /** Edge lookup against the graph that is executing right now. */
+      const nextFrom = (sourceId: string, handleId?: string | null) => {
+        const outgoing = activeGraph.edges.filter(
+          (edge) => edge.source === sourceId
+        )
+
+        if (handleId) {
+          return (
+            outgoing.find((edge) => edge.sourceHandle === handleId)?.target ??
+            null
+          )
+        }
+
+        return (
+          outgoing.find(
+            (edge) => edge.sourceHandle == null || edge.sourceHandle === ""
+          )?.target ??
+          outgoing[0]?.target ??
+          null
+        )
+      }
 
       let currentId = startId
+      let currentStepIndex = startStepIndex
       let vars = { ...startVars }
       const nextBubbles = [...startBubbles]
       const nextTrace = [...startTrace]
       let nextButtons: ButtonOption[] | null = null
       let waitingNodeId: string | null = null
       let nextWaitingMode: WaitingMode | null = null
+      let asyncNode: ExecuteState["asyncNode"] = null
       let activeNodeId: string | null = startId
       let steps = startStep
       let safety = 0
 
-      while (currentId) {
+      while (true) {
+        if (!currentId) {
+          if (componentStack.length === 0) {
+            break
+          }
+
+          // Child flow ran out of steps: return to the caller's graph.
+          const frame = componentStack[componentStack.length - 1]!
+          componentStack = componentStack.slice(0, -1)
+          activeGraph = frame.graph
+          graphNodeMap = new Map(
+            activeGraph.nodes.map((node) => [node.id, node])
+          )
+          pushTrace(nextTrace, {
+            level: "info",
+            nodeId: frame.returnNodeId,
+            title: "Returned from component",
+          })
+
+          const returnNode = graphNodeMap.get(frame.returnNodeId)
+
+          if (returnNode?.type === "block") {
+            // The Component was a step inside a block: carry on with the block.
+            currentId = frame.returnNodeId
+            currentStepIndex = frame.returnStepIndex + 1
+          } else {
+            currentId = nextFrom(frame.returnNodeId)
+            currentStepIndex = 0
+          }
+
+          continue
+        }
+
         safety += 1
         if (safety > 50) {
           pushTrace(nextTrace, {
@@ -363,31 +476,65 @@ const RunPanel = ({
         activeNodeId = node.id
         const beforeVars = { ...vars }
 
+        // A Block runs its steps in order and is wired as one unit; anything
+        // else is a single step in itself.
+        const blockSteps =
+          node.type === "block"
+            ? ((node.data as BlockNodeData).steps ?? [])
+            : null
+
+        if (blockSteps && currentStepIndex >= blockSteps.length) {
+          currentId = nextFrom(node.id)
+          currentStepIndex = 0
+          continue
+        }
+
+        const blockStep = blockSteps ? blockSteps[currentStepIndex]! : null
+        const stepData = blockStep ? blockStep.data : node.data
+        const stepType = blockStep ? blockStep.type : node.type
+
+        /** Continue inside the block, or follow the node's outgoing edge. */
+        const advance = () => {
+          if (blockSteps) {
+            currentStepIndex += 1
+          } else {
+            currentId = nextFrom(node.id)
+          }
+        }
+
+        /** Leave by a named port. Branching steps are always last in a block. */
+        const advanceVia = (handle: string) => {
+          currentId = nextFrom(node.id, handle)
+          currentStepIndex = 0
+        }
+
         pushTrace(nextTrace, {
           level: "step",
           step: steps,
           nodeId: node.id,
-          nodeType: node.type,
-          title: `Enter ${nodeTypeLabel(node.type)}`,
-          detail: node.data.customName
-            ? `Custom name: ${node.data.customName}`
-            : undefined,
+          nodeType: stepType,
+          title: `Enter ${nodeTypeLabel(stepType)}`,
+          detail: blockSteps
+            ? `Block step ${currentStepIndex + 1}`
+            : stepData.customName
+              ? `Custom name: ${stepData.customName}`
+              : undefined,
         })
 
-        switch (node.type) {
+        switch (stepType) {
           case "start": {
             pushTrace(nextTrace, {
               level: "info",
               step: steps,
               nodeId: node.id,
-              nodeType: node.type,
+              nodeType: stepType,
               title: "Workflow started",
             })
-            currentId = getNextNodeId(node.id)
+            advance()
             break
           }
           case "message": {
-            const data = node.data as MessageNodeData
+            const data = stepData as MessageNodeData
             const text = renderTemplate(data.text || "Message step.", vars)
             nextBubbles.push({
               id: createId("msg"),
@@ -399,15 +546,15 @@ const RunPanel = ({
               level: "info",
               step: steps,
               nodeId: node.id,
-              nodeType: node.type,
+              nodeType: stepType,
               title: "Sent message",
               detail: stripHtmlPreview(text).slice(0, 160) || "(empty)",
             })
-            currentId = getNextNodeId(node.id)
+            advance()
             break
           }
           case "image": {
-            const data = node.data as ImageNodeData
+            const data = stepData as ImageNodeData
             const url = renderTemplate(data.url || "", vars)
             nextBubbles.push({
               id: createId("img"),
@@ -420,15 +567,15 @@ const RunPanel = ({
               level: url ? "info" : "warn",
               step: steps,
               nodeId: node.id,
-              nodeType: node.type,
+              nodeType: stepType,
               title: url ? "Sent image" : "Image missing URL",
               detail: url || data.alt || undefined,
             })
-            currentId = getNextNodeId(node.id)
+            advance()
             break
           }
           case "card": {
-            const data = node.data as CardNodeData
+            const data = stepData as CardNodeData
             nextBubbles.push({
               id: createId("card"),
               nodeId: node.id,
@@ -443,7 +590,7 @@ const RunPanel = ({
               level: "info",
               step: steps,
               nodeId: node.id,
-              nodeType: node.type,
+              nodeType: stepType,
               title: "Showed card",
               detail: data.title || undefined,
             })
@@ -455,18 +602,18 @@ const RunPanel = ({
                 level: "wait",
                 step: steps,
                 nodeId: node.id,
-                nodeType: node.type,
+                nodeType: stepType,
                 title: "Waiting for card button",
                 detail: data.buttons.map((b) => b.label).join(" · "),
               })
               currentId = null
             } else {
-              currentId = getNextNodeId(node.id)
+              advance()
             }
             break
           }
           case "setVariable": {
-            const data = node.data as SetVariableNodeData
+            const data = stepData as SetVariableNodeData
             const key = data.key || "variable"
             const value = renderTemplate(data.value || "", vars)
             vars = { ...vars, [key]: value }
@@ -474,23 +621,23 @@ const RunPanel = ({
               level: "info",
               step: steps,
               nodeId: node.id,
-              nodeType: node.type,
+              nodeType: stepType,
               title: `Set ${key}`,
               detail: value || "(empty)",
               varsChanged: diffVars(beforeVars, vars),
             })
-            currentId = getNextNodeId(node.id)
+            advance()
             break
           }
           case "condition": {
-            const data = node.data as ConditionNodeData
+            const data = stepData as ConditionNodeData
             const result = evaluateCondition(data, vars)
             const handle = result ? "true" : "false"
             pushTrace(nextTrace, {
               level: "branch",
               step: steps,
               nodeId: node.id,
-              nodeType: node.type,
+              nodeType: stepType,
               title: `Branch → ${handle}`,
               detail: `${data.key || "variable"} ${data.operator} ${
                 data.operator === "exists" || data.operator === "not_exists"
@@ -498,27 +645,42 @@ const RunPanel = ({
                   : `"${data.value}"`
               }`.trim(),
             })
-            currentId = getNextNodeId(node.id, handle)
+            advanceVia(handle)
             break
           }
           case "buttons": {
-            const data = node.data as ButtonsNodeData
-            nextButtons = data.buttons
+            const data = stepData as ButtonsNodeData
+            const buttons = data.buttons ?? []
+
+            if (buttons.length === 0) {
+              pushTrace(nextTrace, {
+                level: "warn",
+                step: steps,
+                nodeId: node.id,
+                nodeType: stepType,
+                title: "Buttons step has no buttons",
+                detail: "Passing through to the next step.",
+              })
+              advance()
+              break
+            }
+
+            nextButtons = buttons
             waitingNodeId = node.id
             nextWaitingMode = "buttons"
             pushTrace(nextTrace, {
               level: "wait",
               step: steps,
               nodeId: node.id,
-              nodeType: node.type,
+              nodeType: stepType,
               title: "Waiting for button",
-              detail: data.buttons.map((b) => b.label).join(" · "),
+              detail: buttons.map((b) => b.label).join(" · "),
             })
             currentId = null
             break
           }
           case "choice": {
-            const data = node.data as ChoiceNodeData
+            const data = stepData as ChoiceNodeData
             if (data.prompt?.trim()) {
               const text = renderTemplate(data.prompt, vars)
               nextBubbles.push({
@@ -528,22 +690,37 @@ const RunPanel = ({
                 nodeId: node.id,
               })
             }
-            nextButtons = data.choices ?? []
+            const choices = data.choices ?? []
+
+            if (choices.length === 0) {
+              pushTrace(nextTrace, {
+                level: "warn",
+                step: steps,
+                nodeId: node.id,
+                nodeType: stepType,
+                title: "Choice step has no choices",
+                detail: "Passing through to the next step.",
+              })
+              advance()
+              break
+            }
+
+            nextButtons = choices
             waitingNodeId = node.id
             nextWaitingMode = "choice"
             pushTrace(nextTrace, {
               level: "wait",
               step: steps,
               nodeId: node.id,
-              nodeType: node.type,
+              nodeType: stepType,
               title: "Waiting for choice",
-              detail: (data.choices ?? []).map((c) => c.label).join(" · "),
+              detail: choices.map((c) => c.label).join(" · "),
             })
             currentId = null
             break
           }
           case "capture": {
-            const data = node.data as CaptureNodeData
+            const data = stepData as CaptureNodeData
             if (data.prompt?.trim()) {
               const text = renderTemplate(data.prompt, vars)
               nextBubbles.push({
@@ -560,7 +737,7 @@ const RunPanel = ({
               level: "wait",
               step: steps,
               nodeId: node.id,
-              nodeType: node.type,
+              nodeType: stepType,
               title: "Waiting for text capture",
               detail: `Stores into {{${data.variableKey || "lastInput"}}}`,
             })
@@ -572,71 +749,71 @@ const RunPanel = ({
           case "agent":
           case "crew":
           case "operator": {
-            const data = node.data as PromptNodeData & GenericNodeData
-            const instructions =
-              data.instructions ||
-              data.description ||
-              "Respond helpfully based on the conversation."
-            const rendered = renderTemplate(instructions, vars)
-            nextBubbles.push({
-              id: createId("msg"),
-              kind: "assistant",
-              text: rendered,
-              nodeId: node.id,
-            })
-            vars = {
-              ...vars,
-              lastAiResponse: rendered,
-              ...(data.outputVariable
-                ? { [data.outputVariable]: rendered }
-                : {}),
+            const data = stepData as PromptNodeData & GenericNodeData
+
+            // Published runs hold an agent step until the user speaks first
+            // when "talks first" is off. Mirror that here or the simulator
+            // reports a reply the live workflow would never have sent yet.
+            if (
+              stepType !== "prompt" &&
+              data.talksFirst === false &&
+              !vars.__aiTurnReady
+            ) {
+              waitingNodeId = node.id
+              nextWaitingMode = "ai_turn"
+              nextButtons = null
+              pushTrace(nextTrace, {
+                level: "wait",
+                step: steps,
+                nodeId: node.id,
+                nodeType: stepType,
+                title: "Waiting for user before AI turn",
+              })
+              currentId = null
+              break
             }
+
+            const { __aiTurnReady: _turnReady, ...readyVars } = vars
+            vars = readyVars
+
+            // Suspend here exactly like the published runtime does: it hands
+            // the node to an action and resumes on the reply. The generation
+            // itself runs server-side against the real model.
+            asyncNode = { nodeId: node.id, kind: "ai" }
+            activeNodeId = node.id
             pushTrace(nextTrace, {
               level: "ai",
               step: steps,
               nodeId: node.id,
-              nodeType: node.type,
-              title: `${nodeTypeLabel(node.type)} reply (preview)`,
-              detail: rendered.slice(0, 180),
-              varsChanged: diffVars(beforeVars, vars),
+              nodeType: stepType,
+              title: `Running ${nodeTypeLabel(stepType)}`,
+              detail: renderTemplate(
+                data.instructions || data.description || "",
+                vars
+              ).slice(0, 180),
             })
-            currentId = getNextNodeId(node.id)
+            currentId = null
             break
           }
           case "kbSearch": {
-            const data = node.data as KbSearchNodeData & GenericNodeData
-            const query = renderTemplate(
-              data.query ||
-                vars.lastInput ||
-                vars.lastUserMessage ||
-                "knowledge query",
-              vars
-            )
-            const answer = `Found knowledge for: ${query}`
-            if (data.sendAsMessage !== false) {
-              nextBubbles.push({
-                id: createId("msg"),
-                kind: "assistant",
-                text: answer,
-                nodeId: node.id,
-              })
-            }
-            const key = data.outputVariable || "kbAnswer"
-            vars = { ...vars, [key]: answer, lastAiResponse: answer }
+            asyncNode = { nodeId: node.id, kind: "ai" }
+            activeNodeId = node.id
             pushTrace(nextTrace, {
               level: "ai",
               step: steps,
               nodeId: node.id,
-              nodeType: node.type,
-              title: "KB search (preview)",
-              detail: `query="${query}" → ${key}`,
-              varsChanged: diffVars(beforeVars, vars),
+              nodeType: stepType,
+              title: "Searching knowledge base",
+              detail: renderTemplate(
+                (stepData as KbSearchNodeData).query || "{{lastInput}}",
+                vars
+              ),
             })
-            currentId = getNextNodeId(node.id)
+            currentId = null
             break
           }
           case "callForward": {
-            const data = node.data as GenericNodeData
+            const data = stepData as GenericNodeData
             const text =
               data.description?.trim() ||
               "Connecting you with a human operator now."
@@ -650,71 +827,249 @@ const RunPanel = ({
               level: "warn",
               step: steps,
               nodeId: node.id,
-              nodeType: node.type,
+              nodeType: stepType,
               title: "Handoff to human",
               detail: text,
             })
             currentId = null
             break
           }
-          case "component":
-          case "carousel":
-          case "tool":
-          case "function":
-          case "api":
-          case "javascript":
-          case "customAction": {
-            const data = node.data as GenericNodeData
+          case "api": {
+            const data = stepData as ApiNodeData
+            asyncNode = { nodeId: node.id, kind: "api" }
+            activeNodeId = node.id
             pushTrace(nextTrace, {
-              level: "warn",
+              level: "step",
               step: steps,
               nodeId: node.id,
-              nodeType: node.type,
-              title: `${nodeTypeLabel(node.type)} stub`,
-              detail:
-                data.description ||
-                "This step is a pass-through until the integration is wired.",
+              nodeType: stepType,
+              title: "Calling API",
+              detail: `${data.method ?? "GET"} ${
+                renderTemplate(data.url || "", vars) || "(no URL)"
+              }`,
             })
-            currentId = getNextNodeId(node.id)
+            currentId = null
+            break
+          }
+          case "carousel": {
+            const data = stepData as CarouselNodeData
+            const cards = data.cards ?? []
+
+            for (const [index, card] of cards.entries()) {
+              nextBubbles.push({
+                id: createId("card"),
+                nodeId: node.id,
+                kind: "card",
+                title: renderTemplate(
+                  card.title || `Option ${index + 1}`,
+                  vars
+                ),
+                text: renderTemplate(card.description || "", vars),
+                imageUrl: renderTemplate(card.url || "", vars),
+                buttons: card.buttons,
+              })
+            }
+
+            const carouselButtons = cards.flatMap((card) => card.buttons ?? [])
+
+            pushTrace(nextTrace, {
+              level: "info",
+              step: steps,
+              nodeId: node.id,
+              nodeType: stepType,
+              title: "Showed carousel",
+              detail: `${cards.length} card(s)`,
+            })
+
+            if (carouselButtons.length === 0) {
+              advance()
+              break
+            }
+
+            nextButtons = carouselButtons
+            waitingNodeId = node.id
+            nextWaitingMode = "buttons"
+            pushTrace(nextTrace, {
+              level: "wait",
+              step: steps,
+              nodeId: node.id,
+              nodeType: stepType,
+              title: "Waiting for carousel button",
+              detail: carouselButtons.map((b) => b.label).join(" · "),
+            })
+            currentId = null
+            break
+          }
+          case "customAction": {
+            const data = stepData as CustomActionNodeData
+            const actionName =
+              renderTemplate(data.actionName || "", vars).trim() ||
+              "custom_action"
+            pushTrace(nextTrace, {
+              level: "info",
+              step: steps,
+              nodeId: node.id,
+              nodeType: stepType,
+              title: `Would dispatch ${actionName}`,
+              detail:
+                "Published runs send a workflow.action webhook; test runs do not fire integrations.",
+            })
+            advance()
+            break
+          }
+          case "javascript": {
+            asyncNode = { nodeId: node.id, kind: "javascript" }
+            activeNodeId = node.id
+            pushTrace(nextTrace, {
+              level: "step",
+              step: steps,
+              nodeId: node.id,
+              nodeType: stepType,
+              title: "Running JavaScript",
+            })
+            currentId = null
+            break
+          }
+          case "tool": {
+            const data = stepData as ToolNodeData
+            asyncNode = { nodeId: node.id, kind: "tool" }
+            activeNodeId = node.id
+            pushTrace(nextTrace, {
+              step: steps,
+              level: "step",
+              nodeId: node.id,
+              nodeType: stepType,
+              title: "Running tool",
+              detail: data.toolName || "(none selected)",
+            })
+            currentId = null
+            break
+          }
+          case "component": {
+            const data = stepData as ComponentNodeData
+
+            if (!data.workflowId) {
+              pushTrace(nextTrace, {
+                level: "error",
+                step: steps,
+                nodeId: node.id,
+                nodeType: stepType,
+                title: "Component skipped",
+                detail: "No workflow is selected for this component.",
+              })
+              advance()
+              break
+            }
+
+            if (
+              componentStack.some(
+                (frame) => frame.workflowId === data.workflowId
+              )
+            ) {
+              pushTrace(nextTrace, {
+                level: "error",
+                step: steps,
+                nodeId: node.id,
+                nodeType: stepType,
+                title: "Component skipped",
+                detail: "That component is already running (recursion).",
+              })
+              advance()
+              break
+            }
+
+            if (componentStack.length >= 5) {
+              pushTrace(nextTrace, {
+                level: "error",
+                step: steps,
+                nodeId: node.id,
+                nodeType: stepType,
+                title: "Component skipped",
+                detail: "Component nesting is capped at 5 levels.",
+              })
+              advance()
+              break
+            }
+
+            // The child graph has to be fetched, so pause like any other
+            // out-of-band step and descend when it arrives.
+            asyncNode = { nodeId: node.id, kind: "component" }
+            activeNodeId = node.id
+            pushTrace(nextTrace, {
+              level: "step",
+              step: steps,
+              nodeId: node.id,
+              nodeType: stepType,
+              title: `Entering component ${data.workflowName || ""}`.trim(),
+            })
+            currentId = null
+            break
+          }
+          case "function": {
+            asyncNode = { nodeId: node.id, kind: "function" }
+            activeNodeId = node.id
+            pushTrace(nextTrace, {
+              level: "step",
+              step: steps,
+              nodeId: node.id,
+              nodeType: stepType,
+              title: "Running function",
+            })
+            currentId = null
             break
           }
           case "end": {
-            const data = node.data as GenericNodeData
-            const message = data.description?.trim()
-            if (message) {
-              nextBubbles.push({
-                id: createId("msg"),
-                kind: "assistant",
-                text: message,
-                nodeId: node.id,
-              })
-            }
+            const data = stepData as GenericNodeData
+            // The published runtime always says something before it closes.
+            const message =
+              renderTemplate(data.description?.trim() ?? "", vars) ||
+              "Conversation ended."
+            nextBubbles.push({
+              id: createId("msg"),
+              kind: "assistant",
+              text: message,
+              nodeId: node.id,
+            })
             pushTrace(nextTrace, {
               level: "done",
               step: steps,
               nodeId: node.id,
-              nodeType: node.type,
+              nodeType: stepType,
               title: "Conversation ended",
-              detail: message || undefined,
+              detail: message,
             })
             currentId = null
             break
           }
           default: {
+            // The published runtime ends the run and escalates here, so the
+            // simulator must not quietly skip past it.
+            nextBubbles.push({
+              id: createId("msg"),
+              kind: "assistant",
+              text: `This workflow reached an unsupported step (${
+                stepType ?? "unknown"
+              }). A human operator will continue from here.`,
+              nodeId: node.id,
+            })
             pushTrace(nextTrace, {
-              level: "warn",
+              level: "error",
               step: steps,
               nodeId: node.id,
-              nodeType: node.type,
-              title: `Skipped unsupported "${node.type}"`,
+              nodeType: stepType,
+              title: `Unsupported step "${stepType}"`,
+              detail: "Published runs escalate to a human operator here.",
             })
-            currentId = getNextNodeId(node.id)
+            currentId = null
             break
           }
         }
       }
 
-      const ended = !waitingNodeId
+      componentStackRef.current = componentStack
+      runGraphRef.current = activeGraph
+
+      const ended = !waitingNodeId && !asyncNode
       if (ended) {
         const last = nextTrace[nextTrace.length - 1]
         if (last?.level !== "done" && last?.level !== "error") {
@@ -733,7 +1088,9 @@ const RunPanel = ({
         nextButtons,
         waitingNodeId,
         waitingMode: nextWaitingMode,
-        activeNodeId: waitingNodeId ?? activeNodeId,
+        activeNodeId: waitingNodeId ?? asyncNode?.nodeId ?? activeNodeId,
+        asyncNode,
+        pausedStepIndex: currentStepIndex,
         ended,
         stepCount: steps,
       }
@@ -747,8 +1104,19 @@ const RunPanel = ({
     setVariables(result.vars)
     setPendingButtons(result.nextButtons)
     setPendingNodeId(result.waitingNodeId)
+    setPendingStepIndex(result.pausedStepIndex)
     setWaitingMode(result.waitingMode)
     setDraftInput("")
+    asyncRunKeyRef.current += 1
+    setAsyncRun(
+      result.asyncNode
+        ? {
+            ...result.asyncNode,
+            key: asyncRunKeyRef.current,
+            stepIndex: result.pausedStepIndex,
+          }
+        : null
+    )
     setStatus(
       result.ended ? "ended" : result.waitingNodeId ? "waiting" : "running"
     )
@@ -757,6 +1125,453 @@ const RunPanel = ({
       waitingNodeId: result.waitingNodeId,
     })
   }
+
+  /**
+   * Mirrors system/workflowRuntime.continueAfterAi and continueAfterApi: the
+   * step runs server-side, its result lands in variables, and the walk resumes
+   * at the block's outgoing edge (success/fail for API).
+   */
+  useEffect(() => {
+    if (!asyncRun) {
+      return
+    }
+
+    const node = (runGraphRef.current?.nodes ?? nodes).find(
+      (candidate) => candidate.id === asyncRun.nodeId
+    )
+
+    if (!node) {
+      return
+    }
+
+    let cancelled = false
+    const isStale = () => cancelled || asyncRunKeyRef.current !== asyncRun.key
+    const resumeStep = trace.filter((event) => event.level === "step").length
+
+    const inBlock = node.type === "block"
+
+    /** Data of the step that paused: the block entry, or the node itself. */
+    const pausedData: NodeData = inBlock
+      ? (((node.data as BlockNodeData).steps ?? [])[asyncRun.stepIndex]?.data ??
+        node.data)
+      : node.data
+
+    const resume = (
+      nextVars: RuntimeVariables,
+      nextBubbles: ChatBubble[],
+      nextTrace: TraceEvent[],
+      handleId?: string
+    ) => {
+      // handleId means the step branched, which only terminal steps do, so it
+      // leaves the block. Without one an in-block step carries on internally.
+      const continuesInBlock = inBlock && !handleId
+
+      applyResult(
+        executeFrom(
+          continuesInBlock ? node.id : getNextNodeId(node.id, handleId),
+          nextVars,
+          nextBubbles,
+          nextTrace,
+          resumeStep,
+          continuesInBlock ? asyncRun.stepIndex + 1 : 0
+        )
+      )
+    }
+
+    const fail = (title: string, detail: string, message: string) => {
+      const nextTrace = [...trace]
+      pushTrace(nextTrace, {
+        level: "error",
+        nodeId: node.id,
+        nodeType: node.type,
+        title,
+        detail,
+      })
+
+      setBubbles([
+        ...bubbles,
+        {
+          id: createId("msg"),
+          kind: "assistant",
+          text: message,
+          nodeId: node.id,
+        },
+      ])
+      setTrace(nextTrace)
+      setAsyncRun(null)
+      setStatus("ended")
+      onActiveNodeChange?.({ activeNodeId: node.id, waitingNodeId: null })
+    }
+
+    void (async () => {
+      if (asyncRun.kind === "component") {
+        const data = pausedData as ComponentNodeData
+
+        try {
+          const definition = (await convex.query(
+            api.private.workflows.getPublishedDefinition,
+            { workflowId: data.workflowId as Id<"workflows"> }
+          )) as {
+            nodes?: Array<{ id: string; type?: string; data?: unknown }>
+            edges?: Array<{
+              id?: string
+              source?: string
+              target?: string
+              sourceHandle?: string | null
+            }>
+          } | null
+
+          if (isStale()) {
+            return
+          }
+
+          const childNodes = (definition?.nodes ?? []) as Node<NodeData>[]
+          const startNode = childNodes.find((entry) => entry.type === "start")
+          const nextTrace = [...trace]
+
+          if (!definition || !startNode) {
+            pushTrace(nextTrace, {
+              level: "error",
+              nodeId: node.id,
+              nodeType: node.type,
+              title: "Component skipped",
+              detail: !definition
+                ? `"${data.workflowName ?? "That workflow"}" has never been published, so it has no runnable version.`
+                : `"${data.workflowName ?? "That workflow"}" has no Start block.`,
+            })
+            resume(variables, [...bubbles], nextTrace)
+            return
+          }
+
+          // Inputs are plain assignments: parent and child share one variable
+          // scope, exactly as the published runtime does it.
+          const nextVars: RuntimeVariables = { ...variables }
+
+          for (const input of data.inputs ?? []) {
+            if (input.name.trim()) {
+              nextVars[input.name.trim()] = renderTemplate(
+                input.value,
+                nextVars
+              )
+            }
+          }
+
+          const callerGraph = runGraphRef.current ?? { nodes, edges }
+          componentStackRef.current = [
+            ...componentStackRef.current,
+            {
+              graph: callerGraph,
+              returnNodeId: node.id,
+              returnStepIndex: asyncRun.stepIndex,
+              workflowId: data.workflowId,
+            },
+          ]
+          runGraphRef.current = {
+            nodes: childNodes,
+            edges: (definition.edges ?? []) as Edge[],
+          }
+
+          applyResult(
+            executeFrom(
+              startNode.id,
+              nextVars,
+              [...bubbles],
+              nextTrace,
+              resumeStep
+            )
+          )
+        } catch (error) {
+          if (isStale()) {
+            return
+          }
+
+          fail(
+            "Component failed",
+            error instanceof Error ? error.message : "Could not load component",
+            "I had trouble running a step. A human operator will continue from here."
+          )
+        }
+        return
+      }
+
+      if (asyncRun.kind === "tool") {
+        try {
+          const result = await previewToolStep({
+            data: pausedData,
+            variables,
+          })
+
+          if (isStale()) {
+            return
+          }
+
+          const nextVars: RuntimeVariables = { ...variables }
+
+          if (result.ok && result.outputVariable) {
+            nextVars[result.outputVariable] = result.result
+          }
+
+          const nextTrace = [...trace]
+          pushTrace(nextTrace, {
+            level: result.ok ? "branch" : "warn",
+            nodeId: node.id,
+            nodeType: node.type,
+            title: `Tool ${result.ok ? "ok" : "error"}`,
+            detail: result.error ?? result.result.slice(0, 180),
+            varsChanged: diffVars(variables, nextVars),
+          })
+
+          resume(
+            nextVars,
+            [...bubbles],
+            nextTrace,
+            result.ok ? "success" : "fail"
+          )
+        } catch (error) {
+          if (isStale()) {
+            return
+          }
+
+          fail(
+            "Tool step failed",
+            error instanceof Error ? error.message : "Tool failed",
+            "I had trouble running a step. A human operator will continue from here."
+          )
+        }
+        return
+      }
+
+      if (asyncRun.kind === "function") {
+        const data = pausedData as FunctionNodeData
+        const paths = data.paths ?? []
+
+        try {
+          const result = await previewJsStep({
+            code: data.code ?? "",
+            variables,
+          })
+
+          if (isStale()) {
+            return
+          }
+
+          const nextVars: RuntimeVariables = {
+            ...variables,
+            ...((result.variables ?? {}) as RuntimeVariables),
+          }
+          const nextTrace = [...trace]
+
+          for (const line of result.logs) {
+            pushTrace(nextTrace, {
+              level: "info",
+              nodeId: node.id,
+              title: "console.log",
+              detail: line,
+            })
+          }
+
+          // Mirrors workflowJsSteps.runNode: a named path wins, an unknown one
+          // falls back to the first, a throw looks for a path called "error".
+          const chosen = result.ok
+            ? ((result.next
+                ? paths.find((path) => path.name === result.next)
+                : undefined) ?? paths[0])
+            : paths.find((path) => path.name === "error")
+
+          pushTrace(nextTrace, {
+            level: result.ok ? "branch" : "warn",
+            nodeId: node.id,
+            title: result.ok
+              ? `Function → ${chosen?.name ?? "no path"}`
+              : "Function error",
+            detail:
+              result.error ??
+              (result.next && !paths.some((path) => path.name === result.next)
+                ? `No path named "${result.next}"; took the first one.`
+                : undefined),
+            varsChanged: diffVars(variables, nextVars),
+          })
+
+          resume(nextVars, [...bubbles], nextTrace, chosen?.id)
+        } catch (error) {
+          if (isStale()) {
+            return
+          }
+
+          fail(
+            "Function failed",
+            error instanceof Error ? error.message : "Snippet failed",
+            "I had trouble running a step. A human operator will continue from here."
+          )
+        }
+        return
+      }
+
+      if (asyncRun.kind === "javascript") {
+        try {
+          const result = await previewJsStep({
+            code: (pausedData as JavascriptNodeData).code ?? "",
+            variables,
+          })
+
+          if (isStale()) {
+            return
+          }
+
+          const nextVars: RuntimeVariables = {
+            ...variables,
+            ...((result.variables ?? {}) as RuntimeVariables),
+          }
+          const nextTrace = [...trace]
+
+          for (const line of result.logs) {
+            pushTrace(nextTrace, {
+              level: "info",
+              nodeId: node.id,
+              nodeType: node.type,
+              title: "console.log",
+              detail: line,
+            })
+          }
+
+          pushTrace(nextTrace, {
+            level: result.ok ? "branch" : "warn",
+            nodeId: node.id,
+            nodeType: node.type,
+            title: `JavaScript ${result.ok ? "ok" : "error"}`,
+            detail: result.error,
+            varsChanged: diffVars(variables, nextVars),
+          })
+
+          resume(
+            nextVars,
+            [...bubbles],
+            nextTrace,
+            result.ok ? "success" : "fail"
+          )
+        } catch (error) {
+          if (isStale()) {
+            return
+          }
+
+          fail(
+            "JavaScript step failed",
+            error instanceof Error ? error.message : "Snippet failed",
+            "I had trouble running a step. A human operator will continue from here."
+          )
+        }
+        return
+      }
+
+      if (asyncRun.kind === "api") {
+        try {
+          const result = await previewApiStep({
+            data: pausedData,
+            variables,
+          })
+
+          if (isStale()) {
+            return
+          }
+
+          const nextVars: RuntimeVariables = {
+            ...variables,
+            ...((result.variables ?? {}) as RuntimeVariables),
+          }
+          const nextTrace = [...trace]
+
+          pushTrace(nextTrace, {
+            level: result.ok ? "branch" : "warn",
+            nodeId: node.id,
+            nodeType: node.type,
+            title: `API ${result.ok ? "success" : "fail"} (${result.status})`,
+            detail: result.error,
+            varsChanged: diffVars(variables, nextVars),
+          })
+
+          resume(
+            nextVars,
+            [...bubbles],
+            nextTrace,
+            result.ok ? "success" : "fail"
+          )
+        } catch (error) {
+          if (isStale()) {
+            return
+          }
+
+          fail(
+            "API step failed",
+            error instanceof Error ? error.message : "Request failed",
+            "I had trouble reaching that service. A human operator will continue from here."
+          )
+        }
+        return
+      }
+
+      try {
+        const result = await previewAiStep({
+          nodeType: node.type ?? "prompt",
+          data: pausedData,
+          variables,
+        })
+
+        if (isStale()) {
+          return
+        }
+
+        const text = result.text.trim()
+        const nextBubbles = [...bubbles]
+
+        if (result.sendMessage && text) {
+          nextBubbles.push({
+            id: createId("msg"),
+            kind: "assistant",
+            text,
+            nodeId: node.id,
+          })
+        }
+
+        const nextVars: RuntimeVariables = { ...variables }
+
+        if (text) {
+          if (result.outputVariable) {
+            nextVars[result.outputVariable] = text
+          }
+          nextVars.lastAiResponse = text
+        }
+
+        const nextTrace = [...trace]
+        pushTrace(nextTrace, {
+          level: "ai",
+          nodeId: node.id,
+          nodeType: node.type,
+          title: `${nodeTypeLabel(node.type)} completed`,
+          detail: text.slice(0, 180) || "(no text)",
+          varsChanged: diffVars(variables, nextVars),
+        })
+
+        resume(nextVars, nextBubbles, nextTrace)
+      } catch (error) {
+        if (isStale()) {
+          return
+        }
+
+        fail(
+          "AI step failed",
+          error instanceof Error ? error.message : "Workflow AI step failed",
+          "I had trouble completing this AI step. A human operator will continue from here."
+        )
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+    // Intentionally keyed on the run token only: bubbles/trace/variables are
+    // read from the render that scheduled this step and must not restart it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asyncRun])
 
   const startRun = useCallback(() => {
     freezeGraph(nodes, edges)
@@ -790,9 +1605,13 @@ const RunPanel = ({
   useEffect(() => {
     if (!autoStartKey) return
     if (lastAutoStartKeyRef.current === autoStartKey) return
-    lastAutoStartKeyRef.current = autoStartKey
 
     const timer = window.setTimeout(() => {
+      // Claim the key only once the run actually starts. Claiming it up front
+      // meant StrictMode's mount/unmount/remount cancelled the first timer and
+      // then short-circuited the second, so Run opened the panel without ever
+      // starting the conversation.
+      lastAutoStartKeyRef.current = autoStartKey
       startRunRef.current()
       onAutoStartCompleteRef.current?.()
     }, 280)
@@ -807,6 +1626,8 @@ const RunPanel = ({
   }, [bubbles, trace, tab, pendingButtons])
 
   const resetRun = () => {
+    asyncRunKeyRef.current += 1
+    setAsyncRun(null)
     setStatus("idle")
     setBubbles([])
     setTrace([])
@@ -863,7 +1684,12 @@ const RunPanel = ({
   const handleTextSubmit = (event?: FormEvent) => {
     event?.preventDefault()
     if (!pendingNodeId || !draftInput.trim()) return
-    if (waitingMode !== "capture" && waitingMode !== "choice") return
+    if (
+      waitingMode !== "capture" &&
+      waitingMode !== "choice" &&
+      waitingMode !== "ai_turn"
+    )
+      return
 
     const text = draftInput.trim()
 
@@ -895,6 +1721,39 @@ const RunPanel = ({
       return
     }
 
+    if (waitingMode === "ai_turn") {
+      // The agent step itself resumes, not the step after it.
+      const nextVars: RuntimeVariables = {
+        ...variables,
+        lastInput: text,
+        lastUserMessage: text,
+        __aiTurnReady: "1",
+      }
+      const withUser: ChatBubble[] = [
+        ...bubbles,
+        { id: createId("usr"), kind: "user", text },
+      ]
+      const withTrace = [...trace]
+      pushTrace(withTrace, {
+        level: "info",
+        nodeId: pendingNodeId,
+        title: "User spoke first",
+        detail: text,
+      })
+
+      applyResult(
+        executeFrom(
+          pendingNodeId,
+          nextVars,
+          withUser,
+          withTrace,
+          withTrace.filter((t) => t.level === "step").length,
+          pendingStepIndex
+        )
+      )
+      return
+    }
+
     const data = nodeMap.get(pendingNodeId)?.data as CaptureNodeData | undefined
     const key = data?.variableKey || "lastInput"
     const nextVars: RuntimeVariables = {
@@ -916,7 +1775,12 @@ const RunPanel = ({
       varsChanged: diffVars(variables, nextVars),
     })
 
-    const nextId = getNextNodeId(pendingNodeId)
+    const pendingIsBlock =
+      (runGraphRef.current?.nodes ?? nodes).find(
+        (entry) => entry.id === pendingNodeId
+      )?.type === "block"
+    // Capture never branches, so a block simply carries on with its next step.
+    const nextId = pendingIsBlock ? pendingNodeId : getNextNodeId(pendingNodeId)
     if (!nextId) {
       pushTrace(withTrace, {
         level: "error",
@@ -948,7 +1812,8 @@ const RunPanel = ({
         nextVars,
         withUser,
         withTrace,
-        withTrace.filter((t) => t.level === "step").length
+        withTrace.filter((t) => t.level === "step").length,
+        pendingIsBlock ? pendingStepIndex + 1 : 0
       )
     )
   }
@@ -980,7 +1845,9 @@ const RunPanel = ({
     : null
   const showTextInput =
     status === "waiting" &&
-    (waitingMode === "capture" || waitingMode === "choice")
+    (waitingMode === "capture" ||
+      waitingMode === "choice" ||
+      waitingMode === "ai_turn")
   const variableEntries = Object.entries(variables).filter(
     ([key]) => !key.startsWith("__")
   )
@@ -992,10 +1859,24 @@ const RunPanel = ({
           ? "Waiting for reply"
           : waitingMode === "choice"
             ? "Waiting for choice"
-            : "Waiting for button"
+            : waitingMode === "ai_turn"
+              ? "Waiting for you to speak first"
+              : "Waiting for button"
         : status === "ended"
           ? "Ended"
-          : "Running"
+          : asyncRun
+            ? asyncRun.kind === "api"
+              ? "Calling API"
+              : asyncRun.kind === "javascript"
+                ? "Running code"
+                : asyncRun.kind === "tool"
+                  ? "Running tool"
+                  : asyncRun.kind === "component"
+                    ? "Entering component"
+                    : asyncRun.kind === "function"
+                      ? "Running function"
+                      : "Generating"
+            : "Running"
 
   return (
     <section className="chat-runner">

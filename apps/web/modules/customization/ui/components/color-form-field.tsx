@@ -64,7 +64,7 @@ export const ColorFormField = ({
               <FormControl>
                 <div className="flex-1">
                   <Input
-                    className="h-10 bg-muted/20 font-mono text-xs uppercase"
+                    className="h-10 bg-muted/35 font-mono text-xs uppercase"
                     onChange={field.onChange}
                     placeholder={placeholder}
                     value={field.value ?? ""}

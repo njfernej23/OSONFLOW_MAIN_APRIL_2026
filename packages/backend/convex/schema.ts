@@ -182,7 +182,8 @@ const webhookEventTypeValidator = v.union(
   v.literal("conversation.created"),
   v.literal("conversation.status_changed"),
   v.literal("message.received"),
-  v.literal("message.sent")
+  v.literal("message.sent"),
+  v.literal("workflow.action")
 )
 
 const webhookProviderValidator = v.union(
@@ -666,6 +667,41 @@ export default defineSchema({
     pendingPrompt: v.optional(v.string()),
     /** AI step currently executing via scheduled action. */
     pendingAiNodeId: v.optional(v.union(v.string(), v.null())),
+    /**
+     * Node id of a non-AI step currently executing out of band (API,
+     * JavaScript, Tool). Named for the API block that introduced it.
+     */
+    pendingApiNodeId: v.optional(v.union(v.string(), v.null())),
+    /**
+     * Component call stack. Each frame records the workflow to return to and
+     * the Component block to continue past. Empty at the top level.
+     */
+    callStack: v.optional(
+      v.array(
+        v.object({
+          workflowId: v.id("workflows"),
+          returnNodeId: v.string(),
+          /** Step index of the Component block inside its caller, if any. */
+          returnStepIndex: v.optional(v.number()),
+        })
+      )
+    ),
+    /** Workflow whose graph is executing now; defaults to workflowId. */
+    activeWorkflowId: v.optional(v.id("workflows")),
+    /**
+     * Step index inside a Block that the run is paused on. Blocks hold an
+     * ordered step list, so pendingNodeId alone cannot say where to resume.
+     */
+    pendingStepIndex: v.optional(v.number()),
+    /** Which kind of out-of-band step pendingApiNodeId refers to. */
+    pendingActionKind: v.optional(
+      v.union(
+        v.literal("api"),
+        v.literal("javascript"),
+        v.literal("tool"),
+        v.literal("function")
+      )
+    ),
     /** Ring-buffer of recent runtime events for debugging published flows. */
     executionTrace: v.optional(v.array(workflowTraceEventValidator)),
     variables: v.any(),

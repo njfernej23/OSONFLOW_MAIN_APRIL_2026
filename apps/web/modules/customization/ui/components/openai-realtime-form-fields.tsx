@@ -159,7 +159,7 @@ export const OpenAIRealtimeFormFields = ({
           control={form.control}
           name="openaiRealtimeSettings.enabled"
           render={({ field }) => (
-            <FormItem className="flex items-center justify-between gap-4 rounded-xl border bg-muted/20 px-3 py-3">
+            <FormItem className="flex items-center justify-between gap-4 rounded-xl border bg-muted/35 px-3 py-3">
               <div className="space-y-0.5">
                 <FormLabel>Enable OpenAI voice</FormLabel>
                 <FormDescription className="text-xs">
@@ -253,7 +253,7 @@ export const OpenAIRealtimeFormFields = ({
           control={form.control}
           name="geminiLiveSettings.enabled"
           render={({ field }) => (
-            <FormItem className="flex items-center justify-between gap-4 rounded-xl border bg-muted/20 px-3 py-3">
+            <FormItem className="flex items-center justify-between gap-4 rounded-xl border bg-muted/35 px-3 py-3">
               <div className="space-y-0.5">
                 <FormLabel>Enable Gemini Live</FormLabel>
                 <FormDescription className="text-xs">

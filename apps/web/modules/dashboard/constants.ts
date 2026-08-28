@@ -6,9 +6,10 @@ export const AI_CONVERSATION_PROVIDER_LABELS = {
   gemini_live: "Gemini live",
 } as const
 
+// Provider is an identity, not a status, so it draws from the console's
+// categorical series rather than the reserved good/warning/critical hues —
+// which keeps a provider badge from reading like a "Live" or "Ended" state.
 export const AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES = {
-  openai_realtime:
-    "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  gemini_live:
-    "border-cyan-500/25 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
+  openai_realtime: "console-series-1 console-tone-wash text-foreground/85",
+  gemini_live: "console-series-2 console-tone-wash text-foreground/85",
 } as const

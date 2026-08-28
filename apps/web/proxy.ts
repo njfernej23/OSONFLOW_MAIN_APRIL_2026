@@ -11,18 +11,14 @@ import {
 
 const isMarketingRoute = createRouteMatcher([
   "/",
-  "/product(.*)",
-  "/automation(.*)",
-  "/channels(.*)",
-  "/pricing(.*)",
+  "/privacy(.*)",
+  "/terms(.*)",
 ])
 
 const isPublicRoute = createRouteMatcher([
   "/",
-  "/product(.*)",
-  "/automation(.*)",
-  "/channels(.*)",
-  "/pricing(.*)",
+  "/privacy(.*)",
+  "/terms(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/sso-callback(.*)",
@@ -37,6 +33,34 @@ const isOrgFreeRoute = createRouteMatcher([
 ])
 
 const isAuthEntryRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"])
+
+// Every top-level segment that belongs to the authenticated app. Used only to
+// decide whether an unknown URL on the marketing host is worth redirecting to
+// the app host, or is simply a typo that should render our 404. Auth itself is
+// still deny-by-default via isPublicRoute, so a route missing from this list
+// cannot become unprotected on the app host.
+const isAppRoute = createRouteMatcher([
+  "/account(.*)",
+  "/ai-conversations(.*)",
+  "/analytics(.*)",
+  "/assistant-tools(.*)",
+  "/billing(.*)",
+  "/conversations(.*)",
+  "/create-organization(.*)",
+  "/customer-memory(.*)",
+  "/customization(.*)",
+  "/files(.*)",
+  "/integrations(.*)",
+  "/leads(.*)",
+  "/org-selection(.*)",
+  "/org-transfer(.*)",
+  "/organization-created(.*)",
+  "/organization-settings(.*)",
+  "/workflows(.*)",
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/sso-callback(.*)",
+])
 
 const redirectToOrigin = (
   req: NextRequest,
@@ -55,7 +79,7 @@ const maybeRedirectByHost = (req: NextRequest) => {
     return null
   }
 
-  if (isMarketingHost(hostname) && !isMarketingRoute(req)) {
+  if (isMarketingHost(hostname) && isAppRoute(req)) {
     return redirectToOrigin(req, getAppOrigin())
   }
 
@@ -87,7 +111,11 @@ export const proxy = clerkMiddleware(async (auth, req) => {
     return NextResponse.redirect(orgSelection)
   }
 
-  if (!isPublicRoute(req)) {
+  const hostname = req.headers.get("host")?.split(":")[0]?.toLowerCase() ?? ""
+  const isUnknownMarketingPath =
+    isMarketingHost(hostname) && !isMarketingRoute(req) && !isAppRoute(req)
+
+  if (!isPublicRoute(req) && !isUnknownMarketingPath) {
     if (sessionStatus === "pending") {
       const orgSelection = new URL("/org-selection", req.url)
       orgSelection.search = req.nextUrl.search
@@ -120,7 +148,7 @@ export const proxy = clerkMiddleware(async (auth, req) => {
 export const config = {
   matcher: [
     // Skip Next.js internals and all static files, unless found in search params
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx|zip|webmanifest|mp4|webm|mov|m4v)).*)",
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx|txt|xml|zip|webmanifest|mp4|webm|mov|m4v)).*)",
     // Always run for API routes
     "/(api|trpc)(.*)",
   ],

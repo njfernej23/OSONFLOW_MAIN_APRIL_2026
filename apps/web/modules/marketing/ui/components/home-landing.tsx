@@ -1,6 +1,6 @@
 "use client"
 
-import { useLayoutEffect, useEffect, useRef, useState } from "react"
+import { memo, useLayoutEffect, useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 
 import { LandingCaseStudyShowcase } from "./landing-case-study-showcase"
@@ -139,12 +139,6 @@ function revealHeroOnly() {
     })
 }
 
-function mountLandingMarkup(host: HTMLDivElement | null) {
-  if (!host || host.dataset.landingMarkupMounted === "true") return
-  host.innerHTML = landingPageBodyMarkup
-  host.dataset.landingMarkupMounted = "true"
-}
-
 function landingMarkupIsReady() {
   return Boolean(document.getElementById("main"))
 }
@@ -155,14 +149,29 @@ function runLandingInit() {
   initLandingScript()
 }
 
+// The case-study showcase is portalled into #osonflow-case-study-root, which
+// lives inside this markup. If React ever re-writes the container's innerHTML
+// on a later render it replaces that node, leaving the portal mounted on a
+// detached element and the showcase invisible. Rendering the body exactly once
+// keeps the node stable for the lifetime of the page.
+const LandingBody = memo(
+  function LandingBody() {
+    return (
+      <div
+        dangerouslySetInnerHTML={{ __html: landingPageBodyMarkup }}
+        suppressHydrationWarning
+      />
+    )
+  },
+  () => true
+)
+
 export const HomeLandingPage = () => {
-  const landingContentRef = useRef<HTMLDivElement>(null)
   const [caseStudyHost, setCaseStudyHost] = useState<HTMLElement | null>(null)
 
   useLayoutEffect(() => {
     ensureLandingStyles()
     ensureLandingMotionStyles()
-    mountLandingMarkup(landingContentRef.current)
     setCaseStudyHost(document.getElementById("osonflow-case-study-root"))
 
     const previousRestoration = history.scrollRestoration
@@ -191,6 +200,12 @@ export const HomeLandingPage = () => {
       window.scrollTo(0, 0)
     }
 
+    setCaseStudyHost((current) =>
+      current?.isConnected
+        ? current
+        : document.getElementById("osonflow-case-study-root")
+    )
+
     runLandingInit()
 
     return () => {
@@ -204,7 +219,8 @@ export const HomeLandingPage = () => {
   return (
     <div className="japandi-landing">
       <JapandiLandingNav />
-      <div ref={landingContentRef} />
+      {/* Server-rendered so the page has real content before JS runs. */}
+      <LandingBody />
       {caseStudyHost
         ? createPortal(<LandingCaseStudyShowcase />, caseStudyHost)
         : null}

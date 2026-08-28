@@ -1,7 +1,7 @@
-import { WorkflowBuilderView } from "@/features/workflows/components/workflow-builder-view"
+import { WorkflowsListView } from "@/features/workflows/components/workflows-list-view"
 
 const Page = () => {
-  return <WorkflowBuilderView />
+  return <WorkflowsListView />
 }
 
 export default Page

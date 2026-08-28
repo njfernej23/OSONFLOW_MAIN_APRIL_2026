@@ -67,16 +67,16 @@ export const WidgetEmailCapture = ({
 
   return (
     <div className="w-full py-2">
-      <div className="flex items-center gap-x-2 px-1 text-[var(--widget-bot-bubble-foreground,inherit)]">
-        <MailIcon aria-hidden="true" className="size-4 shrink-0 opacity-80" />
-        <p className="text-sm font-medium">
+      <div className="flex items-center gap-x-2 px-1 text-foreground">
+        <MailIcon aria-hidden="true" className="size-3.5 shrink-0 opacity-70" />
+        <p className="text-[0.8rem] font-medium">
           {isReceived ? "Details received" : "Enter your details to continue"}
         </p>
         {isReceived ? (
           <button
             aria-expanded={!isCollapsed}
             aria-label={isCollapsed ? "Show details" : "Hide details"}
-            className="flex size-6 items-center justify-center rounded-full bg-muted transition-colors hover:bg-muted/70"
+            className="ml-auto flex size-6 items-center justify-center rounded-full bg-muted transition-colors hover:bg-muted/70"
             onClick={() => setIsCollapsed((previous) => !previous)}
             type="button"
           >
@@ -91,16 +91,16 @@ export const WidgetEmailCapture = ({
       </div>
 
       {isReceived && isCollapsed ? null : (
-        <div className="mt-3 rounded-3xl border bg-background px-4 py-3 shadow-sm">
-          <p className="text-sm font-semibold text-foreground">Name</p>
+        <div className="owc-capture mt-2.5 px-4 py-3">
+          <p className="text-[0.78rem] font-semibold text-foreground">Name</p>
           {isReceived ? (
-            <p className="mt-1 pb-1 text-base text-foreground">
+            <p className="mt-1 pb-1 text-[0.9rem] text-foreground">
               {receivedDetails.name}
             </p>
           ) : (
             <input
               autoComplete="name"
-              className="mt-1 w-full border-0 bg-transparent pb-1 text-base text-foreground outline-none placeholder:text-muted-foreground/60"
+              className="mt-1 w-full border-0 bg-transparent pb-1 text-[0.9rem] text-foreground outline-none placeholder:text-muted-foreground/60"
               disabled={isSubmitting}
               maxLength={NAME_MAX_LENGTH}
               onChange={(event) =>
@@ -118,11 +118,11 @@ export const WidgetEmailCapture = ({
             />
           )}
 
-          <div className="my-2 border-t" />
+          <div className="my-2.5 h-px bg-[var(--owc-hairline,var(--border))]" />
 
-          <p className="text-sm font-semibold text-foreground">Email</p>
+          <p className="text-[0.78rem] font-semibold text-foreground">Email</p>
           {isReceived ? (
-            <p className="mt-1 pb-1 text-base text-foreground">
+            <p className="mt-1 pb-1 text-[0.9rem] text-foreground">
               {receivedDetails.email}
             </p>
           ) : (
@@ -130,7 +130,7 @@ export const WidgetEmailCapture = ({
               autoCapitalize="none"
               autoComplete="email"
               autoCorrect="off"
-              className="mt-1 w-full border-0 bg-transparent pb-1 text-base text-foreground outline-none placeholder:text-muted-foreground/60"
+              className="mt-1 w-full border-0 bg-transparent pb-1 text-[0.9rem] text-foreground outline-none placeholder:text-muted-foreground/60"
               disabled={isSubmitting}
               inputMode="email"
               maxLength={EMAIL_MAX_LENGTH}
@@ -158,7 +158,7 @@ export const WidgetEmailCapture = ({
             <p className="mt-2 px-1 text-xs text-destructive">{error}</p>
           ) : null}
           <Button
-            className="mt-3 h-10 rounded-full px-6 text-sm font-semibold"
+            className="mt-2.5 h-9 rounded-full px-5 text-[0.82rem] font-semibold"
             disabled={isSubmitting || !canSubmit}
             onClick={() => void handleSubmit()}
             type="button"

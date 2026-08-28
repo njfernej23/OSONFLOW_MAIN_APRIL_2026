@@ -238,7 +238,7 @@ html.mo-on .japandi-landing .mo-host:not(.mo-in) .mo-word {
   z-index: 3;
   transition: opacity .4s var(--mo-soft);
   background: radial-gradient(300px circle at var(--mo-px, 50%) var(--mo-py, 50%),
-    rgba(57, 125, 255, .12), transparent 62%);
+    rgba(157, 186, 163, .16), transparent 62%);
 }
 .japandi-landing .mo-spot:hover::after { opacity: 1; }
 .japandi-landing .plan:hover,
@@ -281,30 +281,30 @@ html.mo-on .japandi-landing .mo-host:not(.mo-in) .mo-word {
   width: 100%;
   transform: scaleX(var(--mo-p, 0));
   transform-origin: 0 50%;
-  background: linear-gradient(90deg, var(--moss-600), var(--ochre-500));
+  background: linear-gradient(90deg, var(--verdant-500), var(--verdant-300));
   transition: transform .2s linear;
 }
 .japandi-landing .method__step { transition: background .4s var(--mo-soft); }
-.japandi-landing .method__step:hover { background: rgba(57, 125, 255, .04); }
+.japandi-landing .method__step:hover { background: rgba(93, 122, 99, .05); }
 .japandi-landing .method__idx { transition: color .35s var(--mo-soft), transform .5s var(--mo-spring); }
-.japandi-landing .method__step:hover .method__idx { color: var(--moss-600); transform: translateY(-2px); }
+.japandi-landing .method__step:hover .method__idx { color: var(--verdant-500); transform: translateY(-2px); }
 
 /* ============================================================
    9 · PIPELINE — active step glow + view swap
    ============================================================ */
-.japandi-landing .pstep { position: relative; overflow: hidden; }
+.japandi-landing .pstep { position: relative; }
 .japandi-landing .pstep::before {
   content: "";
   position: absolute;
   left: 0; top: 0; bottom: 0;
   width: 2px;
-  background: linear-gradient(180deg, var(--moss-600), var(--ochre-500));
+  background: var(--verdant-300);
   transform: scaleY(0);
   transform-origin: 50% 0;
   transition: transform .45s var(--mo-out);
 }
 .japandi-landing .pstep.is-active::before { transform: scaleY(1); }
-.japandi-landing .pstep:hover { transform: translateX(4px); }
+.japandi-landing .pstep:hover { background: rgba(255, 255, 255, .03); }
 .japandi-landing .pstep.is-active .pstep__num { animation: moPop .5s var(--mo-spring); }
 .japandi-landing .pview__in { animation: moViewIn .55s var(--mo-out) both; }
 @keyframes moViewIn {

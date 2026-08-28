@@ -133,7 +133,7 @@ export const ThemeFormFields = ({ form }: ThemeFormFieldsProps) => {
                 <FormControl>
                   <Input
                     {...field}
-                    className="bg-muted/20"
+                    className="bg-muted/35"
                     placeholder="Support Assistant"
                   />
                 </FormControl>
@@ -184,7 +184,7 @@ export const ThemeFormFields = ({ form }: ThemeFormFieldsProps) => {
                             <XIcon className="size-3.5" />
                             Remove
                           </Button>
-                          <div className="flex items-center gap-2 rounded-md border bg-muted/20 px-2 py-1">
+                          <div className="flex items-center gap-2 rounded-md border bg-muted/35 px-2 py-1">
                             <img
                               alt="Logo preview"
                               className="size-5 rounded object-cover"
@@ -265,7 +265,7 @@ export const ThemeFormFields = ({ form }: ThemeFormFieldsProps) => {
                     ) : null}
                   </div>
                   {field.value ? (
-                    <div className="overflow-hidden rounded-xl border bg-muted/20">
+                    <div className="overflow-hidden rounded-xl border bg-muted/35">
                       <img
                         alt="Background preview"
                         className="h-28 w-full object-cover"

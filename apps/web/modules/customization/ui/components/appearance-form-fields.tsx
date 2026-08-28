@@ -134,7 +134,7 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
               <FormControl>
                 <Input
                   {...field}
-                  className="bg-muted/20"
+                  className="bg-muted/35"
                   placeholder="Chat with us"
                 />
               </FormControl>
@@ -199,7 +199,7 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
                         <XIcon className="size-3.5" />
                         Remove
                       </Button>
-                      <div className="flex items-center gap-2 rounded-md border bg-muted/20 px-2 py-1">
+                      <div className="flex items-center gap-2 rounded-md border bg-muted/35 px-2 py-1">
                         <img
                           alt="Launcher image preview"
                           className="size-5 rounded-full object-cover"
@@ -262,7 +262,7 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
                 <FormControl>
                   <Input
                     {...field}
-                    className="bg-muted/20"
+                    className="bg-muted/35"
                     placeholder="Need help? Talk with us"
                   />
                 </FormControl>
@@ -282,7 +282,7 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
                 <FormControl>
                   <Input
                     {...field}
-                    className="bg-muted/20"
+                    className="bg-muted/35"
                     max={120}
                     min={0}
                     step={1}
@@ -382,7 +382,7 @@ export const AppearanceFormFields = ({ form }: AppearanceFormFieldsProps) => {
             <FormControl>
               <Input
                 {...field}
-                className="bg-muted/20"
+                className="bg-muted/35"
                 placeholder="Osonflow"
                 value={field.value ?? ""}
               />

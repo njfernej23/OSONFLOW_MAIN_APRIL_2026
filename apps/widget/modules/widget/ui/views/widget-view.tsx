@@ -84,7 +84,7 @@ export const WidgetView = ({
 
   return (
     <main
-      className="surface-widget relative flex h-full max-h-svh min-h-0 w-full min-w-0 flex-col overflow-hidden border-0 bg-transparent"
+      className="owc surface-widget relative flex h-full max-h-svh min-h-0 w-full min-w-0 flex-col overflow-hidden border-0 bg-transparent"
       style={{
         ...widgetStyles,
         borderRadius: `${theme.borderRadius}px`,

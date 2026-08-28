@@ -83,8 +83,8 @@ export const PricingTable = ({ subscription }: PricingTableProps) => {
   if (subscription === undefined) {
     return (
       <div className="grid gap-4 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <Skeleton className="h-56 rounded-lg" />
-        <Skeleton className="h-80 rounded-lg" />
+        <Skeleton className="h-56 rounded-[14px]" />
+        <Skeleton className="h-80 rounded-[14px]" />
       </div>
     )
   }
@@ -95,7 +95,7 @@ export const PricingTable = ({ subscription }: PricingTableProps) => {
   return (
     <div className="grid gap-4 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
       <Card
-        className={`rounded-lg transition-opacity ${isPro ? "opacity-70" : ""}`}
+        className={`console-card ${isPro ? "opacity-70" : ""}`}
       >
         <CardHeader>
           <CardTitle>Free workspace</CardTitle>
@@ -104,7 +104,7 @@ export const PricingTable = ({ subscription }: PricingTableProps) => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="text-3xl font-semibold">$0</div>
+          <div className="console-numeral text-3xl">$0</div>
           <p className="text-sm text-muted-foreground">
             {isPro
               ? "Core features remain available. Premium AI tools are unlocked on Pro."
@@ -114,10 +114,8 @@ export const PricingTable = ({ subscription }: PricingTableProps) => {
       </Card>
 
       <Card
-        className={`rounded-lg ${
-          isPro
-            ? "border-primary bg-primary/[0.03] shadow-sm"
-            : "border-primary/35"
+        className={`console-card ${
+          isPro ? "border-foreground/25" : "border-foreground/15"
         }`}
       >
         <CardHeader>
@@ -145,7 +143,7 @@ export const PricingTable = ({ subscription }: PricingTableProps) => {
         </CardHeader>
         <CardContent className="space-y-5">
           <div>
-            <span className="text-3xl font-semibold">$29.99</span>
+            <span className="console-numeral text-3xl">$29.99</span>
             <span className="text-sm text-muted-foreground"> / month</span>
           </div>
           {isPro && renewalDate ? (

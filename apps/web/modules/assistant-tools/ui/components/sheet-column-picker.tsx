@@ -43,12 +43,12 @@ export const SheetColumnPicker = ({
       ) : null}
 
       {isLoading ? (
-        <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/20 px-3 py-4 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 rounded-xl border border-[var(--console-hairline-soft)] bg-muted/35 px-3 py-4 text-sm text-muted-foreground">
           <Loader2Icon className="size-4 animate-spin" />
           Loading column headers...
         </div>
       ) : columns.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border/70 bg-muted/10 px-3 py-4 text-xs text-muted-foreground">
+        <p className="rounded-xl border border-dashed border-[var(--console-hairline-soft)] bg-muted/10 px-3 py-4 text-xs text-muted-foreground">
           {emptyMessage}
         </p>
       ) : (
@@ -63,7 +63,7 @@ export const SheetColumnPicker = ({
                   "flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors",
                   checked
                     ? "border-primary/30 bg-primary/5"
-                    : "border-border/60 bg-background/50"
+                    : "border-[var(--console-hairline-soft)] bg-background/50"
                 )}
               >
                 <Checkbox

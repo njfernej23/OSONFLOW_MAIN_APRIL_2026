@@ -6,6 +6,10 @@ import {
   type MouseEvent,
   type PointerEvent
 } from 'react';
+import { useStore } from 'reactflow';
+import type { NodeType } from '../lib/types';
+import Icon from './StepIcon';
+import { STEP_ACCENTS, STEP_ICONS } from './nodeIcon';
 import { useNodeRename } from './NodeRenameContext';
 
 type EditableNodeTitleProps = {
@@ -22,6 +26,11 @@ const stopNodeInteraction = (
 
 const EditableNodeTitle = ({ nodeId, value, fallback }: EditableNodeTitleProps) => {
   const renameNode = useNodeRename();
+  // Read the type off the graph rather than threading an icon prop through
+  // all eighteen node components.
+  const nodeType = useStore(
+    (store) => store.nodeInternals.get(nodeId)?.type as NodeType | undefined
+  );
   const displayName = value?.trim() || fallback;
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(displayName);
@@ -87,6 +96,8 @@ const EditableNodeTitle = ({ nodeId, value, fallback }: EditableNodeTitleProps) 
     );
   }
 
+  const icon = nodeType ? STEP_ICONS[nodeType] : undefined;
+
   return (
     <button
       type="button"
@@ -95,7 +106,17 @@ const EditableNodeTitle = ({ nodeId, value, fallback }: EditableNodeTitleProps) 
       onPointerDown={stopNodeInteraction}
       onClick={beginEditing}
     >
-      <span>{displayName}</span>
+      {icon && (
+        <span
+          className={`node-title-icon accent-${
+            (nodeType && STEP_ACCENTS[nodeType]) || 'dev'
+          }`}
+          aria-hidden
+        >
+          <Icon name={icon} size={13} />
+        </span>
+      )}
+      <span className="node-title-text">{displayName}</span>
     </button>
   );
 };

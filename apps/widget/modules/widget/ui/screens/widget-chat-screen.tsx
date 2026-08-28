@@ -7,7 +7,7 @@ import { useThreadMessages, toUIMessages } from "@convex-dev/agent/react"
 import { WidgetHeader } from "@/modules/widget/ui/components/widget-header"
 import { Button } from "@workspace/ui/components/button"
 import { useAtomValue, useSetAtom } from "jotai"
-import { ArrowLeftIcon } from "lucide-react"
+import { ArrowLeftIcon, CheckCircle2Icon } from "lucide-react"
 import {
   chatReturnScreenAtom,
   contactSessionIdAtomFamily,
@@ -27,8 +27,6 @@ import {
   AIInput,
   AIInputSubmit,
   AIInputTextarea,
-  AIInputToolbar,
-  AIInputTools,
 } from "@workspace/ui/components/ai/input"
 import { Form, FormField } from "@workspace/ui/components/form"
 import {
@@ -50,6 +48,7 @@ import {
   mergeWidgetAppearance,
   mergeWidgetTheme,
 } from "@workspace/ui/lib/widget-customization"
+import { cn } from "@workspace/ui/lib/utils"
 import { WidgetEmailCapture } from "../components/widget-email-capture"
 
 const formSchema = z.object({
@@ -155,42 +154,36 @@ const buildChatHistoryText = ({
   return `${[...headerLines, ...messageLines].join("\n").trimEnd()}\n`
 }
 
+const BUBBLE_CLASS =
+  "owc-bubble bg-[var(--widget-bot-bubble)] text-[var(--widget-bot-bubble-foreground)] group-[.is-user]:bg-[var(--widget-user-bubble)] group-[.is-user]:text-[var(--widget-user-bubble-foreground)]"
+
 const AssistantLoadingBubble = ({ logoUrl }: { logoUrl?: string }) => {
   return (
-    <AIMessage from="assistant">
-      <AIMessageContent className="w-fit rounded-full border-white/60 bg-[var(--widget-bot-bubble)] px-3.5 py-2.5 text-[var(--widget-bot-bubble-foreground)] shadow-[0_12px_32px_rgba(15,23,42,0.08)] backdrop-blur-sm">
-        <style>
-          {`@keyframes osonflow-widget-typing-dot {
-            0%, 80%, 100% { transform: translateY(0); opacity: 0.45; }
-            40% { transform: translateY(-3px); opacity: 1; }
-          }`}
-        </style>
+    <AIMessage className="owc-msg" from="assistant">
+      <AIMessageContent
+        className={cn(BUBBLE_CLASS, "owc-typing")}
+      >
         <div
           aria-label="Assistant is preparing a response"
-          className="flex h-3 items-center gap-1.5 text-[var(--widget-bot-bubble-foreground)]"
+          className="flex h-3 items-center gap-1.5"
           role="status"
         >
           <span className="sr-only">Assistant is preparing a response</span>
           {[0, 1, 2].map((dot) => (
             <span
               aria-hidden="true"
-              className="block rounded-full"
+              className="owc-typing-dot"
               key={dot}
-              style={{
-                animation: "osonflow-widget-typing-dot 1s ease-in-out infinite",
-                animationDelay: `${dot * 0.15}s`,
-                backgroundColor: "currentColor",
-                height: 8,
-                width: 8,
-              }}
+              style={{ animationDelay: `${dot * 0.14}s` }}
             />
           ))}
         </div>
       </AIMessageContent>
       <DicebearAvatar
+        className="owc-avatar"
         imageUrl={logoUrl || "/logo.svg"}
         seed="assistant"
-        size={32}
+        size={28}
       />
     </AIMessage>
   )
@@ -364,6 +357,39 @@ export const WidgetChatScreen = () => {
     conversation?.status !== "resolved" &&
     pendingAssistantMessageCount !== null &&
     assistantMessageCount < pendingAssistantMessageCount
+
+  const isConversationResolved = conversation?.status === "resolved"
+  const isComposerDisabled = isConversationResolved || isInputLockedForEmail
+
+  // Fallback mark when the merchant has not uploaded a logo.
+  const assistantInitials = useMemo(() => {
+    const parts = theme.assistantName.trim().split(/\s+/).filter(Boolean)
+
+    if (parts.length >= 2) {
+      return `${parts[0]![0]}${parts[1]![0]}`.toUpperCase()
+    }
+
+    return (parts[0] ?? "AI").slice(0, 2).toUpperCase()
+  }, [theme.assistantName])
+
+  // Says who is actually on the other end right now, not a fixed slogan.
+  const presenceLabel = isConversationResolved
+    ? "Conversation resolved"
+    : conversation?.status === "escalated"
+      ? "A teammate is on it"
+      : isAwaitingResponse
+        ? "Typing…"
+        : "Online · replies instantly"
+
+  const composerPlaceholder = isConversationResolved
+    ? "This conversation has been resolved"
+    : isInputLockedForEmail
+      ? "Enter your email above to continue…"
+      : workflowChoices?.waitingMode === "capture"
+        ? "Type your reply…"
+        : workflowChoices?.waitingMode === "choice"
+          ? "Choose an option or type it…"
+          : "Type your message…"
 
   useEffect(() => {
     if (pendingAssistantMessageCount === null) {
@@ -676,23 +702,39 @@ export const WidgetChatScreen = () => {
 
   return (
     <>
-      <WidgetHeader className="flex items-center justify-between">
-        <div className="flex items-center gap-x-2">
-          <Button onClick={onBack} size="icon" variant="transparent">
-            <ArrowLeftIcon />
+      <WidgetHeader className="owc-header relative z-10 flex shrink-0 items-center justify-between gap-2 px-3 py-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Button
+            className="owc-header-action size-8 shrink-0"
+            onClick={onBack}
+            size="icon"
+            variant="transparent"
+          >
+            <ArrowLeftIcon className="size-4" />
+            <span className="sr-only">Back</span>
           </Button>
-          {theme.logoUrl ? (
-            <img
-              alt="Assistant logo"
-              className="size-6 rounded-md bg-white/90 object-cover p-1"
-              src={theme.logoUrl}
-            />
-          ) : null}
-          <p>{theme.assistantName}</p>
+
+          <span aria-hidden className="owc-header-avatar shrink-0">
+            {theme.logoUrl ? (
+              <img alt="" src={theme.logoUrl} />
+            ) : (
+              assistantInitials
+            )}
+          </span>
+
+          <div className="min-w-0">
+            <p className="owc-header-name truncate">{theme.assistantName}</p>
+            <p className="owc-header-status">
+              <span aria-hidden className="owc-header-status-dot" />
+              <span className="truncate">{presenceLabel}</span>
+            </p>
+          </div>
         </div>
+
         {canDownloadChatHistory ? (
           <Button
             aria-label="Download chat history"
+            className="owc-header-action size-8 shrink-0"
             disabled={
               !chatHistoryExport || chatHistoryExport.messages.length === 0
             }
@@ -705,8 +747,8 @@ export const WidgetChatScreen = () => {
           </Button>
         ) : null}
       </WidgetHeader>
-      <AIConversation>
-        <AIConversationContent>
+      <AIConversation className="owc-thread">
+        <AIConversationContent className="owc-thread-content">
           <InfiniteScrollTrigger
             ref={topElementRef}
             onLoadMore={handleLoadMore}
@@ -717,33 +759,42 @@ export const WidgetChatScreen = () => {
           {visibleMessages.map((message) => {
             return (
               <AIMessage
+                className="owc-msg"
                 from={message.role === "user" ? "user" : "assistant"}
                 key={message.id}
               >
-                <AIMessageContent className="bg-[var(--widget-bot-bubble)] text-[var(--widget-bot-bubble-foreground)] group-[.is-user]:bg-[var(--widget-user-bubble)] group-[.is-user]:text-[var(--widget-user-bubble-foreground)]">
+                <AIMessageContent className={BUBBLE_CLASS}>
                   <AIResponse>{getUiMessageText(message)}</AIResponse>
                 </AIMessageContent>
                 {message.role === "assistant" && (
                   <DicebearAvatar
+                    className="owc-avatar"
                     imageUrl={theme.logoUrl || "/logo.svg"}
                     seed="assistant"
-                    size={32}
-                    //badgeImageUrl="/logo.svg"
+                    size={28}
                   />
                 )}
               </AIMessage>
             )
           })}
           {showOptimisticUserMessage && optimisticUserMessage && (
-            <AIMessage from="user" key="optimistic-user-message">
-              <AIMessageContent className="bg-[var(--widget-bot-bubble)] text-[var(--widget-bot-bubble-foreground)] group-[.is-user]:bg-[var(--widget-user-bubble)] group-[.is-user]:text-[var(--widget-user-bubble-foreground)]">
+            <AIMessage
+              className="owc-msg"
+              from="user"
+              key="optimistic-user-message"
+            >
+              <AIMessageContent className={BUBBLE_CLASS}>
                 <AIResponse>{optimisticUserMessage.text}</AIResponse>
               </AIMessageContent>
             </AIMessage>
           )}
           {visibleHeldMessages.map((heldMessage, index) => (
-            <AIMessage from="user" key={`held-message-${index}`}>
-              <AIMessageContent className="bg-[var(--widget-bot-bubble)] text-[var(--widget-bot-bubble-foreground)] group-[.is-user]:bg-[var(--widget-user-bubble)] group-[.is-user]:text-[var(--widget-user-bubble-foreground)]">
+            <AIMessage
+              className="owc-msg"
+              from="user"
+              key={`held-message-${index}`}
+            >
+              <AIMessageContent className={BUBBLE_CLASS}>
                 <AIResponse>{heldMessage}</AIResponse>
               </AIMessageContent>
             </AIMessage>
@@ -760,9 +811,10 @@ export const WidgetChatScreen = () => {
         </AIConversationContent>
       </AIConversation>
       {workflowChoices?.buttons?.length ? (
-        <AISuggestions className="flex w-full flex-col items-end p-2">
+        <AISuggestions className="owc-suggestions">
           {workflowChoices.buttons.map((button) => (
             <AISuggestion
+              className="owc-suggestion"
               key={button.id}
               onClick={() => submitWorkflowChoice(button)}
               suggestion={button.label}
@@ -770,7 +822,7 @@ export const WidgetChatScreen = () => {
           ))}
         </AISuggestions>
       ) : visibleMessages.length === 1 && visibleHeldMessages.length === 0 ? (
-        <AISuggestions className="flex w-full flex-col items-end p-2">
+        <AISuggestions className="owc-suggestions">
           {suggestions.map((suggestion) => {
             if (!suggestion) {
               return null
@@ -778,6 +830,7 @@ export const WidgetChatScreen = () => {
 
             return (
               <AISuggestion
+                className="owc-suggestion"
                 key={suggestion}
                 onClick={() => {
                   form.setValue("message", suggestion, {
@@ -795,61 +848,49 @@ export const WidgetChatScreen = () => {
       ) : null}
 
       <Form {...form}>
-        <AIInput
-          className="rounded-none border-x-0 border-b-0"
-          onSubmit={form.handleSubmit(onSubmit)}
-        >
-          <FormField
-            control={form.control}
-            disabled={
-              conversation?.status === "resolved" || isInputLockedForEmail
-            }
-            name="message"
-            render={({ field }) => (
-              <AIInputTextarea
-                disabled={
-                  conversation?.status === "resolved" || isInputLockedForEmail
-                }
-                onChange={field.onChange}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault()
-                    form.handleSubmit(onSubmit)()
-                  }
-                }}
-                placeholder={
-                  conversation?.status === "resolved"
-                    ? "This conversation has been resolved."
-                    : isInputLockedForEmail
-                      ? "Enter your email above to continue..."
-                      : workflowChoices?.waitingMode === "capture"
-                        ? "Type your reply…"
-                        : workflowChoices?.waitingMode === "choice"
-                          ? "Choose an option or type it…"
-                          : workflowChoices?.waitingMode === "ai_turn"
-                            ? "Type your message…"
-                            : "Type your message..."
-                }
-                value={field.value}
-              />
-            )}
-          />
-          <AIInputToolbar>
-            <AIInputTools />
+        <AIInput className="owc-composer" onSubmit={form.handleSubmit(onSubmit)}>
+          {isConversationResolved ? (
+            <p className="owc-composer-note">
+              <CheckCircle2Icon className="size-3.5" />
+              This conversation has been resolved.
+            </p>
+          ) : null}
+
+          {/* One row, so the composer reads as a single control rather than a
+              stacked field with a detached toolbar. */}
+          <div className="owc-composer-row">
+            <FormField
+              control={form.control}
+              disabled={isComposerDisabled}
+              name="message"
+              render={({ field }) => (
+                <AIInputTextarea
+                  className="owc-composer-input"
+                  disabled={isComposerDisabled}
+                  minHeight={36}
+                  maxHeight={128}
+                  onChange={field.onChange}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault()
+                      form.handleSubmit(onSubmit)()
+                    }
+                  }}
+                  placeholder={composerPlaceholder}
+                  value={field.value}
+                />
+              )}
+            />
             <AIInputSubmit
-              disabled={
-                conversation?.status === "resolved" ||
-                isInputLockedForEmail ||
-                !form.formState.isValid
-              }
+              aria-label="Send message"
+              className="owc-composer-send"
+              disabled={isComposerDisabled || !form.formState.isValid}
               status={isAwaitingResponse ? "submitted" : "ready"}
               type="submit"
             />
-          </AIInputToolbar>
+          </div>
         </AIInput>
       </Form>
-
-      {/* todo: add suggestions */}
     </>
   )
 }

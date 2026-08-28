@@ -34,6 +34,8 @@ import type * as lib_voiceCallSettings from "../lib/voiceCallSettings.js";
 import type * as lib_voiceToolDeclarations from "../lib/voiceToolDeclarations.js";
 import type * as lib_webhookBaseUrl from "../lib/webhookBaseUrl.js";
 import type * as lib_widgetAuth from "../lib/widgetAuth.js";
+import type * as lib_workflowAiGeneration from "../lib/workflowAiGeneration.js";
+import type * as lib_workflowApiStep from "../lib/workflowApiStep.js";
 import type * as lib_workflowEngine from "../lib/workflowEngine.js";
 import type * as private_aiConversations from "../private/aiConversations.js";
 import type * as private_analytics from "../private/analytics.js";
@@ -93,7 +95,10 @@ import type * as system_telegram from "../system/telegram.js";
 import type * as system_whatsapp from "../system/whatsapp.js";
 import type * as system_widgetSettings from "../system/widgetSettings.js";
 import type * as system_workflowAiSteps from "../system/workflowAiSteps.js";
+import type * as system_workflowApiSteps from "../system/workflowApiSteps.js";
+import type * as system_workflowJsSteps from "../system/workflowJsSteps.js";
 import type * as system_workflowRuntime from "../system/workflowRuntime.js";
+import type * as system_workflowToolSteps from "../system/workflowToolSteps.js";
 
 import type {
   ApiFromModules,
@@ -128,6 +133,8 @@ declare const fullApi: ApiFromModules<{
   "lib/voiceToolDeclarations": typeof lib_voiceToolDeclarations;
   "lib/webhookBaseUrl": typeof lib_webhookBaseUrl;
   "lib/widgetAuth": typeof lib_widgetAuth;
+  "lib/workflowAiGeneration": typeof lib_workflowAiGeneration;
+  "lib/workflowApiStep": typeof lib_workflowApiStep;
   "lib/workflowEngine": typeof lib_workflowEngine;
   "private/aiConversations": typeof private_aiConversations;
   "private/analytics": typeof private_analytics;
@@ -187,7 +194,10 @@ declare const fullApi: ApiFromModules<{
   "system/whatsapp": typeof system_whatsapp;
   "system/widgetSettings": typeof system_widgetSettings;
   "system/workflowAiSteps": typeof system_workflowAiSteps;
+  "system/workflowApiSteps": typeof system_workflowApiSteps;
+  "system/workflowJsSteps": typeof system_workflowJsSteps;
   "system/workflowRuntime": typeof system_workflowRuntime;
+  "system/workflowToolSteps": typeof system_workflowToolSteps;
 }>;
 
 /**

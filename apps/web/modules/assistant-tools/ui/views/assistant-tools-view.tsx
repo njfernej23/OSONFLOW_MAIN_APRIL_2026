@@ -19,11 +19,16 @@ import { Switch } from "@workspace/ui/components/switch"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { cn } from "@workspace/ui/lib/utils"
 import {
+  ConsoleHeader,
+  ConsoleMeta,
+  ConsoleSearch,
+  EmptyState as ConsoleEmptyState,
+} from "@/modules/dashboard/ui/components/console"
+import {
   Loader2Icon,
   LogOutIcon,
   PlusIcon,
   SaveIcon,
-  SearchIcon,
   Trash2Icon,
   WrenchIcon,
 } from "lucide-react"
@@ -721,7 +726,7 @@ export const AssistantToolsView = () => {
         "flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
         selectedToolId === tool._id
           ? "border-primary/40 bg-primary/10"
-          : "border-border/60 bg-background/40 hover:bg-muted/50"
+          : "border-[var(--console-hairline-soft)] bg-transparent hover:bg-muted/40"
       )}
     >
       <div
@@ -768,11 +773,13 @@ export const AssistantToolsView = () => {
 
   if (tools === undefined) {
     return (
-      <div className="flex h-full min-h-0 items-center justify-center">
+      <div className="console-page flex h-full min-h-0 items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-center">
-          <Loader2Icon className="size-6 animate-spin text-muted-foreground" />
+          <span className="console-medallion size-12">
+            <Loader2Icon className="size-5 animate-spin" />
+          </span>
           <p className="text-sm text-muted-foreground">
-            Loading assistant tools...
+            Loading assistant tools…
           </p>
         </div>
       </div>
@@ -780,54 +787,43 @@ export const AssistantToolsView = () => {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-border/50 px-4 py-4 sm:px-6">
-        <div className="mx-auto flex max-w-[1440px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background shadow-sm">
-              <WrenchIcon className="size-4 text-muted-foreground" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                Configuration
-              </p>
-              <h1 className="mt-1 text-xl font-semibold tracking-tight">
-                Assistant Tools
-              </h1>
-              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                Configure tool calling for chat and voice assistants.
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary" className="rounded-full">
-              {tools.filter((tool) => tool.isEnabled).length} active
-            </Badge>
-            <Badge variant="outline" className="rounded-full">
-              {tools.length} total
-            </Badge>
-          </div>
+    <div className="console-page flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="shrink-0 px-4 pt-5 sm:px-6">
+        <div className="mx-auto max-w-[1440px]">
+          <ConsoleHeader
+            icon={WrenchIcon}
+            eyebrow="Configuration"
+            title="Assistant tools"
+            description="What your chat and voice assistants are allowed to call, and how each call is shaped."
+            meta={
+              <>
+                <ConsoleMeta
+                  dot
+                  label="Active"
+                  tone="positive"
+                  value={tools.filter((tool) => tool.isEnabled).length}
+                />
+                <ConsoleMeta label="Available" value={tools.length} />
+              </>
+            }
+          />
         </div>
       </div>
 
-      <div className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6 lg:flex-row">
-        <aside className="surface-panel flex max-h-[min(380px,42vh)] w-full shrink-0 flex-col overflow-hidden rounded-[22px] lg:h-full lg:max-h-none lg:w-[300px] lg:max-w-[300px]">
-          <div className="shrink-0 space-y-3 border-b border-border/60 px-4 py-3">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col gap-4 overflow-hidden p-4 sm:px-6 sm:pb-6 lg:flex-row">
+        <aside className="console-card flex max-h-[min(380px,42vh)] w-full shrink-0 flex-col overflow-hidden lg:h-full lg:max-h-none lg:w-[300px] lg:max-w-[300px]">
+          <div className="shrink-0 space-y-3 border-b border-[var(--console-hairline-soft)] px-4 py-3.5">
             <div>
-              <p className="text-sm font-medium">Tool library</p>
-              <p className="text-xs text-muted-foreground">
+              <h2 className="console-section-title">Tool library</h2>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                 Built-ins and integrations available to your assistant.
               </p>
             </div>
-            <div className="relative">
-              <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={libraryQuery}
-                onChange={(event) => setLibraryQuery(event.target.value)}
-                placeholder="Search tools..."
-                className="h-9 pl-9"
-              />
-            </div>
+            <ConsoleSearch
+              onChange={setLibraryQuery}
+              placeholder="Search tools…"
+              value={libraryQuery}
+            />
           </div>
           <ScrollArea className="min-h-0 flex-1 lg:max-h-none">
             <div className="space-y-5 p-4">
@@ -837,7 +833,7 @@ export const AssistantToolsView = () => {
                 </p>
                 <div className="space-y-2">
                   {filteredBuiltinTools.length === 0 ? (
-                    <p className="rounded-xl border border-dashed border-border/70 px-3 py-4 text-center text-xs text-muted-foreground">
+                    <p className="rounded-xl border border-dashed border-[var(--console-hairline-soft)] px-3 py-4 text-center text-xs text-muted-foreground">
                       {builtinTools.length === 0
                         ? "Default tools are being prepared..."
                         : "No built-in tools match your search."}
@@ -887,7 +883,7 @@ export const AssistantToolsView = () => {
                   })}
                   {filteredIntegrationTools.length === 0 &&
                   libraryQuery.trim() ? (
-                    <p className="rounded-xl border border-dashed border-border/70 px-3 py-4 text-center text-xs text-muted-foreground">
+                    <p className="rounded-xl border border-dashed border-[var(--console-hairline-soft)] px-3 py-4 text-center text-xs text-muted-foreground">
                       No integrations match your search.
                     </p>
                   ) : null}
@@ -908,7 +904,7 @@ export const AssistantToolsView = () => {
                           newToolType === "google_sheets" &&
                           editor.config.operation === template.operation
                           ? "border-primary/40 bg-primary/5"
-                          : "border-border/70"
+                          : "border-[var(--console-hairline-soft)]"
                       )}
                     >
                       <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-sm font-semibold text-emerald-400">
@@ -938,7 +934,7 @@ export const AssistantToolsView = () => {
                         "flex w-full items-center gap-3 rounded-xl border border-dashed px-3 py-2.5 text-left transition-colors hover:bg-muted/40",
                         selectedToolId === "new" && newToolType === option.type
                           ? "border-primary/40 bg-primary/5"
-                          : "border-border/70"
+                          : "border-[var(--console-hairline-soft)]"
                       )}
                     >
                       <div
@@ -964,27 +960,23 @@ export const AssistantToolsView = () => {
           </ScrollArea>
         </aside>
 
-        <section className="surface-panel flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[22px]">
+        <section className="console-card flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {!showEditor ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-muted/60">
-                <SearchIcon className="size-7 text-muted-foreground/60" />
-              </div>
-              <div>
-                <p className="font-medium">Select a tool to configure</p>
-                <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                  Choose a built-in assistant tool or add an integration like
-                  Google Sheets.
-                </p>
-              </div>
-            </div>
+            <ConsoleEmptyState
+              className="flex-1"
+              description="Choose a built-in assistant tool or add an integration like Google Sheets."
+              icon={WrenchIcon}
+              title="Select a tool to configure"
+            />
           ) : (
             <>
-              <div className="shrink-0 border-b border-border/60 px-5 py-4 sm:px-6">
+              <div className="shrink-0 border-b border-[var(--console-hairline-soft)] px-5 py-4 sm:px-6">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="text-lg font-semibold">{editorTitle}</h2>
-                    <p className="text-sm text-muted-foreground">
+                    <h2 className="console-section-title text-[0.95rem]">
+                      {editorTitle}
+                    </h2>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                       Tool settings used by the assistant when deciding what to
                       call.
                     </p>
@@ -1025,7 +1017,7 @@ export const AssistantToolsView = () => {
                         numbers, and underscores.
                       </p>
                     </div>
-                    <div className="space-y-3 rounded-2xl border border-border/60 bg-muted/20 p-4">
+                    <div className="space-y-3 console-inset p-4">
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <p className="text-sm font-medium">Enabled</p>
@@ -1143,7 +1135,7 @@ export const AssistantToolsView = () => {
 
                   {(selectedTool?.type === "google_sheets" ||
                     newToolType === "google_sheets") && (
-                    <div className="space-y-4 rounded-2xl border border-border/60 p-4">
+                    <div className="space-y-4 console-inset p-4">
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="secondary">
                           {
@@ -1261,7 +1253,7 @@ export const AssistantToolsView = () => {
                       </div>
 
                       {showApiKeyFallback ? (
-                        <div className="space-y-2 rounded-xl border border-dashed border-border/70 bg-muted/20 p-3">
+                        <div className="space-y-2 rounded-xl border border-dashed border-[var(--console-hairline-soft)] bg-muted/35 p-3">
                           <p className="text-xs text-muted-foreground">
                             Advanced: API key works only for public sheets or
                             sheets shared with your Google Cloud project.
@@ -1526,7 +1518,7 @@ export const AssistantToolsView = () => {
                         />
                       ) : null}
 
-                      <div className="space-y-3 rounded-xl border border-border/50 bg-muted/15 p-3">
+                      <div className="space-y-3 console-inset p-3">
                         <button
                           type="button"
                           className="flex w-full items-center justify-between text-left text-sm font-medium"
@@ -1721,7 +1713,7 @@ export const AssistantToolsView = () => {
                               "update" ||
                             (editor.config.operation ?? "lookup") ===
                               "delete" ? (
-                              <div className="flex items-center justify-between rounded-xl border border-border/60 px-3 py-2 md:col-span-2">
+                              <div className="flex items-center justify-between console-inset px-3 py-2 md:col-span-2">
                                 <div>
                                   <p className="text-sm font-medium">
                                     Require unique match
@@ -1755,7 +1747,7 @@ export const AssistantToolsView = () => {
                       </div>
 
                       {selectedTool && selectedToolId !== "new" ? (
-                        <div className="space-y-3 rounded-xl border border-border/50 p-3">
+                        <div className="space-y-3 console-inset p-3">
                           <div>
                             <p className="text-sm font-medium">Test tool</p>
                             <p className="text-xs text-muted-foreground">
@@ -1814,7 +1806,7 @@ export const AssistantToolsView = () => {
                             ) : null}
                           </div>
                           {testResult ? (
-                            <pre className="max-h-48 overflow-auto rounded-lg border border-border/60 bg-muted/30 p-3 text-xs whitespace-pre-wrap">
+                            <pre className="max-h-48 overflow-auto console-inset p-3 text-xs whitespace-pre-wrap">
                               {testResult}
                             </pre>
                           ) : null}
@@ -1825,7 +1817,7 @@ export const AssistantToolsView = () => {
 
                   {(selectedTool?.type === "api_request" ||
                     newToolType === "api_request") && (
-                    <div className="space-y-4 rounded-2xl border border-border/60 p-4">
+                    <div className="space-y-4 console-inset p-4">
                       <div className="grid gap-4 md:grid-cols-[1fr_140px]">
                         <div className="space-y-2">
                           <Label>URL</Label>
@@ -1905,7 +1897,7 @@ export const AssistantToolsView = () => {
 
                   {(selectedTool?.type === "custom_webhook" ||
                     newToolType === "custom_webhook") && (
-                    <div className="space-y-4 rounded-2xl border border-border/60 p-4">
+                    <div className="space-y-4 console-inset p-4">
                       <div className="grid gap-4 md:grid-cols-[1fr_140px]">
                         <div className="space-y-2">
                           <Label>Webhook URL</Label>
@@ -1991,7 +1983,7 @@ export const AssistantToolsView = () => {
                         {editor.parameters.map((parameter, index) => (
                           <div
                             key={`${parameter.name}-${index}`}
-                            className="space-y-3 rounded-2xl border border-border/60 bg-background/50 p-4"
+                            className="space-y-3 console-inset p-4"
                           >
                             <div className="grid gap-3 sm:grid-cols-2">
                               <div className="space-y-1.5">
@@ -2054,7 +2046,7 @@ export const AssistantToolsView = () => {
                                   </SelectContent>
                                 </Select>
                               </div>
-                              <div className="flex items-center gap-2 rounded-xl border border-border/60 px-3 py-2">
+                              <div className="flex items-center gap-2 console-inset px-3 py-2">
                                 <Switch
                                   checked={parameter.required}
                                   onCheckedChange={(checked) =>
@@ -2091,7 +2083,7 @@ export const AssistantToolsView = () => {
                 </div>
               </ScrollArea>
 
-              <div className="shrink-0 border-t border-border/60 bg-background/80 px-5 py-4 backdrop-blur-sm sm:px-6">
+              <div className="shrink-0 border-t border-[var(--console-hairline-soft)] bg-card px-5 py-4 sm:px-6">
                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
                   <p className="text-center text-xs text-muted-foreground sm:mr-auto sm:text-left">
                     Changes apply to chat and voice when the corresponding

@@ -116,10 +116,12 @@ export const getNextNodeId = (
   const outgoing = edgesBySource.get(sourceId) ?? []
 
   if (handleId) {
-    const byHandle = outgoing.find((edge) => edge.sourceHandle === handleId)
-    if (byHandle?.target) {
-      return byHandle.target
-    }
+    // A branch handle only follows its own edge. Falling back to any other
+    // outgoing edge would silently route "false" down the "true" path, or a
+    // button with no wire down whichever button happens to be connected.
+    return (
+      outgoing.find((edge) => edge.sourceHandle === handleId)?.target ?? null
+    )
   }
 
   return (
@@ -193,14 +195,9 @@ export const isAiNodeType = (type: string | undefined) =>
   type === "crew" ||
   type === "operator"
 
-export const isPassThroughNodeType = (type: string | undefined) =>
-  type === "component" ||
-  type === "carousel" ||
-  type === "tool" ||
-  type === "function" ||
-  type === "api" ||
-  type === "javascript" ||
-  type === "customAction"
+/** Steps that run out of band in a scheduled action, then resume the walk. */
+export const isDeferredNodeType = (type: string | undefined) =>
+  type === "api" || type === "javascript" || type === "tool"
 
 export const getCaptureVariableKey = (data: JsonRecord) => {
   const key =
@@ -241,3 +238,49 @@ export const buildKbQuery = (
   )
   return query.trim()
 }
+
+export type BlockStep = {
+  id: string
+  type: string
+  data: JsonRecord
+}
+
+/** Ordered steps of a Block node; empty for every other node type. */
+export const getBlockSteps = (data: JsonRecord): BlockStep[] => {
+  if (!Array.isArray(data.steps)) {
+    return []
+  }
+
+  return data.steps
+    .map((step) => {
+      if (!isRecord(step)) {
+        return null
+      }
+
+      return {
+        id: asString(step.id),
+        type: asString(step.type),
+        data: isRecord(step.data) ? step.data : {},
+      }
+    })
+    .filter((step): step is BlockStep => step !== null && step.type !== "")
+}
+
+export const isBlockNodeType = (type: string | undefined) => type === "block"
+
+/**
+ * Steps that branch or end the run. They can only be the last step of a
+ * block, so a wait on one of them leaves the block rather than resuming
+ * inside it.
+ */
+export const isTerminalStepType = (type: string | undefined) =>
+  type === "buttons" ||
+  type === "choice" ||
+  type === "condition" ||
+  type === "api" ||
+  type === "javascript" ||
+  type === "tool" ||
+  type === "carousel" ||
+  type === "card" ||
+  type === "end" ||
+  type === "callForward"

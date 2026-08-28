@@ -50,11 +50,11 @@ const ApiKeyCard = ({
   onRemove: () => void
   onSave: () => void
 }) => (
-  <div className="surface-panel min-w-0 rounded-[22px] p-4 shadow-sm sm:p-5">
+  <div className="console-card min-w-0 p-4 sm:p-5">
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">
-          <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-background shadow-sm">
+          <span className="console-medallion size-9 shrink-0 overflow-hidden">
             <Image
               alt={config.logoAlt}
               className="size-7 object-contain"
@@ -62,7 +62,7 @@ const ApiKeyCard = ({
               src={config.logoSrc}
               width={28}
             />
-          </div>
+          </span>
           <div className="min-w-0">
             <p className="text-sm font-semibold">{config.title}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
@@ -226,26 +226,23 @@ export const ApiKeysSection = ({
 
   return (
     <div className="space-y-4">
-      <section className="surface-frosted rounded-[22px] px-4 py-4 sm:px-5">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background shadow-sm">
-            <KeyRoundIcon className="size-4 text-muted-foreground" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-              API keys
-            </p>
-            <h2 className="mt-1 text-base font-semibold">
-              Organization AI provider keys
-            </h2>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Add customer-owned provider keys for this organization. When a
-              key is saved, premium AI features use it instead of the workspace
-              default credential.
-            </p>
-          </div>
+      <div className="flex min-w-0 items-start gap-3.5">
+        <span className="console-medallion size-10 shrink-0">
+          <KeyRoundIcon className="size-4" />
+        </span>
+        <div className="min-w-0">
+          <p className="console-eyebrow">API keys</p>
+          <h2 className="console-section-title mt-1.5 text-[0.95rem]">
+            Organization AI provider keys
+          </h2>
+          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            Add customer-owned provider keys for this organization. When a key
+            is saved, premium AI features use it instead of the workspace
+            default credential.
+          </p>
         </div>
-      </section>
+      </div>
+      <div className="console-rule" />
 
       <div className="grid gap-4 xl:grid-cols-2">
         {configs.map((config) => {

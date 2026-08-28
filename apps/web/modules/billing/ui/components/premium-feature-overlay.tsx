@@ -1,106 +1,108 @@
-"use client";
+"use client"
 
 import {
-    type LucideIcon,
-    BotIcon,
-    GemIcon,
-    PhoneIcon,
-    UsersIcon,
-} from "lucide-react";
-import { useRouter } from "next/navigation";
-import { Button } from "@workspace/ui/components/button";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@workspace/ui/components/card";
+  type LucideIcon,
+  BotIcon,
+  GemIcon,
+  PhoneIcon,
+  UsersIcon,
+} from "lucide-react"
+import { useRouter } from "next/navigation"
+
+import { Button } from "@workspace/ui/components/button"
 
 interface Feature {
-    icon: LucideIcon;
-    label: string;
-    description: string;
+  icon: LucideIcon
+  label: string
+  description: string
 }
 
 interface PremiumFeatureOverlayProps {
-    children: React.ReactNode;
+  children: React.ReactNode
 }
 
 const features: Feature[] = [
-    {
-        icon: UsersIcon,
-        label: "Team Collaboration",
-        description: "Work together with your team",
-    },
-    {
-        icon: BotIcon,
-        label: "AI Assistant",
-        description: "Get help from AI",
-    },
-    {
-        icon: PhoneIcon,
-        label: "Priority Support",
-        description: "24/7 dedicated support",
-    },
-];
+  {
+    icon: UsersIcon,
+    label: "Customer memory",
+    description: "Context on every returning customer",
+  },
+  {
+    icon: BotIcon,
+    label: "Knowledge base",
+    description: "Answers trained on your own content",
+  },
+  {
+    icon: PhoneIcon,
+    label: "Voice AI",
+    description: "Realtime calls with full transcripts",
+  },
+]
 
 export const PremiumFeatureOverlay = ({
-    children,
+  children,
 }: PremiumFeatureOverlayProps) => {
-    const router = useRouter();
+  const router = useRouter()
 
-    return (
-        <div className="relative h-screen w-full overflow-hidden">
-            {/* Blurred background content */}
-            <div className="pointer-events-none h-full select-none overflow-auto blur-[2px]">
-                {children}
-            </div>
+  return (
+    <div className="relative h-full min-h-0 w-full overflow-hidden">
+      {/* the gated page, softened rather than hidden */}
+      <div
+        aria-hidden
+        className="pointer-events-none h-full overflow-hidden select-none blur-[3px]"
+      >
+        {children}
+      </div>
 
-            {/* Overlay */}
-            <div className="absolute inset-0 z-10 bg-black/50 backdrop-blur-[2px]" />
+      <div className="absolute inset-0 z-10 bg-background/72 backdrop-blur-[3px]" />
 
-            {/* Upgrade prompt */}
-            <div className="absolute inset-0 z-20 flex items-center justify-center p-4">
-                <Card className="w-full max-w-md">
-                    <CardHeader className="text-center">
-                        <div className="flex items-center justify-center">
-                            <div className="mb-2 inline-flex h-12 w-12 items-center justify-center rounded-full border bg-muted">
-                                <GemIcon className="size-6 text-muted-foreground" />
-                            </div>
-                        </div>
-                        <CardTitle className="text-xl">Premium Feature</CardTitle>
-                        <CardDescription>
-                            This feature requires a Pro subscription
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        {/* Features List */}
-                        <div className="space-y-6">
-                            {features.map((feature) => (
-                                <div key={feature.label} className="flex items-center gap-3">
-                                    <div className="flex size-8 items-center justify-center rounded-lg border bg-muted">
-                                        <feature.icon className="size-4 text-muted-foreground" />
-                                    </div>
-                                    <div className="text-left">
-                                        <p className="font-medium text-sm">{feature.label}</p>
-                                        <p className="text-muted-foreground text-xs">
-                                            {feature.description}
-                                        </p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        <Button
-                            className="w-full"
-                            onClick={() => router.push("/billing")}
-                            size="lg"
-                        >
-                            Upgrade to Pro
-                        </Button>
-                    </CardContent>
-                </Card>
-            </div>
+      <div className="absolute inset-0 z-20 flex items-center justify-center p-4">
+        <div className="console-card w-full max-w-md shadow-[var(--console-shadow-lift)]">
+          <div className="flex flex-col items-center px-6 pt-7 text-center">
+            <span className="console-medallion size-12">
+              <GemIcon className="size-5" />
+            </span>
+            <p className="console-eyebrow mt-4">Pro plan</p>
+            <h2 className="console-title mt-2 text-[1.35rem]">
+              Unlock this workspace
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              This page is part of the Pro plan, alongside the rest of the
+              premium AI toolset.
+            </p>
+          </div>
+
+          <div className="console-rule my-6" />
+
+          <div className="space-y-4 px-6">
+            {features.map((feature) => (
+              <div className="flex items-center gap-3" key={feature.label}>
+                <span className="console-medallion size-9 shrink-0">
+                  <feature.icon className="size-4" />
+                </span>
+                <div className="min-w-0 text-left">
+                  <p className="text-sm font-medium text-foreground">
+                    {feature.label}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {feature.description}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="px-6 pt-6 pb-6">
+            <Button
+              className="w-full"
+              onClick={() => router.push("/billing")}
+              size="lg"
+            >
+              Upgrade to Pro
+            </Button>
+          </div>
         </div>
-    );
-};
+      </div>
+    </div>
+  )
+}

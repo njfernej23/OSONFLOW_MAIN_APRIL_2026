@@ -104,7 +104,7 @@ const getProviderBadgeClassName = (provider: string) => {
   return (
     AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES[
       provider as keyof typeof AI_CONVERSATION_PROVIDER_BADGE_CLASSNAMES
-    ] ?? "border-border bg-muted/50 text-muted-foreground"
+    ] ?? "border-[var(--console-hairline)] bg-muted/60 text-foreground/80"
   )
 }
 
@@ -200,8 +200,8 @@ export const AIConversationIdView = ({
   )
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col gap-3 overflow-hidden bg-transparent p-3">
-      <header className="surface-frosted shrink-0 rounded-[22px] px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
+    <div className="console-page flex h-full min-h-0 flex-1 flex-col gap-3 overflow-hidden p-3">
+      <header className="console-card shrink-0 px-3.5 py-3.5 sm:px-4.5 sm:py-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 items-start gap-3">
             {isMobile ? (
@@ -223,14 +223,12 @@ export const AIConversationIdView = ({
             />
 
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                AI Voicechat
-              </p>
-              <h1 className="mt-1 truncate text-[18px] font-semibold text-foreground sm:text-[20px]">
+              <p className="console-eyebrow">AI voicechat</p>
+              <h1 className="mt-1.5 truncate text-[1.05rem] font-semibold tracking-[-0.02em] text-foreground sm:text-[1.15rem]">
                 {getVisitorLabel(conversation)}
               </h1>
               {getVisitorDetail(conversation) ? (
-                <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
+                <p className="mt-0.5 truncate text-[0.78rem] text-muted-foreground">
                   {getVisitorDetail(conversation)}
                 </p>
               ) : null}
@@ -240,7 +238,7 @@ export const AIConversationIdView = ({
           <div className="flex flex-wrap items-center gap-1.5 lg:justify-end">
             <Badge
               className={cn(
-                "h-6 rounded-md border px-2 text-[11px] font-medium",
+                "h-6 rounded-full border px-2.5 text-[0.7rem] font-medium",
                 providerBadgeClassName
               )}
               variant="outline"
@@ -249,82 +247,67 @@ export const AIConversationIdView = ({
             </Badge>
             <Badge
               className={cn(
-                "h-6 rounded-md border px-2 text-[11px] font-medium",
+                "console-tone-wash h-6 rounded-full border px-2.5 text-[0.7rem] font-medium",
                 conversation.endedAt
-                  ? "border-muted-foreground/20 bg-muted/50 text-muted-foreground"
-                  : "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                  ? "console-tone-neutral"
+                  : "console-tone-positive"
               )}
               variant="outline"
             >
-              <CircleIcon
-                className={cn(
-                  "mr-1 size-1.5 fill-current",
-                  conversation.endedAt
-                    ? "text-muted-foreground/50"
-                    : "text-emerald-500"
-                )}
-              />
-              {conversation.endedAt ? "Ended" : "Live"}
+              <CircleIcon className="mr-1 size-1.5 fill-current" />
+              <span className="text-foreground/85">
+                {conversation.endedAt ? "Ended" : "Live"}
+              </span>
             </Badge>
           </div>
         </div>
 
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-xl border border-border/65 bg-background/58 px-3 py-2">
-            <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
-              <Clock3Icon className="size-3.5" />
-              Started
-            </div>
-            <p className="mt-1 truncate text-[12px] font-medium text-foreground">
-              {formatTimestamp(conversation._creationTime)}
-            </p>
-          </div>
-          <div className="rounded-xl border border-border/65 bg-background/58 px-3 py-2">
-            <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
-              <Clock3Icon className="size-3.5" />
-              Last activity
-            </div>
-            <p className="mt-1 truncate text-[12px] font-medium text-foreground">
-              {formatTimestamp(conversation.lastActivityAt)}
-            </p>
-          </div>
-          {conversation.contactSession?.metadata?.timezone ? (
-            <div className="rounded-xl border border-border/65 bg-background/58 px-3 py-2">
-              <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
-                <GlobeIcon className="size-3.5" />
-                Timezone
+        <div className="console-rule mt-4" />
+
+        <div className="mt-3.5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {(
+            [
+              [Clock3Icon, "Started", formatTimestamp(conversation._creationTime)],
+              [
+                Clock3Icon,
+                "Last activity",
+                formatTimestamp(conversation.lastActivityAt),
+              ],
+              [
+                GlobeIcon,
+                "Timezone",
+                conversation.contactSession?.metadata?.timezone,
+              ],
+              [GlobeIcon, "Page", currentPage],
+            ] as const
+          )
+            .filter(([, , value]) => Boolean(value))
+            .map(([Icon, label, value]) => (
+              <div className="console-inset px-3 py-2" key={label}>
+                <p className="console-label flex items-center gap-1.5">
+                  <Icon className="size-3" />
+                  {label}
+                </p>
+                <p className="mt-1.5 truncate text-[0.76rem] font-medium text-foreground">
+                  {value}
+                </p>
               </div>
-              <p className="mt-1 truncate text-[12px] font-medium text-foreground">
-                {conversation.contactSession.metadata.timezone}
-              </p>
-            </div>
-          ) : null}
-          {currentPage ? (
-            <div className="rounded-xl border border-border/65 bg-background/58 px-3 py-2">
-              <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
-                <GlobeIcon className="size-3.5" />
-                Page
-              </div>
-              <p className="mt-1 truncate text-[12px] font-medium text-foreground">
-                {currentPage}
-              </p>
-            </div>
-          ) : null}
+            ))}
         </div>
       </header>
 
-      <section className="surface-panel flex min-h-0 flex-1 flex-col overflow-hidden rounded-[22px] shadow-sm">
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-background/62 px-4 py-3 lg:px-5">
+      <section className="console-card flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--console-hairline-soft)] px-4 py-3 lg:px-5">
           <div>
-            <p className="text-sm font-semibold text-foreground">Transcript</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {orderedMessages.length} message
-              {orderedMessages.length === 1 ? "" : "s"}
+            <h2 className="console-section-title">Transcript</h2>
+            <p className="mt-0.5 text-[0.7rem] text-muted-foreground">
+              <span className="console-numeral text-[0.7rem]">
+                {orderedMessages.length}
+              </span>{" "}
+              message{orderedMessages.length === 1 ? "" : "s"}
             </p>
           </div>
-          <div className="hidden rounded-full border border-border/70 bg-muted/45 px-2.5 py-1 text-[11px] font-medium text-muted-foreground sm:block">
-            Read only
-          </div>
+          <span className="console-label hidden sm:block">Read only</span>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
@@ -334,11 +317,9 @@ export const AIConversationIdView = ({
                 <div key={message._id}>
                   {dayLabel ? (
                     <div className="mb-3 flex items-center gap-3 sm:mb-4">
-                      <div className="h-px flex-1 bg-border/70" />
-                      <span className="rounded-full bg-background px-2.5 py-1 text-[10px] font-medium text-muted-foreground ring-1 ring-border sm:px-3 sm:text-[11px]">
-                        {dayLabel}
-                      </span>
-                      <div className="h-px flex-1 bg-border/70" />
+                      <div className="console-rule flex-1" />
+                      <span className="console-eyebrow">{dayLabel}</span>
+                      <div className="console-rule flex-1 rotate-180" />
                     </div>
                   ) : null}
 
@@ -373,10 +354,10 @@ export const AIConversationIdView = ({
 
                       <AIMessageContent
                         className={cn(
-                          "rounded-2xl border px-3 py-2 text-[12px] leading-relaxed shadow-sm sm:px-4 sm:py-2.5 sm:text-[13px]",
+                          "rounded-[14px] border px-3.5 py-2.5 text-[0.78rem] leading-relaxed sm:px-4 sm:text-[0.82rem]",
                           message.role === "assistant"
-                            ? "border-border/70 bg-background text-foreground shadow-[0_14px_34px_-24px_rgba(15,23,42,0.24)]"
-                            : "border-transparent bg-primary text-primary-foreground shadow-[0_18px_36px_-24px_rgba(15,23,42,0.38)]"
+                            ? "border-[var(--console-hairline)] bg-card text-foreground"
+                            : "border-transparent bg-primary text-primary-foreground"
                         )}
                       >
                         <p className="whitespace-pre-wrap break-words">
@@ -388,15 +369,15 @@ export const AIConversationIdView = ({
                 </div>
               ))
             ) : (
-              <div className="flex min-h-[260px] flex-col items-center justify-center gap-2.5 rounded-2xl border border-dashed bg-background/65 p-4 text-center sm:min-h-[320px] sm:gap-3 sm:p-6">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-muted/50 sm:size-11">
-                  <SparklesIcon className="size-4 text-muted-foreground sm:size-5" />
-                </div>
+              <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 p-4 text-center sm:min-h-[320px] sm:p-6">
+                <span className="console-medallion size-12">
+                  <SparklesIcon className="size-5" />
+                </span>
                 <div>
-                  <p className="text-[13px] font-medium text-foreground sm:text-sm">
+                  <p className="text-sm font-medium text-foreground">
                     No transcript messages yet
                   </p>
-                  <p className="mt-1 text-[11px] text-muted-foreground sm:text-[12px]">
+                  <p className="mt-1.5 max-w-sm text-xs leading-relaxed text-muted-foreground">
                     The call is saved. Final transcript lines will appear here
                     as the voice provider returns them.
                   </p>
@@ -412,8 +393,8 @@ export const AIConversationIdView = ({
 
 const AIConversationIdSkeleton = () => {
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col gap-3 overflow-hidden bg-transparent p-3">
-      <div className="surface-frosted rounded-[22px] px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
+    <div className="console-page flex h-full min-h-0 flex-1 flex-col gap-3 overflow-hidden p-3">
+      <div className="console-card px-3.5 py-3.5 sm:px-4.5 sm:py-4">
         <div className="flex items-start gap-3">
           <Skeleton className="size-10 shrink-0 rounded-full sm:size-11 lg:size-11" />
           <div className="min-w-0 flex-1 space-y-3">
@@ -432,13 +413,13 @@ const AIConversationIdSkeleton = () => {
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton className="h-[58px] rounded-xl" key={index} />
+            <Skeleton className="h-[3.4rem] rounded-[10px]" key={index} />
           ))}
         </div>
       </div>
 
-      <div className="surface-panel flex min-h-0 flex-1 flex-col overflow-hidden rounded-[22px] shadow-sm">
-        <div className="border-b border-border/70 bg-background/62 px-4 py-3 lg:px-5">
+      <div className="console-card flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="border-b border-[var(--console-hairline-soft)] px-4 py-3 lg:px-5">
           <Skeleton className="h-4 w-24" />
           <Skeleton className="mt-1.5 h-3 w-16" />
         </div>

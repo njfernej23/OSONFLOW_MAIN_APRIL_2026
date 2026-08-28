@@ -679,3 +679,299 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Console — the dashboard design language.
+
+   Used by Leads, AI voicechats, Analytics, Customer memory, Knowledge base,
+   Widget customization, Assistant tools, Integrations, Data transfer and
+   Billing. It replaces the frosted-glass slabs with an opaque, hairline-ruled
+   surface set: quieter chrome, stronger typography, one accent instead of five.
+
+   Deliberately additive — the `surface-*` utilities above are untouched so the
+   Workflows builder and the Conversations inbox keep their own look.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --console-radius: 14px;
+  --console-radius-sm: 10px;
+  --console-hairline: color-mix(in srgb, var(--border) 86%, transparent);
+  --console-hairline-soft: color-mix(in srgb, var(--border) 52%, transparent);
+  --console-shadow:
+    0 1px 1px color-mix(in srgb, var(--shadow-color) 4%, transparent),
+    0 10px 26px -20px color-mix(in srgb, var(--shadow-color) 42%, transparent);
+  --console-shadow-lift:
+    0 1px 1px color-mix(in srgb, var(--shadow-color) 5%, transparent),
+    0 20px 42px -26px color-mix(in srgb, var(--shadow-color) 58%, transparent);
+  --console-veil: color-mix(in srgb, var(--muted) 58%, transparent);
+  --console-positive: oklch(0.6 0.13 158);
+  --console-warning: oklch(0.72 0.14 78);
+  --console-critical: oklch(0.62 0.18 22);
+  --console-info: oklch(0.62 0.14 246);
+
+  /* Categorical series. Fixed order, assigned per entity and never cycled —
+     validated as a set for the adjacent (stacked/bar) pairlist in both modes. */
+  --console-series-1: #2a78d6;
+  --console-series-2: #eb6834;
+  --console-series-3: #1baf7a;
+  --console-series-4: #eda100;
+  --console-series-5: #e87ba4;
+  --console-series-6: #008300;
+}
+
+.dark {
+  --console-hairline: color-mix(in srgb, var(--border) 100%, white 6%);
+  --console-hairline-soft: color-mix(in srgb, var(--border) 74%, transparent);
+  --console-shadow:
+    0 1px 1px color-mix(in srgb, var(--shadow-color) 30%, transparent),
+    0 12px 30px -22px color-mix(in srgb, var(--shadow-color) 90%, transparent);
+  --console-shadow-lift:
+    0 1px 1px color-mix(in srgb, var(--shadow-color) 34%, transparent),
+    0 24px 48px -26px color-mix(in srgb, var(--shadow-color) 100%, transparent);
+  --console-veil: color-mix(in srgb, var(--muted) 40%, transparent);
+  --console-positive: oklch(0.74 0.13 158);
+  --console-warning: oklch(0.8 0.13 82);
+  --console-critical: oklch(0.7 0.16 22);
+  --console-info: oklch(0.72 0.12 246);
+  --console-series-1: #3987e5;
+  --console-series-2: #d95926;
+  --console-series-3: #199e70;
+  --console-series-4: #c98500;
+  --console-series-5: #d55181;
+  --console-series-6: #008300;
+}
+
+@layer utilities {
+  /* Page canvas. Opaque enough to sit over the shell's ambient orbs so the
+     console reads as its own calm surface rather than a floating overlay. */
+  .console-page {
+    background:
+      radial-gradient(
+        128% 88% at 50% -22%,
+        var(--console-veil),
+        transparent 60%
+      ),
+      var(--background);
+  }
+
+  .console-card {
+    border-radius: var(--console-radius);
+    border: 1px solid var(--console-hairline);
+    background: var(--card);
+    box-shadow: var(--console-shadow);
+  }
+
+  .console-card-quiet {
+    border-radius: var(--console-radius);
+    border: 1px solid var(--console-hairline-soft);
+    background: color-mix(in srgb, var(--card) 66%, transparent);
+  }
+
+  .console-inset {
+    border-radius: var(--console-radius-sm);
+    border: 1px solid var(--console-hairline-soft);
+    background: color-mix(in srgb, var(--muted) 46%, transparent);
+  }
+
+  .console-interactive {
+    transition:
+      border-color 220ms var(--motion-snappy),
+      box-shadow 220ms var(--motion-snappy),
+      background-color 220ms var(--motion-snappy);
+  }
+
+  .console-interactive:hover {
+    border-color: color-mix(in srgb, var(--foreground) 15%, transparent);
+    box-shadow: var(--console-shadow-lift);
+  }
+
+  /* Typography ------------------------------------------------------------ */
+
+  .console-eyebrow {
+    font-size: 0.66rem;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--muted-foreground) 90%, transparent);
+  }
+
+  .console-title {
+    font-size: clamp(1.375rem, 1.08rem + 1vw, 1.85rem);
+    font-weight: 600;
+    line-height: 1.14;
+    letter-spacing: -0.026em;
+    color: var(--foreground);
+  }
+
+  .console-section-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: -0.012em;
+    color: var(--foreground);
+  }
+
+  .console-label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: 0.055em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+
+  .console-numeral {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    letter-spacing: -0.032em;
+    color: var(--foreground);
+  }
+
+  .console-rule {
+    height: 1px;
+    border: 0;
+    background: linear-gradient(
+      90deg,
+      var(--console-hairline),
+      color-mix(in srgb, var(--border) 22%, transparent)
+    );
+  }
+
+  /* Ornaments ------------------------------------------------------------- */
+
+  .console-medallion {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--console-radius-sm);
+    border: 1px solid var(--console-hairline);
+    background: linear-gradient(
+      180deg,
+      var(--card),
+      color-mix(in srgb, var(--muted) 62%, var(--card))
+    );
+    color: var(--muted-foreground);
+    box-shadow: inset 0 1px 0 var(--surface-highlight);
+  }
+
+  .console-dot {
+    width: 0.4375rem;
+    height: 0.4375rem;
+    border-radius: 999px;
+    background: currentColor;
+    box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 16%, transparent);
+  }
+
+  /* Segmented control ----------------------------------------------------- */
+
+  .console-segment {
+    border-radius: 12px;
+    border: 1px solid var(--console-hairline-soft);
+    background: color-mix(in srgb, var(--muted) 58%, transparent);
+    padding: 3px;
+  }
+
+  .console-segment-item {
+    border-radius: 9px;
+    transition:
+      background-color 200ms var(--motion-snappy),
+      color 200ms var(--motion-snappy),
+      box-shadow 200ms var(--motion-snappy);
+  }
+
+  .console-segment-item[data-state="active"],
+  .console-segment-item[data-active] {
+    border-color: var(--console-hairline);
+    background: var(--card);
+    color: var(--foreground);
+    box-shadow:
+      inset 0 1px 0 var(--surface-highlight),
+      0 1px 2px color-mix(in srgb, var(--shadow-color) 8%, transparent);
+  }
+
+  /* Rows and meters ------------------------------------------------------- */
+
+  .console-row {
+    transition: background-color 160ms var(--motion-snappy);
+  }
+
+  .console-row:hover {
+    background: color-mix(in srgb, var(--muted) 42%, transparent);
+  }
+
+  .console-meter {
+    height: 0.375rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--muted-foreground) 14%, transparent);
+  }
+
+  .console-meter-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: currentColor;
+    transition: width 520ms var(--motion-smooth);
+  }
+
+  /* Accent tones. One hue per semantic, driven through `color` so meters,
+     dots and icons all inherit from the same declaration. */
+  .console-tone-neutral {
+    color: var(--muted-foreground);
+  }
+  .console-tone-accent {
+    color: var(--primary);
+  }
+  .console-tone-positive {
+    color: var(--console-positive);
+  }
+  .console-tone-warning {
+    color: var(--console-warning);
+  }
+  .console-tone-critical {
+    color: var(--console-critical);
+  }
+  .console-tone-info {
+    color: var(--console-info);
+  }
+
+  .console-series-1 {
+    color: var(--console-series-1);
+  }
+  .console-series-2 {
+    color: var(--console-series-2);
+  }
+  .console-series-3 {
+    color: var(--console-series-3);
+  }
+  .console-series-4 {
+    color: var(--console-series-4);
+  }
+  .console-series-5 {
+    color: var(--console-series-5);
+  }
+  .console-series-6 {
+    color: var(--console-series-6);
+  }
+
+  /* Stacked bar. The 2px surface gap between segments is the secondary
+     encoding the categorical palette needs at its CVD floor. */
+  .console-stack {
+    display: flex;
+    gap: 2px;
+    height: 0.5rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--muted-foreground) 12%, transparent);
+  }
+
+  .console-stack > * {
+    border-radius: 999px;
+    background: currentColor;
+    transition: width 520ms var(--motion-smooth);
+  }
+
+  .console-tone-wash {
+    background: color-mix(in srgb, currentColor 11%, transparent);
+    border-color: color-mix(in srgb, currentColor 22%, transparent);
+  }
+}

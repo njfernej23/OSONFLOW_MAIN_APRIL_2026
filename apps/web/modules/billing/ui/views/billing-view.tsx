@@ -3,8 +3,13 @@
 import { useQuery } from "convex/react"
 import { useSearchParams } from "next/navigation"
 import { api } from "@workspace/backend/_generated/api"
-import { CheckCircle2Icon } from "lucide-react"
+import { CheckCircle2Icon, CreditCardIcon } from "lucide-react"
 
+import {
+  ConsoleHeader,
+  ConsoleMeta,
+  ConsolePage,
+} from "@/modules/dashboard/ui/components/console"
 import { PricingTable } from "../components/pricing-table"
 
 export const BillingView = () => {
@@ -15,37 +20,44 @@ export const BillingView = () => {
   const showCheckoutSuccess = Boolean(checkoutId) && isPro
 
   return (
-    <div className="flex min-h-screen flex-col bg-transparent px-4 py-6 sm:px-6 sm:py-8">
-      <div className="mx-auto w-full max-w-screen-md">
-        <div className="surface-hero space-y-2 rounded-[30px] px-6 py-7 sm:px-8">
-          <p className="section-kicker">Growth</p>
-          <h1 className="text-2xl md:text-4xl">
-            {isPro ? "Your Pro plan" : "Plans & Billing"}
-          </h1>
-          <p className="text-muted-foreground">
-            {isPro
-              ? "Your workspace has full access to premium AI features."
-              : "Choose the plan that's right for you"}
-          </p>
-        </div>
+    <ConsolePage className="max-w-4xl" width="narrow">
+      <ConsoleHeader
+        description={
+          isPro
+            ? "Your workspace has full access to premium AI features. Invoices and payment methods live in the Polar portal."
+            : "Start on the free workspace and move to Pro when you need voice AI, knowledge base training, and analytics."
+        }
+        eyebrow="Growth"
+        icon={CreditCardIcon}
+        meta={
+          subscription ? (
+            <ConsoleMeta
+              dot
+              label="Plan"
+              tone={isPro ? "positive" : "neutral"}
+              value={isPro ? "Pro" : "Free"}
+            />
+          ) : null
+        }
+        title={isPro ? "Your Pro plan" : "Plans & billing"}
+      />
 
-        {showCheckoutSuccess ? (
-          <div className="mt-6 flex items-start gap-3 rounded-2xl border border-primary/25 bg-primary/5 px-4 py-3 text-sm">
-            <CheckCircle2Icon className="mt-0.5 size-4 shrink-0 text-primary" />
-            <div>
-              <p className="font-medium text-foreground">Upgrade successful</p>
-              <p className="text-muted-foreground">
-                Your Pro subscription is active. Manage invoices and payment
-                methods in the Polar customer portal.
-              </p>
-            </div>
+      {showCheckoutSuccess ? (
+        <div className="console-card console-tone-positive flex items-start gap-3 px-4 py-3.5">
+          <CheckCircle2Icon className="mt-0.5 size-4 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              Upgrade successful
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+              Your Pro subscription is active. Manage invoices and payment
+              methods in the Polar customer portal.
+            </p>
           </div>
-        ) : null}
-
-        <div className="mt-8">
-          <PricingTable subscription={subscription} />
         </div>
-      </div>
-    </div>
+      ) : null}
+
+      <PricingTable subscription={subscription} />
+    </ConsolePage>
   )
 }
