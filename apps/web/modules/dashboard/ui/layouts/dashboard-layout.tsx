@@ -9,6 +9,7 @@ import { DashboardSidebar } from "../components/dashboard-sidebar"
 import { DashboardNotificationSound } from "../components/dashboard-notification-sound"
 import { DashboardSwipeMenu } from "../components/dashboard-swipe-menu"
 import { DashboardThemeToggle } from "../components/dashboard-theme-toggle"
+import { OnboardingGate } from "@/modules/onboarding/ui/components/onboarding-gate"
 import { Provider } from "jotai"
 
 export const DashboardLayout = async ({
@@ -25,6 +26,7 @@ export const DashboardLayout = async ({
         <Provider>
           <SidebarProvider defaultOpen={defaultOpen}>
             <DashboardNotificationSound />
+            <OnboardingGate />
             <DashboardSidebar />
             <DashboardSwipeMenu />
             {/* main must be flex-col + h-svh so resizable panels inside get a real height */}

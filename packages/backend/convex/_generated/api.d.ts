@@ -51,6 +51,7 @@ import type * as private_instagram from "../private/instagram.js";
 import type * as private_integrationWebhooks from "../private/integrationWebhooks.js";
 import type * as private_leads from "../private/leads.js";
 import type * as private_messages from "../private/messages.js";
+import type * as private_onboarding from "../private/onboarding.js";
 import type * as private_orgTransfer from "../private/orgTransfer.js";
 import type * as private_plugins from "../private/plugins.js";
 import type * as private_savedReplies from "../private/savedReplies.js";
@@ -151,6 +152,7 @@ declare const fullApi: ApiFromModules<{
   "private/integrationWebhooks": typeof private_integrationWebhooks;
   "private/leads": typeof private_leads;
   "private/messages": typeof private_messages;
+  "private/onboarding": typeof private_onboarding;
   "private/orgTransfer": typeof private_orgTransfer;
   "private/plugins": typeof private_plugins;
   "private/savedReplies": typeof private_savedReplies;

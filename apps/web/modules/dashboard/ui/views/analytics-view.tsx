@@ -19,6 +19,7 @@ import { toast } from "sonner"
 
 import { api } from "@workspace/backend/_generated/api"
 import { useLanguage } from "@/lib/i18n/language-provider"
+import { GettingStartedCallout } from "@/modules/onboarding/ui/components/getting-started-callout"
 import type { Doc } from "@workspace/backend/_generated/dataModel"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -268,6 +269,8 @@ export const AnalyticsView = () => {
 
   return (
     <ConsolePage>
+      <GettingStartedCallout />
+
       <ConsoleHeader
         actions={
           <Button
@@ -279,8 +282,8 @@ export const AnalyticsView = () => {
             {isExporting ? t("Exporting...") : t("Download CSV")}
           </Button>
         }
-        description="Where automation is closing customer work on its own, where a human still has to step in, and which knowledge gaps to fix next."
-        eyebrow="Intelligence"
+        description="How much of your customer support the assistant handled by itself, where someone still had to step in, and which questions it could not answer yet."
+        eyebrow="Overview"
         icon={ChartColumnBigIcon}
         meta={
           <>

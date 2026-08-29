@@ -8,6 +8,7 @@ import {
   BotMessageSquare,
   BrainIcon,
   ChartColumnBig,
+  CompassIcon,
   CreditCardIcon,
   GitBranchIcon,
   LayoutDashboardIcon,
@@ -152,6 +153,10 @@ export const DashboardSidebar = () => {
     api.private.aiConversations.getUnreadSummary,
     hasActiveOrganization ? {} : "skip"
   )
+  const onboardingStatus = useQuery(
+    api.private.onboarding.getStatus,
+    hasActiveOrganization ? {} : "skip"
+  )
   const markAllConversationsAsRead = useMutation(
     api.private.conversations.markAllAsRead
   )
@@ -249,9 +254,40 @@ export const DashboardSidebar = () => {
       </SidebarHeader>
 
       <SidebarContent>
+        {/* Getting started — stays in place after setup, because the map of
+            what each page is for is useful long after the checklist is done. */}
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem className="relative">
+                <SidebarMenuButton
+                  asChild
+                  tooltip="Getting started"
+                  isActive={isActive("/start")}
+                  className={cn(
+                    isActive("/start") &&
+                      "bg-sidebar-primary! text-sidebar-primary-foreground!"
+                  )}
+                >
+                  <Link href="/start">
+                    <CompassIcon className="size-4" />
+                    <span>Getting started</span>
+                  </Link>
+                </SidebarMenuButton>
+                {onboardingStatus && !onboardingStatus.isSetupComplete ? (
+                  <SidebarMenuBadge className="bg-primary/15 text-primary peer-data-active/menu-button:bg-white/20 peer-data-active/menu-button:text-sidebar-primary-foreground">
+                    {onboardingStatus.completedCount}/
+                    {onboardingStatus.totalCount}
+                  </SidebarMenuBadge>
+                ) : null}
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         {/* Customer Support */}
         <SidebarGroup>
-          <SidebarGroupLabel>Customer Support</SidebarGroupLabel>
+          <SidebarGroupLabel>Every day</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {customerSupportItems.map((item) => (
@@ -288,7 +324,7 @@ export const DashboardSidebar = () => {
 
         {/* Configuration */}
         <SidebarGroup>
-          <SidebarGroupLabel>Configuration</SidebarGroupLabel>
+          <SidebarGroupLabel>Set up once</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {configurationItems.map((item) => (
@@ -315,7 +351,7 @@ export const DashboardSidebar = () => {
 
         {/* Billing */}
         <SidebarGroup>
-          <SidebarGroupLabel>Billing</SidebarGroupLabel>
+          <SidebarGroupLabel>Account</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {accountsItem.map((item) => (

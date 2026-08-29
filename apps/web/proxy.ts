@@ -34,6 +34,11 @@ const isOrgFreeRoute = createRouteMatcher([
 
 const isAuthEntryRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"])
 
+// Where a signed-in user lands when no destination was requested. An
+// organization that has not finished the first-run guide is moved on to
+// /start by the dashboard itself, which needs data the proxy cannot read.
+const DEFAULT_APP_LANDING = "/conversations"
+
 // Every top-level segment that belongs to the authenticated app. Used only to
 // decide whether an unknown URL on the marketing host is worth redirecting to
 // the app host, or is simply a typo that should render our 404. Auth itself is
@@ -60,6 +65,8 @@ const isAppRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/sso-callback(.*)",
+  "/start(.*)",
+  "/widget-preview(.*)",
 ])
 
 const redirectToOrigin = (
@@ -85,7 +92,7 @@ const maybeRedirectByHost = (req: NextRequest) => {
 
   if (isAppHost(hostname)) {
     if (req.nextUrl.pathname === "/") {
-      return redirectToOrigin(req, getAppOrigin(), "/analytics")
+      return redirectToOrigin(req, getAppOrigin(), DEFAULT_APP_LANDING)
     }
 
     if (isMarketingRoute(req)) {
@@ -131,7 +138,7 @@ export const proxy = clerkMiddleware(async (auth, req) => {
     }
 
     const redirectUrl =
-      req.nextUrl.searchParams.get("redirect_url") ?? "/analytics"
+      req.nextUrl.searchParams.get("redirect_url") ?? DEFAULT_APP_LANDING
     return NextResponse.redirect(new URL(redirectUrl, req.url))
   }
 

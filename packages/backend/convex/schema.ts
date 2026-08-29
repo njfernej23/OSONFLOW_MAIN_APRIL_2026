@@ -878,6 +878,16 @@ export default defineSchema({
     .index("by_conversation_id", ["conversationId"])
     .index("by_ai_voice_conversation_id", ["aiVoiceConversationId"]),
 
+  // Whether an organization has been through the first-run guide. A new team
+  // is walked through setup at /start instead of being dropped into analytics,
+  // and this row is what stops that from happening twice.
+  organizationOnboarding: defineTable({
+    organizationId: v.string(),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    skippedAt: v.optional(v.number()),
+    actorId: v.optional(v.string()),
+  }).index("by_organization_id", ["organizationId"]),
   customerMemories: defineTable({
     organizationId: v.string(),
     email: v.string(),

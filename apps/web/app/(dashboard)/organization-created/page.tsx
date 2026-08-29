@@ -4,7 +4,7 @@ import { useEffect } from "react"
 
 const OrganizationCreatedPage = () => {
   useEffect(() => {
-    window.location.replace("/analytics")
+    window.location.replace("/start")
   }, [])
 
   return null
