@@ -7,11 +7,13 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type PointerEvent as ReactPointerEvent,
 } from "react"
 import type { Edge, Node } from "reactflow"
 import { useAction, useConvex } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
 import { untokenizeVariables } from "../lib/variable-tokens"
+import { isAgentStepType } from "../lib/types"
 import type { Id } from "@workspace/backend/_generated/dataModel"
 import type {
   ApiNodeData,
@@ -36,21 +38,42 @@ import type {
   PromptNodeData,
   RuntimeVariables,
   SetVariableNodeData,
+  NodeType,
   WaitingMode,
 } from "../lib/types"
+
+/** One face of a Card step, or one entry of a Carousel. */
+type ChatCard = {
+  id: string
+  title: string
+  text: string
+  alt?: string
+  imageUrl?: string
+  buttons?: ButtonOption[]
+}
 
 type ChatBubble = {
   id: string
   nodeId?: string
-  kind: "assistant" | "user" | "image" | "card"
+  kind: "assistant" | "user" | "image" | "card" | "carousel"
   text: string
   alt?: string
   title?: string
   imageUrl?: string
   buttons?: ButtonOption[]
+  /** Carousel entries, scrolled horizontally in one bubble. */
+  cards?: ChatCard[]
 }
 
-type TraceLevel = "info" | "step" | "branch" | "wait" | "ai" | "warn" | "error" | "done"
+type TraceLevel =
+  | "info"
+  | "step"
+  | "branch"
+  | "wait"
+  | "ai"
+  | "warn"
+  | "error"
+  | "done"
 
 type TraceEvent = {
   id: string
@@ -78,7 +101,7 @@ type RunPanelProps = {
   }) => void
 }
 
-type RunnerIconName = "reset" | "close" | "copy" | "play"
+type RunnerIconName = "reset" | "close" | "copy" | "play" | "chevron"
 
 type ExecuteState = {
   vars: RuntimeVariables
@@ -99,7 +122,17 @@ type ExecuteState = {
   stepCount: number
 }
 
-type PanelTab = "chat" | "trace" | "vars"
+/**
+ * The run surface is two docked panels: the conversation on the right, and
+ * everything you inspect about the run — log, variables, issues — in a dock
+ * pinned across the bottom of the canvas.
+ */
+type DockTab = "trace" | "vars" | "issues"
+
+const DOCK_MIN_H = 150
+const DOCK_MAX_H = 560
+const DOCK_DEFAULT_H = 264
+const DOCK_COLLAPSED_H = 44
 
 const createId = (prefix: string) =>
   `${prefix}_${Math.random().toString(36).slice(2, 10)}`
@@ -191,6 +224,14 @@ const RunnerIcon = ({ name }: { name: RunnerIconName }) => {
     )
   }
 
+  if (name === "chevron") {
+    return (
+      <svg {...common}>
+        <path d="m6 9 6 6 6-6" />
+      </svg>
+    )
+  }
+
   if (name === "play") {
     return (
       <svg {...common}>
@@ -252,7 +293,9 @@ const RunPanel = ({
   onClose,
   onActiveNodeChange,
 }: RunPanelProps) => {
-  const [tab, setTab] = useState<PanelTab>("chat")
+  const [dockTab, setDockTab] = useState<DockTab>("trace")
+  const [dockCollapsed, setDockCollapsed] = useState(false)
+  const [dockHeight, setDockHeight] = useState(DOCK_DEFAULT_H)
   const [status, setStatus] = useState<RunStatus>("idle")
   const [bubbles, setBubbles] = useState<ChatBubble[]>([])
   const [trace, setTrace] = useState<TraceEvent[]>([])
@@ -275,6 +318,7 @@ const RunPanel = ({
   } | null>(null)
   const asyncRunKeyRef = useRef(0)
   const previewAiStep = useAction(api.private.workflows.previewAiStep)
+  const previewAgentTurn = useAction(api.private.workflows.previewAgentTurn)
   const previewApiStep = useAction(api.private.workflows.previewApiStep)
   const previewJsStep = useAction(api.private.workflows.previewJsStep)
   const previewToolStep = useAction(api.private.workflows.previewToolStep)
@@ -298,23 +342,27 @@ const RunPanel = ({
   const [, setGraphEpoch] = useState(0)
   const bodyRef = useRef<HTMLDivElement>(null)
   const traceRef = useRef<HTMLDivElement>(null)
+  const dockRef = useRef<HTMLElement>(null)
   const startRunRef = useRef<() => void>(() => {})
   const onAutoStartCompleteRef = useRef(onAutoStartComplete)
   const lastAutoStartKeyRef = useRef<number | undefined>(undefined)
 
   onAutoStartCompleteRef.current = onAutoStartComplete
 
-  const freezeGraph = useCallback((nextNodes: Node<NodeData>[], nextEdges: Edge[]) => {
-    runGraphRef.current = {
-      nodes: nextNodes.map((node) => ({
-        ...node,
-        data: { ...node.data },
-      })),
-      edges: nextEdges.map((edge) => ({ ...edge })),
-    }
-    componentStackRef.current = []
-    setGraphEpoch((value) => value + 1)
-  }, [])
+  const freezeGraph = useCallback(
+    (nextNodes: Node<NodeData>[], nextEdges: Edge[]) => {
+      runGraphRef.current = {
+        nodes: nextNodes.map((node) => ({
+          ...node,
+          data: { ...node.data },
+        })),
+        edges: nextEdges.map((edge) => ({ ...edge })),
+      }
+      componentStackRef.current = []
+      setGraphEpoch((value) => value + 1)
+    },
+    []
+  )
 
   const clearFrozenGraph = useCallback(() => {
     runGraphRef.current = null
@@ -855,18 +903,22 @@ const RunPanel = ({
             const data = stepData as CarouselNodeData
             const cards = data.cards ?? []
 
-            for (const [index, card] of cards.entries()) {
+            if (cards.length > 0) {
               nextBubbles.push({
-                id: createId("card"),
+                id: createId("carousel"),
                 nodeId: node.id,
-                kind: "card",
-                title: renderTemplate(
-                  card.title || `Option ${index + 1}`,
-                  vars
-                ),
-                text: renderTemplate(card.description || "", vars),
-                imageUrl: renderTemplate(card.url || "", vars),
-                buttons: card.buttons,
+                kind: "carousel",
+                text: "",
+                cards: cards.map((card, index) => ({
+                  id: card.id,
+                  title: renderTemplate(
+                    card.title || `Option ${index + 1}`,
+                    vars
+                  ),
+                  text: renderTemplate(card.description || "", vars),
+                  imageUrl: renderTemplate(card.url || "", vars),
+                  buttons: card.buttons,
+                })),
               })
             }
 
@@ -1155,6 +1207,11 @@ const RunPanel = ({
       ? (((node.data as BlockNodeData).steps ?? [])[asyncRun.stepIndex]?.data ??
         node.data)
       : node.data
+
+    const pausedType =
+      (inBlock
+        ? ((node.data as BlockNodeData).steps ?? [])[asyncRun.stepIndex]?.type
+        : node.type) ?? node.type
 
     const resume = (
       nextVars: RuntimeVariables,
@@ -1509,6 +1566,160 @@ const RunPanel = ({
         return
       }
 
+      // An agent turn is not just a completion: it can pick one of the node's
+      // exits, collect variables, offer quick replies, or close the chat.
+      if (pausedType && isAgentStepType(pausedType as NodeType)) {
+        try {
+          const turn = await previewAgentTurn({
+            data: pausedData,
+            variables,
+          })
+
+          if (isStale()) {
+            return
+          }
+
+          const nextBubbles = [...bubbles]
+          const nextTrace = [...trace]
+          const nextVars: RuntimeVariables = {
+            ...variables,
+            ...(turn.variables as RuntimeVariables),
+          }
+          const reply = turn.reply.trim()
+
+          for (const call of turn.toolCalls) {
+            pushTrace(nextTrace, {
+              level: "step",
+              nodeId: node.id,
+              nodeType: pausedType,
+              title: `Agent called ${call.name}`,
+              detail: call.result.slice(0, 180),
+            })
+          }
+
+          if (reply) {
+            nextBubbles.push({
+              id: createId("msg"),
+              kind: "assistant",
+              text: reply,
+              nodeId: node.id,
+            })
+            if (turn.outputVariable) {
+              nextVars[turn.outputVariable] = reply
+            }
+            nextVars.lastAiResponse = reply
+          }
+
+          for (const message of turn.exitMessages) {
+            nextBubbles.push({
+              id: createId("msg"),
+              kind: "assistant",
+              text: message,
+              nodeId: node.id,
+            })
+          }
+
+          pushTrace(nextTrace, {
+            level: "ai",
+            nodeId: node.id,
+            nodeType: pausedType,
+            title: `${nodeTypeLabel(pausedType)} replied`,
+            detail: reply.slice(0, 180) || "(no text)",
+            varsChanged: diffVars(variables, nextVars),
+          })
+
+          if (turn.blockedExitId) {
+            pushTrace(nextTrace, {
+              level: "info",
+              nodeId: node.id,
+              nodeType: pausedType,
+              title: "Exit held back",
+              detail:
+                "The agent matched an exit but is still missing a value it requires.",
+            })
+          }
+
+          if (turn.exitId) {
+            pushTrace(nextTrace, {
+              level: "branch",
+              nodeId: node.id,
+              nodeType: pausedType,
+              title: `Exit → ${turn.exitName ?? turn.exitId}`,
+            })
+            resume(nextVars, nextBubbles, nextTrace, turn.exitId)
+            return
+          }
+
+          if (turn.action === "end" || turn.action === "callForward") {
+            const ending = turn.action === "end"
+            pushTrace(nextTrace, {
+              level: ending ? "done" : "warn",
+              nodeId: node.id,
+              nodeType: pausedType,
+              title: ending
+                ? "Agent ended the conversation"
+                : "Agent handed off to a human",
+            })
+            setBubbles(nextBubbles)
+            setTrace(nextTrace)
+            setVariables(nextVars)
+            setAsyncRun(null)
+            setStatus("ended")
+            setPendingButtons(null)
+            setPendingNodeId(null)
+            setWaitingMode(null)
+            onActiveNodeChange?.({
+              activeNodeId: node.id,
+              waitingNodeId: null,
+            })
+            return
+          }
+
+          // An agent with no exits is a plain AI reply: carry on to the next
+          // node instead of waiting on a turn it can never leave.
+          if (!turn.hasExits) {
+            resume(nextVars, nextBubbles, nextTrace)
+            return
+          }
+
+          // No exit and no terminal move: the agent keeps the turn and waits.
+          pushTrace(nextTrace, {
+            level: "wait",
+            nodeId: node.id,
+            nodeType: pausedType,
+            title: "Waiting for the user",
+            detail: turn.buttons.length
+              ? turn.buttons.map((button) => button.label).join(" · ")
+              : undefined,
+          })
+          setBubbles(nextBubbles)
+          setTrace(nextTrace)
+          setVariables(nextVars)
+          setAsyncRun(null)
+          setStatus("waiting")
+          setWaitingMode("ai_turn")
+          setPendingNodeId(node.id)
+          setPendingStepIndex(asyncRun.stepIndex)
+          setPendingButtons(turn.buttons.length > 0 ? turn.buttons : null)
+          onActiveNodeChange?.({
+            activeNodeId: node.id,
+            waitingNodeId: node.id,
+          })
+          return
+        } catch (error) {
+          if (isStale()) {
+            return
+          }
+
+          fail(
+            "Agent turn failed",
+            error instanceof Error ? error.message : "Agent step failed",
+            "I had trouble completing this agent step. A human operator will continue from here."
+          )
+          return
+        }
+      }
+
       try {
         const result = await previewAiStep({
           nodeType: node.type ?? "prompt",
@@ -1596,7 +1807,6 @@ const RunPanel = ({
       return
     }
 
-    setTab("chat")
     applyResult(executeFrom(startNode.id, {}, [], []))
   }, [edges, executeFrom, freezeGraph, nodes, onActiveNodeChange])
 
@@ -1620,10 +1830,31 @@ const RunPanel = ({
   }, [autoStartKey])
 
   useEffect(() => {
-    const el = tab === "trace" ? traceRef.current : bodyRef.current
+    const el = bodyRef.current
     if (!el) return
     el.scrollTop = el.scrollHeight
-  }, [bubbles, trace, tab, pendingButtons])
+  }, [bubbles, pendingButtons])
+
+  useEffect(() => {
+    if (dockCollapsed || dockTab === "vars") return
+    const el = traceRef.current
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+  }, [trace, dockTab, dockCollapsed])
+
+  // The chat panel and the canvas tools sit above the dock, so publish its
+  // live height on the shell rather than hard-coding it in three places.
+  useEffect(() => {
+    const shell = dockRef.current?.closest(".builder-shell")
+    if (!(shell instanceof HTMLElement)) return
+    shell.style.setProperty(
+      "--dock-h",
+      `${dockCollapsed ? DOCK_COLLAPSED_H : dockHeight}px`
+    )
+    return () => {
+      shell.style.removeProperty("--dock-h")
+    }
+  }, [dockCollapsed, dockHeight])
 
   const resetRun = () => {
     asyncRunKeyRef.current += 1
@@ -1636,14 +1867,80 @@ const RunPanel = ({
     setPendingNodeId(null)
     setWaitingMode(null)
     setDraftInput("")
+    setDockTab("trace")
     clearFrozenGraph()
     onActiveNodeChange?.({ activeNodeId: null, waitingNodeId: null })
   }
 
+  /** Bring a dock view forward, expanding the dock if it was collapsed. */
+  const revealDock = (next: DockTab) => {
+    setDockTab(next)
+    setDockCollapsed(false)
+  }
+
+  const startDockResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    const startY = event.clientY
+    const startHeight = dockCollapsed ? DOCK_COLLAPSED_H : dockHeight
+    setDockCollapsed(false)
+
+    const onMove = (move: globalThis.PointerEvent) => {
+      const next = startHeight + (startY - move.clientY)
+      setDockHeight(Math.min(DOCK_MAX_H, Math.max(DOCK_MIN_H, next)))
+    }
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove)
+      window.removeEventListener("pointerup", onUp)
+      document.body.classList.remove("dock-resizing")
+    }
+
+    window.addEventListener("pointermove", onMove)
+    window.addEventListener("pointerup", onUp)
+    document.body.classList.add("dock-resizing")
+  }
+
   const handleButton = (buttonId: string) => {
     if (!pendingNodeId) return
-    const button = pendingButtons?.find((entry) => entry.id === buttonId) ?? null
+    const button =
+      pendingButtons?.find((entry) => entry.id === buttonId) ?? null
     const label = button?.label ?? buttonId
+
+    // An agent's quick replies are things the user says, not ports on the
+    // node, so they re-enter the same agent turn instead of following an edge.
+    if (waitingMode === "ai_turn") {
+      const turnVars: RuntimeVariables = {
+        ...variables,
+        lastInput: label,
+        lastUserMessage: label,
+        lastButtonId: buttonId,
+        lastButtonLabel: label,
+        __aiTurnReady: "1",
+      }
+      const turnBubbles: ChatBubble[] = [
+        ...bubbles,
+        { id: createId("usr"), kind: "user", text: label },
+      ]
+      const turnTrace = [...trace]
+      pushTrace(turnTrace, {
+        level: "info",
+        nodeId: pendingNodeId,
+        title: "User replied to the agent",
+        detail: label,
+      })
+
+      applyResult(
+        executeFrom(
+          pendingNodeId,
+          turnVars,
+          turnBubbles,
+          turnTrace,
+          turnTrace.filter((event) => event.level === "step").length,
+          pendingStepIndex
+        )
+      )
+      return
+    }
+
     const nextVars: RuntimeVariables = {
       ...variables,
       lastButtonId: buttonId,
@@ -1653,7 +1950,9 @@ const RunPanel = ({
     }
 
     if (waitingMode === "choice") {
-      const data = nodeMap.get(pendingNodeId)?.data as ChoiceNodeData | undefined
+      const data = nodeMap.get(pendingNodeId)?.data as
+        | ChoiceNodeData
+        | undefined
       nextVars[data?.variableKey || "lastInput"] = label
     }
 
@@ -1714,7 +2013,6 @@ const RunPanel = ({
         setBubbles(withUser)
         setTrace(withTrace)
         setDraftInput("")
-        setTab("chat")
         return
       }
       handleButton(match.id)
@@ -1802,7 +2100,7 @@ const RunPanel = ({
         activeNodeId: pendingNodeId,
         waitingNodeId: null,
       })
-      setTab("trace")
+      revealDock("trace")
       return
     }
 
@@ -1878,268 +2176,402 @@ const RunPanel = ({
                       : "Generating"
             : "Running"
 
-  return (
-    <section className="chat-runner">
-      <div className="chat-runner-header">
-        <div className="chat-runner-heading">
-          <h2>Test run</h2>
-          <span className={`run-status-pill run-status-${status}`}>
-            {statusLabel}
-          </span>
-        </div>
-        <div className="chat-runner-actions">
-          <button
-            type="button"
-            onClick={copyTrace}
-            title={copied ? "Copied" : "Copy trace"}
-            aria-label="Copy trace"
-            disabled={trace.length === 0}
-          >
-            <RunnerIcon name="copy" />
-          </button>
-          <button
-            type="button"
-            onClick={resetRun}
-            title="Reset"
-            aria-label="Reset chat"
-          >
-            <RunnerIcon name="reset" />
-          </button>
-          {onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              title="Close"
-              aria-label="Close chat"
-            >
-              <RunnerIcon name="close" />
-            </button>
-          )}
-        </div>
-      </div>
+  const stepsRun = trace.filter((event) => event.level === "step").length
+  const issues = trace.filter(
+    (event) => event.level === "warn" || event.level === "error"
+  )
+  /** Which step last wrote each variable, so the table can show provenance. */
+  const variableOrigins = new Map<
+    string,
+    { at: number; nodeType?: string; title: string }
+  >()
+  for (const event of trace) {
+    if (!event.varsChanged) continue
+    for (const key of Object.keys(event.varsChanged)) {
+      variableOrigins.set(key, {
+        at: event.at,
+        nodeType: event.nodeType,
+        title: event.title,
+      })
+    }
+  }
 
-      <div className="run-tabs" role="tablist" aria-label="Run views">
-        {(
-          [
-            ["chat", "Chat"],
-            ["trace", `Trace${trace.length ? ` (${trace.length})` : ""}`],
-            ["vars", `Vars${variableEntries.length ? ` (${variableEntries.length})` : ""}`],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            className={`run-tab ${tab === id ? "active" : ""}`}
-            onClick={() => setTab(id)}
-          >
-            {label}
-          </button>
+  const renderCard = (card: ChatCard, ownerNodeId?: string) => (
+    <article key={card.id} className="chat-card-message">
+      {card.imageUrl && (
+        <img
+          src={card.imageUrl}
+          alt={card.alt || card.title || "Workflow card"}
+        />
+      )}
+      <div className="chat-card-content">
+        <h3>{card.title}</h3>
+        {card.text && (
+          <div
+            className="chat-card-description"
+            dangerouslySetInnerHTML={{ __html: card.text }}
+          />
+        )}
+        {card.buttons && card.buttons.length > 0 && (
+          <div className="chat-card-buttons">
+            {card.buttons.map((button) => (
+              <button
+                key={button.id}
+                type="button"
+                onClick={() => handleButton(button.id)}
+                disabled={status !== "waiting" || pendingNodeId !== ownerNodeId}
+              >
+                {button.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </article>
+  )
+
+  const renderLogTable = (events: TraceEvent[]) => (
+    <table className="run-log-table">
+      <thead>
+        <tr>
+          <th className="col-time">Time</th>
+          <th className="col-step">Step</th>
+          <th className="col-type">Block</th>
+          <th className="col-event">Event</th>
+          <th className="col-detail">Detail</th>
+          <th className="col-vars">Variables written</th>
+        </tr>
+      </thead>
+      <tbody>
+        {events.map((event) => (
+          <tr key={event.id} className={`level-${event.level}`}>
+            <td className="col-time">{formatTime(event.at)}</td>
+            <td className="col-step">
+              {event.step != null ? `#${event.step}` : ""}
+            </td>
+            <td className="col-type">
+              {event.nodeType && (
+                <span className="run-log-badge">
+                  {nodeTypeLabel(event.nodeType)}
+                </span>
+              )}
+            </td>
+            <td className="col-event">{event.title}</td>
+            <td className="col-detail">{event.detail}</td>
+            <td className="col-vars">
+              {event.varsChanged &&
+                Object.entries(event.varsChanged).map(([key, value]) => (
+                  <span key={key} className="run-var-chip">
+                    <em>{key}</em>
+                    {value || "∅"}
+                  </span>
+                ))}
+            </td>
+          </tr>
         ))}
-      </div>
+      </tbody>
+    </table>
+  )
 
-      {tab === "chat" && (
-        <div className="chat-runner-body" ref={bodyRef}>
-          {bubbles.length === 0 && status === "idle" ? (
-            <div className="chat-empty-state">
-              <strong>Preview the conversation</strong>
-              <p>
-                Run the published path locally. Trace and variables update as
-                each step executes.
-              </p>
+  return (
+    <>
+      <aside className="side-drawer chat-inspector-sheet">
+        <section className="chat-runner">
+          <div className="chat-runner-header">
+            <div className="chat-runner-heading">
+              <h2>Test run</h2>
+              <span className={`run-status-pill run-status-${status}`}>
+                {statusLabel}
+              </span>
             </div>
-          ) : (
-            <>
-              <div className="chat-start-label">Live preview</div>
-              {bubbles.map((item) =>
-                item.kind === "assistant" ? (
-                  <div
-                    key={item.id}
-                    className="chat-message message"
-                    dangerouslySetInnerHTML={{ __html: item.text }}
-                  />
-                ) : item.kind === "user" ? (
-                  <div key={item.id} className="chat-message user">
-                    {item.text}
-                  </div>
-                ) : item.kind === "image" ? (
-                  <div key={item.id} className="chat-image-message">
-                    <img src={item.text} alt={item.alt || "Workflow image"} />
-                  </div>
-                ) : (
-                  <article key={item.id} className="chat-card-message">
-                    {item.imageUrl && (
-                      <img
-                        src={item.imageUrl}
-                        alt={item.alt || item.title || "Workflow card"}
-                      />
-                    )}
-                    <div className="chat-card-content">
-                      <h3>{item.title}</h3>
-                      {item.text && (
-                        <div
-                          className="chat-card-description"
-                          dangerouslySetInnerHTML={{ __html: item.text }}
-                        />
-                      )}
-                      {item.buttons && item.buttons.length > 0 && (
-                        <div className="chat-card-buttons">
-                          {item.buttons.map((button) => (
-                            <button
-                              key={button.id}
-                              type="button"
-                              onClick={() => handleButton(button.id)}
-                              disabled={
-                                status !== "waiting" ||
-                                pendingNodeId !== item.nodeId
-                              }
-                            >
-                              {button.label}
-                            </button>
-                          ))}
-                        </div>
+            <div className="chat-runner-actions">
+              <button
+                type="button"
+                onClick={resetRun}
+                title="Reset"
+                aria-label="Reset chat"
+              >
+                <RunnerIcon name="reset" />
+              </button>
+              {onClose && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  title="Close"
+                  aria-label="Close chat"
+                >
+                  <RunnerIcon name="close" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="chat-runner-body" ref={bodyRef}>
+            {bubbles.length === 0 && status === "idle" ? (
+              <div className="chat-empty-state">
+                <strong>Preview the conversation</strong>
+                <p>
+                  Run the published path locally. The log and variables below
+                  update as each step executes.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="chat-start-label">Live preview</div>
+                {bubbles.map((item) =>
+                  item.kind === "assistant" ? (
+                    <div
+                      key={item.id}
+                      className="chat-message message"
+                      dangerouslySetInnerHTML={{ __html: item.text }}
+                    />
+                  ) : item.kind === "user" ? (
+                    <div key={item.id} className="chat-message user">
+                      {item.text}
+                    </div>
+                  ) : item.kind === "image" ? (
+                    <div key={item.id} className="chat-image-message">
+                      <img src={item.text} alt={item.alt || "Workflow image"} />
+                    </div>
+                  ) : item.kind === "carousel" ? (
+                    <div key={item.id} className="chat-carousel">
+                      {(item.cards ?? []).map((card) =>
+                        renderCard(card, item.nodeId)
                       )}
                     </div>
-                  </article>
-                )
-              )}
-
-              {pendingButtons &&
-                pendingButtons.length > 0 &&
-                pendingButtonOwnerType !== "card" && (
-                  <div className="chat-choice-list">
-                    {pendingButtons.map((button) => (
-                      <button
-                        key={button.id}
-                        className="chat-choice"
-                        onClick={() => handleButton(button.id)}
-                        disabled={status !== "waiting"}
-                      >
-                        {button.label}
-                      </button>
-                    ))}
-                  </div>
+                  ) : (
+                    renderCard(
+                      {
+                        id: item.id,
+                        title: item.title ?? "",
+                        text: item.text,
+                        alt: item.alt,
+                        imageUrl: item.imageUrl,
+                        buttons: item.buttons,
+                      },
+                      item.nodeId
+                    )
+                  )
                 )}
 
-              {status === "ended" && (
-                <div className="chat-ended-divider">
-                  <span>Chat has ended</span>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {tab === "trace" && (
-        <div className="run-trace-body" ref={traceRef}>
-          {trace.length === 0 ? (
-            <div className="chat-empty-state">
-              <strong>No trace yet</strong>
-              <p>Start a run to see every step, branch, wait, and variable write.</p>
-            </div>
-          ) : (
-            <ol className="run-trace-list">
-              {trace.map((event) => (
-                <li
-                  key={event.id}
-                  className={`run-trace-item level-${event.level}`}
-                >
-                  <div className="run-trace-meta">
-                    <span className="run-trace-time">{formatTime(event.at)}</span>
-                    {event.step != null && (
-                      <span className="run-trace-step">#{event.step}</span>
-                    )}
-                    {event.nodeType && (
-                      <span className="run-trace-type">
-                        {nodeTypeLabel(event.nodeType)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="run-trace-title">{event.title}</div>
-                  {event.detail && (
-                    <div className="run-trace-detail">{event.detail}</div>
-                  )}
-                  {event.varsChanged && (
-                    <div className="run-trace-vars">
-                      {Object.entries(event.varsChanged).map(([key, value]) => (
-                        <span key={key} className="run-var-chip">
-                          <em>{key}</em>
-                          {value || "∅"}
-                        </span>
+                {pendingButtons &&
+                  pendingButtons.length > 0 &&
+                  pendingButtonOwnerType !== "card" &&
+                  pendingButtonOwnerType !== "carousel" && (
+                    <div className="chat-choice-list">
+                      {pendingButtons.map((button) => (
+                        <button
+                          key={button.id}
+                          className="chat-choice"
+                          onClick={() => handleButton(button.id)}
+                          disabled={status !== "waiting"}
+                        >
+                          {button.label}
+                        </button>
                       ))}
                     </div>
                   )}
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
-      )}
 
-      {tab === "vars" && (
-        <div className="run-vars-body">
-          {variableEntries.length === 0 ? (
-            <div className="chat-empty-state">
-              <strong>No variables yet</strong>
-              <p>
-                Capture, choice, set, and AI steps populate this table during a
-                run.
-              </p>
-            </div>
-          ) : (
-            <table className="run-vars-table">
-              <thead>
-                <tr>
-                  <th>Key</th>
-                  <th>Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {variableEntries.map(([key, value]) => (
-                  <tr key={key}>
-                    <td>
-                      <code>{key}</code>
-                    </td>
-                    <td>{value || <span className="muted">empty</span>}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
+                {status === "ended" && (
+                  <div className="chat-ended-divider">
+                    <span>Chat has ended</span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
 
-      <div className="chat-runner-footer">
-        {showTextInput ? (
-          <form className="run-reply-form" onSubmit={handleTextSubmit}>
-            <input
-              value={draftInput ?? ""}
-              onChange={(event) => setDraftInput(event.target.value)}
-              placeholder={
-                waitingMode === "capture"
-                  ? "Type a reply…"
-                  : "Type a choice or tap a button…"
-              }
-              autoFocus
-            />
-            <button className="chat-start-button" type="submit">
-              Send
-            </button>
-          </form>
-        ) : (
-          <button className="chat-start-button" type="button" onClick={startRun}>
-            <RunnerIcon name="play" />
-            <span>
-              {status === "idle" && bubbles.length === 0
-                ? "Start workflow"
-                : "Start new chat"}
+          <div className="chat-runner-footer">
+            {showTextInput ? (
+              <form className="run-reply-form" onSubmit={handleTextSubmit}>
+                <input
+                  value={draftInput ?? ""}
+                  onChange={(event) => setDraftInput(event.target.value)}
+                  placeholder={
+                    waitingMode === "capture"
+                      ? "Type a reply…"
+                      : "Type a choice or tap a button…"
+                  }
+                  autoFocus
+                />
+                <button className="chat-start-button" type="submit">
+                  Send
+                </button>
+              </form>
+            ) : (
+              <button
+                className="chat-start-button"
+                type="button"
+                onClick={startRun}
+              >
+                <RunnerIcon name="play" />
+                <span>
+                  {status === "idle" && bubbles.length === 0
+                    ? "Start workflow"
+                    : "Start new chat"}
+                </span>
+              </button>
+            )}
+          </div>
+        </section>
+      </aside>
+
+      <section
+        className={`run-dock ${dockCollapsed ? "collapsed" : ""}`}
+        ref={dockRef}
+        aria-label="Run inspector"
+      >
+        <div
+          className="run-dock-resize"
+          role="separator"
+          aria-orientation="horizontal"
+          title="Drag to resize"
+          onPointerDown={startDockResize}
+        />
+        <div className="run-dock-bar">
+          <div className="run-dock-tabs" role="tablist" aria-label="Run views">
+            {(
+              [
+                ["trace", "Log", trace.length],
+                ["vars", "Variables", variableEntries.length],
+                ["issues", "Issues", issues.length],
+              ] as const
+            ).map(([id, label, count]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={!dockCollapsed && dockTab === id}
+                className={`run-dock-tab ${
+                  !dockCollapsed && dockTab === id ? "active" : ""
+                } ${id === "issues" && count > 0 ? "has-issues" : ""}`}
+                onClick={() => revealDock(id)}
+              >
+                {label}
+                {count > 0 && <span className="run-dock-count">{count}</span>}
+              </button>
+            ))}
+          </div>
+
+          <div className="run-dock-summary">
+            <span className={`run-status-pill run-status-${status}`}>
+              {statusLabel}
             </span>
-          </button>
+            <span className="run-dock-metric">
+              {stepsRun} {stepsRun === 1 ? "step" : "steps"}
+            </span>
+          </div>
+
+          <div className="run-dock-actions">
+            <button
+              type="button"
+              onClick={copyTrace}
+              title={copied ? "Copied" : "Copy log"}
+              aria-label="Copy log"
+              disabled={trace.length === 0}
+            >
+              <RunnerIcon name="copy" />
+            </button>
+            <button
+              type="button"
+              className={`run-dock-collapse ${dockCollapsed ? "collapsed" : ""}`}
+              onClick={() => setDockCollapsed((value) => !value)}
+              title={dockCollapsed ? "Expand panel" : "Collapse panel"}
+              aria-label={dockCollapsed ? "Expand panel" : "Collapse panel"}
+              aria-expanded={!dockCollapsed}
+            >
+              <RunnerIcon name="chevron" />
+            </button>
+          </div>
+        </div>
+
+        {!dockCollapsed && (
+          <div className="run-dock-body" ref={traceRef}>
+            {dockTab === "trace" &&
+              (trace.length === 0 ? (
+                <div className="run-dock-empty">
+                  <strong>No log yet</strong>
+                  <p>
+                    Start a run to see every step, branch, wait, and variable
+                    write in order.
+                  </p>
+                </div>
+              ) : (
+                renderLogTable(trace)
+              ))}
+
+            {dockTab === "vars" &&
+              (variableEntries.length === 0 ? (
+                <div className="run-dock-empty">
+                  <strong>No variables yet</strong>
+                  <p>
+                    Capture, Choice, Set variable, API and AI steps populate
+                    this table during a run.
+                  </p>
+                </div>
+              ) : (
+                <table className="run-vars-table">
+                  <thead>
+                    <tr>
+                      <th className="col-key">Variable</th>
+                      <th className="col-value">Value</th>
+                      <th className="col-source">Written by</th>
+                      <th className="col-time">Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {variableEntries.map(([key, value]) => {
+                      const origin = variableOrigins.get(key)
+                      return (
+                        <tr key={key}>
+                          <td className="col-key">
+                            <code>{key}</code>
+                          </td>
+                          <td className="col-value">
+                            {value || <span className="muted">empty</span>}
+                          </td>
+                          <td className="col-source">
+                            {origin ? (
+                              <>
+                                {origin.nodeType && (
+                                  <span className="run-log-badge">
+                                    {nodeTypeLabel(origin.nodeType)}
+                                  </span>
+                                )}
+                                <span className="run-vars-origin">
+                                  {origin.title}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="muted">—</span>
+                            )}
+                          </td>
+                          <td className="col-time">
+                            {origin ? formatTime(origin.at) : ""}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              ))}
+
+            {dockTab === "issues" &&
+              (issues.length === 0 ? (
+                <div className="run-dock-empty">
+                  <strong>No issues</strong>
+                  <p>
+                    Warnings and errors raised while running — unmatched
+                    choices, dead ends, failed API and AI steps — collect here.
+                  </p>
+                </div>
+              ) : (
+                renderLogTable(issues)
+              ))}
+          </div>
         )}
-      </div>
-    </section>
+      </section>
+    </>
   )
 }
 

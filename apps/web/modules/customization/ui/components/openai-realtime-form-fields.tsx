@@ -16,7 +16,14 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { Switch } from "@workspace/ui/components/switch"
+import { AudioLinesIcon, SparklesIcon } from "lucide-react"
+
 import { FormSchema } from "../../types"
+import {
+  SettingRow,
+  SettingsDivider,
+  SettingsGroup,
+} from "./settings-primitives"
 
 const realtimeVoices = [
   "marin",
@@ -145,48 +152,46 @@ export const OpenAIRealtimeFormFields = ({
   form,
 }: OpenAIRealtimeFormFieldsProps) => {
   return (
-    <div className="space-y-5">
-      <div className="space-y-5 rounded-2xl border bg-gradient-to-br from-background via-background to-muted/40 p-4">
-        <div>
-          <p className="text-sm font-semibold">OpenAI Realtime Voice</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Configure the organization OpenAI key from Integrations, then tune
-            the voice-only widget experience here.
-          </p>
-        </div>
-
+    <>
+      <SettingsGroup
+        description="Add the organization's OpenAI key in Integrations first, then choose the realtime model and voice used here."
+        icon={SparklesIcon}
+        title="OpenAI Realtime"
+      >
         <FormField
           control={form.control}
           name="openaiRealtimeSettings.enabled"
           render={({ field }) => (
-            <FormItem className="flex items-center justify-between gap-4 rounded-xl border bg-muted/35 px-3 py-3">
-              <div className="space-y-0.5">
-                <FormLabel>Enable OpenAI voice</FormLabel>
-                <FormDescription className="text-xs">
-                  Opens the widget directly into live voice and disables the
-                  regular chat/contact form.
-                </FormDescription>
-              </div>
-              <FormControl>
-                <Switch
-                  checked={Boolean(field.value)}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
+            <FormItem className="min-w-0 space-y-0">
+              <SettingRow
+                control={
+                  <FormControl>
+                    <Switch
+                      checked={Boolean(field.value)}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                }
+                description="Opens the widget directly into live voice and hides the regular chat and contact form."
+                label="Enable OpenAI voice"
+              />
+              <FormMessage className="mt-1.5" />
             </FormItem>
           )}
         />
 
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
           <FormField
             control={form.control}
             name="openaiRealtimeSettings.model"
             render={({ field }) => (
-              <FormItem className="min-w-0">
-                <FormLabel>Realtime model</FormLabel>
+              <FormItem className="console-inset min-w-0 space-y-0 px-3.5 py-3">
+                <FormLabel className="text-xs font-medium">
+                  Realtime model
+                </FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
-                    <SelectTrigger className="w-full min-w-0 overflow-hidden">
+                    <SelectTrigger className="mt-2.5 h-9 w-full min-w-0 overflow-hidden bg-background">
                       <SelectValue placeholder="Select a realtime model" />
                     </SelectTrigger>
                   </FormControl>
@@ -201,11 +206,10 @@ export const OpenAIRealtimeFormFields = ({
                     ))}
                   </SelectContent>
                 </Select>
-                <FormDescription className="text-xs">
-                  Choose from the documented OpenAI Realtime model aliases and
-                  snapshots.
+                <FormDescription className="mt-2 text-[11px] leading-relaxed">
+                  Documented OpenAI Realtime aliases and dated snapshots.
                 </FormDescription>
-                <FormMessage />
+                <FormMessage className="mt-1.5" />
               </FormItem>
             )}
           />
@@ -214,11 +218,11 @@ export const OpenAIRealtimeFormFields = ({
             control={form.control}
             name="openaiRealtimeSettings.voice"
             render={({ field }) => (
-              <FormItem className="min-w-0">
-                <FormLabel>Voice</FormLabel>
+              <FormItem className="console-inset min-w-0 space-y-0 px-3.5 py-3">
+                <FormLabel className="text-xs font-medium">Voice</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
-                    <SelectTrigger className="w-full min-w-0 overflow-hidden">
+                    <SelectTrigger className="mt-2.5 h-9 w-full min-w-0 overflow-hidden bg-background">
                       <SelectValue placeholder="Select a voice" />
                     </SelectTrigger>
                   </FormControl>
@@ -230,57 +234,57 @@ export const OpenAIRealtimeFormFields = ({
                     ))}
                   </SelectContent>
                 </Select>
-                <FormDescription className="text-xs">
-                  Controls the assistant&apos;s spoken voice.
+                <FormDescription className="mt-2 text-[11px] leading-relaxed">
+                  The assistant&apos;s spoken voice.
                 </FormDescription>
-                <FormMessage />
+                <FormMessage className="mt-1.5" />
               </FormItem>
             )}
           />
         </div>
-      </div>
+      </SettingsGroup>
 
-      <div className="space-y-5 rounded-2xl border bg-gradient-to-br from-background via-background to-muted/40 p-4">
-        <div>
-          <p className="text-sm font-semibold">Gemini Live Voice</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Configure the organization Gemini key from Integrations, then tune
-            the voice-only widget experience here.
-          </p>
-        </div>
+      <SettingsDivider />
 
+      <SettingsGroup
+        description="Add the organization's Gemini key in Integrations first, then choose the live model and voice used here."
+        icon={AudioLinesIcon}
+        title="Gemini Live"
+      >
         <FormField
           control={form.control}
           name="geminiLiveSettings.enabled"
           render={({ field }) => (
-            <FormItem className="flex items-center justify-between gap-4 rounded-xl border bg-muted/35 px-3 py-3">
-              <div className="space-y-0.5">
-                <FormLabel>Enable Gemini Live</FormLabel>
-                <FormDescription className="text-xs">
-                  Opens the widget directly into live voice and disables the
-                  regular chat/contact form.
-                </FormDescription>
-              </div>
-              <FormControl>
-                <Switch
-                  checked={Boolean(field.value)}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
+            <FormItem className="min-w-0 space-y-0">
+              <SettingRow
+                control={
+                  <FormControl>
+                    <Switch
+                      checked={Boolean(field.value)}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                }
+                description="Opens the widget directly into live voice and hides the regular chat and contact form."
+                label="Enable Gemini Live"
+              />
+              <FormMessage className="mt-1.5" />
             </FormItem>
           )}
         />
 
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
           <FormField
             control={form.control}
             name="geminiLiveSettings.model"
             render={({ field }) => (
-              <FormItem className="min-w-0">
-                <FormLabel>Live model</FormLabel>
+              <FormItem className="console-inset min-w-0 space-y-0 px-3.5 py-3">
+                <FormLabel className="text-xs font-medium">
+                  Live model
+                </FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
-                    <SelectTrigger className="w-full min-w-0 overflow-hidden">
+                    <SelectTrigger className="mt-2.5 h-9 w-full min-w-0 overflow-hidden bg-background">
                       <SelectValue placeholder="Select a live model" />
                     </SelectTrigger>
                   </FormControl>
@@ -295,10 +299,10 @@ export const OpenAIRealtimeFormFields = ({
                     ))}
                   </SelectContent>
                 </Select>
-                <FormDescription className="text-xs">
-                  Choose from the current documented Gemini Live model options.
+                <FormDescription className="mt-2 text-[11px] leading-relaxed">
+                  Current documented Gemini Live model options.
                 </FormDescription>
-                <FormMessage />
+                <FormMessage className="mt-1.5" />
               </FormItem>
             )}
           />
@@ -307,11 +311,11 @@ export const OpenAIRealtimeFormFields = ({
             control={form.control}
             name="geminiLiveSettings.voice"
             render={({ field }) => (
-              <FormItem className="min-w-0">
-                <FormLabel>Voice</FormLabel>
+              <FormItem className="console-inset min-w-0 space-y-0 px-3.5 py-3">
+                <FormLabel className="text-xs font-medium">Voice</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
-                    <SelectTrigger className="w-full min-w-0 overflow-hidden">
+                    <SelectTrigger className="mt-2.5 h-9 w-full min-w-0 overflow-hidden bg-background">
                       <SelectValue placeholder="Select a voice" />
                     </SelectTrigger>
                   </FormControl>
@@ -323,15 +327,15 @@ export const OpenAIRealtimeFormFields = ({
                     ))}
                   </SelectContent>
                 </Select>
-                <FormDescription className="text-xs">
-                  Voice names follow Gemini&apos;s prebuilt voice list.
+                <FormDescription className="mt-2 text-[11px] leading-relaxed">
+                  Names follow Gemini&apos;s prebuilt voice list.
                 </FormDescription>
-                <FormMessage />
+                <FormMessage className="mt-1.5" />
               </FormItem>
             )}
           />
         </div>
-      </div>
-    </div>
+      </SettingsGroup>
+    </>
   )
 }

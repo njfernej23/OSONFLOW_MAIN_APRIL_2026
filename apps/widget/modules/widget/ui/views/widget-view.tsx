@@ -19,6 +19,7 @@ import { WidgetNotificationSound } from "../components/widget-notification-sound
 import {
   getContrastingTextColor,
   mergeWidgetTheme,
+  WIDGET_FONT_STACKS,
 } from "@workspace/ui/lib/widget-customization"
 import { CSSProperties, useEffect } from "react"
 import type { WidgetMode } from "../../atoms/widget-atoms"
@@ -56,6 +57,10 @@ export const WidgetView = ({
     ),
     "--primary": theme.primaryColor,
     "--primary-foreground": primaryForeground,
+    // Every widget surface inherits this, so the organization's typeface
+    // choice reaches the home hero, chat, help centre and voice screens
+    // without each of them opting in.
+    "--widget-font": WIDGET_FONT_STACKS[theme.fontFamily],
   } as CSSProperties
 
   useEffect(() => {

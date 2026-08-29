@@ -34,6 +34,7 @@ import type * as lib_voiceCallSettings from "../lib/voiceCallSettings.js";
 import type * as lib_voiceToolDeclarations from "../lib/voiceToolDeclarations.js";
 import type * as lib_webhookBaseUrl from "../lib/webhookBaseUrl.js";
 import type * as lib_widgetAuth from "../lib/widgetAuth.js";
+import type * as lib_workflowAgentTurn from "../lib/workflowAgentTurn.js";
 import type * as lib_workflowAiGeneration from "../lib/workflowAiGeneration.js";
 import type * as lib_workflowApiStep from "../lib/workflowApiStep.js";
 import type * as lib_workflowEngine from "../lib/workflowEngine.js";
@@ -133,6 +134,7 @@ declare const fullApi: ApiFromModules<{
   "lib/voiceToolDeclarations": typeof lib_voiceToolDeclarations;
   "lib/webhookBaseUrl": typeof lib_webhookBaseUrl;
   "lib/widgetAuth": typeof lib_widgetAuth;
+  "lib/workflowAgentTurn": typeof lib_workflowAgentTurn;
   "lib/workflowAiGeneration": typeof lib_workflowAiGeneration;
   "lib/workflowApiStep": typeof lib_workflowApiStep;
   "lib/workflowEngine": typeof lib_workflowEngine;

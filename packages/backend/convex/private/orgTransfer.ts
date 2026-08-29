@@ -146,6 +146,13 @@ const pickTheme = (value: unknown) => {
     logoUrl: pickString(value.logoUrl),
     backgroundImageUrl: pickString(value.backgroundImageUrl),
     assistantName: pickString(value.assistantName),
+    fontFamily:
+      value.fontFamily === "sans" ||
+      value.fontFamily === "serif" ||
+      value.fontFamily === "mono" ||
+      value.fontFamily === "rounded"
+        ? value.fontFamily
+        : undefined,
     headerBrandMode:
       value.headerBrandMode === "none" ||
       value.headerBrandMode === "image" ||
@@ -202,6 +209,37 @@ const pickAppearance = (value: unknown) => {
     showPoweredBy: pickBoolean(value.showPoweredBy),
     showHelpCenter: pickBoolean(value.showHelpCenter),
     showChatHistoryDownload: pickBoolean(value.showChatHistoryDownload),
+    launcherPosition:
+      value.launcherPosition === "bottom-right" ||
+      value.launcherPosition === "bottom-left"
+        ? value.launcherPosition
+        : undefined,
+    launcherOffsetX: pickNumber(value.launcherOffsetX),
+    launcherOffsetY: pickNumber(value.launcherOffsetY),
+    launcherSize: pickNumber(value.launcherSize),
+    autoOpenEnabled: pickBoolean(value.autoOpenEnabled),
+    autoOpenDelaySeconds: pickNumber(value.autoOpenDelaySeconds),
+    autoOpenFrequency:
+      value.autoOpenFrequency === "session" ||
+      value.autoOpenFrequency === "visitor" ||
+      value.autoOpenFrequency === "always"
+        ? value.autoOpenFrequency
+        : undefined,
+    notificationSoundEnabled: pickBoolean(value.notificationSoundEnabled),
+  })
+}
+
+const pickWidgetCopy = (value: unknown) => {
+  if (!isRecord(value)) {
+    return undefined
+  }
+
+  return compact({
+    homeGreeting: pickString(value.homeGreeting),
+    homeHeadline: pickString(value.homeHeadline),
+    startChatLabel: pickString(value.startChatLabel),
+    inputPlaceholder: pickString(value.inputPlaceholder),
+    onlineLabel: pickString(value.onlineLabel),
   })
 }
 
@@ -276,6 +314,7 @@ const sanitizeWidgetSnapshot = (snapshot: unknown) => {
     voiceCallSettings: pickVoiceCallSettings(snapshot.voiceCallSettings),
     theme: pickTheme(snapshot.theme),
     appearance: pickAppearance(snapshot.appearance),
+    widgetCopy: pickWidgetCopy(snapshot.widgetCopy),
   })
 }
 

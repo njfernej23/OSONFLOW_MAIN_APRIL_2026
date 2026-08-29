@@ -9,10 +9,12 @@ import {
   conversationIdAtom,
   organizationIdAtom,
   screenAtom,
+  widgetSettingsAtom,
 } from "@/modules/widget/atoms/widget-atoms"
 import { useNotifyOnCountIncrease } from "@workspace/ui/hooks/use-notify-on-count-increase"
 import { useNotificationSoundUnlock } from "@workspace/ui/hooks/use-notification-sound-unlock"
 import { setNotificationSoundDelegate } from "@workspace/ui/lib/notification-sound"
+import { mergeWidgetAppearance } from "@workspace/ui/lib/widget-customization"
 
 export const WidgetNotificationSound = () => {
   useNotificationSoundUnlock()
@@ -23,6 +25,10 @@ export const WidgetNotificationSound = () => {
   const contactSessionId = useAtomValue(
     contactSessionIdAtomFamily(organizationId || "")
   )
+  const widgetSettings = useAtomValue(widgetSettingsAtom)
+  const isNotificationSoundEnabled = mergeWidgetAppearance(
+    widgetSettings?.appearance
+  ).notificationSoundEnabled
 
   // Browsers block audio in a cross-origin iframe the visitor has not clicked
   // in, which is the normal case while the widget sits closed on the host page.
@@ -86,6 +92,7 @@ export const WidgetNotificationSound = () => {
   )
 
   useNotifyOnCountIncrease(unreadSummary?.unreadMessageCount, {
+    enabled: isNotificationSoundEnabled,
     resetKey: `${screen}:${openConversationId ?? ""}`,
   })
 

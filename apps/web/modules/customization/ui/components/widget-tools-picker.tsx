@@ -74,7 +74,7 @@ export const WidgetToolsPicker = ({ value, onChange }: WidgetToolsPickerProps) =
 
   if (tools === undefined) {
     return (
-      <div className="flex items-center gap-2 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/10 px-4 py-6 text-sm text-muted-foreground">
+      <div className="console-inset flex items-center gap-2 px-4 py-6 text-sm text-muted-foreground">
         <Loader2Icon className="size-4 animate-spin" />
         Loading assistant tools...
       </div>
@@ -83,23 +83,29 @@ export const WidgetToolsPicker = ({ value, onChange }: WidgetToolsPickerProps) =
 
   if (chatTools.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-[var(--console-hairline-soft)] bg-muted/10 px-4 py-5 text-sm text-muted-foreground">
-        No chat-enabled tools found. Configure tools in Assistant Tools first, then
-        choose which ones this widget can use.
+      <div className="console-inset border-dashed px-4 py-5">
+        <p className="text-sm font-medium text-foreground">
+          No chat-enabled tools yet
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          Install and enable a tool in{" "}
+          <a className="underline" href="/assistant-tools">
+            Assistant tools
+          </a>
+          , then choose which ones this widget may call.
+        </p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-3 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/10 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium">Assistant tools</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Choose which tools the widget assistant can call. Uncheck all to disable
-            tools for this widget.
-          </p>
-        </div>
+    <div className="min-w-0 space-y-2.5">
+      <div className="console-inset flex flex-wrap items-center justify-between gap-3 px-3.5 py-2.5">
+        <p className="console-numeral text-xs text-muted-foreground">
+          {selectedIds.length}
+          <span className="mx-1 text-muted-foreground/60">/</span>
+          {chatTools.length} enabled
+        </p>
         <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
           <Checkbox
             checked={isAllSelected}
@@ -117,10 +123,8 @@ export const WidgetToolsPicker = ({ value, onChange }: WidgetToolsPickerProps) =
             <label
               key={tool._id}
               className={cn(
-                "flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition-colors",
-                checked
-                  ? "border-primary/30 bg-primary/5"
-                  : "border-[var(--console-hairline-soft)] bg-card"
+                "console-inset flex cursor-pointer items-start gap-3 px-3 py-3 transition-colors",
+                checked && "border-primary/40 bg-primary/[0.06]"
               )}
             >
               <Checkbox
@@ -147,18 +151,9 @@ export const WidgetToolsPicker = ({ value, onChange }: WidgetToolsPickerProps) =
       </div>
 
       {isNoneSelected ? (
-        <p className="text-xs text-amber-700 dark:text-amber-300">
-          No tools selected. The assistant will answer from the system prompt only.
-        </p>
-      ) : null}
-      {!isAllSelected && !isNoneSelected ? (
-        <p className="text-xs text-muted-foreground">
-          {selectedIds.length} of {chatTools.length} tools selected for this widget.
-        </p>
-      ) : null}
-      {isAllSelected ? (
-        <p className="text-xs text-muted-foreground">
-          All {chatTools.length} chat-enabled tools are available.
+        <p className="console-tone-warning text-xs">
+          No tools selected — the assistant will answer from the system prompt
+          alone.
         </p>
       ) : null}
     </div>

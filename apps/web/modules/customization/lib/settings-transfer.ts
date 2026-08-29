@@ -1,3 +1,9 @@
+import {
+  mergeWidgetAppearance,
+  mergeWidgetCopy,
+  mergeWidgetTheme,
+} from "@workspace/ui/lib/widget-customization"
+
 import { widgetSettingsSchema } from "../schemas"
 import type { FormSchema } from "../types"
 
@@ -51,6 +57,9 @@ export const parseWidgetSettingsImport = (raw: string): FormSchema => {
     return parsed
   })()
 
+  // An export taken before a setting existed simply omits it, so the theme,
+  // appearance and copy groups are filled in from the current defaults before
+  // validation rather than being rejected as incomplete.
   const normalizedSettings = isRecord(settings)
     ? {
         ...settings,
@@ -66,6 +75,21 @@ export const parseWidgetSettingsImport = (raw: string): FormSchema => {
                 : settings.voiceCallSettings.customGoodbyePhrases,
             }
           : settings.voiceCallSettings,
+        theme: mergeWidgetTheme(
+          isRecord(settings.theme)
+            ? (settings.theme as Partial<FormSchema["theme"]>)
+            : null
+        ),
+        appearance: mergeWidgetAppearance(
+          isRecord(settings.appearance)
+            ? (settings.appearance as Partial<FormSchema["appearance"]>)
+            : null
+        ),
+        widgetCopy: mergeWidgetCopy(
+          isRecord(settings.widgetCopy)
+            ? (settings.widgetCopy as Partial<FormSchema["widgetCopy"]>)
+            : null
+        ),
       }
     : settings
 

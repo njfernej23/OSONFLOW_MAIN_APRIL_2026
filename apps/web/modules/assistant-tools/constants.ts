@@ -16,14 +16,15 @@ export type GoogleSheetsOperation = NonNullable<
   AssistantTool["config"]
 >["operation"]
 
-export const ASSISTANT_TOOL_TYPE_LABELS: Record<AssistantTool["type"], string> = {
-  query: "Query",
-  handoff: "Handoff",
-  resolve: "Resolve",
-  google_sheets: "Google Sheets",
-  api_request: "API Request",
-  custom_webhook: "Custom Tool",
-}
+export const ASSISTANT_TOOL_TYPE_LABELS: Record<AssistantTool["type"], string> =
+  {
+    query: "Query",
+    handoff: "Handoff",
+    resolve: "Resolve",
+    google_sheets: "Google Sheets",
+    api_request: "API Request",
+    custom_webhook: "Custom Tool",
+  }
 
 export const GOOGLE_SHEETS_OPERATION_LABELS: Record<
   NonNullable<GoogleSheetsOperation>,
@@ -34,36 +35,6 @@ export const GOOGLE_SHEETS_OPERATION_LABELS: Record<
   update: "Update row",
   delete: "Delete row",
 }
-
-export const BUILTIN_TOOL_OPTIONS: Array<{
-  type: BuiltinToolType
-  title: string
-  description: string
-  icon: string
-  iconClassName: string
-}> = [
-  {
-    type: "handoff",
-    title: "Handoff",
-    description: "Escalate to a human operator",
-    icon: "↔",
-    iconClassName: "bg-orange-500/15 text-orange-400",
-  },
-  {
-    type: "query",
-    title: "Query",
-    description: "Search your knowledge base",
-    icon: "⌕",
-    iconClassName: "bg-sky-500/15 text-sky-400",
-  },
-  {
-    type: "resolve",
-    title: "Resolve",
-    description: "Mark the conversation as resolved",
-    icon: "✓",
-    iconClassName: "bg-emerald-500/15 text-emerald-400",
-  },
-]
 
 export const GOOGLE_SHEETS_MATCH_MODE_OPTIONS = [
   {
@@ -93,29 +64,6 @@ export const GOOGLE_SHEETS_QUERY_STRATEGY_OPTIONS = [
     value: "scan" as const,
     label: "Bounded scan",
     description: "Download a capped range and filter locally",
-  },
-]
-
-export const INTEGRATION_TOOL_OPTIONS: Array<{
-  type: IntegrationToolType
-  title: string
-  description: string
-  icon: string
-  iconClassName: string
-}> = [
-  {
-    type: "api_request",
-    title: "API Request",
-    description: "Call an external HTTP endpoint",
-    icon: "⎋",
-    iconClassName: "bg-blue-500/15 text-blue-400",
-  },
-  {
-    type: "custom_webhook",
-    title: "Custom Tool",
-    description: "Send data to your own webhook",
-    icon: "ƒ",
-    iconClassName: "bg-amber-500/15 text-amber-400",
   },
 ]
 

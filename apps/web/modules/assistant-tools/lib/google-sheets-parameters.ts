@@ -12,7 +12,9 @@ const buildParameters = (
   columns: string[],
   requiredColumn?: string
 ): AssistantTool["parameters"] => {
-  const uniqueColumns = [...new Set(columns.map((column) => column.trim()).filter(Boolean))]
+  const uniqueColumns = [
+    ...new Set(columns.map((column) => column.trim()).filter(Boolean)),
+  ]
 
   if (uniqueColumns.length === 0) {
     return [createEmptyParameter()]
@@ -43,7 +45,9 @@ export const buildGoogleSheetsParameters = ({
 
   if (operation === "update") {
     const searchParams = buildParameters(searchColumns, searchColumns[0])
-    const existingNames = new Set(searchParams.map((parameter) => parameter.name))
+    const existingNames = new Set(
+      searchParams.map((parameter) => parameter.name)
+    )
     const updateParams = updateColumns
       .filter((column) => !existingNames.has(column))
       .map((column) => ({

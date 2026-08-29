@@ -47,6 +47,12 @@ export const contactSessionIdAtomFamily = atomFamily(
 export const errorMessageAtom = atom<string | null>(null)
 export const conversationIdAtom = atom<Id<"conversations"> | null>(null)
 export const chatReturnScreenAtom = atom<ChatReturnScreen>("selection")
+
+/**
+ * True when a published workflow drives this widget. The visitor is dropped
+ * straight into the conversation, so there is no home screen to go back to.
+ */
+export const workflowOnlyAtom = atom(false)
 export const pendingInitialMessageAtom = atom<string | null>(null)
 export const pendingStartChatAtom = atom<{
   initialMessage?: string

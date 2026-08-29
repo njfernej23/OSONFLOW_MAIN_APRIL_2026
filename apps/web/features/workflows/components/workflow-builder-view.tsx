@@ -47,6 +47,7 @@ import { toast } from "sonner"
 import {
   WORKFLOW_SCHEMA_VERSION,
   type BlockColor,
+  type AgentNodeData,
   type ButtonOption,
   type ButtonsNodeData,
   type CaptureNodeData,
@@ -74,7 +75,12 @@ import {
   type WorkflowDefinition,
   type WorkflowEdgeData,
 } from "../lib/types"
-import { API_METHODS, isTerminalStepType, stepPorts } from "../lib/types"
+import {
+  API_METHODS,
+  isAgentStepType,
+  isTerminalStepType,
+  stepPorts,
+} from "../lib/types"
 import {
   validateWorkflow,
   type ValidationIssue,
@@ -97,9 +103,11 @@ import ComponentNode from "../nodes/ComponentNode"
 import BlockNode, { BlockStepSelectionContext } from "../nodes/BlockNode"
 import FunctionNode from "../nodes/FunctionNode"
 import GenericStepNode from "../nodes/GenericStepNode"
+import AgentNode from "../nodes/AgentNode"
 import { NodeRenameContext } from "../nodes/NodeRenameContext"
 import Icon, { type IconName } from "../nodes/StepIcon"
 import RunPanel from "./run-panel"
+import AgentEditor, { type AgentEditorToolSummary } from "./agent-editor"
 import { MessageEditorInput } from "./message-editor-input"
 import { VariableInput } from "./variable-input"
 import { collectWorkflowVariables } from "../lib/variable-tokens"
@@ -152,6 +160,7 @@ type AssistantToolSummary = {
   _id: string
   name: string
   description: string
+  type: AgentEditorToolSummary["type"]
   isEnabled: boolean
   parameters?: Array<{
     name: string
@@ -277,10 +286,10 @@ type ConnectCategory = {
 
 
 const genericNodeTypes = {
-  playbook: GenericStepNode,
-  agent: GenericStepNode,
-  crew: GenericStepNode,
-  operator: GenericStepNode,
+  playbook: AgentNode,
+  agent: AgentNode,
+  crew: AgentNode,
+  operator: AgentNode,
   prompt: GenericStepNode,
   choice: ChoiceNode,
   capture: CaptureNode,
@@ -331,6 +340,8 @@ const getEstimatedNodeSize = (type: NodeType | null | undefined) => {
   switch (type) {
     case "start":
       return { width: 148, height: 56 }
+    case "block":
+      return { width: 300, height: 132 }
     case "message":
       return { width: 320, height: 126 }
     case "image":
@@ -1878,6 +1889,67 @@ export const WorkflowBuilderView = ({
    * the viewport on every selection (and on every keystroke in the inspector)
    * made the canvas feel like it was fighting the user.
    */
+  /**
+   * Reads a pixel length off the builder shell. The run dock publishes its live
+   * height there, so the canvas can keep clear of whatever is actually docked.
+   */
+  const readShellLength = (name: string, fallback: number) => {
+    const shell = document.querySelector(".builder-shell")
+
+    if (!(shell instanceof HTMLElement)) {
+      return fallback
+    }
+
+    const value = Number.parseFloat(
+      window.getComputedStyle(shell).getPropertyValue(name)
+    )
+
+    return Number.isFinite(value) ? value : fallback
+  }
+
+  /**
+   * Puts a node in the middle of the canvas the run leaves visible — between
+   * the step rail and the chat panel, above the log dock. The run follows the
+   * conversation, so the step that just fired is always under the eye instead
+   * of somewhere off screen.
+   */
+  const centerNodeForRun = useCallback(
+    (node: WorkflowNode, duration: number) => {
+      if (!reactFlow) {
+        return
+      }
+
+      const zoom = reactFlow.getZoom()
+      const inset = readShellLength("--panel-inset", 14)
+      const chatWidth = readShellLength("--panel-w", 384)
+      const dockHeight = readShellLength("--dock-h", 264)
+
+      const left = 92
+      const right = Math.max(
+        left + 200,
+        window.innerWidth - chatWidth - inset * 2
+      )
+      const top = 76
+      const bottom = Math.max(
+        top + 160,
+        window.innerHeight - dockHeight - inset * 2
+      )
+
+      const width = node.width ?? (node.type === "start" ? 148 : 300)
+      const height = node.height ?? (node.type === "start" ? 56 : 126)
+
+      reactFlow.setViewport(
+        {
+          x: (left + right) / 2 - (node.position.x + width / 2) * zoom,
+          y: (top + bottom) / 2 - (node.position.y + height / 2) * zoom,
+          zoom,
+        },
+        { duration }
+      )
+    },
+    [reactFlow]
+  )
+
   const revealNodeBesidePanel = useCallback(
     (node: WorkflowNode, duration: number) => {
       if (!reactFlow) {
@@ -1895,7 +1967,10 @@ export const WorkflowBuilderView = ({
         window.innerWidth - panelWidth - 24
       )
       const safeTop = 88
-      const safeBottom = Math.max(safeTop + 120, window.innerHeight - 24)
+      const safeBottom = Math.max(
+        safeTop + 120,
+        window.innerHeight - readShellLength("--dock-h", 0) - 24
+      )
 
       const isVisible =
         topLeft.x >= safeLeft &&
@@ -1922,6 +1997,33 @@ export const WorkflowBuilderView = ({
     },
     [reactFlow]
   )
+
+  // Follow the run: whichever node is waiting on the user, or just fired.
+  useEffect(() => {
+    const focusId = runWaitingNodeId ?? runActiveNodeId
+
+    if (!focusId || !reactFlow || drawerMode !== "run") {
+      return
+    }
+
+    const node = nodesRef.current.find((candidate) => candidate.id === focusId)
+
+    if (!node) {
+      return
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      centerNodeForRun(node, 420)
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [
+    centerNodeForRun,
+    drawerMode,
+    reactFlow,
+    runActiveNodeId,
+    runWaitingNodeId,
+  ])
 
   useEffect(() => {
     if (!selectedNodeId || !reactFlow) {
@@ -1960,6 +2062,33 @@ export const WorkflowBuilderView = ({
 
   /** Vertical gap under a node that counts as "drop it onto this block". */
   const DOCK_GAP = 46
+
+  /**
+   * Wrap a step in a Block. Blocks are the canvas's default presentation, so
+   * a single dropped step reads the same as a stack of them and can be added
+   * to later without the node changing shape under the cursor.
+   */
+  const wrapStepInBlock = (
+    step: BlockStep,
+    node: {
+      id: string
+      position: { x: number; y: number }
+      customName?: string
+      blockColor?: BlockColor
+    }
+  ): WorkflowNode =>
+    ({
+      id: node.id,
+      type: "block",
+      position: node.position,
+      data: {
+        label: "Block",
+        customName: node.customName,
+        blockColor: node.blockColor,
+        steps: [step],
+      } as NodeData,
+      deletable: true,
+    }) as WorkflowNode
 
   const toBlockSteps = (node: WorkflowNode): BlockStep[] =>
     node.type === "block"
@@ -2058,30 +2187,6 @@ export const WorkflowBuilderView = ({
     return true
   }
 
-  /** A block holding a single step is just that step again. */
-  const collapseSingleStepBlock = (node: WorkflowNode): WorkflowNode => {
-    if (node.type !== "block") {
-      return node
-    }
-
-    const steps = (node.data as BlockNodeData).steps ?? []
-    const only = steps[0]
-
-    if (steps.length !== 1 || !only) {
-      return node
-    }
-
-    return {
-      ...node,
-      type: only.type,
-      data: {
-        ...only.data,
-        customName: only.data.customName ?? node.data.customName,
-        blockColor: node.data.blockColor,
-      } as NodeData,
-    }
-  }
-
   const writeBlockSteps = (nodeId: string, steps: BlockStep[]) => {
     if (steps.length === 0) {
       setNodes((next) => next.filter((entry) => entry.id !== nodeId))
@@ -2097,11 +2202,11 @@ export const WorkflowBuilderView = ({
     setNodes((next) =>
       next.map((entry) =>
         entry.id === nodeId
-          ? collapseSingleStepBlock({
+          ? ({
               ...entry,
               type: "block",
               data: { ...(entry.data as BlockNodeData), steps } as NodeData,
-            })
+            } as WorkflowNode)
           : entry
       )
     )
@@ -2183,16 +2288,13 @@ export const WorkflowBuilderView = ({
 
     setNodes((next) => [
       ...next,
-      {
+      wrapStepInBlock(step, {
         id: newId,
-        type: step.type,
         position: {
           x: block.position.x + 360,
           y: block.position.y + index * 40,
         },
-        data: step.data,
-        deletable: true,
-      } as WorkflowNode,
+      }),
     ])
 
     if (wasLast) {
@@ -2276,23 +2378,23 @@ export const WorkflowBuilderView = ({
         entry.id === node.id
           ? ({
               ...entry,
-              type: steps[0]!.type,
-              data: steps[0]!.data,
+              type: "block",
+              data: {
+                label: "Block",
+                blockColor: (entry.data as BlockNodeData).blockColor,
+                steps: [steps[0]!],
+              } as NodeData,
             } as WorkflowNode)
           : entry
       ),
-      ...steps.slice(1).map(
-        (step, offset) =>
-          ({
-            id: ids[offset + 1]!,
-            type: step.type,
-            position: {
-              x: node.position.x + (offset + 1) * 340,
-              y: node.position.y,
-            },
-            data: step.data,
-            deletable: true,
-          }) as WorkflowNode
+      ...steps.slice(1).map((step, offset) =>
+        wrapStepInBlock(step, {
+          id: ids[offset + 1]!,
+          position: {
+            x: node.position.x + (offset + 1) * 340,
+            y: node.position.y,
+          },
+        })
       ),
     ])
 
@@ -2435,6 +2537,47 @@ export const WorkflowBuilderView = ({
   )
 
   /**
+   * Agent exits are ports, so editing them has to move the wires with them:
+   * the first exit takes over the node's plain outgoing edge, and a deleted
+   * exit leaves a wire pointing at a handle that no longer exists.
+   */
+  const applyAgentDataChange = (next: AgentNodeData) => {
+    updateInspectorData(next)
+
+    if (!selectedNode) {
+      return
+    }
+
+    // Only the last step of a Block contributes the block's ports, so an agent
+    // sitting earlier in the stack must not touch the block's own wiring.
+    const steps =
+      selectedNode.type === "block"
+        ? ((selectedNode.data as BlockNodeData).steps ?? [])
+        : []
+    const ownsNodePorts =
+      steps.length === 0 || steps[steps.length - 1]?.id === selectedStep?.id
+
+    if (!ownsNodePorts) {
+      return
+    }
+
+    const exitIds = new Set((next.exitConditions ?? []).map((exit) => exit.id))
+    const nodeId = selectedNode.id
+
+    setEdges((edges) =>
+      edges.filter((edge) => {
+        if (edge.source !== nodeId) {
+          return true
+        }
+
+        return edge.sourceHandle
+          ? exitIds.has(edge.sourceHandle)
+          : exitIds.size === 0
+      })
+    )
+  }
+
+  /**
    * Reads an image into whichever inspector target is open — a standalone
    * node, or one step inside a Block.
    */
@@ -2541,16 +2684,35 @@ export const WorkflowBuilderView = ({
     }
 
     const id = createId(type)
-    const node = {
-      id,
-      type,
-      position,
-      data: createNodeData(type),
-      deletable: type !== "start",
+
+    // Start is the one node that is never a block: it has no configuration of
+    // its own and nothing can stack under it.
+    if (type === "start" || type === "block") {
+      const node = {
+        id,
+        type,
+        position,
+        data: createNodeData(type),
+        deletable: type !== "start",
+      }
+
+      setNodes((next) => [...next, node])
+      setSelectedNodeId(id)
+      setStatus(`${getStepOption(type)?.label ?? "Step"} added.`)
+
+      return node
     }
+
+    const step: BlockStep = {
+      id: createId("step"),
+      type,
+      data: createNodeData(type),
+    }
+    const node = wrapStepInBlock(step, { id, position })
 
     setNodes((next) => [...next, node])
     setSelectedNodeId(id)
+    setBlockStepSelection({ nodeId: id, stepId: step.id })
     setStatus(`${getStepOption(type)?.label ?? "Step"} added.`)
 
     return node
@@ -3121,11 +3283,23 @@ export const WorkflowBuilderView = ({
     }
 
     const created = createCanvasNode(type, canvasMenu.flowPosition)
+
     if (created && (label || description)) {
-      patchNodeData(created.id, {
-        customName: label,
-        description,
-      })
+      // The name belongs to the step, which is what the block's row shows.
+      const first = ((created.data as BlockNodeData).steps ?? [])[0]
+
+      if (created.type === "block" && first) {
+        updateBlockStepData(created.id, first.id, {
+          ...first.data,
+          ...(label ? { customName: label } : {}),
+          ...(description ? { description } : {}),
+        } as NodeData)
+      } else {
+        patchNodeData(created.id, {
+          customName: label,
+          description,
+        })
+      }
     }
     setCanvasMenu(null)
   }
@@ -4187,6 +4361,11 @@ export const WorkflowBuilderView = ({
     | undefined
   const inspectorData = (selectedStep?.data ?? selectedNode?.data) as NodeData
   const inspectorGenericData = inspectorData as GenericNodeData | undefined
+  // Agent-family steps open the full editor rather than the docked inspector:
+  // instructions, tools, capabilities and exit conditions need the room.
+  const agentEditorOpen = Boolean(
+    selectedNode && inspectorType && isAgentStepType(inspectorType) && !nodeMenu
+  )
   // Everything this graph can produce, for the {{variable}} pills and picker.
   const workflowVariables = useMemo(
     () => collectWorkflowVariables(nodes),
@@ -4257,7 +4436,10 @@ export const WorkflowBuilderView = ({
   }
   const isStartMenu = menuNode?.type === "start"
   const inspectorOpen = Boolean(
-    selectedNode && selectedNode.type !== "start" && !nodeMenu
+    selectedNode &&
+      selectedNode.type !== "start" &&
+      !nodeMenu &&
+      !agentEditorOpen
   )
   const shellClasses = [
     "builder-shell",
@@ -5235,7 +5417,10 @@ export const WorkflowBuilderView = ({
         </section>
       )}
 
-      {selectedNode && selectedNode.type !== "start" && !nodeMenu && (
+      {selectedNode &&
+        selectedNode.type !== "start" &&
+        !nodeMenu &&
+        !agentEditorOpen && (
         <aside
           className={`inspector-sheet visible ${
             inspectorType === "message" ||
@@ -6231,67 +6416,6 @@ export const WorkflowBuilderView = ({
                       </>
                     )
                   })()}
-                {["playbook", "agent", "crew", "operator"].includes(
-                  selectedNode.type ?? ""
-                ) &&
-                  (() => {
-                    const data = inspectorData as GenericNodeData
-
-                    return (
-                      <>
-                        <label>
-                          Instructions
-                          <textarea
-                            value={data.instructions ?? data.description ?? ""}
-                            onChange={(event) =>
-                              updateInspectorData( {
-                                ...data,
-                                instructions: event.target.value,
-                              })
-                            }
-                          />
-                        </label>
-                        <label>
-                          Output variable
-                          <input
-                            value={data.outputVariable ?? "lastAiResponse"}
-                            onChange={(event) =>
-                              updateInspectorData( {
-                                ...data,
-                                outputVariable: event.target.value,
-                              })
-                            }
-                          />
-                        </label>
-                        <label className="field-row">
-                          <input
-                            type="checkbox"
-                            checked={data.talksFirst !== false}
-                            onChange={(event) =>
-                              updateInspectorData( {
-                                ...data,
-                                talksFirst: event.target.checked,
-                              })
-                            }
-                          />
-                          Talks first
-                        </label>
-                        <label className="field-row">
-                          <input
-                            type="checkbox"
-                            checked={data.useKnowledgeBase !== false}
-                            onChange={(event) =>
-                              updateInspectorData( {
-                                ...data,
-                                useKnowledgeBase: event.target.checked,
-                              })
-                            }
-                          />
-                          Use knowledge base
-                        </label>
-                      </>
-                    )
-                  })()}
                 {inspectorType === "setVariable" &&
                   (() => {
                     const data = inspectorData as SetVariableNodeData
@@ -7179,11 +7303,48 @@ export const WorkflowBuilderView = ({
         </aside>
       )}
 
-      {drawerMode && (
-        <aside
-          className={`side-drawer ${drawerMode === "run" ? "chat-inspector-sheet" : ""}`}
-        >
-          {drawerMode !== "run" && (
+      {agentEditorOpen && selectedNode && (
+        <AgentEditor
+          nodeId={selectedStep?.id ?? selectedNode.id}
+          title={
+            inspectorGenericData?.customName?.trim() ||
+            inspectorGenericData?.label ||
+            "Agent"
+          }
+          data={inspectorData as AgentNodeData}
+          assistantTools={assistantTools}
+          onChange={applyAgentDataChange}
+          onRename={(name) =>
+            updateInspectorData({
+              ...(inspectorData as AgentNodeData),
+              customName: name,
+            })
+          }
+          onClose={() => setSelectedNodeId(null)}
+        />
+      )}
+
+      {drawerMode === "run" && (
+        <RunPanel
+          nodes={nodes}
+          edges={edges}
+          autoStartKey={runLaunchKey}
+          onAutoStartComplete={completeRunLaunch}
+          onClose={() => {
+            setDrawerMode(null)
+            setRunActiveNodeId(null)
+            setRunWaitingNodeId(null)
+          }}
+          onActiveNodeChange={({ activeNodeId, waitingNodeId }) => {
+            setRunActiveNodeId(activeNodeId)
+            setRunWaitingNodeId(waitingNodeId)
+          }}
+        />
+      )}
+
+      {drawerMode && drawerMode !== "run" && (
+        <aside className="side-drawer">
+          {(
             <div className="sheet-header">
               <div>
                 <h2>
@@ -7201,23 +7362,7 @@ export const WorkflowBuilderView = ({
             </div>
           )}
 
-          {drawerMode === "run" ? (
-            <RunPanel
-              nodes={nodes}
-              edges={edges}
-              autoStartKey={runLaunchKey}
-              onAutoStartComplete={completeRunLaunch}
-              onClose={() => {
-                setDrawerMode(null)
-                setRunActiveNodeId(null)
-                setRunWaitingNodeId(null)
-              }}
-              onActiveNodeChange={({ activeNodeId, waitingNodeId }) => {
-                setRunActiveNodeId(activeNodeId)
-                setRunWaitingNodeId(waitingNodeId)
-              }}
-            />
-          ) : drawerMode === "library" ? (
+          {drawerMode === "library" ? (
             <div className="inspector-body library-list">
               <button className="secondary-button" onClick={refreshLibrary}>
                 Refresh library

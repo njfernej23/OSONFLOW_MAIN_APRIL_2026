@@ -312,6 +312,10 @@ export const create = mutation({
         lastOperatorMessageAt: null,
         unreadForContactCount: 0,
         unreadForOperatorCount: 0,
+        // Recorded on the row, not just derived: the inbox filters on it and
+        // the reply path uses it to keep assistant tools out.
+        source: hasActiveWorkflow ? "workflow" : "widget",
+        workflowId: hasActiveWorkflow ? activeWorkflow?._id : undefined,
       }
     )
 

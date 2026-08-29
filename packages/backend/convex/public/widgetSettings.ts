@@ -32,6 +32,7 @@ export const getByOrganizationId = query({
       homeCards: widgetSettings.homeCards,
       theme: widgetSettings.theme,
       appearance: widgetSettings.appearance,
+      widgetCopy: widgetSettings.widgetCopy,
       voiceCallSettings: widgetSettings.voiceCallSettings,
       // Only the on/off switch and presentation options are needed to render the
       // voice UI; the widget never chooses the model itself.

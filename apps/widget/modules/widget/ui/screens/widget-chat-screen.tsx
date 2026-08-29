@@ -10,6 +10,7 @@ import { useAtomValue, useSetAtom } from "jotai"
 import { ArrowLeftIcon, CheckCircle2Icon } from "lucide-react"
 import {
   chatReturnScreenAtom,
+  workflowOnlyAtom,
   contactSessionIdAtomFamily,
   conversationIdAtom,
   organizationIdAtom,
@@ -36,6 +37,10 @@ import {
 
 import { AIResponse } from "@workspace/ui/components/ai/response"
 import {
+  parseRichMessages,
+  richButtonIds,
+} from "@workspace/ui/components/ai/rich-message"
+import {
   AISuggestion,
   AISuggestions,
 } from "@workspace/ui/components/ai/suggestion"
@@ -46,6 +51,7 @@ import { DicebearAvatar } from "@workspace/ui/components/dicebear-avatar"
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
   mergeWidgetAppearance,
+  mergeWidgetCopy,
   mergeWidgetTheme,
 } from "@workspace/ui/lib/widget-customization"
 import { cn } from "@workspace/ui/lib/utils"
@@ -194,11 +200,13 @@ export const WidgetChatScreen = () => {
   const setConversationId = useSetAtom(conversationIdAtom)
   const setPendingInitialMessage = useSetAtom(pendingInitialMessageAtom)
   const chatReturnScreen = useAtomValue(chatReturnScreenAtom)
+  const workflowOnly = useAtomValue(workflowOnlyAtom)
   const conversationId = useAtomValue(conversationIdAtom)
   const pendingInitialMessage = useAtomValue(pendingInitialMessageAtom)
   const widgetSettings = useAtomValue(widgetSettingsAtom)
   const theme = mergeWidgetTheme(widgetSettings?.theme)
   const appearance = mergeWidgetAppearance(widgetSettings?.appearance)
+  const copy = mergeWidgetCopy(widgetSettings?.widgetCopy)
   const canDownloadChatHistory = appearance.showChatHistoryDownload
   const organizationId = useAtomValue(organizationIdAtom)
   const contactSessionId = useAtomValue(
@@ -298,13 +306,35 @@ export const WidgetChatScreen = () => {
     [uiMessages]
   )
 
+  // Card and Carousel steps render their own buttons, so the choice row below
+  // the thread must not repeat them.
+  const latestAssistantMessage = useMemo(
+    () =>
+      [...visibleMessages]
+        .reverse()
+        .find((message) => message.role === "assistant") ?? null,
+    [visibleMessages]
+  )
+
+  const cardButtonIds = useMemo(
+    () =>
+      latestAssistantMessage
+        ? richButtonIds(
+            parseRichMessages(getUiMessageText(latestAssistantMessage))
+          )
+        : new Set<string>(),
+    [latestAssistantMessage]
+  )
+
   // Operator replies are stored with the assistant role, so the sound is only
   // enabled once the thread is escalated to a human. While the conversation is
   // still unresolved the assistant messages are AI replies to something the
   // visitor just typed, which should not chime.
   useNotifyOnNewMessages(visibleMessages, {
     notifyForRole: "assistant",
-    enabled: conversation?.status === "escalated",
+    enabled:
+      conversation?.status === "escalated" &&
+      appearance.notificationSoundEnabled,
   })
   const assistantMessageCount = useMemo(
     () =>
@@ -379,7 +409,7 @@ export const WidgetChatScreen = () => {
       ? "A teammate is on it"
       : isAwaitingResponse
         ? "Typing…"
-        : "Online · replies instantly"
+        : copy.onlineLabel
 
   const composerPlaceholder = isConversationResolved
     ? "This conversation has been resolved"
@@ -389,7 +419,7 @@ export const WidgetChatScreen = () => {
         ? "Type your reply…"
         : workflowChoices?.waitingMode === "choice"
           ? "Choose an option or type it…"
-          : "Type your message…"
+          : copy.inputPlaceholder
 
   useEffect(() => {
     if (pendingAssistantMessageCount === null) {
@@ -652,6 +682,12 @@ export const WidgetChatScreen = () => {
     }
   }
 
+  // Anything the cards already offer is dropped from the row, so a carousel
+  // shows one set of buttons rather than one per card plus a full row.
+  const choiceRowButtons = (workflowChoices?.buttons ?? []).filter(
+    (button) => !cardButtonIds.has(button.id)
+  )
+
   const onDownloadChatHistory = () => {
     if (
       !canDownloadChatHistory ||
@@ -704,15 +740,17 @@ export const WidgetChatScreen = () => {
     <>
       <WidgetHeader className="owc-header relative z-10 flex shrink-0 items-center justify-between gap-2 px-3 py-3">
         <div className="flex min-w-0 items-center gap-2">
-          <Button
-            className="owc-header-action size-8 shrink-0"
-            onClick={onBack}
-            size="icon"
-            variant="transparent"
-          >
-            <ArrowLeftIcon className="size-4" />
-            <span className="sr-only">Back</span>
-          </Button>
+          {workflowOnly ? null : (
+            <Button
+              className="owc-header-action size-8 shrink-0"
+              onClick={onBack}
+              size="icon"
+              variant="transparent"
+            >
+              <ArrowLeftIcon className="size-4" />
+              <span className="sr-only">Back</span>
+            </Button>
+          )}
 
           <span aria-hidden className="owc-header-avatar shrink-0">
             {theme.logoUrl ? (
@@ -764,7 +802,18 @@ export const WidgetChatScreen = () => {
                 key={message.id}
               >
                 <AIMessageContent className={BUBBLE_CLASS}>
-                  <AIResponse>{getUiMessageText(message)}</AIResponse>
+                  <AIResponse
+                    richActions={
+                      message.id === latestAssistantMessage?.id
+                        ? {
+                            onButtonClick: submitWorkflowChoice,
+                            disabled: !workflowChoices?.buttons?.length,
+                          }
+                        : undefined
+                    }
+                  >
+                    {getUiMessageText(message)}
+                  </AIResponse>
                 </AIMessageContent>
                 {message.role === "assistant" && (
                   <DicebearAvatar
@@ -810,9 +859,9 @@ export const WidgetChatScreen = () => {
           )}
         </AIConversationContent>
       </AIConversation>
-      {workflowChoices?.buttons?.length ? (
+      {choiceRowButtons.length > 0 ? (
         <AISuggestions className="owc-suggestions">
-          {workflowChoices.buttons.map((button) => (
+          {choiceRowButtons.map((button) => (
             <AISuggestion
               className="owc-suggestion"
               key={button.id}
@@ -821,7 +870,9 @@ export const WidgetChatScreen = () => {
             />
           ))}
         </AISuggestions>
-      ) : visibleMessages.length === 1 && visibleHeldMessages.length === 0 ? (
+      ) : !workflowChoices?.buttons?.length &&
+        visibleMessages.length === 1 &&
+        visibleHeldMessages.length === 0 ? (
         <AISuggestions className="owc-suggestions">
           {suggestions.map((suggestion) => {
             if (!suggestion) {

@@ -94,10 +94,7 @@ const getActiveDefinition = async (
   return workflow ? getPublishedDefinition(workflow) : null
 }
 
-const getActiveWorkflow = async (
-  ctx: { db: any },
-  organizationId: string
-) => {
+const getActiveWorkflow = async (ctx: { db: any }, organizationId: string) => {
   const workflow = await ctx.db
     .query("workflows")
     .withIndex("by_organization_id_and_active", (q: any) =>
@@ -210,18 +207,43 @@ const markConversationResolvedByWorkflow = async (
   )
 }
 
+/**
+ * Rich steps are written into the thread as a fenced block the chat renderers
+ * understand, so a Card arrives as a card in the widget and in the operator
+ * dashboard rather than as a title and a bare image URL.
+ */
+const richBlock = (kind: "card" | "carousel", payload: unknown) =>
+  `\`\`\`osonflow-${kind}\n${JSON.stringify(payload)}\n\`\`\``
+
+const buildCardPayload = (
+  data: JsonRecord,
+  variables: RuntimeVariables
+) => {
+  const title = renderTemplate(stripHtml(asString(data.title)), variables)
+  const description = renderTemplate(
+    stripHtml(asString(data.description)),
+    variables
+  )
+  const imageUrl = renderTemplate(asString(data.url), variables).trim()
+  const alt = renderTemplate(stripHtml(asString(data.alt)), variables)
+  // Ids travel with the labels so the surface rendering the card can answer
+  // with the right button instead of repeating them in a separate row.
+  const buttons = normalizeButtons(data.buttons)
+
+  if (!title && !description && !imageUrl) {
+    return null
+  }
+
+  return { title, description, imageUrl, alt, buttons }
+}
+
 const formatCardMessage = (
   data: Record<string, unknown>,
   variables: RuntimeVariables
 ) => {
-  const title = renderTemplate(stripHtml(asString(data.title)), variables)
-  const description = renderTemplate(stripHtml(asString(data.description)), variables)
-  const url = renderTemplate(asString(data.url), variables).trim()
-  const parts = [title, description, url ? `Image: ${url}` : ""]
-    .map((part) => part.trim())
-    .filter(Boolean)
+  const payload = buildCardPayload(data as JsonRecord, variables)
 
-  return parts.join("\n\n")
+  return payload ? richBlock("card", payload) : ""
 }
 
 const formatCarouselMessage = (
@@ -230,22 +252,22 @@ const formatCarouselMessage = (
 ) => {
   const cards = Array.isArray(data.cards) ? data.cards : []
   const intro = renderTemplate(stripHtml(asString(data.description)), variables)
-  const blocks = cards
+  const payloadCards = cards
     .filter(isRecord)
     .map((card: JsonRecord, index: number) => {
-      const title =
-        renderTemplate(stripHtml(asString(card.title)), variables) ||
-        `Option ${index + 1}`
-      const description = renderTemplate(stripHtml(asString(card.description)), variables)
-      const url = renderTemplate(asString(card.url), variables).trim()
+      const payload = buildCardPayload(card, variables)
 
-      return [title, description, url ? `Image: ${url}` : ""]
-        .filter(Boolean)
-        .join("\n")
+      return payload
+        ? { ...payload, title: payload.title || `Option ${index + 1}` }
+        : null
     })
-    .filter(Boolean)
+    .filter((card): card is NonNullable<typeof card> => card !== null)
 
-  return [intro, ...blocks].filter(Boolean).join("\n\n")
+  if (payloadCards.length === 0) {
+    return intro
+  }
+
+  return richBlock("carousel", { intro, cards: payloadCards })
 }
 
 const getCarouselButtons = (data: JsonRecord) => {
@@ -267,7 +289,8 @@ const formatImageMessage = (
     return alt || ""
   }
 
-  return alt ? `${alt}\n${url}` : url
+  // Markdown, so the chat renderers show the picture instead of its address.
+  return `![${alt.replace(/[[\]]/g, "")}](${url})`
 }
 
 type ExecuteResult = {
@@ -607,7 +630,10 @@ const executeFromNode = async (
 
       case "choice": {
         const choices = normalizeButtons(data.choices ?? data.buttons)
-        const prompt = renderTemplate(stripHtml(asString(data.prompt)), variables)
+        const prompt = renderTemplate(
+          stripHtml(asString(data.prompt)),
+          variables
+        )
 
         if (
           prompt &&
@@ -646,7 +672,10 @@ const executeFromNode = async (
       }
 
       case "capture": {
-        const prompt = renderTemplate(stripHtml(asString(data.prompt)), variables)
+        const prompt = renderTemplate(
+          stripHtml(asString(data.prompt)),
+          variables
+        )
 
         if (
           prompt &&
@@ -680,8 +709,13 @@ const executeFromNode = async (
       }
 
       case "callForward": {
-        const message = renderTemplate(stripHtml(asString(data.description) ||
-              "Connecting you with a human operator now."), variables)
+        const message = renderTemplate(
+          stripHtml(
+            asString(data.description) ||
+              "Connecting you with a human operator now."
+          ),
+          variables
+        )
 
         if (
           await saveAssistantMessage(ctx, args.conversation.threadId, message)
@@ -712,7 +746,10 @@ const executeFromNode = async (
       }
 
       case "end": {
-        const endMessage = renderTemplate(stripHtml(asString(data.description)), variables)
+        const endMessage = renderTemplate(
+          stripHtml(asString(data.description)),
+          variables
+        )
 
         if (
           await saveAssistantMessage(
@@ -872,9 +909,7 @@ const executeFromNode = async (
           break
         }
 
-        const childWorkflow = await ctx.db.get(
-          targetId as Id<"workflows">
-        )
+        const childWorkflow = await ctx.db.get(targetId as Id<"workflows">)
 
         if (
           !childWorkflow ||
@@ -990,7 +1025,8 @@ const executeFromNode = async (
             level: "step",
             nodeId: node.id,
             nodeType: type,
-            title: type === "function" ? "Running function" : "Running JavaScript",
+            title:
+              type === "function" ? "Running function" : "Running JavaScript",
           }
         )
 
@@ -1240,6 +1276,28 @@ export const continueAfterAi = internalMutation({
     outputVariable: v.optional(v.string()),
     /** When assistantText is empty, still store this into the output variable. */
     outputValue: v.optional(v.string()),
+    /** Exit port an Agent node chose; routes like any other branch handle. */
+    exitHandle: v.optional(v.string()),
+    /** Values an Agent turn collected from the user. */
+    collectedVariables: v.optional(v.any()),
+    /** Extra assistant messages an exit condition sends before it routes. */
+    extraMessages: v.optional(v.array(v.string())),
+    /** Quick replies an Agent offered, shown while it waits. */
+    pendingButtons: v.optional(
+      v.array(v.object({ id: v.string(), label: v.string() }))
+    ),
+    /**
+     * What the step decided. "wait" keeps the turn with the same node until
+     * the user speaks again, the way an Agent holds a conversation.
+     */
+    outcome: v.optional(
+      v.union(
+        v.literal("continue"),
+        v.literal("wait"),
+        v.literal("end"),
+        v.literal("callForward")
+      )
+    ),
   },
   returns: v.object({
     handled: v.boolean(),
@@ -1278,6 +1336,20 @@ export const continueAfterAi = internalMutation({
       ...((isRecord(session.variables)
         ? session.variables
         : {}) as RuntimeVariables),
+      ...((isRecord(args.collectedVariables)
+        ? args.collectedVariables
+        : {}) as RuntimeVariables),
+    }
+
+    for (const message of args.extraMessages ?? []) {
+      const trimmed = message.trim()
+
+      if (
+        trimmed &&
+        (await saveAssistantMessage(ctx, conversation.threadId, trimmed))
+      ) {
+        assistantMessagesSent += 1
+      }
     }
 
     if (args.outputVariable?.trim() && storedValue) {
@@ -1288,14 +1360,95 @@ export const continueAfterAi = internalMutation({
       variables.lastAiResponse = storedValue
     }
 
+    const outcome = args.outcome ?? "continue"
+
+    // The agent asked another question: hold the turn on the same node and
+    // wait for the user, exactly as an unanswered Capture would.
+    if (outcome === "wait") {
+      await patchSession(
+        ctx,
+        session._id,
+        {
+          status: "waiting",
+          currentNodeId: args.nodeId,
+          pendingNodeId: args.nodeId,
+          pendingButtons: args.pendingButtons ?? [],
+          waitingMode: "ai_turn",
+          pendingCaptureKey: "lastInput",
+          pendingPrompt: undefined,
+          pendingAiNodeId: null,
+          variables,
+        },
+        {
+          level: "wait",
+          nodeId: args.nodeId,
+          title: "Agent is waiting for the user",
+        }
+      )
+
+      if (assistantMessagesSent > 0) {
+        await ctx.runMutation(
+          internal.system.conversations.touchAssistantMessage,
+          {
+            conversationId: conversation._id,
+            timestamp: Date.now(),
+          }
+        )
+      }
+
+      return { handled: true, assistantMessagesSent }
+    }
+
+    if (outcome === "end" || outcome === "callForward") {
+      await patchSession(
+        ctx,
+        session._id,
+        {
+          status: "ended",
+          ...clearWaitState(),
+          variables,
+        },
+        {
+          level: outcome === "end" ? "done" : "warn",
+          nodeId: args.nodeId,
+          title:
+            outcome === "end"
+              ? "Agent ended the conversation"
+              : "Agent handed off to a human",
+        }
+      )
+
+      if (outcome === "callForward") {
+        await ctx.runMutation(internal.system.conversations.escalate, {
+          threadId: conversation.threadId,
+        })
+      }
+
+      if (assistantMessagesSent > 0) {
+        await ctx.runMutation(
+          internal.system.conversations.touchAssistantMessage,
+          {
+            conversationId: conversation._id,
+            timestamp: Date.now(),
+          }
+        )
+      }
+
+      return { handled: true, assistantMessagesSent }
+    }
+
     const aiNode = getNodeMap(definition).get(args.nodeId)
     const aiInBlock = isBlockNodeType(asString(aiNode?.type))
-    // An AI step never branches, so inside a block the run continues with the
-    // next step rather than leaving through an edge.
-    const nextNodeId = aiInBlock
+    const exitHandle = args.exitHandle?.trim() || undefined
+    // A plain AI step never branches, so inside a block the run continues with
+    // the next step. An agent that took an exit leaves through that port.
+    const aiContinuesInBlock = aiInBlock && !exitHandle
+    const nextNodeId = aiContinuesInBlock
       ? args.nodeId
-      : getNextNodeId(getEdgesBySource(definition), args.nodeId)
-    const nextStepIndex = aiInBlock ? (session.pendingStepIndex ?? 0) + 1 : 0
+      : getNextNodeId(getEdgesBySource(definition), args.nodeId, exitHandle)
+    const nextStepIndex = aiContinuesInBlock
+      ? (session.pendingStepIndex ?? 0) + 1
+      : 0
 
     await patchSession(
       ctx,
@@ -1368,8 +1521,59 @@ export const handleUserMessage = internalMutation({
       )
       .unique()
 
-    if (!session || session.status === "ended") {
+    if (!session) {
       return { handled: false }
+    }
+
+    // A finished workflow conversation never falls through to the generic
+    // assistant — the next message runs the flow again from its Start node.
+    if (session.status === "ended") {
+      if (conversation.source !== "workflow") {
+        return { handled: false }
+      }
+
+      const restartWorkflow = await getActiveWorkflow(
+        ctx,
+        conversation.organizationId
+      )
+      const restartDefinition = restartWorkflow
+        ? getPublishedDefinition(restartWorkflow)
+        : null
+
+      if (!restartWorkflow || !restartDefinition) {
+        return { handled: false }
+      }
+
+      const restartedAt = Date.now()
+      await saveUserMessage(ctx, conversation.threadId, args.prompt.trim())
+      await patchSession(
+        ctx,
+        session._id,
+        {
+          workflowId: restartWorkflow._id,
+          status: "active",
+          ...clearWaitState(),
+          variables: {},
+          startedAt: restartedAt,
+          endedAt: undefined,
+        },
+        {
+          level: "info",
+          title: "Workflow restarted",
+          detail: "The visitor spoke again after the flow ended.",
+        }
+      )
+
+      const restarted = (await ctx.db.get(session._id))!
+      await executeFromNode(ctx, {
+        conversation,
+        session: restarted,
+        definition: restartDefinition,
+        startNodeId: getStartNodeId(restartDefinition),
+        variables: {},
+      })
+
+      return { handled: true }
     }
 
     // An out-of-band step is still running — ignore concurrent user messages.
@@ -1435,7 +1639,9 @@ export const handleUserMessage = internalMutation({
     let nextStepIndex = 0
     const edgesBySource = getEdgesBySource(definition)
     const pendingNode = getNodeMap(definition).get(session.pendingNodeId)
-    const pendingNodeData = isRecord(pendingNode?.data) ? pendingNode!.data! : {}
+    const pendingNodeData = isRecord(pendingNode?.data)
+      ? pendingNode!.data!
+      : {}
     // Inside a block the waiting step is the one that owns the pending state.
     const pendingBlockStep = isBlockNodeType(asString(pendingNode?.type))
       ? getBlockSteps(pendingNodeData)[session.pendingStepIndex ?? 0]
@@ -1446,8 +1652,7 @@ export const handleUserMessage = internalMutation({
 
     if (waitingMode === "capture" || waitingMode === "ai_turn") {
       const key =
-        session.pendingCaptureKey?.trim() ||
-        getCaptureVariableKey(pendingData)
+        session.pendingCaptureKey?.trim() || getCaptureVariableKey(pendingData)
       variables = {
         ...baseVariables,
         [key]: prompt,
@@ -1466,9 +1671,7 @@ export const handleUserMessage = internalMutation({
         nextNodeId = getNextNodeId(edgesBySource, session.pendingNodeId)
       }
     } else if (waitingMode === "choice") {
-      const choices = normalizeButtons(
-        pendingData.choices ?? pendingButtons
-      )
+      const choices = normalizeButtons(pendingData.choices ?? pendingButtons)
       const selected = matchChoice(choices, prompt, args.workflowButtonId)
 
       if (!selected) {
@@ -1495,8 +1698,7 @@ export const handleUserMessage = internalMutation({
       }
 
       const key =
-        session.pendingCaptureKey?.trim() ||
-        getCaptureVariableKey(pendingData)
+        session.pendingCaptureKey?.trim() || getCaptureVariableKey(pendingData)
       variables = {
         ...baseVariables,
         [key]: selected.label,
@@ -1514,8 +1716,7 @@ export const handleUserMessage = internalMutation({
       const selectedButton =
         pendingButtons.find((button) => button.id === args.workflowButtonId) ??
         pendingButtons.find(
-          (button) =>
-            button.label.trim().toLowerCase() === prompt.toLowerCase()
+          (button) => button.label.trim().toLowerCase() === prompt.toLowerCase()
         )
 
       if (!selectedButton) {

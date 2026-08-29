@@ -1,9 +1,6 @@
 import { v } from "convex/values"
 import { internal } from "../_generated/api"
-import {
-  internalAction,
-  internalQuery,
-} from "../_generated/server"
+import { internalAction, internalQuery } from "../_generated/server"
 import {
   asBoolean,
   asString,
@@ -19,6 +16,7 @@ import {
   generatePromptReply,
   searchKnowledgeBase,
 } from "../lib/workflowAiGeneration"
+import { exitMessages, runAgentTurn } from "../lib/workflowAgentTurn"
 import { OPENAI_CHAT_MODEL } from "../lib/openai"
 
 type SessionContext = {
@@ -123,6 +121,62 @@ export const runNode = internalAction({
       const data = isRecord(node?.data) ? node!.data! : {}
       const type = asString(node?.type)
       const variables = session.variables as RuntimeVariables
+
+      // An Agent node runs a structured turn: it can take one of its exits,
+      // collect variables, offer quick replies, or close the conversation.
+      if (
+        type === "playbook" ||
+        type === "agent" ||
+        type === "crew" ||
+        type === "operator"
+      ) {
+        const turn = await runAgentTurn(ctx, {
+          organizationId: session.organizationId,
+          data,
+          variables,
+          secretValue,
+          executeTool: async (toolName, toolArgs) =>
+            await ctx.runAction(
+              internal.system.assistantTools.execute.executeTool,
+              {
+                organizationId: session.organizationId,
+                toolName,
+                args: toolArgs,
+                channel: "chat",
+              }
+            ),
+        })
+
+        await ctx.runMutation(internal.system.workflowRuntime.continueAfterAi, {
+          sessionId: args.sessionId,
+          conversationId: args.conversationId,
+          nodeId: args.nodeId,
+          assistantText: turn.reply,
+          outputVariable: getOutputVariableKey(data, "lastAiResponse"),
+          exitHandle: turn.exitId ?? undefined,
+          collectedVariables: turn.variables,
+          extraMessages: turn.exitId
+            ? exitMessages(data, turn.exitId, {
+                ...variables,
+                ...turn.variables,
+              })
+            : [],
+          pendingButtons: turn.buttons,
+          // With no exits the agent is a plain AI reply: hand on to the next
+          // node rather than holding a conversation it can never leave.
+          outcome: turn.exitId
+            ? "continue"
+            : turn.action === "end"
+              ? "end"
+              : turn.action === "callForward"
+                ? "callForward"
+                : turn.hasExits
+                  ? "wait"
+                  : "continue",
+        })
+
+        return { ok: true }
+      }
 
       let assistantText = ""
       let outputVariable = getOutputVariableKey(data, "lastAiResponse")

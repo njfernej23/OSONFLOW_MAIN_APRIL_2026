@@ -120,13 +120,84 @@ export type KbSearchNodeData = NodeVisual & {
   sendAsMessage?: boolean;
 };
 
-export type PlaybookNodeData = NodeVisual & {
-  label: string;
-  instructions: string;
-  talksFirst?: boolean;
-  useKnowledgeBase?: boolean;
-  outputVariable?: string;
+/**
+ * Which integration an agent tool points at. Only some of these have a backend
+ * today; `agent-config.ts` carries that availability so the editor can never
+ * offer a tool the runtime cannot actually call.
+ */
+export type AgentToolKind =
+  | 'api'
+  | 'function'
+  | 'mcp'
+  | 'googleSheets'
+  | 'zendesk'
+  | 'salesforce'
+  | 'shopify'
+  | 'gmail'
+  | 'airtable'
+  | 'make'
+  | 'twilio'
+  | 'hubspot';
+
+export type AgentTool = {
+  id: string;
+  kind: AgentToolKind;
+  /** Name of the configured assistant tool this runs, when it needs one. */
+  toolName?: string;
 };
+
+/** Reply formats and terminal moves an agent turn is allowed to produce. */
+export type AgentCapability =
+  | 'knowledgeBase'
+  | 'buttons'
+  | 'cards'
+  | 'carousels'
+  | 'callForward'
+  | 'webSearch'
+  | 'end';
+
+export type AgentExitVariable = {
+  id: string;
+  name: string;
+  description: string;
+};
+
+/**
+ * A named way out of an agent turn. Each one becomes an outgoing port on the
+ * node, so an agent branches on the canvas exactly like a Condition does.
+ */
+export type AgentExitCondition = {
+  id: string;
+  name: string;
+  /** Natural language the model matches the conversation against. */
+  description: string;
+  /** Values the agent must have collected before this exit can be taken. */
+  requiredVariables: AgentExitVariable[];
+  /** Sent verbatim when the exit is taken, before control leaves the node. */
+  messages: string[];
+};
+
+/** Configuration shared by every node in the agent family. */
+export type AgentConfig = {
+  /** Chat model id; falls back to the deployment default when unset. */
+  model?: string;
+  /** Id of the preset the instructions were seeded from, for the editor. */
+  persona?: string;
+  tools?: AgentTool[];
+  capabilities?: AgentCapability[];
+  exitConditions?: AgentExitCondition[];
+};
+
+export type PlaybookNodeData = NodeVisual &
+  AgentConfig & {
+    label: string;
+    instructions: string;
+    talksFirst?: boolean;
+    useKnowledgeBase?: boolean;
+    outputVariable?: string;
+  };
+
+export type AgentNodeData = PlaybookNodeData;
 
 export const API_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
 
@@ -238,20 +309,21 @@ export type CallForwardNodeData = NodeVisual & {
   description?: string;
 };
 
-export type GenericNodeData = NodeVisual & {
-  label: string;
-  description?: string;
-  accent?: 'agent' | 'talk' | 'listen' | 'logic' | 'dev' | 'system';
-  instructions?: string;
-  query?: string;
-  variableKey?: string;
-  outputVariable?: string;
-  useKnowledgeBase?: boolean;
-  talksFirst?: boolean;
-  sendAsMessage?: boolean;
-  choices?: ButtonOption[];
-  prompt?: string;
-};
+export type GenericNodeData = NodeVisual &
+  AgentConfig & {
+    label: string;
+    description?: string;
+    accent?: 'agent' | 'talk' | 'listen' | 'logic' | 'dev' | 'system';
+    instructions?: string;
+    query?: string;
+    variableKey?: string;
+    outputVariable?: string;
+    useKnowledgeBase?: boolean;
+    talksFirst?: boolean;
+    sendAsMessage?: boolean;
+    choices?: ButtonOption[];
+    prompt?: string;
+  };
 
 export type NodeData =
   | StartNodeData
@@ -329,8 +401,23 @@ export const isTerminalStepType = (type: NodeType) =>
   type === 'end' ||
   type === 'callForward';
 
+/** Node types that run an agent turn and can carry exit conditions. */
+export const isAgentStepType = (type: NodeType) =>
+  type === 'playbook' ||
+  type === 'agent' ||
+  type === 'crew' ||
+  type === 'operator';
+
 /** Named source ports a step contributes to its block, with their labels. */
 export const stepPorts = (step: BlockStep): Array<{ id: string; label: string }> => {
+  if (isAgentStepType(step.type)) {
+    // An agent with no exit conditions just falls through its default handle.
+    return ((step.data as AgentNodeData).exitConditions ?? []).map((exit) => ({
+      id: exit.id,
+      label: exit.name.trim() || 'Exit',
+    }));
+  }
+
   switch (step.type) {
     case 'condition':
       return [

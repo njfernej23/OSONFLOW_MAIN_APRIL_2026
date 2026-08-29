@@ -87,6 +87,17 @@ export const widgetSettingsSchema = z.object({
       .trim()
       .min(1, "Assistant name is required")
       .max(40, "Assistant name must be at most 40 characters"),
+    fontFamily: z.enum(["sans", "serif", "mono", "rounded"]),
+    headerBrandMode: z.enum(["none", "image", "text"]),
+    headerBannerImageUrl: imageUrlField,
+    headerBannerText: z
+      .string()
+      .trim()
+      .max(60, "Brand text must be at most 60 characters"),
+    headerBannerTextColor: hexColorField,
+    headerBannerAccentColor: hexColorField,
+    headerBannerFont: z.enum(["sans", "serif", "mono", "display"]),
+    headerBannerStyle: z.enum(["plain", "pill", "gradient"]),
   }),
   appearance: z.object({
     launcherColor: hexColorField,
@@ -118,5 +129,40 @@ export const widgetSettingsSchema = z.object({
     showPoweredBy: z.boolean(),
     showHelpCenter: z.boolean(),
     showChatHistoryDownload: z.boolean(),
+    launcherPosition: z.enum(["bottom-right", "bottom-left"]),
+    launcherOffsetX: z.coerce.number().min(0).max(160),
+    launcherOffsetY: z.coerce.number().min(0).max(160),
+    launcherSize: z.coerce.number().min(40).max(76),
+    autoOpenEnabled: z.boolean(),
+    autoOpenDelaySeconds: z.coerce.number().min(0).max(300),
+    autoOpenFrequency: z.enum(["session", "visitor", "always"]),
+    notificationSoundEnabled: z.boolean(),
+  }),
+  widgetCopy: z.object({
+    homeGreeting: z
+      .string()
+      .trim()
+      .min(1, "Greeting is required")
+      .max(60, "Greeting must be at most 60 characters"),
+    homeHeadline: z
+      .string()
+      .trim()
+      .min(1, "Headline is required")
+      .max(90, "Headline must be at most 90 characters"),
+    startChatLabel: z
+      .string()
+      .trim()
+      .min(1, "Button label is required")
+      .max(40, "Button label must be at most 40 characters"),
+    inputPlaceholder: z
+      .string()
+      .trim()
+      .min(1, "Placeholder is required")
+      .max(60, "Placeholder must be at most 60 characters"),
+    onlineLabel: z
+      .string()
+      .trim()
+      .min(1, "Status label is required")
+      .max(40, "Status label must be at most 40 characters"),
   }),
 })

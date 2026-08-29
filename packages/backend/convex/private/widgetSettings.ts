@@ -15,6 +15,14 @@ const DEFAULT_THEME = {
   logoUrl: "",
   backgroundImageUrl: "",
   assistantName: "Support Assistant",
+  fontFamily: "sans" as const,
+  headerBrandMode: "image" as const,
+  headerBannerImageUrl: "",
+  headerBannerText: "",
+  headerBannerTextColor: "#ffffff",
+  headerBannerAccentColor: "#ffffff",
+  headerBannerFont: "sans" as const,
+  headerBannerStyle: "pill" as const,
 } as const
 
 const DEFAULT_APPEARANCE = {
@@ -31,6 +39,22 @@ const DEFAULT_APPEARANCE = {
   showPoweredBy: true,
   showHelpCenter: true,
   showChatHistoryDownload: true,
+  launcherPosition: "bottom-right" as const,
+  launcherOffsetX: 20,
+  launcherOffsetY: 20,
+  launcherSize: 48,
+  autoOpenEnabled: false,
+  autoOpenDelaySeconds: 8,
+  autoOpenFrequency: "session" as const,
+  notificationSoundEnabled: true,
+}
+
+const DEFAULT_WIDGET_COPY = {
+  homeGreeting: "Hi there 👋",
+  homeHeadline: "Let me know how we can help!",
+  startChatLabel: "Start a chat",
+  inputPlaceholder: "Type your message…",
+  onlineLabel: "Online · replies instantly",
 }
 
 const MAX_WIDGET_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
@@ -105,6 +129,14 @@ const themeValidator = v.object({
   logoUrl: v.optional(v.string()),
   backgroundImageUrl: v.optional(v.string()),
   assistantName: v.optional(v.string()),
+  fontFamily: v.optional(
+    v.union(
+      v.literal("sans"),
+      v.literal("serif"),
+      v.literal("mono"),
+      v.literal("rounded")
+    )
+  ),
   headerBrandMode: v.optional(
     v.union(v.literal("none"), v.literal("image"), v.literal("text"))
   ),
@@ -148,6 +180,26 @@ const appearanceValidator = v.object({
   showPoweredBy: v.optional(v.boolean()),
   showHelpCenter: v.optional(v.boolean()),
   showChatHistoryDownload: v.optional(v.boolean()),
+  launcherPosition: v.optional(
+    v.union(v.literal("bottom-right"), v.literal("bottom-left"))
+  ),
+  launcherOffsetX: v.optional(v.number()),
+  launcherOffsetY: v.optional(v.number()),
+  launcherSize: v.optional(v.number()),
+  autoOpenEnabled: v.optional(v.boolean()),
+  autoOpenDelaySeconds: v.optional(v.number()),
+  autoOpenFrequency: v.optional(
+    v.union(v.literal("session"), v.literal("visitor"), v.literal("always"))
+  ),
+  notificationSoundEnabled: v.optional(v.boolean()),
+})
+
+const widgetCopyValidator = v.object({
+  homeGreeting: v.optional(v.string()),
+  homeHeadline: v.optional(v.string()),
+  startChatLabel: v.optional(v.string()),
+  inputPlaceholder: v.optional(v.string()),
+  onlineLabel: v.optional(v.string()),
 })
 
 const widgetSettingsArgsValidator = {
@@ -165,6 +217,7 @@ const widgetSettingsArgsValidator = {
   voiceCallSettings: v.optional(voiceCallSettingsValidator),
   theme: v.optional(themeValidator),
   appearance: v.optional(appearanceValidator),
+  widgetCopy: v.optional(widgetCopyValidator),
 } as const
 
 const agentScopedArgsValidator = {
@@ -181,6 +234,14 @@ type WidgetTheme = {
   logoUrl?: string
   backgroundImageUrl?: string
   assistantName?: string
+  fontFamily?: "sans" | "serif" | "mono" | "rounded"
+  headerBrandMode?: "none" | "image" | "text"
+  headerBannerImageUrl?: string
+  headerBannerText?: string
+  headerBannerTextColor?: string
+  headerBannerAccentColor?: string
+  headerBannerFont?: "sans" | "serif" | "mono" | "display"
+  headerBannerStyle?: "plain" | "pill" | "gradient"
 }
 
 type WidgetAppearance = {
@@ -197,6 +258,22 @@ type WidgetAppearance = {
   showPoweredBy?: boolean
   showHelpCenter?: boolean
   showChatHistoryDownload?: boolean
+  launcherPosition?: "bottom-right" | "bottom-left"
+  launcherOffsetX?: number
+  launcherOffsetY?: number
+  launcherSize?: number
+  autoOpenEnabled?: boolean
+  autoOpenDelaySeconds?: number
+  autoOpenFrequency?: "session" | "visitor" | "always"
+  notificationSoundEnabled?: boolean
+}
+
+type WidgetCopy = {
+  homeGreeting?: string
+  homeHeadline?: string
+  startChatLabel?: string
+  inputPlaceholder?: string
+  onlineLabel?: string
 }
 
 type HelpArticle = {
@@ -270,6 +347,7 @@ type WidgetSettingsSnapshot = {
   }
   theme?: WidgetTheme
   appearance?: WidgetAppearance
+  widgetCopy?: WidgetCopy
 }
 
 type VersionAction = "publish" | "rollback" | "bootstrap"
@@ -376,6 +454,7 @@ const createDefaultWidgetSettings = (): WidgetSettingsSnapshot => ({
   },
   theme: { ...DEFAULT_THEME },
   appearance: { ...DEFAULT_APPEARANCE },
+  widgetCopy: { ...DEFAULT_WIDGET_COPY },
 })
 
 const clampBorderRadius = (value?: number) => {
@@ -386,6 +465,29 @@ const clampBorderRadius = (value?: number) => {
 
   return Math.min(32, Math.max(0, parsed))
 }
+
+const clampNumber = (
+  value: number | undefined,
+  min: number,
+  max: number,
+  fallback: number
+) => {
+  const parsed =
+    typeof value === "number" && Number.isFinite(value)
+      ? Math.round(value)
+      : fallback
+
+  return Math.min(max, Math.max(min, parsed))
+}
+
+const clampLauncherOffset = (value?: number) =>
+  clampNumber(value, 0, 160, DEFAULT_APPEARANCE.launcherOffsetX)
+
+const clampLauncherSize = (value?: number) =>
+  clampNumber(value, 40, 76, DEFAULT_APPEARANCE.launcherSize)
+
+const clampAutoOpenDelaySeconds = (value?: number) =>
+  clampNumber(value, 0, 300, DEFAULT_APPEARANCE.autoOpenDelaySeconds)
 
 const mergeTheme = (
   base?: WidgetTheme,
@@ -419,6 +521,36 @@ const mergeTheme = (
     incoming?.assistantName ??
     base?.assistantName ??
     DEFAULT_THEME.assistantName,
+  fontFamily:
+    incoming?.fontFamily ?? base?.fontFamily ?? DEFAULT_THEME.fontFamily,
+  headerBrandMode:
+    incoming?.headerBrandMode ??
+    base?.headerBrandMode ??
+    DEFAULT_THEME.headerBrandMode,
+  headerBannerImageUrl:
+    incoming?.headerBannerImageUrl ??
+    base?.headerBannerImageUrl ??
+    DEFAULT_THEME.headerBannerImageUrl,
+  headerBannerText:
+    incoming?.headerBannerText ??
+    base?.headerBannerText ??
+    DEFAULT_THEME.headerBannerText,
+  headerBannerTextColor:
+    incoming?.headerBannerTextColor ??
+    base?.headerBannerTextColor ??
+    DEFAULT_THEME.headerBannerTextColor,
+  headerBannerAccentColor:
+    incoming?.headerBannerAccentColor ??
+    base?.headerBannerAccentColor ??
+    DEFAULT_THEME.headerBannerAccentColor,
+  headerBannerFont:
+    incoming?.headerBannerFont ??
+    base?.headerBannerFont ??
+    DEFAULT_THEME.headerBannerFont,
+  headerBannerStyle:
+    incoming?.headerBannerStyle ??
+    base?.headerBannerStyle ??
+    DEFAULT_THEME.headerBannerStyle,
 })
 
 const mergeAppearance = (
@@ -475,6 +607,58 @@ const mergeAppearance = (
     incoming?.showChatHistoryDownload ??
     base?.showChatHistoryDownload ??
     DEFAULT_APPEARANCE.showChatHistoryDownload,
+  launcherPosition:
+    incoming?.launcherPosition ??
+    base?.launcherPosition ??
+    DEFAULT_APPEARANCE.launcherPosition,
+  launcherOffsetX: clampLauncherOffset(
+    incoming?.launcherOffsetX ?? base?.launcherOffsetX
+  ),
+  launcherOffsetY: clampLauncherOffset(
+    incoming?.launcherOffsetY ?? base?.launcherOffsetY
+  ),
+  launcherSize: clampLauncherSize(incoming?.launcherSize ?? base?.launcherSize),
+  autoOpenEnabled:
+    incoming?.autoOpenEnabled ??
+    base?.autoOpenEnabled ??
+    DEFAULT_APPEARANCE.autoOpenEnabled,
+  autoOpenDelaySeconds: clampAutoOpenDelaySeconds(
+    incoming?.autoOpenDelaySeconds ?? base?.autoOpenDelaySeconds
+  ),
+  autoOpenFrequency:
+    incoming?.autoOpenFrequency ??
+    base?.autoOpenFrequency ??
+    DEFAULT_APPEARANCE.autoOpenFrequency,
+  notificationSoundEnabled:
+    incoming?.notificationSoundEnabled ??
+    base?.notificationSoundEnabled ??
+    DEFAULT_APPEARANCE.notificationSoundEnabled,
+})
+
+const mergeWidgetCopy = (
+  base?: WidgetCopy,
+  incoming?: WidgetCopy
+): WidgetCopy => ({
+  homeGreeting:
+    incoming?.homeGreeting ??
+    base?.homeGreeting ??
+    DEFAULT_WIDGET_COPY.homeGreeting,
+  homeHeadline:
+    incoming?.homeHeadline ??
+    base?.homeHeadline ??
+    DEFAULT_WIDGET_COPY.homeHeadline,
+  startChatLabel:
+    incoming?.startChatLabel ??
+    base?.startChatLabel ??
+    DEFAULT_WIDGET_COPY.startChatLabel,
+  inputPlaceholder:
+    incoming?.inputPlaceholder ??
+    base?.inputPlaceholder ??
+    DEFAULT_WIDGET_COPY.inputPlaceholder,
+  onlineLabel:
+    incoming?.onlineLabel ??
+    base?.onlineLabel ??
+    DEFAULT_WIDGET_COPY.onlineLabel,
 })
 
 const legacyArticlesToArray = (articles: HelpArticles): HelpArticle[] => [
@@ -648,6 +832,7 @@ const normalizeSnapshot = (
     },
     theme: mergeTheme(fallback.theme, snapshot.theme),
     appearance: mergeAppearance(fallback.appearance, snapshot.appearance),
+    widgetCopy: mergeWidgetCopy(fallback.widgetCopy, snapshot.widgetCopy),
   }
 }
 
@@ -680,6 +865,7 @@ const getPublishedSnapshot = (
         widgetSettings.voiceCallSettings ?? fallback.voiceCallSettings,
       theme: widgetSettings.theme,
       appearance: widgetSettings.appearance,
+      widgetCopy: widgetSettings.widgetCopy,
     },
     fallback
   )
@@ -794,6 +980,7 @@ const applyPublishedSnapshotPatch = (snapshot: WidgetSettingsSnapshot) => ({
   voiceCallSettings: snapshot.voiceCallSettings,
   theme: snapshot.theme,
   appearance: snapshot.appearance,
+  widgetCopy: snapshot.widgetCopy,
 })
 
 const insertVersionRecord = async (

@@ -34,7 +34,9 @@ const getConnectErrorMessage = (error: unknown) => {
 export const GoogleSheetsOAuthCallbackView = () => {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const connectWithOAuthCode = useAction(api.private.googleSheets.connectWithOAuthCode)
+  const connectWithOAuthCode = useAction(
+    api.private.googleSheets.connectWithOAuthCode
+  )
   const hasStarted = useRef(false)
 
   useEffect(() => {

@@ -1,10 +1,15 @@
 "use client"
 
-import type { CSSProperties, HTMLAttributes } from "react"
-import { memo } from "react"
+import type { CSSProperties, HTMLAttributes, ReactNode } from "react"
+import { isValidElement, memo } from "react"
 import ReactMarkdown, { type Options } from "react-markdown"
 import remarkGfmImport from "remark-gfm"
 import { cn } from "@workspace/ui/lib/utils"
+import {
+  parseRichMessage,
+  RichMessage,
+  type RichMessageActions,
+} from "@workspace/ui/components/ai/rich-message"
 
 const remarkGfm =
   typeof remarkGfmImport === "function"
@@ -14,6 +19,8 @@ const remarkGfm =
 export type AIResponseProps = HTMLAttributes<HTMLDivElement> & {
   options?: Options
   children: Options["children"]
+  /** Given, Card and Carousel buttons in this message become clickable. */
+  richActions?: RichMessageActions
 }
 
 const linkStyle = {
@@ -22,7 +29,60 @@ const linkStyle = {
     "var(--ai-response-link-decoration-color, color-mix(in srgb, var(--ai-response-link-color, var(--primary)) 70%, transparent))",
 } satisfies CSSProperties
 
-const components: Options["components"] = {
+/** Flattens a code element's children back into its raw source text. */
+const codeText = (children: ReactNode): string => {
+  if (typeof children === "string") {
+    return children
+  }
+
+  if (Array.isArray(children)) {
+    return children.map(codeText).join("")
+  }
+
+  return ""
+}
+
+const buildComponents = (
+  richActions?: RichMessageActions
+): Options["components"] => ({
+  // Workflow Card and Carousel steps arrive as fenced osonflow-* blocks. They
+  // render as real cards; anything else stays an ordinary code block.
+  pre: ({ children, className, ...props }) => {
+    const child = Array.isArray(children) ? children[0] : children
+    const childProps = isValidElement<{
+      className?: string
+      children?: ReactNode
+    }>(child)
+      ? child.props
+      : null
+    const payload = parseRichMessage(
+      childProps?.className,
+      codeText(childProps?.children)
+    )
+
+    if (payload) {
+      return <RichMessage actions={richActions} payload={payload} />
+    }
+
+    return (
+      <pre className={className} {...props}>
+        {children}
+      </pre>
+    )
+  },
+  // Fixed height and cropped, so consecutive images in a thread line up
+  // instead of each taking the height of its own source.
+  img: ({ className, alt, ...props }) => (
+    <img
+      alt={alt ?? ""}
+      className={cn(
+        "my-1 block h-[132px] w-full max-w-[260px] rounded-xl border bg-black/5 object-cover",
+        className
+      )}
+      loading="lazy"
+      {...props}
+    />
+  ),
   ol: ({ children, className, ...props }) => (
     <ol className={cn("ml-4 list-outside list-decimal", className)} {...props}>
       {children}
@@ -96,10 +156,18 @@ const components: Options["components"] = {
       {children}
     </h6>
   ),
-}
+})
+
+const staticComponents = buildComponents()
 
 export const AIResponse = memo(
-  ({ className, options, children, ...props }: AIResponseProps) => (
+  ({
+    className,
+    options,
+    children,
+    richActions,
+    ...props
+  }: AIResponseProps) => (
     <div
       className={cn(
         "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
@@ -108,7 +176,9 @@ export const AIResponse = memo(
       {...props}
     >
       <ReactMarkdown
-        components={components}
+        components={
+          richActions ? buildComponents(richActions) : staticComponents
+        }
         remarkPlugins={remarkGfm ? [remarkGfm] : undefined}
         {...options}
       >
@@ -116,7 +186,13 @@ export const AIResponse = memo(
       </ReactMarkdown>
     </div>
   ),
-  (prevProps, nextProps) => prevProps.children === nextProps.children
+  // Card buttons live inside the markdown, so a changed handler or a
+  // disabled flag has to re-render alongside the text.
+  (prevProps, nextProps) =>
+    prevProps.children === nextProps.children &&
+    prevProps.richActions?.onButtonClick ===
+      nextProps.richActions?.onButtonClick &&
+    prevProps.richActions?.disabled === nextProps.richActions?.disabled
 )
 
 AIResponse.displayName = "AIResponse"

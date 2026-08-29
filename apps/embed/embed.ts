@@ -10,6 +10,8 @@ type WidgetPosition = "bottom-right" | "bottom-left"
 type WidgetLauncherIcon = "chat" | "sparkles" | "question"
 type WidgetAnimation = "slide-up" | "scale" | "fade" | "pop"
 
+type WidgetAutoOpenFrequency = "session" | "visitor" | "always"
+
 type WidgetAppearancePayload = {
   launcherColor?: string
   launcherLabel?: string
@@ -21,6 +23,14 @@ type WidgetAppearancePayload = {
   launcherPromptDelaySeconds?: number
   animation?: WidgetAnimation
   showPoweredBy?: boolean
+  launcherPosition?: WidgetPosition
+  launcherOffsetX?: number
+  launcherOffsetY?: number
+  launcherSize?: number
+  autoOpenEnabled?: boolean
+  autoOpenDelaySeconds?: number
+  autoOpenFrequency?: WidgetAutoOpenFrequency
+  notificationSoundEnabled?: boolean
 }
 
 type WidgetSettingsPayload = {
@@ -30,7 +40,11 @@ type WidgetSettingsPayload = {
 
 const LAUNCHER_EDGE_OFFSET = 20
 const LAUNCHER_BUTTON_SIZE = 48
-const STANDARD_OPEN_CLOSE_BUTTON_SIZE = LAUNCHER_BUTTON_SIZE
+const LAUNCHER_MIN_SIZE = 40
+const LAUNCHER_MAX_SIZE = 76
+const LAUNCHER_MAX_EDGE_OFFSET = 160
+const AUTO_OPEN_MAX_DELAY_SECONDS = 300
+const AUTO_OPEN_STORAGE_KEY = "echo-widget-auto-opened"
 const STANDARD_OPEN_CLOSE_BUTTON_GAP = 8
 const STANDARD_CLOSE_RETURN_OFFSET_X = 18
 const STANDARD_LAUNCHER_REVEAL_DURATION = 180
@@ -53,13 +67,6 @@ const WIDGET_CONTAINER_VOICE_CLOSE_EASING = "cubic-bezier(0.4, 0, 1, 1)"
 const WIDGET_CONTAINER_VOICE_CLOSED_FILTER = "blur(10px)"
 const WIDGET_CONTAINER_VOICE_OPEN_FILTER = "blur(0px)"
 const WIDGET_CONTAINER_OPEN_RADIUS = "30px"
-const CONTAINER_MAX_HEIGHT_GUTTER = LAUNCHER_EDGE_OFFSET * 2
-const STANDARD_OPEN_CONTAINER_BOTTOM =
-  LAUNCHER_EDGE_OFFSET +
-  STANDARD_OPEN_CLOSE_BUTTON_SIZE +
-  STANDARD_OPEN_CLOSE_BUTTON_GAP
-const STANDARD_OPEN_CONTAINER_MAX_HEIGHT_GUTTER =
-  LAUNCHER_EDGE_OFFSET + STANDARD_OPEN_CONTAINER_BOTTOM
 const LAUNCHER_STYLE_ID = "echo-widget-launcher-styles"
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)"
 const LIVE_VOICE_LAUNCHER_LABEL = "Talk with us"
@@ -145,6 +152,150 @@ const NOTIFICATION_SOUND_PATH = "/sounds/notification.mp3"
   let organizationId: string | null = null
   let agentId: string | null = null
   let position: WidgetPosition = EMBED_CONFIG.DEFAULT_POSITION
+
+  // Geometry starts at the documented defaults and is replaced the moment the
+  // widget reports the organization's published appearance. The launcher stays
+  // hidden until that happens, so the visitor never sees it jump.
+  let launcherOffsetX = LAUNCHER_EDGE_OFFSET
+  let launcherOffsetY = LAUNCHER_EDGE_OFFSET
+  let launcherSize = LAUNCHER_BUTTON_SIZE
+  let autoOpenEnabled = false
+  let autoOpenDelaySeconds = 0
+  let autoOpenFrequency: WidgetAutoOpenFrequency = "session"
+  let autoOpenTimer: number | null = null
+  let hasScheduledAutoOpen = false
+  let isNotificationSoundEnabled = true
+
+  const clampNumber = (value: number, min: number, max: number) =>
+    Math.round(Math.max(min, Math.min(max, value)))
+
+  const getContainerMaxHeightGutter = () => launcherOffsetY * 2
+
+  const getStandardOpenContainerBottom = () =>
+    launcherOffsetY + launcherSize + STANDARD_OPEN_CLOSE_BUTTON_GAP
+
+  const getStandardOpenContainerMaxHeightGutter = () =>
+    launcherOffsetY + getStandardOpenContainerBottom()
+
+  /**
+   * Pushes the current placement onto the three fixed elements. Called after
+   * settings arrive rather than only at render time, because position, offsets
+   * and size are all published settings now, not just script attributes.
+   */
+  const applyLauncherGeometry = () => {
+    const edgeSide = position === "bottom-right" ? "right" : "left"
+    const oppositeSide = position === "bottom-right" ? "left" : "right"
+
+    if (button) {
+      button.style[edgeSide] = `${launcherOffsetX}px`
+      button.style[oppositeSide] = ""
+      button.style.bottom = `${launcherOffsetY}px`
+    }
+
+    if (container) {
+      container.style[edgeSide] = `${launcherOffsetX}px`
+      container.style[oppositeSide] = ""
+      container.style.transformOrigin =
+        position === "bottom-right" ? "bottom right" : "bottom left"
+    }
+
+    // The individual properties are set rather than re-running
+    // `syncLauncherPromptPosition`, which rewrites `cssText` and would hide a
+    // prompt that is already on screen.
+    if (launcherPrompt) {
+      launcherPrompt.style[edgeSide] = `${launcherOffsetX}px`
+      launcherPrompt.style[oppositeSide] = ""
+      launcherPrompt.style.bottom = `${
+        launcherOffsetY + launcherSize + LAUNCHER_PROMPT_GAP
+      }px`
+      launcherPrompt.style.textAlign =
+        position === "bottom-right" ? "right" : "left"
+    }
+
+    syncContainerSize()
+    applyLauncherAppearance()
+  }
+
+  /**
+   * Proactive open.
+   *
+   * "Once per visitor" is remembered in localStorage and "once per session" in
+   * sessionStorage; both are wrapped because a host page can block storage
+   * entirely, and a blocked read must not stop the widget from loading.
+   */
+  const getAutoOpenStorage = (): Storage | null => {
+    if (autoOpenFrequency === "always") {
+      return null
+    }
+
+    try {
+      return autoOpenFrequency === "visitor"
+        ? window.localStorage
+        : window.sessionStorage
+    } catch {
+      return null
+    }
+  }
+
+  const getAutoOpenStorageKey = () =>
+    `${AUTO_OPEN_STORAGE_KEY}:${organizationId ?? "default"}`
+
+  const hasAlreadyAutoOpened = () => {
+    const storage = getAutoOpenStorage()
+
+    if (!storage) {
+      return false
+    }
+
+    try {
+      return storage.getItem(getAutoOpenStorageKey()) === "1"
+    } catch {
+      return false
+    }
+  }
+
+  const rememberAutoOpen = () => {
+    const storage = getAutoOpenStorage()
+
+    if (!storage) {
+      return
+    }
+
+    try {
+      storage.setItem(getAutoOpenStorageKey(), "1")
+    } catch {
+      // Storage is full or blocked; the widget simply opens again next time.
+    }
+  }
+
+  const cancelAutoOpen = () => {
+    if (autoOpenTimer !== null) {
+      window.clearTimeout(autoOpenTimer)
+      autoOpenTimer = null
+    }
+  }
+
+  const scheduleAutoOpen = () => {
+    if (!autoOpenEnabled || hasScheduledAutoOpen || isOpen) {
+      return
+    }
+
+    if (hasAlreadyAutoOpened()) {
+      return
+    }
+
+    hasScheduledAutoOpen = true
+    autoOpenTimer = window.setTimeout(() => {
+      autoOpenTimer = null
+
+      if (isOpen) {
+        return
+      }
+
+      rememberAutoOpen()
+      show()
+    }, autoOpenDelaySeconds * 1000)
+  }
 
   const getLauncherIconMarkup = (icon: WidgetLauncherIcon): string => {
     switch (icon) {
@@ -275,10 +426,10 @@ const NOTIFICATION_SOUND_PATH = "/sounds/notification.mp3"
       position: fixed;
       ${
         position === "bottom-right"
-          ? `right: ${LAUNCHER_EDGE_OFFSET}px;`
-          : `left: ${LAUNCHER_EDGE_OFFSET}px;`
+          ? `right: ${launcherOffsetX}px;`
+          : `left: ${launcherOffsetX}px;`
       }
-      bottom: ${LAUNCHER_EDGE_OFFSET + LAUNCHER_BUTTON_SIZE + LAUNCHER_PROMPT_GAP}px;
+      bottom: ${launcherOffsetY + launcherSize + LAUNCHER_PROMPT_GAP}px;
       max-width: ${LAUNCHER_PROMPT_MAX_WIDTH}px;
       padding: 8px 12px;
       border-radius: 16px;
@@ -379,7 +530,7 @@ const NOTIFICATION_SOUND_PATH = "/sounds/notification.mp3"
   }
 
   const getLauncherImageMarkup = (imageUrl: string): string => {
-    return `<img src="${escapeHtml(imageUrl)}" alt="Launcher" style="width: ${LAUNCHER_BUTTON_SIZE}px; height: ${LAUNCHER_BUTTON_SIZE}px; border-radius: 50%; object-fit: cover; display: block;" />`
+    return `<img src="${escapeHtml(imageUrl)}" alt="Launcher" style="width: ${launcherSize}px; height: ${launcherSize}px; border-radius: 50%; object-fit: cover; display: block;" />`
   }
 
   const getLauncherOrbMarkup = (): string => {
@@ -680,9 +831,9 @@ const NOTIFICATION_SOUND_PATH = "/sounds/notification.mp3"
     if (isOpen) {
       button.classList.remove("echo-widget-button--voice")
       if (!isLiveVoiceEnabled) {
-        button.style.width = `${STANDARD_OPEN_CLOSE_BUTTON_SIZE}px`
-        button.style.minWidth = `${STANDARD_OPEN_CLOSE_BUTTON_SIZE}px`
-        button.style.height = `${STANDARD_OPEN_CLOSE_BUTTON_SIZE}px`
+        button.style.width = `${launcherSize}px`
+        button.style.minWidth = `${launcherSize}px`
+        button.style.height = `${launcherSize}px`
         button.style.padding = "0"
         button.style.borderRadius = "50%"
         button.style.justifyContent = "center"
@@ -721,9 +872,9 @@ const NOTIFICATION_SOUND_PATH = "/sounds/notification.mp3"
         : getLauncherIconMarkup(launcherAppearance.launcherIcon)
 
     button.classList.toggle("echo-widget-button--voice", isVoiceLauncher)
-    button.style.width = hasVisibleLabel ? "auto" : `${LAUNCHER_BUTTON_SIZE}px`
-    button.style.minWidth = `${LAUNCHER_BUTTON_SIZE}px`
-    button.style.height = `${LAUNCHER_BUTTON_SIZE}px`
+    button.style.width = hasVisibleLabel ? "auto" : `${launcherSize}px`
+    button.style.minWidth = `${launcherSize}px`
+    button.style.height = `${launcherSize}px`
     button.style.padding = isVoiceLauncher
       ? "0 22px 0 7px"
       : hasVisibleLabel
@@ -838,8 +989,64 @@ const NOTIFICATION_SOUND_PATH = "/sounds/notification.mp3"
         clampLauncherPromptDelaySeconds(appearance.launcherPromptDelaySeconds)
     }
 
-    applyLauncherAppearance()
+    if (
+      appearance.launcherPosition === "bottom-right" ||
+      appearance.launcherPosition === "bottom-left"
+    ) {
+      position = appearance.launcherPosition
+    }
+
+    if (typeof appearance.launcherOffsetX === "number") {
+      launcherOffsetX = clampNumber(
+        appearance.launcherOffsetX,
+        0,
+        LAUNCHER_MAX_EDGE_OFFSET
+      )
+    }
+
+    if (typeof appearance.launcherOffsetY === "number") {
+      launcherOffsetY = clampNumber(
+        appearance.launcherOffsetY,
+        0,
+        LAUNCHER_MAX_EDGE_OFFSET
+      )
+    }
+
+    if (typeof appearance.launcherSize === "number") {
+      launcherSize = clampNumber(
+        appearance.launcherSize,
+        LAUNCHER_MIN_SIZE,
+        LAUNCHER_MAX_SIZE
+      )
+    }
+
+    if (typeof appearance.notificationSoundEnabled === "boolean") {
+      isNotificationSoundEnabled = appearance.notificationSoundEnabled
+    }
+
+    if (typeof appearance.autoOpenEnabled === "boolean") {
+      autoOpenEnabled = appearance.autoOpenEnabled
+    }
+
+    if (typeof appearance.autoOpenDelaySeconds === "number") {
+      autoOpenDelaySeconds = clampNumber(
+        appearance.autoOpenDelaySeconds,
+        0,
+        AUTO_OPEN_MAX_DELAY_SECONDS
+      )
+    }
+
+    if (
+      appearance.autoOpenFrequency === "session" ||
+      appearance.autoOpenFrequency === "visitor" ||
+      appearance.autoOpenFrequency === "always"
+    ) {
+      autoOpenFrequency = appearance.autoOpenFrequency
+    }
+
+    applyLauncherGeometry()
     revealLauncher()
+    scheduleAutoOpen()
   }
 
   const revealLauncher = () => {
@@ -920,13 +1127,13 @@ const NOTIFICATION_SOUND_PATH = "/sounds/notification.mp3"
       position: fixed;
       ${
         position === "bottom-right"
-          ? `right: ${LAUNCHER_EDGE_OFFSET}px;`
-          : `left: ${LAUNCHER_EDGE_OFFSET}px;`
+          ? `right: ${launcherOffsetX}px;`
+          : `left: ${launcherOffsetX}px;`
       }
-      bottom: ${LAUNCHER_EDGE_OFFSET}px;
+      bottom: ${launcherOffsetY}px;
       width: auto;
-      min-width: ${LAUNCHER_BUTTON_SIZE}px;
-      height: ${LAUNCHER_BUTTON_SIZE}px;
+      min-width: ${launcherSize}px;
+      height: ${launcherSize}px;
       border-radius: 9999px;
       color: white;
       border: none;
@@ -971,14 +1178,14 @@ const NOTIFICATION_SOUND_PATH = "/sounds/notification.mp3"
       position: fixed;
       ${
         position === "bottom-right"
-          ? `right: ${LAUNCHER_EDGE_OFFSET}px;`
-          : `left: ${LAUNCHER_EDGE_OFFSET}px;`
+          ? `right: ${launcherOffsetX}px;`
+          : `left: ${launcherOffsetX}px;`
       }
-      bottom: ${LAUNCHER_EDGE_OFFSET}px;
+      bottom: ${launcherOffsetY}px;
       width: ${WIDGET_CONTAINER_WIDTH}px;
       height: ${WIDGET_CONTAINER_STANDARD_HEIGHT}px;
       max-width: calc(100vw - 40px);
-      max-height: calc(100vh - ${CONTAINER_MAX_HEIGHT_GUTTER}px);
+      max-height: calc(100vh - ${getContainerMaxHeightGutter()}px);
       z-index: 999998;
       border-radius: ${WIDGET_CONTAINER_OPEN_RADIUS};
       overflow: hidden;
@@ -1166,7 +1373,9 @@ const NOTIFICATION_SOUND_PATH = "/sounds/notification.mp3"
         }
         break
       case "notification-sound":
-        playNotificationSound()
+        if (isNotificationSoundEnabled) {
+          playNotificationSound()
+        }
         break
       case "close":
         hide()
@@ -1195,6 +1404,8 @@ const NOTIFICATION_SOUND_PATH = "/sounds/notification.mp3"
   }
 
   function toggleWidget() {
+    cancelAutoOpen()
+
     if (isOpen) {
       hide()
     } else {
@@ -1259,13 +1470,13 @@ const NOTIFICATION_SOUND_PATH = "/sounds/notification.mp3"
     container.style.width = `${WIDGET_CONTAINER_WIDTH}px`
     container.style.bottom = `${
       shouldReserveCloseButtonSpace
-        ? STANDARD_OPEN_CONTAINER_BOTTOM
-        : LAUNCHER_EDGE_OFFSET
+        ? getStandardOpenContainerBottom()
+        : launcherOffsetY
     }px`
     container.style.maxHeight = `calc(100vh - ${
       shouldReserveCloseButtonSpace
-        ? STANDARD_OPEN_CONTAINER_MAX_HEIGHT_GUTTER
-        : CONTAINER_MAX_HEIGHT_GUTTER
+        ? getStandardOpenContainerMaxHeightGutter()
+        : getContainerMaxHeightGutter()
     }px)`
     container.style.height = `${
       isLiveVoiceEnabled
@@ -1454,6 +1665,8 @@ const NOTIFICATION_SOUND_PATH = "/sounds/notification.mp3"
       hideTimer = null
     }
     clearLauncherPromptTimer()
+    cancelAutoOpen()
+    hasScheduledAutoOpen = false
     isOpen = false
     isLauncherReady = false
     isLiveVoiceEnabled = false

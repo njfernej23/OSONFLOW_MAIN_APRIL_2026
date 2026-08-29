@@ -1,5 +1,6 @@
 export const STATUS_FILTER_KEY = "sonflow-sattus-filter"
 export const ASSIGNMENT_FILTER_KEY = "sonflow-assignment-filter"
+export const SOURCE_FILTER_KEY = "sonflow-source-filter"
 
 export const AI_CONVERSATION_PROVIDER_LABELS = {
   openai_realtime: "OpenAI realtime",

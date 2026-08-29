@@ -537,11 +537,16 @@ export const getMany = query({
       )
     ),
     assignmentFilter: v.optional(assignmentFilterValidator),
+    /** Which surface started the conversation; "all" mixes both. */
+    sourceFilter: v.optional(
+      v.union(v.literal("all"), v.literal("workflow"), v.literal("widget"))
+    ),
   },
   handler: async (ctx, args) => {
     const { identity, orgId } = await requireOrganizationIdentity(ctx)
 
     const assignmentFilter = args.assignmentFilter ?? "all"
+    const sourceFilter = args.sourceFilter ?? "all"
     const normalizedSearchQuery = normalizeSearchQuery(args.searchQuery)
 
     let conversations: PaginationResult<Doc<"conversations">> | null = null
@@ -606,7 +611,23 @@ export const getMany = query({
           orgId
         )
 
-        if (!contactSession || isAnonymousContactSession(contactSession)) {
+        const conversationSource = conversation.source ?? "widget"
+
+        if (sourceFilter !== "all" && conversationSource !== sourceFilter) {
+          return null
+        }
+
+        if (!contactSession) {
+          return null
+        }
+
+        // A workflow conversation is anonymous on purpose — the widget opens
+        // straight into the flow without asking for details — so it must not
+        // be hidden by the anonymous filter the assistant inbox uses.
+        if (
+          conversationSource !== "workflow" &&
+          isAnonymousContactSession(contactSession)
+        ) {
           return null
         }
 

@@ -12,6 +12,9 @@
    ──────────────────────────────────────────────────────────────────────────── */
 
 .owc {
+  /* Set on the widget root from `theme.fontFamily`; falls back to the app font
+     when the organization has not chosen one. */
+  font-family: var(--widget-font, inherit);
   --owc-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --owc-bubble-radius: 18px;
   --owc-bubble-tail: 6px;

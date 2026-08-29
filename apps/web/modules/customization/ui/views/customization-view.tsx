@@ -3,11 +3,14 @@
 import { useCallback, useState } from "react"
 import { api } from "@workspace/backend/_generated/api"
 import { useQuery } from "convex/react"
-import { Loader2Icon, PaletteIcon } from "lucide-react"
+import { ExternalLinkIcon, PaletteIcon } from "lucide-react"
 
+import { Button } from "@workspace/ui/components/button"
 import {
   ConsoleHeader,
   ConsoleMeta,
+  ConsolePage,
+  ConsoleSkeleton,
 } from "@/modules/dashboard/ui/components/console"
 import { AgentSwitcher } from "../components/agent-switcher"
 import { CustomizationForm } from "../components/customization-form"
@@ -24,72 +27,76 @@ export const CustomizationView = () => {
     api.private.widgetSettings.getCustomizationState,
     { agentId }
   )
-  const isLoading = customizationState === undefined
 
-  if (isLoading) {
-    return (
-      <div className="console-page flex h-full min-h-0 flex-col items-center justify-center gap-3 px-4">
-        <span className="console-medallion size-12">
-          <Loader2Icon className="size-5 animate-spin" />
-        </span>
-        <p className="text-sm text-muted-foreground">
-          Loading your widget settings…
-        </p>
-      </div>
-    )
+  if (customizationState === undefined) {
+    return <ConsoleSkeleton rows={3} stats={0} />
   }
 
   return (
-    <div className="console-page relative flex h-full min-h-0 flex-col overflow-x-hidden overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-5 px-4 py-5 sm:px-6 sm:py-7">
-        <ConsoleHeader
-          actions={
+    <ConsolePage width="wide">
+      <ConsoleHeader
+        actions={
+          <>
+            <Button
+              className="gap-1.5"
+              onClick={() => window.open("/widget-preview", "_blank")}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <ExternalLinkIcon className="size-3.5" />
+              Open preview
+            </Button>
             <AgentSwitcher
               agentId={agentId}
               onAgentIdChange={handleAgentIdChange}
             />
-          }
-          description="The chat widget, launcher, brand kit, and voice settings — edited as a draft, published when you're ready."
-          eyebrow="Visual system"
-          icon={PaletteIcon}
-          meta={
-            <>
-              <ConsoleMeta
-                label="Published"
-                value={`v${customizationState.publishedVersion}`}
-              />
-              <ConsoleMeta
-                dot
-                label="Draft"
-                tone={
-                  customizationState.isDraftDifferentFromPublished
-                    ? "warning"
-                    : "positive"
-                }
-                value={
-                  customizationState.isDraftDifferentFromPublished
-                    ? "Pending"
-                    : "Synced"
-                }
-              />
-            </>
-          }
-          title="Widget customization"
-        />
+          </>
+        }
+        description="Behaviour, copy, brand, launcher and voice for the widget your customers see. Everything is edited as a draft and published as a version you can roll back."
+        eyebrow="Visual system"
+        icon={PaletteIcon}
+        meta={
+          <>
+            <ConsoleMeta
+              label="Published"
+              value={`v${customizationState.publishedVersion}`}
+            />
+            <ConsoleMeta
+              dot
+              label="Draft"
+              tone={
+                customizationState.isDraftDifferentFromPublished
+                  ? "warning"
+                  : "positive"
+              }
+              value={
+                customizationState.isDraftDifferentFromPublished
+                  ? "Pending"
+                  : "Synced"
+              }
+            />
+            <ConsoleMeta
+              label="Versions"
+              value={customizationState.versions.length}
+            />
+          </>
+        }
+        title="Widget customization"
+      />
 
-        <CustomizationForm
-          agentId={agentId}
-          draftData={customizationState.draft}
-          draftUpdatedAt={customizationState.draftUpdatedAt}
-          isDraftDifferentFromPublished={
-            customizationState.isDraftDifferentFromPublished
-          }
-          key={agentId}
-          publishedAt={customizationState.publishedAt}
-          publishedVersion={customizationState.publishedVersion}
-          versions={customizationState.versions}
-        />
-      </div>
-    </div>
+      <CustomizationForm
+        agentId={agentId}
+        draftData={customizationState.draft}
+        draftUpdatedAt={customizationState.draftUpdatedAt}
+        isDraftDifferentFromPublished={
+          customizationState.isDraftDifferentFromPublished
+        }
+        key={agentId}
+        publishedAt={customizationState.publishedAt}
+        publishedVersion={customizationState.publishedVersion}
+        versions={customizationState.versions}
+      />
+    </ConsolePage>
   )
 }

@@ -17,7 +17,10 @@ import {
 } from "@workspace/ui/components/select"
 import { Switch } from "@workspace/ui/components/switch"
 import { Textarea } from "@workspace/ui/components/textarea"
+import { PhoneOffIcon } from "lucide-react"
+
 import { FormSchema } from "../../types"
+import { SettingRow, SettingsGroup } from "./settings-primitives"
 
 const idleTimeoutOptions = [
   { value: "0", label: "Off" },
@@ -42,49 +45,50 @@ export const VoiceCallSettingsFormFields = ({
   form,
 }: VoiceCallSettingsFormFieldsProps) => {
   return (
-    <div className="space-y-5 rounded-2xl border bg-gradient-to-br from-background via-background to-muted/40 p-4">
-      <div>
-        <p className="text-sm font-semibold">Voice call limits</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Control when live voice calls end automatically in voice-only mode.
-        </p>
-      </div>
-
+    <SettingsGroup
+      description="When a live voice call ends on its own, so an idle browser tab never holds a session open."
+      icon={PhoneOffIcon}
+      title="Call limits"
+    >
       <FormField
         control={form.control}
         name="voiceCallSettings.autoEndOnGoodbye"
         render={({ field }) => (
-          <FormItem className="flex items-center justify-between gap-4 rounded-xl border bg-muted/35 px-3 py-3">
-            <div className="space-y-0.5">
-              <FormLabel>End when visitor says goodbye</FormLabel>
-              <FormDescription className="text-xs">
-                Ends the call when the visitor signals they are done, including
-                phrases like &quot;thanks&quot; or &quot;no more questions&quot;.
-              </FormDescription>
-            </div>
-            <FormControl>
-              <Switch
-                checked={Boolean(field.value)}
-                onCheckedChange={field.onChange}
-              />
-            </FormControl>
+          <FormItem className="min-w-0 space-y-0">
+            <SettingRow
+              control={
+                <FormControl>
+                  <Switch
+                    checked={Boolean(field.value)}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              }
+              description={
+                'Ends the call when the visitor signals they are done, including phrases like "thanks" or "no more questions".'
+              }
+              label="End when the visitor says goodbye"
+            />
+            <FormMessage className="mt-1.5" />
           </FormItem>
         )}
       />
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-2">
         <FormField
           control={form.control}
           name="voiceCallSettings.idleTimeoutSeconds"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Idle timeout</FormLabel>
+            <FormItem className="console-inset min-w-0 space-y-0 px-3.5 py-3">
+              <FormLabel className="text-xs font-medium">
+                Idle timeout
+              </FormLabel>
               <Select
                 onValueChange={(value) => field.onChange(Number(value))}
                 value={String(field.value ?? 0)}
               >
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger className="mt-2.5 h-9 bg-background">
                     <SelectValue placeholder="Select idle timeout" />
                   </SelectTrigger>
                 </FormControl>
@@ -96,10 +100,10 @@ export const VoiceCallSettingsFormFields = ({
                   ))}
                 </SelectContent>
               </Select>
-              <FormDescription className="text-xs">
+              <FormDescription className="mt-2 text-[11px] leading-relaxed">
                 End the call if nobody speaks for this long.
               </FormDescription>
-              <FormMessage />
+              <FormMessage className="mt-1.5" />
             </FormItem>
           )}
         />
@@ -108,14 +112,16 @@ export const VoiceCallSettingsFormFields = ({
           control={form.control}
           name="voiceCallSettings.maxDurationSeconds"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel>Maximum call length</FormLabel>
+            <FormItem className="console-inset min-w-0 space-y-0 px-3.5 py-3">
+              <FormLabel className="text-xs font-medium">
+                Maximum call length
+              </FormLabel>
               <Select
                 onValueChange={(value) => field.onChange(Number(value))}
                 value={String(field.value ?? 0)}
               >
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger className="mt-2.5 h-9 bg-background">
                     <SelectValue placeholder="Select max duration" />
                   </SelectTrigger>
                 </FormControl>
@@ -127,10 +133,10 @@ export const VoiceCallSettingsFormFields = ({
                   ))}
                 </SelectContent>
               </Select>
-              <FormDescription className="text-xs">
+              <FormDescription className="mt-2 text-[11px] leading-relaxed">
                 Hard cap that ends the call even if the visitor is still active.
               </FormDescription>
-              <FormMessage />
+              <FormMessage className="mt-1.5" />
             </FormItem>
           )}
         />
@@ -140,23 +146,25 @@ export const VoiceCallSettingsFormFields = ({
         control={form.control}
         name="voiceCallSettings.customGoodbyePhrases"
         render={({ field }) => (
-          <FormItem>
-            <FormLabel>Custom goodbye phrases</FormLabel>
+          <FormItem className="console-inset min-w-0 space-y-0 px-3.5 py-3">
+            <FormLabel className="text-xs font-medium">
+              Custom goodbye phrases
+            </FormLabel>
             <FormControl>
               <Textarea
                 {...field}
-                className="min-h-24 bg-muted/35"
+                className="mt-2.5 min-h-24 bg-background"
                 placeholder={"thanks AIST\nthat's everything I needed"}
               />
             </FormControl>
-            <FormDescription className="text-xs">
-              Optional. One phrase per line. These are checked in addition to
-              the built-in goodbye patterns.
+            <FormDescription className="mt-2 text-[11px] leading-relaxed">
+              Optional. One phrase per line, checked in addition to the
+              built-in goodbye patterns.
             </FormDescription>
-            <FormMessage />
+            <FormMessage className="mt-1.5" />
           </FormItem>
         )}
       />
-    </div>
+    </SettingsGroup>
   )
 }

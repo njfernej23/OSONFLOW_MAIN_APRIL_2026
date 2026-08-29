@@ -25,6 +25,7 @@ import {
   type AIResponseProps,
 } from "@workspace/ui/components/ai/response"
 import { cn } from "@workspace/ui/lib/utils"
+import { richMessagePreview } from "@workspace/ui/components/ai/rich-message"
 import { useStartWidgetConversation } from "../../hooks/use-start-widget-conversation"
 
 const inboxPreviewMarkdownComponents: NonNullable<
@@ -190,7 +191,7 @@ export const WidgetInboxScreen = () => {
                           components: inboxPreviewMarkdownComponents,
                         }}
                       >
-                        {conversation.lastMessage?.text ?? ""}
+                        {richMessagePreview(conversation.lastMessage?.text ?? "")}
                       </AIResponse>
                       <ConversationStatusIcon status={conversation.status} />
                     </div>

@@ -6,7 +6,13 @@ import { useAtomValue, useSetAtom } from "jotai"
 import { ChevronRightIcon, SparklesIcon, XIcon } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
-import { mergeWidgetTheme } from "@workspace/ui/lib/widget-customization"
+import { richMessagePreview } from "@workspace/ui/components/ai/rich-message"
+import {
+  mergeWidgetCopy,
+  mergeWidgetTheme,
+  WIDGET_BRAND_FONT_STACKS,
+  type WidgetThemeSettings,
+} from "@workspace/ui/lib/widget-customization"
 import { usePaginatedQuery } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
 import type { Id } from "@workspace/backend/_generated/dataModel"
@@ -32,6 +38,58 @@ import { useEnsureVoiceContactSession } from "../../hooks/use-ensure-voice-conta
 import { useHelpTopics, useHomeHelpCards } from "../../hooks/use-help-articles"
 
 const toCssImageUrl = (url: string) => url.replaceAll('"', "%22")
+
+/**
+ * The mark at the top of the home hero.
+ *
+ * An organization either shows an image, a typeset wordmark, or nothing at
+ * all; the wordmark falls back to the assistant name so the slot is never
+ * empty by accident.
+ */
+const HomeBrandMark = ({ theme }: { theme: WidgetThemeSettings }) => {
+  if (theme.headerBrandMode === "none") {
+    return null
+  }
+
+  const imageUrl = theme.headerBannerImageUrl.trim() || theme.logoUrl.trim()
+
+  if (theme.headerBrandMode === "image" && imageUrl) {
+    return (
+      <img
+        alt="Assistant logo"
+        className="h-10 max-w-[10rem] rounded-2xl bg-white/92 object-contain p-1.5 shadow-sm"
+        src={imageUrl}
+      />
+    )
+  }
+
+  const text = theme.headerBannerText.trim() || theme.assistantName
+  const style: CSSProperties = {
+    color: theme.headerBannerTextColor,
+    fontFamily: WIDGET_BRAND_FONT_STACKS[theme.headerBannerFont],
+  }
+
+  if (theme.headerBannerStyle === "pill") {
+    style.backgroundColor = `color-mix(in srgb, ${theme.headerBannerAccentColor} 20%, transparent)`
+  }
+
+  if (theme.headerBannerStyle === "gradient") {
+    style.backgroundImage = `linear-gradient(120deg, color-mix(in srgb, ${theme.headerBannerAccentColor} 48%, transparent), transparent)`
+  }
+
+  return (
+    <p
+      className={
+        theme.headerBannerStyle === "plain"
+          ? "max-w-[11rem] truncate text-lg font-extrabold tracking-tight"
+          : "max-w-[11rem] truncate rounded-full px-3 py-2 text-sm font-extrabold tracking-tight"
+      }
+      style={style}
+    >
+      {text}
+    </p>
+  )
+}
 const DEFAULT_WIDGET_HEIGHT = 640
 const HOME_BACKGROUND_HEIGHT = DEFAULT_WIDGET_HEIGHT * 0.58
 const RECENT_HOME_CONTENT_HEIGHT = DEFAULT_WIDGET_HEIGHT * 0.75
@@ -96,7 +154,8 @@ const RecentConversationButton = ({
     conversation.lastOperatorMessageAt ??
     conversation.lastCustomerMessageAt ??
     conversation._creationTime
-  const preview = conversation.lastMessage?.text?.trim() || "Chat started"
+  const preview =
+    richMessagePreview(conversation.lastMessage?.text ?? "") || "Chat started"
   const unreadCount = conversation.unreadForContactCount ?? 0
 
   return (
@@ -191,6 +250,7 @@ export const WidgetSelectionScreen = () => {
   const setScreen = useSetAtom(screenAtom)
   const widgetSettings = useAtomValue(widgetSettingsAtom)
   const theme = mergeWidgetTheme(widgetSettings?.theme)
+  const copy = mergeWidgetCopy(widgetSettings?.widgetCopy)
   const hasOpenAIRealtimeVoice = useAtomValue(hasOpenAIRealtimeVoiceAtom)
   const hasGeminiLiveVoice = useAtomValue(hasGeminiLiveVoiceAtom)
   const organizationId = useAtomValue(organizationIdAtom)
@@ -323,27 +383,17 @@ export const WidgetSelectionScreen = () => {
           >
             <div className="relative flex items-start justify-between gap-3 pr-12">
               <div className="min-w-0">
-                {theme.logoUrl ? (
-                  <img
-                    alt="Assistant logo"
-                    className="size-10 rounded-full bg-white/92 object-contain p-1.5 shadow-sm"
-                    src={theme.logoUrl}
-                  />
-                ) : (
-                  <p className="max-w-[8rem] truncate rounded-full bg-white/16 px-3 py-2 text-sm font-extrabold tracking-tight">
-                    {theme.assistantName}
-                  </p>
-                )}
+                <HomeBrandMark theme={theme} />
               </div>
             </div>
 
             <div className={recentConversation ? "mt-20" : "mt-auto"}>
               <div className="relative max-w-[16rem]">
                 <p className="text-2xl font-bold tracking-tight text-white/68">
-                  Hi there <span className="text-xl">👋</span>
+                  {copy.homeGreeting}
                 </p>
                 <h1 className="mt-1 text-3xl leading-[1.08] font-extrabold tracking-tight">
-                  Let me know how we can help!
+                  {copy.homeHeadline}
                 </h1>
               </div>
 
@@ -364,7 +414,7 @@ export const WidgetSelectionScreen = () => {
                     }
                     type="button"
                   >
-                    <span>Start a chat</span>
+                    <span>{copy.startChatLabel}</span>
                     <MailSendIcon className="size-5 text-zinc-500" />
                   </button>
                 </div>
@@ -379,7 +429,7 @@ export const WidgetSelectionScreen = () => {
                   }
                   type="button"
                 >
-                  <span>Start a chat</span>
+                  <span>{copy.startChatLabel}</span>
                   <MailSendIcon className="size-5 text-zinc-500" />
                 </button>
               )}

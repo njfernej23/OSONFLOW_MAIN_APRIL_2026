@@ -116,6 +116,14 @@ const themeValidator = v.object({
   logoUrl: v.optional(v.string()),
   backgroundImageUrl: v.optional(v.string()),
   assistantName: v.optional(v.string()),
+  fontFamily: v.optional(
+    v.union(
+      v.literal("sans"),
+      v.literal("serif"),
+      v.literal("mono"),
+      v.literal("rounded")
+    )
+  ),
   headerBrandMode: v.optional(
     v.union(v.literal("none"), v.literal("image"), v.literal("text"))
   ),
@@ -159,6 +167,27 @@ const appearanceValidator = v.object({
   showPoweredBy: v.optional(v.boolean()),
   showHelpCenter: v.optional(v.boolean()),
   showChatHistoryDownload: v.optional(v.boolean()),
+  launcherPosition: v.optional(
+    v.union(v.literal("bottom-right"), v.literal("bottom-left"))
+  ),
+  launcherOffsetX: v.optional(v.number()),
+  launcherOffsetY: v.optional(v.number()),
+  launcherSize: v.optional(v.number()),
+  autoOpenEnabled: v.optional(v.boolean()),
+  autoOpenDelaySeconds: v.optional(v.number()),
+  autoOpenFrequency: v.optional(
+    v.union(v.literal("session"), v.literal("visitor"), v.literal("always"))
+  ),
+  notificationSoundEnabled: v.optional(v.boolean()),
+})
+
+// Visitor-facing strings an organization can rewrite without a code change.
+const widgetCopyValidator = v.object({
+  homeGreeting: v.optional(v.string()),
+  homeHeadline: v.optional(v.string()),
+  startChatLabel: v.optional(v.string()),
+  inputPlaceholder: v.optional(v.string()),
+  onlineLabel: v.optional(v.string()),
 })
 
 const widgetSettingsSnapshotValidator = v.object({
@@ -175,6 +204,7 @@ const widgetSettingsSnapshotValidator = v.object({
   voiceCallSettings: v.optional(voiceCallSettingsValidator),
   theme: v.optional(themeValidator),
   appearance: v.optional(appearanceValidator),
+  widgetCopy: v.optional(widgetCopyValidator),
 })
 
 const webhookEventTypeValidator = v.union(
@@ -313,6 +343,7 @@ export default defineSchema({
     voiceCallSettings: v.optional(voiceCallSettingsValidator),
     theme: v.optional(themeValidator),
     appearance: v.optional(appearanceValidator),
+    widgetCopy: v.optional(widgetCopyValidator),
     draft: v.optional(widgetSettingsSnapshotValidator),
     publishedVersion: v.optional(v.number()),
     publishedAt: v.optional(v.number()),
@@ -569,8 +600,19 @@ export default defineSchema({
     escalatedAt: v.optional(v.union(v.number(), v.null())),
     resolvedAt: v.optional(v.union(v.number(), v.null())),
     resolutionSource: v.optional(v.union(resolutionSourceValidator, v.null())),
+    /**
+     * Which surface produced this conversation. A workflow conversation is a
+     * different product: it runs a published flow, never attaches assistant
+     * tools, and is filtered separately in the operator inbox.
+     */
+    source: v.optional(
+      v.union(v.literal("workflow"), v.literal("widget"))
+    ),
+    /** The workflow that was live when the conversation started. */
+    workflowId: v.optional(v.id("workflows")),
   })
     .index("by_organization_id", ["organizationId"])
+    .index("by_organization_id_and_source", ["organizationId", "source"])
     .index("by_contact_session_id", ["contactSessionId"])
     .index("by_thread_id", ["threadId"])
     .index("by_status_and_organization_id", ["status", "organizationId"])

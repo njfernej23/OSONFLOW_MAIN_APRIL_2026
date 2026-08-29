@@ -7,32 +7,33 @@ import {
   type Resolver,
   type UseFormReturn,
 } from "react-hook-form"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import {
-  ChevronRightIcon,
-  ClipboardCopyIcon,
-  ClipboardPasteIcon,
-  ClockIcon,
   BoldIcon,
+  BrainCircuitIcon,
+  ChevronRightIcon,
   FileTextIcon,
   Heading2Icon,
+  HistoryIcon,
   ItalicIcon,
+  LayoutGridIcon,
+  LibraryIcon,
   LinkIcon,
   ListIcon,
   ListOrderedIcon,
   Loader2Icon,
-  MessageSquareTextIcon,
   MicIcon,
+  MousePointerClickIcon,
   PaletteIcon,
   PlusIcon,
   QuoteIcon,
-  RotateCcwIcon,
   SaveIcon,
   SendIcon,
   SettingsIcon,
-  SparklesIcon,
   Trash2Icon,
+  TypeIcon,
+  WrenchIcon,
 } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -61,7 +62,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select"
-import { Separator } from "@workspace/ui/components/separator"
 import { Switch } from "@workspace/ui/components/switch"
 import {
   Tabs,
@@ -71,10 +71,15 @@ import {
 } from "@workspace/ui/components/tabs"
 import { Textarea } from "@workspace/ui/components/textarea"
 import {
+  clampAutoOpenDelaySeconds,
   clampBorderRadius,
+  clampLauncherOffset,
   clampLauncherPromptDelaySeconds,
+  clampLauncherSize,
   DEFAULT_WIDGET_APPEARANCE,
+  DEFAULT_WIDGET_COPY,
   mergeWidgetAppearance,
+  mergeWidgetCopy,
   mergeWidgetTheme,
 } from "@workspace/ui/lib/widget-customization"
 import {
@@ -90,8 +95,19 @@ import { OpenAIRealtimeFormFields } from "./openai-realtime-form-fields"
 import { VoiceCallSettingsFormFields } from "./voice-call-settings-form-fields"
 import { ThemeFormFields } from "./theme-form-fields"
 import { AppearanceFormFields } from "./appearance-form-fields"
+import { CopyFormFields } from "./copy-form-fields"
 import { WidgetLivePreview } from "./widget-live-preview"
 import { WidgetToolsPicker } from "./widget-tools-picker"
+import {
+  ReleaseDrawer,
+  type WidgetSettingsVersionSummary,
+} from "./release-drawer"
+import {
+  SettingRow,
+  SettingsDivider,
+  SettingsGroup,
+  SettingsNotice,
+} from "./settings-primitives"
 import { FormSchema } from "../../types"
 import { widgetSettingsSchema } from "../../schemas"
 import {
@@ -111,6 +127,7 @@ type WidgetSettingsSnapshot = Pick<
   | "homeCards"
   | "theme"
   | "appearance"
+  | "widgetCopy"
 > & {
   chatSettings?: {
     model?: string
@@ -131,14 +148,6 @@ type WidgetSettingsSnapshot = Pick<
     idleTimeoutSeconds?: number
     maxDurationSeconds?: number
   }
-}
-
-type WidgetSettingsVersionSummary = {
-  version: number
-  publishedAt: number
-  publishedBy?: string
-  action: "publish" | "rollback" | "bootstrap"
-  sourceVersion?: number
 }
 
 interface CustomizationFormProps {
@@ -468,41 +477,14 @@ const buildFormDefaultValues = (
     },
     theme: defaultTheme,
     appearance: defaultAppearance,
+    widgetCopy: mergeWidgetCopy(snapshot.widgetCopy),
   }
-}
-
-const describeVersionAction = (version: WidgetSettingsVersionSummary) => {
-  if (version.action === "rollback") {
-    return version.sourceVersion
-      ? `Rolled back to v${version.sourceVersion}`
-      : "Rollback"
-  }
-  if (version.action === "bootstrap") return "Initial baseline"
-  return "Published draft"
 }
 
 const formatRelativeTime = (timestamp?: number) => {
   if (!timestamp) return "Not available"
   return `${formatDistanceToNow(timestamp)} ago`
 }
-
-const suggestionFieldConfig = [
-  {
-    name: "defaultSuggestions.suggestion1" as const,
-    label: "Suggestion 1",
-    placeholder: "e.g. How do I get started?",
-  },
-  {
-    name: "defaultSuggestions.suggestion2" as const,
-    label: "Suggestion 2",
-    placeholder: "e.g. What are your pricing plans?",
-  },
-  {
-    name: "defaultSuggestions.suggestion3" as const,
-    label: "Suggestion 3",
-    placeholder: "e.g. I need help with my account",
-  },
-]
 
 const cleanHelpTopicsForSave = (
   topics: FormSchema["helpTopics"]
@@ -915,6 +897,68 @@ const HelpTopicEditor = ({
   )
 }
 
+/**
+ * The editor is split by the job an operator came to do, not by the shape of
+ * the stored document. Each entry drives the nav rail, the panel header and
+ * which surface the preview is most useful for.
+ */
+type SectionId =
+  | "behaviour"
+  | "copy"
+  | "brand"
+  | "launcher"
+  | "help"
+  | "voice"
+
+const SECTIONS: Array<{
+  id: SectionId
+  label: string
+  description: string
+  icon: typeof PaletteIcon
+}> = [
+  {
+    id: "behaviour",
+    label: "Behaviour",
+    description:
+      "The model that answers, the instructions it follows, and the tools it may call.",
+    icon: BrainCircuitIcon,
+  },
+  {
+    id: "copy",
+    label: "Copy",
+    description:
+      "Every visitor-facing string, from the home headline to the composer placeholder.",
+    icon: TypeIcon,
+  },
+  {
+    id: "brand",
+    label: "Brand kit",
+    description:
+      "Colour, typeface, logo and the marks a visitor recognises as yours.",
+    icon: PaletteIcon,
+  },
+  {
+    id: "launcher",
+    label: "Launcher",
+    description:
+      "The floating button: where it sits, how large it is, and when it opens itself.",
+    icon: MousePointerClickIcon,
+  },
+  {
+    id: "help",
+    label: "Help centre",
+    description:
+      "Topics and articles the widget can answer from before starting a conversation.",
+    icon: FileTextIcon,
+  },
+  {
+    id: "voice",
+    label: "Voice",
+    description: "Live voice providers, the voice launcher and call handling.",
+    icon: MicIcon,
+  },
+]
+
 export const CustomizationForm = ({
   agentId,
   draftData,
@@ -937,19 +981,12 @@ export const CustomizationForm = ({
   const [isPublishing, setIsPublishing] = useState(false)
   const [isRollingBack, setIsRollingBack] = useState(false)
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
+  const [isReleaseDrawerOpen, setIsReleaseDrawerOpen] = useState(false)
   const [importPayload, setImportPayload] = useState("")
   const [isImporting, setIsImporting] = useState(false)
-  const [activeTab, setActiveTab] = useState("chat")
+  const [activeTab, setActiveTab] = useState<SectionId>("behaviour")
   const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>("idle")
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const rollbackCandidates = useMemo(
-    () => versions.filter((v) => v.version !== publishedVersion),
-    [versions, publishedVersion]
-  )
-
-  const [selectedRollbackVersion, setSelectedRollbackVersion] =
-    useState<string>(rollbackCandidates[0]?.version.toString() ?? "")
 
   const form = useForm<FormSchema, any, FormSchema>({
     resolver: zodResolver(widgetSettingsSchema) as Resolver<
@@ -971,6 +1008,7 @@ export const CustomizationForm = ({
   const watchedValues = form.watch()
   const previewTheme = mergeWidgetTheme(watchedValues.theme)
   const previewAppearance = mergeWidgetAppearance(watchedValues.appearance)
+  const previewCopy = mergeWidgetCopy(watchedValues.widgetCopy)
   const previewSuggestions = [
     watchedValues.defaultSuggestions?.suggestion1,
     watchedValues.defaultSuggestions?.suggestion2,
@@ -981,12 +1019,30 @@ export const CustomizationForm = ({
     watchedValues.geminiLiveSettings?.enabled
   )
 
-  const recentVersions = useMemo(() => versions.slice(0, 6), [versions])
   const isBusy = form.formState.isSubmitting || isPublishing || isRollingBack
 
-  const charCount = watchedValues.greetMessage?.length ?? 0
   const systemPromptLen = watchedValues.systemPrompt?.length ?? 0
   const tokenEstimate = Math.ceil(systemPromptLen / 4)
+  const enabledToolCount = watchedValues.enabledToolIds?.length ?? 0
+  const helpTopicCount = watchedValues.helpTopics?.length ?? 0
+  const suggestionCount = previewSuggestions.length
+
+  // Each section reports one fact, so the nav answers "what is configured
+  // here?" without the operator having to open every tab.
+  const sectionSummaries: Record<SectionId, string> = {
+    behaviour: `${watchedValues.chatSettings?.model ?? defaultChatModel} · ${enabledToolCount} tool${enabledToolCount === 1 ? "" : "s"}`,
+    copy: `${suggestionCount} suggestion${suggestionCount === 1 ? "" : "s"}`,
+    brand: previewTheme.headerBrandMode === "none"
+      ? "No brand mark"
+      : previewTheme.headerBrandMode === "text"
+        ? "Wordmark"
+        : "Logo",
+    launcher: `${previewAppearance.launcherPosition === "bottom-right" ? "Right" : "Left"} · ${previewAppearance.launcherSize}px`,
+    help: previewAppearance.showHelpCenter
+      ? `${helpTopicCount} topic${helpTopicCount === 1 ? "" : "s"}`
+      : "Hidden",
+    voice: previewVoiceOnly ? "Live voice on" : "Off",
+  }
 
   const buildMutationPayload = useCallback(
     (values: FormSchema) => {
@@ -996,6 +1052,8 @@ export const CustomizationForm = ({
         logoUrl: values.theme.logoUrl.trim(),
         backgroundImageUrl: values.theme.backgroundImageUrl.trim(),
         assistantName: values.theme.assistantName.trim(),
+        headerBannerImageUrl: values.theme.headerBannerImageUrl.trim(),
+        headerBannerText: values.theme.headerBannerText.trim(),
       }
       const appearance: NonNullable<WidgetSettings["appearance"]> = {
         ...values.appearance,
@@ -1015,6 +1073,33 @@ export const CustomizationForm = ({
         poweredByText:
           values.appearance.poweredByText.trim() ||
           DEFAULT_WIDGET_APPEARANCE.poweredByText,
+        launcherOffsetX: clampLauncherOffset(
+          Number(values.appearance.launcherOffsetX)
+        ),
+        launcherOffsetY: clampLauncherOffset(
+          Number(values.appearance.launcherOffsetY)
+        ),
+        launcherSize: clampLauncherSize(Number(values.appearance.launcherSize)),
+        autoOpenDelaySeconds: clampAutoOpenDelaySeconds(
+          Number(values.appearance.autoOpenDelaySeconds)
+        ),
+      }
+      const widgetCopy: NonNullable<WidgetSettings["widgetCopy"]> = {
+        homeGreeting:
+          values.widgetCopy.homeGreeting.trim() ||
+          DEFAULT_WIDGET_COPY.homeGreeting,
+        homeHeadline:
+          values.widgetCopy.homeHeadline.trim() ||
+          DEFAULT_WIDGET_COPY.homeHeadline,
+        startChatLabel:
+          values.widgetCopy.startChatLabel.trim() ||
+          DEFAULT_WIDGET_COPY.startChatLabel,
+        inputPlaceholder:
+          values.widgetCopy.inputPlaceholder.trim() ||
+          DEFAULT_WIDGET_COPY.inputPlaceholder,
+        onlineLabel:
+          values.widgetCopy.onlineLabel.trim() ||
+          DEFAULT_WIDGET_COPY.onlineLabel,
       }
       const openaiRealtimeSettings = {
         enabled: Boolean(values.openaiRealtimeSettings.enabled),
@@ -1055,6 +1140,7 @@ export const CustomizationForm = ({
         voiceCallSettings,
         theme,
         appearance,
+        widgetCopy,
       }
     },
     [agentId]
@@ -1117,12 +1203,7 @@ export const CustomizationForm = ({
     }
   })
 
-  const onRollback = async () => {
-    if (!selectedRollbackVersion) {
-      toast.error("Select a version to rollback to")
-      return
-    }
-    const targetVersion = Number(selectedRollbackVersion)
+  const onRollback = async (targetVersion: number) => {
     if (!Number.isInteger(targetVersion) || targetVersion <= 0) {
       toast.error("Selected version is invalid")
       return
@@ -1136,6 +1217,7 @@ export const CustomizationForm = ({
       toast.success(
         `Rolled back to v${targetVersion}. New published version is v${result.publishedVersion}`
       )
+      setIsReleaseDrawerOpen(false)
     } catch {
       toast.error("Unable to rollback version")
     } finally {
@@ -1214,8 +1296,6 @@ export const CustomizationForm = ({
     }
   }
 
-  const canRollback =
-    rollbackCandidates.length > 0 && selectedRollbackVersion !== ""
   const hasHelpTopics = helpTopicsArray.fields.length > 0
 
   const addHelpTopic = () => {
@@ -1249,37 +1329,33 @@ export const CustomizationForm = ({
     helpTopicsArray.replace([])
   }
 
+  const activeSection =
+    SECTIONS.find((section) => section.id === activeTab) ?? SECTIONS[0]!
+
   return (
     <Form {...form}>
       <form
-        className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)_380px] xl:items-start"
+        className="grid gap-4 xl:grid-cols-[236px_minmax(0,1fr)_340px] xl:items-start"
         onSubmit={form.handleSubmit(onSaveDraft)}
       >
         <Tabs
           className="contents"
+          onValueChange={(value) => setActiveTab(value as SectionId)}
           orientation="vertical"
           value={activeTab}
-          onValueChange={setActiveTab}
         >
-          <aside className="console-card animate-enter min-w-0 p-3 xl:sticky xl:top-4">
-            <div className="px-1 py-1">
-              <p className="console-eyebrow">Builder</p>
-              <h2 className="console-section-title mt-1.5">Widget settings</h2>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                Behavior, brand, launcher, and voice in one place.
-              </p>
-            </div>
-
-            <div className="console-inset mt-3 grid grid-cols-2 divide-x divide-[var(--console-hairline-soft)] overflow-hidden">
-              <div className="px-3 py-2">
-                <p className="console-label">Live</p>
-                <p className="console-numeral mt-1 text-sm">
-                  v{publishedVersion}
+          {/* ── section nav ─────────────────────────────────────────────── */}
+          <aside className="animate-enter min-w-0 xl:sticky xl:top-4">
+            <div className="console-card overflow-hidden">
+              <div className="border-b border-[var(--console-hairline-soft)] px-3.5 py-3">
+                <p className="console-eyebrow">Widget</p>
+                <p className="console-numeral mt-1.5 text-sm">
+                  v{publishedVersion}{" "}
+                  <span className="ml-1 text-[11px] font-normal text-muted-foreground">
+                    live
+                  </span>
                 </p>
-              </div>
-              <div className="px-3 py-2">
-                <p className="console-label">Draft</p>
-                <p className="mt-1 flex items-center gap-1.5 text-sm font-medium">
+                <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
                   <span
                     aria-hidden
                     className={cn(
@@ -1289,501 +1365,306 @@ export const CustomizationForm = ({
                         : "console-tone-positive"
                     )}
                   />
-                  {isDraftDifferentFromPublished ? "Changed" : "Current"}
+                  {isDraftDifferentFromPublished
+                    ? "Draft has unpublished changes"
+                    : "Draft matches live"}
                 </p>
               </div>
-            </div>
 
-            <TabsList className="console-segment mt-3 grid h-auto w-full grid-cols-2 gap-1 xl:flex xl:flex-col">
-              <TabsTrigger
-                className="console-segment-item h-9 justify-start border border-transparent px-3 text-xs font-medium data-active:bg-card data-active:shadow-none dark:data-active:bg-card"
-                value="chat"
-              >
-                <MessageSquareTextIcon className="size-3.5" />
-                Chat
-              </TabsTrigger>
-              <TabsTrigger
-                className="console-segment-item h-9 justify-start border border-transparent px-3 text-xs font-medium data-active:bg-card data-active:shadow-none dark:data-active:bg-card"
-                value="help"
-              >
-                <FileTextIcon className="size-3.5" />
-                Help Center
-              </TabsTrigger>
-              <TabsTrigger
-                className="console-segment-item h-9 justify-start border border-transparent px-3 text-xs font-medium data-active:bg-card data-active:shadow-none dark:data-active:bg-card"
-                value="brand"
-              >
-                <PaletteIcon className="size-3.5" />
-                Brand Kit
-              </TabsTrigger>
-              <TabsTrigger
-                className="console-segment-item h-9 justify-start border border-transparent px-3 text-xs font-medium data-active:bg-card data-active:shadow-none dark:data-active:bg-card"
-                value="appearance"
-              >
-                <SparklesIcon className="size-3.5" />
-                Appearance
-              </TabsTrigger>
-              <TabsTrigger
-                className="console-segment-item h-9 justify-start border border-transparent px-3 text-xs font-medium data-active:bg-card data-active:shadow-none dark:data-active:bg-card"
-                value="voice"
-              >
-                <MicIcon className="size-3.5" />
-                Voice
-              </TabsTrigger>
-            </TabsList>
-
-            <div className="console-inset mt-3 space-y-3 p-3">
-              <div className="flex items-center gap-2">
-                <ClockIcon className="size-3.5 text-muted-foreground" />
-                <p className="text-xs font-semibold text-foreground">
-                  Release
-                </p>
-              </div>
-              <div className="grid gap-2 text-xs">
-                <div className="console-inset px-2.5 py-2">
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase">
-                    Last published
-                  </p>
-                  <p className="mt-0.5 truncate font-medium">
-                    {formatRelativeTime(publishedAt)}
-                  </p>
-                </div>
-                <div className="console-inset px-2.5 py-2">
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase">
-                    Draft saved
-                  </p>
-                  <p className="mt-0.5 truncate font-medium">
-                    {formatRelativeTime(draftUpdatedAt)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-3 space-y-2 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/35 p-3">
-              <div className="flex items-center gap-2">
-                <RotateCcwIcon className="size-3.5 text-muted-foreground" />
-                <p className="text-xs font-semibold text-foreground">
-                  Rollback
-                </p>
-              </div>
-              <Select
-                disabled={isBusy || rollbackCandidates.length === 0}
-                onValueChange={setSelectedRollbackVersion}
-                value={selectedRollbackVersion}
-              >
-                <SelectTrigger className="h-9 w-full border-[var(--console-hairline-soft)] bg-muted/55 text-xs">
-                  <SelectValue placeholder="Select version" />
-                </SelectTrigger>
-                <SelectContent>
-                  {rollbackCandidates.map((v) => (
-                    <SelectItem key={v.version} value={v.version.toString()}>
-                      v{v.version} - {describeVersionAction(v)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                className="h-8 w-full gap-1.5 text-xs"
-                disabled={!canRollback || isBusy}
-                onClick={onRollback}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                <RotateCcwIcon className="size-3.5" />
-                {isRollingBack ? "Rolling back..." : "Rollback"}
-              </Button>
-              {rollbackCandidates.length === 0 ? (
-                <p className="text-[11px] text-muted-foreground">
-                  Publish an update to enable rollback.
-                </p>
-              ) : null}
-            </div>
-
-            <div className="mt-3 space-y-2 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/35 p-3">
-              <div className="flex items-center gap-2">
-                <ClipboardCopyIcon className="size-3.5 text-muted-foreground" />
-                <p className="text-xs font-semibold text-foreground">
-                  Transfer
-                </p>
-              </div>
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Copy settings from this org and paste them into another org or
-                environment. For knowledge base, workflows, and API keys, use{" "}
-                <a className="underline" href="/org-transfer">
-                  Data transfer
-                </a>
-                .
-              </p>
-              <div className="grid gap-2">
-                <Button
-                  className="h-8 w-full gap-1.5 text-xs"
-                  disabled={isBusy}
-                  onClick={onCopySettings}
-                  size="sm"
-                  type="button"
-                  variant="outline"
-                >
-                  <ClipboardCopyIcon className="size-3.5" />
-                  Copy settings
-                </Button>
-                <Button
-                  className="h-8 w-full gap-1.5 text-xs"
-                  disabled={isBusy}
-                  onClick={onOpenImportDialog}
-                  size="sm"
-                  type="button"
-                  variant="outline"
-                >
-                  <ClipboardPasteIcon className="size-3.5" />
-                  Import settings
-                </Button>
-              </div>
-            </div>
-
-            {recentVersions.length > 0 ? (
-              <div className="mt-3 space-y-2 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/35 p-3">
-                <p className="text-[10px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
-                  Version history
-                </p>
-                <div className="space-y-1.5">
-                  {recentVersions.slice(0, 4).map((version) => (
-                    <div
+              <TabsList className="flex h-auto w-full flex-row gap-1 overflow-x-auto bg-transparent p-2 xl:flex-col">
+                {SECTIONS.map((section) => (
+                  <TabsTrigger
+                    className={cn(
+                      "group flex h-auto w-full shrink-0 items-start gap-2.5 rounded-[10px] border border-transparent px-2.5 py-2 text-left",
+                      "data-active:border-[var(--console-hairline-soft)] data-active:bg-muted/60 data-active:shadow-none"
+                    )}
+                    key={section.id}
+                    value={section.id}
+                  >
+                    <span
                       className={cn(
-                        "rounded-lg border px-2.5 py-2",
-                        version.version === publishedVersion
-                          ? "border-[var(--console-hairline)] bg-muted/60"
-                          : "border-[var(--console-hairline-soft)] bg-muted/35"
+                        "mt-px flex size-6 shrink-0 items-center justify-center rounded-[7px] border transition-colors",
+                        "border-[var(--console-hairline-soft)] bg-background text-muted-foreground",
+                        "group-data-active:border-primary/30 group-data-active:bg-primary/10 group-data-active:text-primary"
                       )}
-                      key={version.version}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono text-[11px] font-semibold">
-                          v{version.version}
-                        </span>
-                        <span className="truncate text-[10px] text-muted-foreground">
-                          {formatRelativeTime(version.publishedAt)}
-                        </span>
-                      </div>
-                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                        {describeVersionAction(version)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                      <section.icon className="size-3.5" />
+                    </span>
+                    <span className="hidden min-w-0 flex-1 xl:block">
+                      <span className="block truncate text-xs font-medium text-foreground">
+                        {section.label}
+                      </span>
+                      <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">
+                        {sectionSummaries[section.id]}
+                      </span>
+                    </span>
+                    <span className="text-xs font-medium xl:hidden">
+                      {section.label}
+                    </span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
+              <div className="border-t border-[var(--console-hairline-soft)] p-2">
+                <Button
+                  className="h-8 w-full justify-start gap-2 text-xs"
+                  disabled={isBusy}
+                  onClick={() => setIsReleaseDrawerOpen(true)}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  <HistoryIcon className="size-3.5" />
+                  Releases &amp; transfer
+                </Button>
               </div>
-            ) : null}
+            </div>
           </aside>
 
+          {/* ── editor ──────────────────────────────────────────────────── */}
           <main className="animate-enter min-w-0 space-y-4">
             <section className="console-card overflow-hidden">
-              <div className="flex items-start justify-between gap-3 border-b border-[var(--console-hairline-soft)] px-4 py-4 sm:px-5">
+              <div className="flex items-start justify-between gap-3 border-b border-[var(--console-hairline-soft)] px-4 py-4 sm:px-6">
                 <div className="flex min-w-0 items-start gap-3">
                   <span className="console-medallion size-9 shrink-0">
-                    <SettingsIcon className="size-4" />
+                    <activeSection.icon className="size-4" />
                   </span>
                   <div className="min-w-0">
-                    <p className="console-eyebrow">Editor</p>
-                    <h3 className="console-section-title mt-1.5">
-                      Widget configuration
-                    </h3>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Update the customer-facing widget without changing embed
-                      code.
+                    <h2 className="console-section-title">
+                      {activeSection.label}
+                    </h2>
+                    <p className="mt-1 max-w-xl text-xs leading-relaxed text-muted-foreground">
+                      {activeSection.description}
                     </p>
                   </div>
                 </div>
                 <span className="console-label hidden shrink-0 sm:block">
-                  Auto-save on
+                  Autosaved
                 </span>
               </div>
 
-              <div className="p-4 sm:p-5">
+              <div className="p-4 sm:p-6">
                 <TabsContent
-                  className="mt-0 animate-in space-y-6 duration-200 fade-in-0 slide-in-from-right-2"
-                  value="chat"
+                  className="mt-0 animate-in duration-200 fade-in-0 slide-in-from-right-2"
+                  value="behaviour"
                 >
-                  <FormField
-                    control={form.control}
-                    name="greetMessage"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-medium">
-                          Greeting Message
-                        </FormLabel>
-                        <FormControl>
-                          <Textarea
-                            {...field}
-                            className="resize-none bg-muted/35"
-                            placeholder="Welcome message shown when chat opens"
-                            rows={3}
-                          />
-                        </FormControl>
-                        <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
-                          <FormDescription className="text-xs">
-                            The first message customers see when they open the
-                            chat
-                          </FormDescription>
-                          <span
-                            className={cn(
-                              "text-xs tabular-nums",
-                              charCount > 280
-                                ? "text-destructive"
-                                : "text-muted-foreground/60"
-                            )}
-                          >
-                            {charCount}/300
-                          </span>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <SettingsGroup
+                    description="The model that answers, and how much of your context it carries into every reply."
+                    icon={BrainCircuitIcon}
+                    title="Reasoning"
+                  >
+                    <FormField
+                      control={form.control}
+                      name="chatSettings.model"
+                      render={({ field }) => {
+                        const modelOptions = getSelectableChatModelOptions(
+                          field.value
+                        )
+                        const selectedModel = modelOptions.find(
+                          (model) => model.value === field.value
+                        )
 
-                  <FormField
-                    control={form.control}
-                    name="chatSettings.model"
-                    render={({ field }) => {
-                      const modelOptions = getSelectableChatModelOptions(
-                        field.value
-                      )
-                      const selectedModel = modelOptions.find(
-                        (model) => model.value === field.value
-                      )
-
-                      return (
-                        <FormItem>
-                          <FormLabel className="text-sm font-medium">
-                            Chat Response Model
-                          </FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger className="h-11 w-full bg-muted/35 px-3">
-                                <SelectValue placeholder="Select a chat model">
-                                  {selectedModel?.label}
-                                </SelectValue>
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent
-                              className="max-w-[min(560px,calc(100vw-2rem))]"
-                              position="popper"
-                            >
-                              {modelOptions.map((model) => (
-                                <SelectItem
-                                  className="items-start py-2.5 pr-9"
-                                  key={model.value}
-                                  textValue={model.label}
-                                  value={model.value}
-                                >
-                                  <span className="grid min-w-0 gap-0.5">
-                                    <span className="truncate font-medium">
-                                      {model.label}
-                                    </span>
-                                    <span className="text-xs leading-snug whitespace-normal text-muted-foreground">
-                                      {model.description}
-                                    </span>
-                                  </span>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormDescription className="text-xs leading-relaxed">
-                            Used for regular widget chat replies with your saved
-                            OpenAI API key. Live voice models stay in the Voice
-                            tab.
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )
-                    }}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="appearance.showChatHistoryDownload"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between gap-4 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/10 px-4 py-3.5">
-                        <div className="flex min-w-0 flex-col gap-1">
-                          <FormLabel className="text-sm font-semibold">
-                            Chat History Download
-                          </FormLabel>
-                          <FormDescription className="text-xs">
-                            Show the download button in widget conversations so
-                            users can save their transcript.
-                          </FormDescription>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="systemPrompt"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-medium">
-                          System Prompt
-                        </FormLabel>
-                        <FormControl>
-                          <Textarea
-                            {...field}
-                            className="min-h-[220px] bg-muted/35 font-mono text-xs"
-                            placeholder="Set the assistant's default behavior and rules"
-                            value={field.value ?? ""}
-                          />
-                        </FormControl>
-                        <div className="mt-1 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
-                          <FormDescription className="text-xs">
-                            Controls how the AI assistant behaves for customer
-                            conversations.
-                          </FormDescription>
-                          <div className="flex items-center gap-3 sm:ml-2 sm:shrink-0">
-                            <span className="text-xs text-muted-foreground/60 tabular-nums">
-                              {systemPromptLen} chars
+                        return (
+                          <FormItem className="console-inset min-w-0 space-y-0 px-3.5 py-3">
+                            <span className="text-xs font-medium text-foreground">
+                              Chat response model
                             </span>
-                            <span
-                              className={cn(
-                                "text-xs tabular-nums",
-                                tokenEstimate > 1000
-                                  ? "text-destructive"
-                                  : tokenEstimate > 500
-                                    ? "text-amber-500"
-                                    : "text-muted-foreground/60"
-                              )}
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
                             >
-                              ~{tokenEstimate} tokens
+                              <FormControl>
+                                <SelectTrigger className="mt-2.5 h-10 w-full bg-background px-3">
+                                  <SelectValue placeholder="Select a chat model">
+                                    {selectedModel?.label}
+                                  </SelectValue>
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent
+                                className="max-w-[min(560px,calc(100vw-2rem))]"
+                                position="popper"
+                              >
+                                {modelOptions.map((model) => (
+                                  <SelectItem
+                                    className="items-start py-2.5 pr-9"
+                                    key={model.value}
+                                    textValue={model.label}
+                                    value={model.value}
+                                  >
+                                    <span className="grid min-w-0 gap-0.5">
+                                      <span className="truncate font-medium">
+                                        {model.label}
+                                      </span>
+                                      <span className="text-xs leading-snug whitespace-normal text-muted-foreground">
+                                        {model.description}
+                                      </span>
+                                    </span>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                              Used for widget chat replies with your saved
+                              OpenAI key. Live voice models are set in the Voice
+                              section.
+                            </p>
+                            <FormMessage className="mt-1.5" />
+                          </FormItem>
+                        )
+                      }}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="systemPrompt"
+                      render={({ field }) => (
+                        <FormItem className="console-inset min-w-0 space-y-0 px-3.5 py-3">
+                          <div className="flex flex-wrap items-baseline justify-between gap-2">
+                            <span className="text-xs font-medium text-foreground">
+                              System prompt
+                            </span>
+                            <span className="flex items-center gap-3">
+                              <span className="console-numeral text-[10px] text-muted-foreground/70">
+                                {systemPromptLen} chars
+                              </span>
+                              <span
+                                className={cn(
+                                  "console-numeral text-[10px]",
+                                  tokenEstimate > 1000
+                                    ? "console-tone-critical"
+                                    : tokenEstimate > 500
+                                      ? "console-tone-warning"
+                                      : "text-muted-foreground/70"
+                                )}
+                              >
+                                ~{tokenEstimate} tokens
+                              </span>
                             </span>
                           </div>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                          <FormControl>
+                            <Textarea
+                              {...field}
+                              className="mt-2.5 min-h-[220px] bg-background font-mono text-xs"
+                              placeholder="Set the assistant's default behavior and rules"
+                              value={field.value ?? ""}
+                            />
+                          </FormControl>
+                          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                            Sent with every customer conversation. Keep it
+                            specific about tone, escalation and what the
+                            assistant must never do.
+                          </p>
+                          <FormMessage className="mt-1.5" />
+                        </FormItem>
+                      )}
+                    />
+                  </SettingsGroup>
 
-                  <FormField
-                    control={form.control}
-                    name="enabledToolIds"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-medium">
-                          Tools for this widget
-                        </FormLabel>
-                        <FormControl>
-                          <WidgetToolsPicker
-                            value={
-                              field.value as Id<"assistantTools">[] | undefined
+                  <SettingsDivider />
+
+                  <SettingsGroup
+                    description="Actions the assistant can take mid-conversation. Definitions live in Assistant tools."
+                    icon={WrenchIcon}
+                    title="Tools"
+                  >
+                    <FormField
+                      control={form.control}
+                      name="enabledToolIds"
+                      render={({ field }) => (
+                        <FormItem className="min-w-0 space-y-0">
+                          <FormControl>
+                            <WidgetToolsPicker
+                              onChange={field.onChange}
+                              value={
+                                field.value as
+                                  | Id<"assistantTools">[]
+                                  | undefined
+                              }
+                            />
+                          </FormControl>
+                          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                            Saved with the draft and applied when you publish.
+                          </p>
+                          <FormMessage className="mt-1.5" />
+                        </FormItem>
+                      )}
+                    />
+                  </SettingsGroup>
+
+                  <SettingsDivider />
+
+                  <SettingsGroup
+                    description="What a visitor can do with their own conversation history."
+                    icon={SettingsIcon}
+                    title="Transcript"
+                  >
+                    <FormField
+                      control={form.control}
+                      name="appearance.showChatHistoryDownload"
+                      render={({ field }) => (
+                        <FormItem className="min-w-0 space-y-0">
+                          <SettingRow
+                            control={
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
                             }
-                            onChange={field.onChange}
+                            description="Adds a download button to the chat header so visitors can save the transcript."
+                            label="Allow transcript download"
                           />
-                        </FormControl>
-                        <FormDescription className="text-xs">
-                          Saved with your widget draft when you publish.
-                          Configure tool definitions in Assistant Tools first.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <Separator />
-
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-sm font-medium">
-                        Default Suggestions
-                      </h3>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        Quick reply chips to guide the first interaction
-                      </p>
-                    </div>
-                    <div className="grid gap-3">
-                      {suggestionFieldConfig.map((suggestionField, index) => (
-                        <FormField
-                          control={form.control}
-                          key={suggestionField.name}
-                          name={suggestionField.name}
-                          render={({ field }) => (
-                            <FormItem>
-                              <div className="flex items-center gap-3 rounded-xl border border-[var(--console-hairline-soft)] bg-muted/10 px-3 py-2.5">
-                                <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-background text-xs font-medium text-muted-foreground">
-                                  {index + 1}
-                                </div>
-                                <FormControl>
-                                  <Input
-                                    {...field}
-                                    className="border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
-                                    placeholder={suggestionField.placeholder}
-                                  />
-                                </FormControl>
-                                <span className="w-8 shrink-0 text-right text-[10px] text-muted-foreground/50 tabular-nums">
-                                  {field.value?.length ?? 0}/80
-                                </span>
-                              </div>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      ))}
-                    </div>
-                  </div>
+                          <FormMessage className="mt-1.5" />
+                        </FormItem>
+                      )}
+                    />
+                  </SettingsGroup>
                 </TabsContent>
 
                 <TabsContent
-                  className="mt-0 animate-in space-y-5 duration-200 fade-in-0 slide-in-from-right-2"
+                  className="mt-0 animate-in duration-200 fade-in-0 slide-in-from-right-2"
+                  value="copy"
+                >
+                  <CopyFormFields form={form} />
+                </TabsContent>
+
+                <TabsContent
+                  className="mt-0 animate-in duration-200 fade-in-0 slide-in-from-right-2"
                   value="help"
                 >
-                  <div>
-                    <h3 className="text-sm font-medium">
-                      Help Topics and Articles
-                    </h3>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      Choose which help cards appear on Home, then manage the
-                      full topic and article library below.
-                    </p>
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="appearance.showHelpCenter"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between gap-4 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/10 px-4 py-3.5">
-                        <div className="flex min-w-0 flex-col gap-1">
-                          <FormLabel className="text-sm font-semibold">
-                            Show Help Center in widget
-                          </FormLabel>
-                          <FormDescription className="text-xs">
-                            Hide the Help button, search entry, and help cards
-                            without deleting topics or articles.
-                          </FormDescription>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
+                  <SettingsGroup
+                    description="Written answers the widget can show before anyone starts a conversation."
+                    icon={FileTextIcon}
+                    title="Availability"
+                  >
+                    <FormField
+                      control={form.control}
+                      name="appearance.showHelpCenter"
+                      render={({ field }) => (
+                        <FormItem className="min-w-0 space-y-0">
+                          <SettingRow
+                            control={
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                            }
+                            description="Hides the Help button, the search entry and the home cards without deleting any topics or articles."
+                            label="Show the help centre in the widget"
                           />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
+                          <FormMessage className="mt-1.5" />
+                        </FormItem>
+                      )}
+                    />
+                  </SettingsGroup>
 
-                  <div className="space-y-3 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/10 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold">Home cards</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                          Pick the topics or direct articles shown on the widget
-                          Home screen.
-                        </p>
-                      </div>
+                  <SettingsDivider />
+
+                  <SettingsGroup
+                    actions={
                       <Button
                         className="h-8 gap-1.5 text-xs"
                         disabled={!hasHelpTopics}
@@ -1798,10 +1679,13 @@ export const CustomizationForm = ({
                         variant="outline"
                       >
                         <PlusIcon className="size-3.5" />
-                        Add Home card
+                        Add card
                       </Button>
-                    </div>
-
+                    }
+                    description="The topics or articles shown on the widget home screen, in order."
+                    icon={LayoutGridIcon}
+                    title="Home cards"
+                  >
                     {hasHelpTopics ? (
                       <div className="grid gap-3">
                         {homeCardsArray.fields.map((homeCard, cardIndex) => {
@@ -1813,7 +1697,7 @@ export const CustomizationForm = ({
 
                           return (
                             <div
-                              className="grid gap-3 rounded-xl border border-[var(--console-hairline-soft)] bg-card p-3 md:grid-cols-[1fr_1fr_auto]"
+                              className="console-inset grid gap-3 p-3 md:grid-cols-[1fr_1fr_auto]"
                               key={homeCard.id}
                             >
                               <FormField
@@ -1919,50 +1803,47 @@ export const CustomizationForm = ({
                         })}
                       </div>
                     ) : (
-                      <div className="rounded-xl border border-dashed border-[var(--console-hairline-soft)] bg-background/50 px-4 py-5 text-center">
+                      <div className="console-inset border-dashed px-4 py-5 text-center">
                         <p className="text-sm font-medium">
-                          Help Center is removed
+                          No help content yet
                         </p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          Add a topic to enable Help in the widget again.
+                          Add a topic below to switch the help centre back on.
                         </p>
                       </div>
                     )}
-                  </div>
+                  </SettingsGroup>
 
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--console-hairline-soft)] bg-muted/10 p-3">
-                    <div>
-                      <p className="text-xs font-semibold">
-                        {helpTopicsArray.fields.length} topic
-                        {helpTopicsArray.fields.length === 1 ? "" : "s"}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        Add, remove, and format the full help center content.
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        className="h-8 gap-1.5 text-xs"
-                        disabled={!hasHelpTopics}
-                        onClick={removeAllHelpContent}
-                        type="button"
-                        variant="ghost"
-                      >
-                        <Trash2Icon className="size-3.5" />
-                        Remove all
-                      </Button>
-                      <Button
-                        className="h-8 gap-1.5 text-xs"
-                        onClick={addHelpTopic}
-                        type="button"
-                        variant="outline"
-                      >
-                        <PlusIcon className="size-3.5" />
-                        Add topic
-                      </Button>
-                    </div>
-                  </div>
+                  <SettingsDivider />
 
+                  <SettingsGroup
+                    actions={
+                      <>
+                        <Button
+                          className="h-8 gap-1.5 text-xs"
+                          disabled={!hasHelpTopics}
+                          onClick={removeAllHelpContent}
+                          type="button"
+                          variant="ghost"
+                        >
+                          <Trash2Icon className="size-3.5" />
+                          Remove all
+                        </Button>
+                        <Button
+                          className="h-8 gap-1.5 text-xs"
+                          onClick={addHelpTopic}
+                          type="button"
+                          variant="outline"
+                        >
+                          <PlusIcon className="size-3.5" />
+                          Add topic
+                        </Button>
+                      </>
+                    }
+                    description={`${helpTopicsArray.fields.length} topic${helpTopicsArray.fields.length === 1 ? "" : "s"} in the library. Each topic holds one or more formatted articles.`}
+                    icon={LibraryIcon}
+                    title="Topics and articles"
+                  >
                   {hasHelpTopics ? (
                     <div className="grid gap-5">
                       {helpTopicsArray.fields.map((topicField, topicIndex) => (
@@ -1976,13 +1857,13 @@ export const CustomizationForm = ({
                       ))}
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-dashed border-[var(--console-hairline-soft)] bg-muted/10 px-5 py-8 text-center">
+                    <div className="console-inset border-dashed px-5 py-8 text-center">
                       <p className="text-sm font-semibold">
                         No help topics or articles
                       </p>
                       <p className="mx-auto mt-1 max-w-sm text-xs text-muted-foreground">
-                        The widget Help button stays disabled until you add a
-                        topic with at least one article.
+                        The widget Help button stays disabled until a topic has
+                        at least one article.
                       </p>
                       <Button
                         className="mt-4 h-8 gap-1.5 text-xs"
@@ -1995,6 +1876,7 @@ export const CustomizationForm = ({
                       </Button>
                     </div>
                   )}
+                  </SettingsGroup>
                 </TabsContent>
 
                 <TabsContent
@@ -2006,51 +1888,61 @@ export const CustomizationForm = ({
 
                 <TabsContent
                   className="mt-0 animate-in duration-200 fade-in-0 slide-in-from-right-2"
-                  value="appearance"
+                  value="launcher"
                 >
                   <AppearanceFormFields form={form} />
                 </TabsContent>
 
                 <TabsContent
-                  className="mt-0 animate-in space-y-6 duration-200 fade-in-0 slide-in-from-right-2"
+                  className="mt-0 animate-in duration-200 fade-in-0 slide-in-from-right-2"
                   value="voice"
                 >
-                  <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/10 p-4">
-                    <p className="text-sm font-semibold text-foreground">
-                      Live voice mode
-                    </p>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                      When OpenAI Realtime or Gemini Live is enabled, the
-                      published widget opens as a voice-only assistant. Visitors
-                      are stored as Anonymous voice visitor, the regular chat
-                      view is hidden, and final transcript lines are saved in AI
-                      voicechats.
-                    </p>
-                  </div>
-                  <FormField
-                    control={form.control}
-                    name="appearance.voiceLauncherLabel"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm font-medium">
-                          Voice Launcher Text
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            className="bg-muted/35"
-                            placeholder="Talk with us"
-                          />
-                        </FormControl>
-                        <FormDescription className="text-xs">
-                          Text shown next to the animated voice orb. This only
-                          applies when live voice opens the widget directly.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <SettingsGroup
+                    description="When a live voice provider is enabled, the published widget opens straight into a voice-only assistant."
+                    icon={MicIcon}
+                    title="Live voice"
+                  >
+                    <SettingsNotice
+                      icon={MicIcon}
+                      title="Live voice replaces the chat surface"
+                      tone="accent"
+                    >
+                      Visitors are stored as an anonymous voice visitor, the
+                      regular chat view is hidden, and final transcript lines
+                      are saved under AI voice chats.
+                    </SettingsNotice>
+
+                    <FormField
+                      control={form.control}
+                      name="appearance.voiceLauncherLabel"
+                      render={({ field }) => (
+                        <FormItem className="console-inset min-w-0 space-y-0 px-3.5 py-3">
+                          <span className="text-xs font-medium text-foreground">
+                            Voice launcher text
+                          </span>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              className="mt-2.5 h-9 bg-background"
+                              placeholder="Talk with us"
+                            />
+                          </FormControl>
+                          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                            Shown beside the animated voice orb when live voice
+                            opens the widget directly.
+                          </p>
+                          <FormMessage className="mt-1.5" />
+                        </FormItem>
+                      )}
+                    />
+                  </SettingsGroup>
+
+                  <SettingsDivider />
+
                   <OpenAIRealtimeFormFields form={form} />
+
+                  <SettingsDivider />
+
                   <VoiceCallSettingsFormFields form={form} />
                 </TabsContent>
               </div>
@@ -2059,6 +1951,7 @@ export const CustomizationForm = ({
             <div className="xl:hidden">
               <WidgetLivePreview
                 appearance={previewAppearance}
+                copy={previewCopy}
                 greetMessage={watchedValues.greetMessage}
                 suggestions={previewSuggestions}
                 theme={previewTheme}
@@ -2066,11 +1959,12 @@ export const CustomizationForm = ({
               />
             </div>
 
+            {/* ── action bar ────────────────────────────────────────────── */}
             <div className="sticky bottom-0 z-10 sm:bottom-4">
               <div className="console-card flex flex-wrap items-center justify-between gap-3 px-4 py-3 shadow-[var(--console-shadow-lift)] sm:px-5">
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-center gap-2.5">
                   {autoSaveStatus === "saving" ? (
-                    <Loader2Icon className="size-3 animate-spin text-muted-foreground" />
+                    <Loader2Icon className="size-3.5 animate-spin text-muted-foreground" />
                   ) : (
                     <span
                       aria-hidden
@@ -2082,59 +1976,38 @@ export const CustomizationForm = ({
                       )}
                     />
                   )}
-                  <div>
-                    <p className="text-sm leading-none font-medium">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm leading-none font-medium">
                       {autoSaveStatus === "saving"
-                        ? "Auto-saving..."
+                        ? "Saving…"
                         : autoSaveStatus === "saved"
-                          ? "Auto-saved"
+                          ? "Draft saved"
                           : form.formState.isDirty
                             ? "Unsaved changes"
                             : "All changes saved"}
                     </p>
-                    <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">
+                    <p className="mt-1 hidden truncate text-[11px] text-muted-foreground sm:block">
                       {isDraftDifferentFromPublished
-                        ? "Draft differs from published version"
-                        : "Draft matches published version"}
+                        ? "Publish to push this draft to your customers"
+                        : "Live and draft are identical"}
                     </p>
                   </div>
                 </div>
-                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+
+                <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
                   <Button
                     className="gap-1.5"
                     disabled={isBusy}
-                    onClick={onCopySettings}
-                    size="sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <ClipboardCopyIcon className="size-3.5" />
-                    Copy settings
-                  </Button>
-                  <Button
-                    className="gap-1.5"
-                    disabled={isBusy}
-                    onClick={onOpenImportDialog}
-                    size="sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <ClipboardPasteIcon className="size-3.5" />
-                    Import
-                  </Button>
-                  <Button
-                    className="gap-1.5"
-                    size="sm"
-                    type="button"
-                    variant="ghost"
                     onClick={onCopyEmbedLink}
-                    disabled={isBusy}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
                   >
                     <LinkIcon className="size-3.5" />
-                    Copy Link
+                    Preview link
                   </Button>
                   <Button
-                    className="w-full gap-1.5 sm:w-auto"
+                    className="gap-1.5"
                     disabled={isBusy}
                     size="sm"
                     type="submit"
@@ -2142,15 +2015,14 @@ export const CustomizationForm = ({
                   >
                     <SaveIcon className="size-3.5" />
                     {form.formState.isSubmitting && !isPublishing
-                      ? "Saving..."
-                      : "Save Draft"}
+                      ? "Saving…"
+                      : "Save draft"}
                   </Button>
                   <Button
                     className={cn(
-                      "w-full gap-1.5 transition-all duration-300 sm:w-auto",
-                      isDraftDifferentFromPublished
-                        ? "shadow-[0_20px_40px_-24px_color-mix(in_srgb,var(--primary)_80%,transparent)] ring-2 ring-primary/25"
-                        : ""
+                      "gap-1.5 transition-all duration-300",
+                      isDraftDifferentFromPublished &&
+                        "shadow-[0_20px_40px_-24px_color-mix(in_srgb,var(--primary)_80%,transparent)] ring-2 ring-primary/25"
                     )}
                     disabled={isBusy}
                     onClick={onPublishDraft}
@@ -2158,20 +2030,22 @@ export const CustomizationForm = ({
                     type="button"
                   >
                     <SendIcon className="size-3.5" />
-                    {isPublishing ? "Publishing..." : "Publish"}
-                    {isDraftDifferentFromPublished && (
+                    {isPublishing ? "Publishing…" : "Publish"}
+                    {isDraftDifferentFromPublished ? (
                       <ChevronRightIcon className="size-3" />
-                    )}
+                    ) : null}
                   </Button>
                 </div>
               </div>
             </div>
           </main>
 
+          {/* ── preview ─────────────────────────────────────────────────── */}
           <div className="hidden xl:block">
             <div className="xl:animate-pop xl:sticky xl:top-4">
               <WidgetLivePreview
                 appearance={previewAppearance}
+                copy={previewCopy}
                 greetMessage={watchedValues.greetMessage}
                 suggestions={previewSuggestions}
                 theme={previewTheme}
@@ -2182,6 +2056,21 @@ export const CustomizationForm = ({
         </Tabs>
       </form>
 
+      <ReleaseDrawer
+        draftUpdatedAt={draftUpdatedAt}
+        formatRelativeTime={formatRelativeTime}
+        isBusy={isBusy}
+        isRollingBack={isRollingBack}
+        onCopySettings={onCopySettings}
+        onImportSettings={onOpenImportDialog}
+        onOpenChange={setIsReleaseDrawerOpen}
+        onRollback={onRollback}
+        open={isReleaseDrawerOpen}
+        publishedAt={publishedAt}
+        publishedVersion={publishedVersion}
+        versions={versions}
+      />
+
       <Dialog onOpenChange={setIsImportDialogOpen} open={isImportDialogOpen}>
         <DialogContent className="!flex max-h-[90vh] max-w-2xl flex-col overflow-hidden">
           <DialogHeader>
@@ -2191,12 +2080,12 @@ export const CustomizationForm = ({
               replaces the current draft for this organization.
             </DialogDescription>
           </DialogHeader>
-            <Textarea
-              className="h-[min(42vh,360px)] field-sizing-fixed resize-none overflow-y-auto font-mono text-xs"
-              onChange={(event) => setImportPayload(event.target.value)}
-              placeholder='Paste exported JSON here, e.g. {"type":"osonflow-widget-settings",...}'
-              value={importPayload}
-            />
+          <Textarea
+            className="h-[min(42vh,360px)] field-sizing-fixed resize-none overflow-y-auto font-mono text-xs"
+            onChange={(event) => setImportPayload(event.target.value)}
+            placeholder='Paste exported JSON here, e.g. {"type":"osonflow-widget-settings",...}'
+            value={importPayload}
+          />
           <DialogFooter>
             <Button
               disabled={isImporting}
@@ -2211,7 +2100,7 @@ export const CustomizationForm = ({
               onClick={onImportSettings}
               type="button"
             >
-              {isImporting ? "Importing..." : "Import draft"}
+              {isImporting ? "Importing…" : "Import draft"}
             </Button>
           </DialogFooter>
         </DialogContent>

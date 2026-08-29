@@ -23,6 +23,7 @@ import {
   searchKnowledgeBase,
 } from "../lib/workflowAiGeneration"
 import { runApiStep } from "../lib/workflowApiStep"
+import { exitMessages, runAgentTurn } from "../lib/workflowAgentTurn"
 import { buildToolArgs } from "../system/workflowToolSteps"
 import { OPENAI_CHAT_MODEL } from "../lib/openai"
 
@@ -1084,6 +1085,148 @@ export const previewAiStep = action({
 })
 
 /**
+ * One Agent-node turn for the builder's Run panel.
+ *
+ * Returns the reply, the exit the agent chose, any quick replies it offered and
+ * the variables it collected, so the panel can route the run exactly the way a
+ * published conversation would.
+ */
+export const previewAgentTurn = action({
+  args: {
+    data: v.any(),
+    variables: v.any(),
+  },
+  returns: v.object({
+    reply: v.string(),
+    exitId: v.union(v.string(), v.null()),
+    exitName: v.union(v.string(), v.null()),
+    exitMessages: v.array(v.string()),
+    action: v.union(
+      v.literal("continue"),
+      v.literal("end"),
+      v.literal("callForward")
+    ),
+    buttons: v.array(v.object({ id: v.string(), label: v.string() })),
+    variables: v.any(),
+    toolCalls: v.array(v.object({ name: v.string(), result: v.string() })),
+    blockedExitId: v.union(v.string(), v.null()),
+    hasExits: v.boolean(),
+    outputVariable: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
+    const organizationId = identity
+      ? getOrganizationIdFromIdentity(identity)
+      : null
+
+    if (!identity || !organizationId) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Organization not found",
+      })
+    }
+
+    const data = isRecord(args.data) ? args.data : {}
+    const variables = (
+      isRecord(args.variables) ? args.variables : {}
+    ) as RuntimeVariables
+
+    const openAIPlugin = await ctx.runQuery(
+      internal.system.plugins.getByOrganizationIdAndService,
+      { organizationId, service: "openai_realtime" }
+    )
+
+    const result = await runAgentTurn(ctx, {
+      organizationId,
+      data,
+      variables,
+      secretValue: openAIPlugin?.secretValue,
+      executeTool: async (toolName, toolArgs) =>
+        await ctx.runAction(
+          internal.system.assistantTools.execute.executeTool,
+          {
+            organizationId,
+            toolName,
+            args: toolArgs,
+            channel: "chat",
+          }
+        ),
+    })
+
+    const exits = Array.isArray(data.exitConditions)
+      ? data.exitConditions.filter(isRecord)
+      : []
+    const chosen = result.exitId
+      ? exits.find((exit) => asString(exit.id) === result.exitId)
+      : undefined
+
+    return {
+      ...result,
+      exitName: chosen ? asString(chosen.name) || "Exit" : null,
+      exitMessages: result.exitId
+        ? exitMessages(data, result.exitId, {
+            ...variables,
+            ...result.variables,
+          })
+        : [],
+      outputVariable: getOutputVariableKey(data, "lastAiResponse"),
+    }
+  },
+})
+
+/**
+ * Drafts system instructions for an Agent node from its name, so the editor's
+ * "generate" link has something real behind it.
+ */
+export const generateAgentInstructions = action({
+  args: {
+    agentName: v.string(),
+    hint: v.optional(v.string()),
+  },
+  returns: v.string(),
+  handler: async (ctx, args): Promise<string> => {
+    const identity = await ctx.auth.getUserIdentity()
+    const organizationId = identity
+      ? getOrganizationIdFromIdentity(identity)
+      : null
+
+    if (!identity || !organizationId) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Organization not found",
+      })
+    }
+
+    const openAIPlugin = await ctx.runQuery(
+      internal.system.plugins.getByOrganizationIdAndService,
+      { organizationId, service: "openai_realtime" }
+    )
+
+    const name = args.agentName.trim() || "support agent"
+    const hint = (args.hint ?? "").trim()
+
+    const text = await generatePromptReply(ctx, {
+      organizationId,
+      instructions: [
+        `Write the system instructions for an AI agent named "${name}" that runs inside a customer support workflow.`,
+        hint ? `Build on this draft rather than replacing it:\n${hint}` : "",
+        "Write it in second person, addressed to the agent. Two or three short paragraphs.",
+        "Say what it is responsible for, what it must collect or confirm, and what it must never do.",
+        "Return only the instructions, with no preamble and no markdown headings.",
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+      variables: {},
+      useKnowledgeBase: false,
+      chatModel: OPENAI_CHAT_MODEL,
+      secretValue: openAIPlugin?.secretValue,
+    })
+
+    return text.trim()
+  },
+})
+
+/**
  * Run one API step for the builder's Run panel, through the same executor the
  * published runtime uses.
  */
@@ -1209,8 +1352,7 @@ export const previewToolStep = action({
       isRecord(args.variables) ? args.variables : {}
     ) as RuntimeVariables
     const toolName = asString(data.toolName).trim()
-    const outputVariable =
-      asString(data.outputVariable).trim() || "toolResult"
+    const outputVariable = asString(data.outputVariable).trim() || "toolResult"
 
     if (!toolName) {
       return {

@@ -1,8 +1,10 @@
 import type { Edge, Node } from 'reactflow';
 
 import {
+  isAgentStepType,
   isTerminalStepType,
   stepPorts,
+  type AgentNodeData,
   type ApiNodeData,
   type BlockNodeData,
   type BlockStep,
@@ -103,6 +105,22 @@ export const validateWorkflow = (
         (step.data.customName as string | undefined)?.trim() || step.type;
       const isLast = index === steps.length - 1;
 
+      // An agent with exits branches, so anything after it in a block is
+      // unreachable in exactly the same way a Condition would make it.
+      if (
+        !isLast &&
+        isAgentStepType(step.type) &&
+        ((step.data as AgentNodeData).exitConditions ?? []).length > 0
+      ) {
+        push({
+          level: 'error',
+          nodeId: node.id,
+          title: `"${stepLabel}" branches mid-block`,
+          detail:
+            'An agent with exit conditions has to be the last step in its block.',
+        });
+      }
+
       // A branching step in the middle of a block makes later steps dead code.
       if (!isLast && isTerminalStepType(step.type)) {
         push({
@@ -182,6 +200,56 @@ export const validateWorkflow = (
               detail:
                 'A component runs its published snapshot. Publish it as a component first.',
             });
+          }
+          break;
+        }
+        case 'playbook':
+        case 'agent':
+        case 'crew':
+        case 'operator': {
+          const data = step.data as AgentNodeData;
+
+          if (!data.instructions?.trim()) {
+            push({
+              level: 'warning',
+              nodeId: node.id,
+              title: `"${stepLabel}" has no instructions`,
+              detail: 'The agent will improvise with no brief of its own.',
+            });
+          }
+
+          for (const exit of data.exitConditions ?? []) {
+            const exitName = exit.name.trim() || 'Untitled exit';
+
+            if (!exit.name.trim()) {
+              push({
+                level: 'warning',
+                nodeId: node.id,
+                title: `"${stepLabel}" has an unnamed exit`,
+                detail: 'Name every exit so its path is readable on the canvas.',
+              });
+            }
+
+            if (!exit.description.trim()) {
+              push({
+                level: 'warning',
+                nodeId: node.id,
+                title: `"${exitName}" describes no condition`,
+                detail:
+                  'Without an "exit when" description the agent has nothing to match, so this path is never taken.',
+              });
+            }
+
+            for (const variable of exit.requiredVariables) {
+              if (!variable.name.trim()) {
+                push({
+                  level: 'warning',
+                  nodeId: node.id,
+                  title: `"${exitName}" has an unnamed required variable`,
+                  detail: 'Give it a name or remove the row.',
+                });
+              }
+            }
           }
           break;
         }

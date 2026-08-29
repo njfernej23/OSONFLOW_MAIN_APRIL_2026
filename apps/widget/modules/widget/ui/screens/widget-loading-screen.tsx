@@ -1,5 +1,5 @@
 "use client"
-import { useAction, useMutation, useQuery } from "convex/react"
+import { useAction, useMutation, usePaginatedQuery, useQuery } from "convex/react"
 import { useAtomValue, useSetAtom } from "jotai"
 import {
   activeVoiceProviderAtom,
@@ -10,6 +10,9 @@ import {
   contactSessionIdAtomFamily,
   widgetSettingsAtom,
   widgetModeAtom,
+  workflowOnlyAtom,
+  conversationIdAtom,
+  chatReturnScreenAtom,
   type WidgetMode,
   type VoiceProvider,
 } from "@/modules/widget/atoms/widget-atoms"
@@ -18,6 +21,7 @@ import { api } from "@workspace/backend/_generated/api"
 import { mergeWidgetAppearance } from "@workspace/ui/lib/widget-customization"
 import { Spinner } from "@workspace/ui/components/spinner"
 import { useEnsureVoiceContactSession } from "../../hooks/use-ensure-voice-contact-session"
+import { useStartWidgetConversation } from "../../hooks/use-start-widget-conversation"
 
 type InitStep = "org" | "session" | "settings" | "voice" | "done"
 
@@ -41,6 +45,11 @@ export const WidgetLoadingScreen = ({
   const setActiveVoiceProvider = useSetAtom(activeVoiceProviderAtom)
   const setWidgetMode = useSetAtom(widgetModeAtom)
   const { ensureSession } = useEnsureVoiceContactSession()
+  const setWorkflowOnly = useSetAtom(workflowOnlyAtom)
+  const setConversationId = useSetAtom(conversationIdAtom)
+  const setChatReturnScreen = useSetAtom(chatReturnScreenAtom)
+  const { startConversation } = useStartWidgetConversation()
+  const startingWorkflowRef = useRef(false)
 
   const validateOrganization = useAction(api.public.organizations.validate)
   const setScreen = useSetAtom(screenAtom)
@@ -50,6 +59,20 @@ export const WidgetLoadingScreen = ({
   )
   const setContactSessionId = useSetAtom(
     contactSessionIdAtomFamily(organizationId || "")
+  )
+
+  // A published workflow turns the widget into a single-purpose chat: no home
+  // screen, no help centre, and no contact details asked for up front.
+  const activeWorkflow = useQuery(
+    api.public.workflows.getActiveSummary,
+    organizationId ? { organizationId } : "skip"
+  )
+  // Reuse this visitor's latest conversation rather than opening a new one on
+  // every page load — the widget iframe mounts before they click anything.
+  const recentConversations = usePaginatedQuery(
+    api.public.conversations.getMany,
+    contactSessionId ? { contactSessionId } : "skip",
+    { initialNumItems: 1 }
   )
 
   // Step 1: validate organization
@@ -180,6 +203,39 @@ export const WidgetLoadingScreen = ({
 
     if (!shouldOpenVoiceOnly) {
       setWidgetMode("standard")
+
+      // Still resolving whether a workflow is live.
+      if (activeWorkflow === undefined) {
+        return
+      }
+
+      if (activeWorkflow) {
+        setWorkflowOnly(true)
+
+        if (contactSessionId && recentConversations.isLoading) {
+          return
+        }
+
+        const existing = recentConversations.results[0] as
+          | { _id: string }
+          | undefined
+
+        if (existing) {
+          setChatReturnScreen("selection")
+          setConversationId(existing._id as never)
+          setScreen("chat")
+          return
+        }
+
+        if (!startingWorkflowRef.current) {
+          startingWorkflowRef.current = true
+          void startConversation({ returnScreen: "selection" })
+        }
+
+        return
+      }
+
+      setWorkflowOnly(false)
       setScreen("selection")
       return
     }
@@ -222,12 +278,19 @@ export const WidgetLoadingScreen = ({
 
     setScreen("voice")
   }, [
+    activeWorkflow,
     contactSessionId,
     mode,
+    recentConversations.isLoading,
+    recentConversations.results,
     setActiveVoiceProvider,
+    setChatReturnScreen,
+    setConversationId,
     setErrorMessage,
     setScreen,
     setWidgetMode,
+    setWorkflowOnly,
+    startConversation,
     step,
     widgetSettings,
     ensureSession,

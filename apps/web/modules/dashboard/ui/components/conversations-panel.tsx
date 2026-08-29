@@ -30,6 +30,7 @@ import type { Id } from "@workspace/backend/_generated/dataModel"
 import { useLanguage } from "@/lib/i18n/language-provider"
 import { getCountryFlagUrl, getCountryFromTimezone } from "@/lib/country-utils"
 import { cn } from "@workspace/ui/lib/utils"
+import { richMessagePreview } from "@workspace/ui/components/ai/rich-message"
 import { usePathname, useRouter } from "next/navigation"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { format, isToday, isYesterday } from "date-fns"
@@ -47,13 +48,19 @@ import {
   UserCheckIcon,
   XIcon,
   InboxIcon,
+  BotIcon,
+  WorkflowIcon,
 } from "lucide-react"
 import { useConvex, useMutation, usePaginatedQuery } from "convex/react"
 import Link from "next/link"
 import { useAtomValue, useSetAtom } from "jotai/react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import { assignmentFilterAtom, statusFilterAtom } from "../../atoms"
+import {
+  assignmentFilterAtom,
+  sourceFilterAtom,
+  statusFilterAtom,
+} from "../../atoms"
 import { downloadConversationExport } from "../lib/conversation-export"
 
 type CombinedFilterValue =
@@ -63,6 +70,8 @@ type CombinedFilterValue =
   | "resolved"
   | "assigned_to_me"
   | "unassigned"
+  | "workflow"
+  | "widget"
 
 const FILTER_OPTIONS: {
   label: string
@@ -87,6 +96,8 @@ const FILTER_OPTIONS: {
   { label: "Resolved", value: "resolved", icon: CheckIcon },
   { label: "Mine", value: "assigned_to_me", icon: UserCheckIcon },
   { label: "Unassigned", value: "unassigned", icon: XIcon },
+  { label: "Workflow", value: "workflow", icon: WorkflowIcon },
+  { label: "Assistant", value: "widget", icon: BotIcon },
 ]
 
 const STATUS_ACCENT: Record<string, string> = {
@@ -143,9 +154,15 @@ export const ConversationsPanel = () => {
   const setStatusFilter = useSetAtom(statusFilterAtom)
   const assignmentFilter = useAtomValue(assignmentFilterAtom)
   const setAssignmentFilter = useSetAtom(assignmentFilterAtom)
+  const sourceFilter = useAtomValue(sourceFilterAtom)
+  const setSourceFilter = useSetAtom(sourceFilterAtom)
 
   const combinedFilterValue: CombinedFilterValue =
-    assignmentFilter !== "all" ? assignmentFilter : statusFilter
+    sourceFilter !== "all"
+      ? sourceFilter
+      : assignmentFilter !== "all"
+        ? assignmentFilter
+        : statusFilter
 
   const [searchQuery, setSearchQuery] = useState("")
   const [conversationToDelete, setConversationToDelete] = useState<{
@@ -166,6 +183,7 @@ export const ConversationsPanel = () => {
     {
       status: statusFilter === "all" ? undefined : statusFilter,
       assignmentFilter,
+      sourceFilter,
       searchQuery: normalizedSearchQuery || undefined,
     },
     { initialNumItems: 10 }
@@ -211,11 +229,23 @@ export const ConversationsPanel = () => {
   }, [])
 
   const handleFilterChange = (value: CombinedFilterValue) => {
+    // The chips are one row but three dimensions, so picking one clears the
+    // others rather than silently combining into an empty result.
+    if (value === "workflow" || value === "widget") {
+      setSourceFilter(value)
+      setAssignmentFilter("all")
+      setStatusFilter("all")
+      return
+    }
+
+    setSourceFilter("all")
+
     if (value === "assigned_to_me" || value === "unassigned") {
       setAssignmentFilter(value)
       setStatusFilter("all")
       return
     }
+
     setAssignmentFilter("all")
     setStatusFilter(value)
   }
@@ -534,7 +564,9 @@ export const ConversationsPanel = () => {
                             >
                               {highlightMatch(
                                 conversation.searchMatchPreview ??
-                                  conversation.lastMessage?.text,
+                                  richMessagePreview(
+                                    conversation.lastMessage?.text ?? ""
+                                  ),
                                 normalizedSearchQuery
                               )}
                             </span>
