@@ -119,8 +119,13 @@ export const WidgetInboxScreen = () => {
       loadSize: 10,
     })
   const hasConversations = conversations.results.length > 0
-  const isInboxEmpty =
-    conversations.status !== "LoadingFirstPage" && !hasConversations
+  // A skipped query keeps reporting "LoadingFirstPage" forever, and the query is
+  // skipped whenever there is no contact session yet - which is every first-time
+  // visitor on an embedded widget. Only treat it as loading once we actually have a
+  // session, otherwise the visitor is left staring at a blank panel.
+  const isLoadingFirstPage =
+    Boolean(contactSessionId) && conversations.status === "LoadingFirstPage"
+  const isInboxEmpty = !isLoadingFirstPage && !hasConversations
 
   return (
     <>
@@ -139,7 +144,7 @@ export const WidgetInboxScreen = () => {
         </WidgetHeader>
       ) : null}
       <div className="flex flex-1 flex-col gap-y-2 overflow-y-auto bg-gradient-to-b from-background to-muted/30 p-4">
-        {conversations.status === "LoadingFirstPage" ? (
+        {isLoadingFirstPage ? (
           <div aria-hidden="true" className="flex min-h-full flex-1" />
         ) : isInboxEmpty ? (
           <EmptyInboxState
