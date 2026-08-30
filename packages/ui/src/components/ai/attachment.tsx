@@ -2,6 +2,7 @@
 
 import { AlertCircleIcon, Loader2Icon, XIcon, ZoomInIcon } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
+import { createPortal } from "react-dom"
 
 import type { ChatAttachmentDraft } from "@workspace/ui/hooks/use-chat-image-attachments"
 import { formatFileSize } from "@workspace/ui/lib/chat-attachments"
@@ -30,6 +31,16 @@ const aspectRatioFor = (attachment: ChatMessageAttachment) =>
 
 /* ── lightbox ───────────────────────────────────────────────────────────── */
 
+/**
+ * Rendered through a portal rather than in place.
+ *
+ * `position: fixed` resolves against the nearest ancestor that has a transform,
+ * filter or backdrop-filter — and a chat bubble usually has one (the widget
+ * animates every bubble in). In place, the overlay would be sized and clipped to
+ * the bubble it came from instead of covering the surface, so it is mounted on
+ * `document.body`, which has no such ancestor on either surface. Inside the
+ * embedded widget that fills the widget panel; in the dashboard, the window.
+ */
 const AttachmentLightbox = ({
   attachment,
   onClose,
@@ -49,17 +60,22 @@ const AttachmentLightbox = ({
     return () => document.removeEventListener("keydown", onKeyDown)
   }, [onClose])
 
-  return (
+  // Only ever mounted from a click, so there is no server render to match.
+  if (typeof document === "undefined") {
+    return null
+  }
+
+  return createPortal(
     <div
       aria-label={attachment.filename}
       aria-modal="true"
-      className="fixed inset-0 z-9999 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-9999 flex items-center justify-center bg-black/85 p-3 backdrop-blur-sm sm:p-6"
       onClick={onClose}
       role="dialog"
     >
       <button
         aria-label="Close image"
-        className="absolute top-3 right-3 flex size-9 items-center justify-center rounded-full bg-white/12 text-white transition-colors hover:bg-white/24"
+        className="absolute top-2.5 right-2.5 z-10 flex size-9 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur transition-colors hover:bg-white/30"
         onClick={onClose}
         type="button"
       >
@@ -71,7 +87,8 @@ const AttachmentLightbox = ({
         onClick={(event) => event.stopPropagation()}
         src={attachment.url}
       />
-    </div>
+    </div>,
+    document.body
   )
 }
 
