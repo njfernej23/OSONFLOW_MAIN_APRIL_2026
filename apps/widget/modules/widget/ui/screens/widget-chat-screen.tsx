@@ -173,6 +173,13 @@ const buildChatHistoryText = ({
   return `${[...headerLines, ...messageLines].join("\n").trimEnd()}\n`
 }
 
+/** A message waiting on the visitor's name and email, images included. */
+type HeldMessage = {
+  text: string
+  attachmentIds: Id<"chatAttachments">[]
+  attachments: ChatMessageAttachment[]
+}
+
 /**
  * Frees the local previews an optimistic bubble was showing, once the server
  * has echoed the real message back with its hosted image URLs.
@@ -182,6 +189,12 @@ const releaseOptimisticPreviews = (attachments: ChatMessageAttachment[]) => {
     if (attachment.url.startsWith("blob:")) {
       URL.revokeObjectURL(attachment.url)
     }
+  }
+}
+
+const releaseHeldPreviews = (messages: HeldMessage[]) => {
+  for (const message of messages) {
+    releaseOptimisticPreviews(message.attachments)
   }
 }
 
@@ -418,10 +431,12 @@ export const WidgetChatScreen = () => {
     optimisticUserMessage !== null &&
     userMessageCount <= optimisticUserMessage.baseCount
   const submittedInitialMessageRef = useRef<string | null>(null)
-  // Messages typed before the visitor shares their email; sent once identified.
+  // Messages composed before the visitor shares their email; sent once
+  // identified. Images are held with their text rather than being sent ahead of
+  // it, so an attachment cannot slip past the email gate.
   const [heldMessages, setHeldMessages] = useState<{
     baseCount: number
-    messages: string[]
+    messages: HeldMessage[]
   } | null>(null)
   const [receivedDetails, setReceivedDetails] = useState<{
     name: string
@@ -552,9 +567,11 @@ export const WidgetChatScreen = () => {
 
   const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // `isComposerDisabled` covers the email lock too, so paste and drag-and-drop
+  // cannot add images while the composer is waiting on the visitor's details.
   const canAttachImages =
     appearance.imageUploadsEnabled &&
-    !isConversationResolved &&
+    !isComposerDisabled &&
     Boolean(conversationId && contactSessionId)
 
   const attachments = useChatImageAttachments({
@@ -621,11 +638,11 @@ export const WidgetChatScreen = () => {
     (draftMessage.trim().length > 0 ||
       attachments.readyAttachmentIds.length > 0)
 
-  const holdMessage = (prompt: string) => {
+  const holdMessage = (message: HeldMessage) => {
     setHeldMessages((previous) =>
       previous
-        ? { ...previous, messages: [...previous.messages, prompt] }
-        : { baseCount: userMessageCount, messages: [prompt] }
+        ? { ...previous, messages: [...previous.messages, message] }
+        : { baseCount: userMessageCount, messages: [message] }
     )
   }
 
@@ -668,11 +685,14 @@ export const WidgetChatScreen = () => {
     setPendingAssistantMessageCount(assistantMessageCount + 1)
 
     const flush = async () => {
-      for (const prompt of heldMessages.messages) {
+      for (const held of heldMessages.messages) {
         await createMessage({
           threadId,
-          prompt,
+          prompt: held.text,
           contactSessionId,
+          ...(held.attachmentIds.length > 0
+            ? { attachmentIds: held.attachmentIds }
+            : {}),
         })
       }
     }
@@ -680,7 +700,11 @@ export const WidgetChatScreen = () => {
     void flush()
       .catch(() => {
         setPendingAssistantMessageCount(null)
+        releaseHeldPreviews(heldMessages.messages)
         setHeldMessages(null)
+        setAttachmentNotice(
+          "Those messages could not be sent. Please try again."
+        )
       })
       .finally(() => {
         isFlushingHeldMessagesRef.current = false
@@ -700,6 +724,7 @@ export const WidgetChatScreen = () => {
       heldMessages &&
       userMessageCount - heldMessages.baseCount >= heldMessages.messages.length
     ) {
+      releaseHeldPreviews(heldMessages.messages)
       setHeldMessages(null)
     }
   }, [heldMessages, userMessageCount])
@@ -720,7 +745,7 @@ export const WidgetChatScreen = () => {
 
     if (needsEmail !== false) {
       if (!isInputLockedForEmail) {
-        holdMessage(prompt)
+        holdMessage({ text: prompt, attachmentIds: [], attachments: [] })
       }
       return
     }
@@ -783,14 +808,6 @@ export const WidgetChatScreen = () => {
     form.reset()
     setAttachmentNotice(null)
 
-    // Held messages wait for an email address, and an upload is already bound
-    // to this conversation, so images are sent as their own message instead of
-    // being queued as text.
-    if (needsEmail !== false && attachmentIds.length === 0) {
-      holdMessage(prompt)
-      return
-    }
-
     // The previews keep showing from local memory until the server echoes the
     // message back with its hosted URLs, so an image send never blinks.
     const optimisticAttachments: ChatMessageAttachment[] = sentDrafts.map(
@@ -806,6 +823,19 @@ export const WidgetChatScreen = () => {
     )
 
     attachments.clearAfterSend()
+
+    // Not identified yet: the whole message waits, images included. The uploads
+    // are only bound to a message once it is actually delivered, so nothing
+    // reaches the operator before the visitor gives their name and email.
+    if (needsEmail !== false) {
+      holdMessage({
+        text: prompt,
+        attachmentIds,
+        attachments: optimisticAttachments,
+      })
+      return
+    }
+
     setOptimisticUserMessage({
       text: prompt,
       baseCount: userMessageCount,
@@ -1080,8 +1110,20 @@ export const WidgetChatScreen = () => {
               from="user"
               key={`held-message-${index}`}
             >
-              <AIMessageContent className={BUBBLE_CLASS}>
-                <AIResponse>{heldMessage}</AIResponse>
+              <AIMessageContent
+                className={cn(
+                  BUBBLE_CLASS,
+                  !heldMessage.text &&
+                    heldMessage.attachments.length > 0 &&
+                    "owc-bubble-media"
+                )}
+              >
+                {heldMessage.text ? (
+                  <AIResponse>{heldMessage.text}</AIResponse>
+                ) : null}
+                {heldMessage.attachments.length > 0 ? (
+                  <AIMessageAttachments attachments={heldMessage.attachments} />
+                ) : null}
               </AIMessageContent>
             </AIMessage>
           ))}
