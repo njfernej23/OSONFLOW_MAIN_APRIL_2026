@@ -69,6 +69,28 @@ const rateLimits = {
     rate: 40,
     period: HOUR,
   },
+  // Convex upload URLs cannot carry a size limit, so the only bound on how many
+  // bytes a visitor can push into storage is how often they are handed a URL.
+  // These are deliberately tighter than the message limits above.
+  chatAttachmentBySession: {
+    kind: "token bucket",
+    rate: 10,
+    period: MINUTE,
+    capacity: 4,
+  },
+  chatAttachmentByOrg: {
+    kind: "token bucket",
+    rate: 120,
+    period: MINUTE,
+    capacity: 40,
+    shards: 4,
+  },
+  chatAttachmentByOperator: {
+    kind: "token bucket",
+    rate: 60,
+    period: MINUTE,
+    capacity: 12,
+  },
   organizationValidate: {
     kind: "token bucket",
     rate: 120,

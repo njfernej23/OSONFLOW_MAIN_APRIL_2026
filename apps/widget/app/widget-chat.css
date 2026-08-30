@@ -328,6 +328,49 @@
   opacity: 0.4;
 }
 
+/* A bubble carrying only images drops its own skin so the picture reads as the
+   bubble rather than as a photo pinned inside one. */
+.owc-bubble-media {
+  padding: 3px;
+  background: color-mix(in srgb, var(--widget-bot-bubble) 55%, transparent);
+}
+
+.is-user > .owc-bubble-media {
+  background: color-mix(in srgb, var(--widget-user-bubble) 55%, transparent);
+}
+
+.owc-attachment-tray {
+  padding: 0 2px 8px;
+}
+
+.owc-composer-attach {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  margin-bottom: 1px;
+  border-radius: 999px;
+  color: var(--muted-foreground);
+  transition:
+    color 160ms var(--owc-ease),
+    background-color 160ms var(--owc-ease);
+}
+
+.owc-composer-attach:hover:not(:disabled) {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--muted) 70%, transparent);
+}
+
+.owc-composer-attach:disabled {
+  opacity: 0.4;
+}
+
+.owc-composer-alert {
+  padding: 0 4px 8px;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--destructive);
+}
+
 .owc-composer-note {
   display: flex;
   align-items: center;

@@ -12,6 +12,7 @@ import { useAction, useMutation, useQuery } from "convex/react"
 import { toUIMessages, useThreadMessages } from "@convex-dev/agent/react"
 import {
   ArrowLeftIcon,
+  ImagePlusIcon,
   MoreHorizontalIcon,
   PanelRightIcon,
   UserCheckIcon,
@@ -45,6 +46,16 @@ import {
   AIMessage,
   AIMessageContent,
 } from "@workspace/ui/components/ai/message"
+import {
+  AIAttachmentTray,
+  AIMessageAttachments,
+  type ChatMessageAttachment,
+} from "@workspace/ui/components/ai/attachment"
+import { useChatImageAttachments } from "@workspace/ui/hooks/use-chat-image-attachments"
+import {
+  ATTACHMENT_FILE_INPUT_ACCEPT,
+  imageFilesFromDataTransfer,
+} from "@workspace/ui/lib/chat-attachments"
 import { AIResponse } from "@workspace/ui/components/ai/response"
 import { DicebearAvatar } from "@workspace/ui/components/dicebear-avatar"
 import { Form, FormField } from "@workspace/ui/components/form"
@@ -54,7 +65,7 @@ import { ConversationStatusButton } from "../components/conversation-status-butt
 import { useConversationContactDocked } from "../hooks/use-conversation-contact-docked"
 import { useSetAtom } from "jotai"
 import { openConversationIdAtom } from "@/modules/dashboard/atoms"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@workspace/ui/lib/utils"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { toast } from "sonner"
@@ -76,8 +87,10 @@ import { Label } from "@workspace/ui/components/label"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { ContactPanel } from "../components/contact-panel"
 
+// An operator can reply with images alone, so the text field is allowed to be
+// empty and the send button checks the attachment tray instead.
 const formSchema = z.object({
-  message: z.string().min(1, "Message is required"),
+  message: z.string(),
 })
 
 type SavedReplyDoc = Doc<"savedReplies">
@@ -194,6 +207,87 @@ export const ConversationIdView = ({
 
   const createMessage = useMutation(api.private.messages.create)
 
+  const conversationAttachments = useQuery(
+    api.private.attachments.getForConversation,
+    { conversationId }
+  )
+  const generateAttachmentUploadUrl = useMutation(
+    api.private.attachments.generateUploadUrl
+  )
+  const attachUploadedImage = useAction(api.private.attachments.attach)
+  const removeAttachment = useMutation(api.private.attachments.remove)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const attachmentsByMessageId = useMemo(() => {
+    const grouped = new Map<string, ChatMessageAttachment[]>()
+
+    for (const attachment of conversationAttachments ?? []) {
+      if (!attachment.messageId) {
+        continue
+      }
+
+      const existing = grouped.get(attachment.messageId)
+
+      if (existing) {
+        existing.push(attachment)
+      } else {
+        grouped.set(attachment.messageId, [attachment])
+      }
+    }
+
+    // Oldest first, so a batch sent together keeps the order it was picked in.
+    for (const group of grouped.values()) {
+      group.sort(
+        (left, right) => (left.createdAt ?? 0) - (right.createdAt ?? 0)
+      )
+    }
+
+    return grouped
+  }, [conversationAttachments])
+
+  const isConversationResolved = conversation?.status === "resolved"
+
+  const attachments = useChatImageAttachments({
+    enabled: !isConversationResolved,
+    maxPerMessage: 6,
+    maxSizeBytes: 20 * 1024 * 1024,
+    onError: (message) => toast.error(message),
+    requestUploadUrl: async () =>
+      await generateAttachmentUploadUrl({ conversationId }),
+    attachUpload: async ({ storageId, filename, width, height }) =>
+      await attachUploadedImage({
+        conversationId,
+        storageId: storageId as Id<"_storage">,
+        filename,
+        width,
+        height,
+      }),
+    discardUpload: async (attachmentId) => {
+      await removeAttachment({
+        attachmentId: attachmentId as Id<"chatAttachments">,
+      })
+    },
+  })
+
+  const acceptDroppedImages = (files: File[]) => {
+    if (isConversationResolved || files.length === 0) {
+      return
+    }
+
+    void attachments.addFiles(files)
+  }
+
+  const handleDeleteAttachment = async (attachmentId: string) => {
+    try {
+      await removeAttachment({
+        attachmentId: attachmentId as Id<"chatAttachments">,
+      })
+      toast.success("Image deleted")
+    } catch {
+      toast.error("Failed to delete the image")
+    }
+  }
+
   const savedReplies = useQuery(api.private.savedReplies.getMany, {
     limit: 100,
   })
@@ -220,6 +314,12 @@ export const ConversationIdView = ({
   const [operatorScrollSignal, setOperatorScrollSignal] = useState(0)
 
   const currentMessage = form.watch("message")
+  // An image on its own is a reply, so sending no longer depends on the text
+  // field alone — but it does wait for every upload to be accepted.
+  const hasDraftText = currentMessage.trim().length > 0
+  const canSendMessage =
+    !attachments.isUploading &&
+    (hasDraftText || attachments.readyAttachmentIds.length > 0)
   const normalizedMessage = currentMessage.trimStart()
   const isSlashMode = normalizedMessage.startsWith("/")
   const slashSearchTerm = isSlashMode
@@ -297,15 +397,30 @@ export const ConversationIdView = ({
       return
     }
 
+    const attachmentIds = attachments.readyAttachmentIds.map(
+      (attachmentId) => attachmentId as Id<"chatAttachments">
+    )
+
+    if (!values.message.trim() && attachmentIds.length === 0) {
+      return
+    }
+
+    if (attachments.isUploading) {
+      return
+    }
+
     try {
       await createMessage({
         conversationId,
         prompt: values.message,
+        ...(attachmentIds.length > 0 ? { attachmentIds } : {}),
       })
 
+      attachments.clear()
       setOperatorScrollSignal((current) => current + 1)
       form.reset()
     } catch (error) {
+      toast.error("Failed to send the message")
       console.error(error)
     }
   }
@@ -629,25 +744,44 @@ export const ConversationIdView = ({
             ref={topElementRef}
           />
           {toUIMessages(messages.results ?? [])
-            ?.filter((message) => getUiMessageText(message).trim().length > 0)
-            .map((message) => (
-            <AIMessage
-              // In reverse, because we are watching from "assistant" perspective
-              from={message.role === "user" ? "assistant" : "user"}
-              key={message.id}
-            >
-              <AIMessageContent className="shadow-[0_14px_34px_-22px_rgba(15,23,42,0.35)]">
-                <AIResponse>{getUiMessageText(message)}</AIResponse>
-              </AIMessageContent>
-              {message.role === "user" && (
-                <DicebearAvatar
-                  seed={conversation?.contactSessionId ?? "user"}
-                  size={32}
-                  imageUrl={instagramProfilePic}
-                />
-              )}
-            </AIMessage>
-          ))}
+            ?.filter(
+              (message) =>
+                getUiMessageText(message).trim().length > 0 ||
+                attachmentsByMessageId.has(message.id)
+            )
+            .map((message) => {
+              const messageAttachments = attachmentsByMessageId.get(message.id)
+              const messageText = getUiMessageText(message)
+
+              return (
+                <AIMessage
+                  // In reverse, because we are watching from "assistant" perspective
+                  from={message.role === "user" ? "assistant" : "user"}
+                  key={message.id}
+                >
+                  <AIMessageContent className="shadow-[0_14px_34px_-22px_rgba(15,23,42,0.35)]">
+                    {messageText.trim() ? (
+                      <AIResponse>{messageText}</AIResponse>
+                    ) : null}
+                    {messageAttachments ? (
+                      <AIMessageAttachments
+                        attachments={messageAttachments}
+                        onRemove={(attachmentId) =>
+                          void handleDeleteAttachment(attachmentId)
+                        }
+                      />
+                    ) : null}
+                  </AIMessageContent>
+                  {message.role === "user" && (
+                    <DicebearAvatar
+                      seed={conversation?.contactSessionId ?? "user"}
+                      size={32}
+                      imageUrl={instagramProfilePic}
+                    />
+                  )}
+                </AIMessage>
+              )
+            })}
         </AIConversationContent>
         <AIConversationScrollButton />
       </AIConversation>
@@ -655,6 +789,19 @@ export const ConversationIdView = ({
         <Form {...form}>
           <AIInput
             className="surface-frosted rounded-[28px] border-0 shadow-none transition-shadow duration-200 focus-within:ring-2 focus-within:ring-primary/20"
+            onDragOver={(event) => {
+              if (!isConversationResolved) {
+                event.preventDefault()
+              }
+            }}
+            onDrop={(event) => {
+              const files = imageFilesFromDataTransfer(event.dataTransfer)
+
+              if (files.length > 0) {
+                event.preventDefault()
+                acceptDroppedImages(files)
+              }
+            }}
             onSubmit={form.handleSubmit(onSubmit)}
           >
             <FormField
@@ -723,6 +870,20 @@ export const ConversationIdView = ({
                       form.handleSubmit(onSubmit)()
                     }
                   }}
+                  onPaste={(event) => {
+                    if (isConversationResolved) {
+                      return
+                    }
+
+                    const files = imageFilesFromDataTransfer(
+                      event.clipboardData
+                    )
+
+                    if (files.length > 0) {
+                      event.preventDefault()
+                      acceptDroppedImages(files)
+                    }
+                  }}
                   placeholder={
                     conversation?.status === "resolved"
                       ? "This conversation has been resolved"
@@ -731,6 +892,12 @@ export const ConversationIdView = ({
                   value={field.value}
                 />
               )}
+            />
+
+            <AIAttachmentTray
+              className="px-3 pb-2"
+              drafts={attachments.drafts}
+              onRemove={attachments.removeDraft}
             />
 
             {isSlashMode && (
@@ -803,6 +970,27 @@ export const ConversationIdView = ({
 
             <AIInputToolbar className="bg-muted/10">
               <AIInputTools>
+                <input
+                  accept={ATTACHMENT_FILE_INPUT_ACCEPT}
+                  className="sr-only"
+                  multiple
+                  onChange={(event) => {
+                    acceptDroppedImages(Array.from(event.target.files ?? []))
+                    // Reset so picking the same file twice still fires.
+                    event.target.value = ""
+                  }}
+                  ref={fileInputRef}
+                  tabIndex={-1}
+                  type="file"
+                />
+                <AIInputButton
+                  aria-label="Attach an image"
+                  disabled={isConversationResolved || !attachments.canAttachMore}
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Attach an image"
+                >
+                  <ImagePlusIcon />
+                </AIInputButton>
                 <AIInputButton
                   onClick={() => setIsSavedRepliesDialogOpen(true)}
                   disabled={conversation?.status === "resolved"}
@@ -815,7 +1003,7 @@ export const ConversationIdView = ({
                   disabled={
                     conversation?.status === "resolved" ||
                     isEnhancing ||
-                    !form.formState.isValid
+                    !hasDraftText
                   }
                 >
                   <Wand2Icon />
@@ -825,11 +1013,11 @@ export const ConversationIdView = ({
               <AIInputSubmit
                 disabled={
                   conversation?.status === "resolved" ||
-                  !form.formState.isValid ||
+                  !canSendMessage ||
                   form.formState.isSubmitting ||
                   isEnhancing
                 }
-                status="ready"
+                status={attachments.isUploading ? "submitted" : "ready"}
                 type="submit"
               />
             </AIInputToolbar>

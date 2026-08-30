@@ -132,9 +132,44 @@ const saveAssistantMessage = async (
 }
 
 const saveUserMessage = async (ctx: any, threadId: string, prompt: string) => {
-  await saveMessage(ctx, components.agent, {
+  // `message` rather than `prompt`: an image-only send has no text, and the
+  // agent helper drops an empty prompt instead of saving a bubble for it.
+  const saved = await saveMessage(ctx, components.agent, {
     threadId,
-    prompt,
+    message: {
+      role: "user",
+      content: prompt,
+    },
+  })
+
+  return saved.messageId
+}
+
+/** Ties this turn's uploads to the bubble the workflow just saved. */
+const bindAttachments = async (
+  ctx: any,
+  {
+    conversationId,
+    contactSessionId,
+    attachmentIds,
+    messageId,
+  }: {
+    conversationId: Id<"conversations">
+    contactSessionId: Id<"contactSessions">
+    attachmentIds: Id<"chatAttachments">[] | undefined
+    messageId: string
+  }
+) => {
+  if (!attachmentIds?.length) {
+    return
+  }
+
+  await ctx.runMutation(internal.system.chatAttachments.bindToMessage, {
+    conversationId,
+    attachmentIds,
+    messageId,
+    source: "contact",
+    contactSessionId,
   })
 }
 
@@ -1500,6 +1535,7 @@ export const handleUserMessage = internalMutation({
     prompt: v.string(),
     contactSessionId: v.id("contactSessions"),
     workflowButtonId: v.optional(v.string()),
+    attachmentIds: v.optional(v.array(v.id("chatAttachments"))),
   },
   returns: v.object({
     handled: v.boolean(),
@@ -1545,7 +1581,17 @@ export const handleUserMessage = internalMutation({
       }
 
       const restartedAt = Date.now()
-      await saveUserMessage(ctx, conversation.threadId, args.prompt.trim())
+      const restartMessageId = await saveUserMessage(
+        ctx,
+        conversation.threadId,
+        args.prompt.trim()
+      )
+      await bindAttachments(ctx, {
+        conversationId: conversation._id,
+        contactSessionId: args.contactSessionId,
+        attachmentIds: args.attachmentIds,
+        messageId: restartMessageId,
+      })
       await patchSession(
         ctx,
         session._id,
@@ -1593,7 +1639,17 @@ export const handleUserMessage = internalMutation({
     const waitingMode = session.waitingMode
     const pendingButtons = session.pendingButtons ?? []
 
-    await saveUserMessage(ctx, conversation.threadId, prompt)
+    const userMessageId = await saveUserMessage(
+      ctx,
+      conversation.threadId,
+      prompt
+    )
+    await bindAttachments(ctx, {
+      conversationId: conversation._id,
+      contactSessionId: args.contactSessionId,
+      attachmentIds: args.attachmentIds,
+      messageId: userMessageId,
+    })
 
     if (session.status !== "waiting" || !session.pendingNodeId) {
       await saveAssistantMessage(

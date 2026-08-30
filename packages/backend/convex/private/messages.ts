@@ -7,6 +7,7 @@ import { paginationOptsValidator } from "convex/server"
 import { saveMessage } from "@convex-dev/agent"
 import { generateText } from "ai"
 import { getOpenAIChatModelFromSecretValue } from "../lib/openai"
+import { OPERATOR_IMAGE_UPLOAD_POLICY } from "../lib/chatAttachments"
 
 export const enhanceResponse = action({
   args: {
@@ -73,6 +74,7 @@ export const create = mutation({
   args: {
     prompt: v.string(),
     conversationId: v.id("conversations"),
+    attachmentIds: v.optional(v.array(v.id("chatAttachments"))),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
@@ -116,9 +118,25 @@ export const create = mutation({
       })
     }
 
+    const attachmentIds = args.attachmentIds ?? []
+
+    if (!args.prompt.trim() && attachmentIds.length === 0) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: "Message is required",
+      })
+    }
+
+    if (attachmentIds.length > OPERATOR_IMAGE_UPLOAD_POLICY.maxPerMessage) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: `You can attach up to ${OPERATOR_IMAGE_UPLOAD_POLICY.maxPerMessage} images per message.`,
+      })
+    }
+
     const now = Date.now()
 
-    await saveMessage(ctx, components.agent, {
+    const savedMessage = await saveMessage(ctx, components.agent, {
       threadId: conversation.threadId,
       agentName: identity.familyName,
       message: {
@@ -126,6 +144,19 @@ export const create = mutation({
         content: args.prompt,
       },
     })
+
+    if (attachmentIds.length > 0) {
+      // Binding is what makes the uploads visible in the transcript, and it
+      // re-checks that every id was uploaded by this operator for this
+      // conversation and has not already been sent.
+      await ctx.runMutation(internal.system.chatAttachments.bindToMessage, {
+        conversationId: args.conversationId,
+        attachmentIds,
+        messageId: savedMessage.messageId,
+        source: "operator",
+        operatorId: identity.subject,
+      })
+    }
 
     await ctx.db.patch(args.conversationId, {
       status:
@@ -159,6 +190,7 @@ export const create = mutation({
           threadId: conversation.threadId,
           prompt: args.prompt,
           operator: identity.familyName,
+          attachmentCount: attachmentIds.length,
         },
       }
     )

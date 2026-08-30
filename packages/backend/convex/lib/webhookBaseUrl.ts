@@ -60,7 +60,7 @@ export const getWebhookBaseUrl = (...preferredEnvVars: string[]) => {
   return deriveSiteUrlFromCloudUrl()
 }
 
-const getDeploymentSiteUrl = () =>
+export const getDeploymentSiteUrl = () =>
   normalizeUrl(process.env.CONVEX_SITE_URL) ?? deriveSiteUrlFromCloudUrl()
 
 export const getInstagramWebhookBaseUrl = () =>

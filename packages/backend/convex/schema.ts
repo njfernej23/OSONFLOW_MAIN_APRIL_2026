@@ -179,6 +179,12 @@ const appearanceValidator = v.object({
     v.union(v.literal("session"), v.literal("visitor"), v.literal("always"))
   ),
   notificationSoundEnabled: v.optional(v.boolean()),
+  // Visitor image attachments. Off switch lives here so a moderator can revoke
+  // uploads for a widget without touching anything the operator side depends on.
+  imageUploadsEnabled: v.optional(v.boolean()),
+  imageUploadMaxSizeMb: v.optional(v.number()),
+  imageUploadMaxPerMessage: v.optional(v.number()),
+  imageUploadAiVisionEnabled: v.optional(v.boolean()),
 })
 
 // Visitor-facing strings an organization can rewrite without a code change.
@@ -397,6 +403,36 @@ export default defineSchema({
   })
     .index("by_storage_id", ["storageId"])
     .index("by_organization_id", ["organizationId"]),
+  // An image sent inside a conversation, by a visitor or by an operator.
+  //
+  // Attachments live beside the thread rather than inside the agent message
+  // content: keeping image parts out of the stored transcript means the model
+  // context stays text-only, so an old screenshot is not re-uploaded to the LLM
+  // on every subsequent turn. `accessKey` is the unguessable half of the serving
+  // URL — the blob is never handed out as a raw Convex storage URL, so deleting
+  // this row revokes access to the image everywhere.
+  chatAttachments: defineTable({
+    organizationId: v.string(),
+    conversationId: v.id("conversations"),
+    threadId: v.string(),
+    storageId: v.id("_storage"),
+    // Unset until the attachment is sent; a message id binds it to a bubble.
+    messageId: v.optional(v.string()),
+    source: v.union(v.literal("contact"), v.literal("operator")),
+    contactSessionId: v.optional(v.id("contactSessions")),
+    operatorId: v.optional(v.string()),
+    filename: v.string(),
+    mediaType: v.string(),
+    size: v.number(),
+    width: v.optional(v.number()),
+    height: v.optional(v.number()),
+    accessKey: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_storage_id", ["storageId"])
+    .index("by_conversation_id", ["conversationId"])
+    .index("by_conversation_id_and_message_id", ["conversationId", "messageId"])
+    .index("by_message_id", ["messageId"]),
   plugins: defineTable({
     organizationId: v.string(),
     service: v.union(

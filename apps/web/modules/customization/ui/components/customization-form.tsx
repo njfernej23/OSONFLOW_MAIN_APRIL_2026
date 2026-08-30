@@ -16,6 +16,7 @@ import {
   FileTextIcon,
   Heading2Icon,
   HistoryIcon,
+  ImagePlusIcon,
   ItalicIcon,
   LayoutGridIcon,
   LibraryIcon,
@@ -103,6 +104,7 @@ import {
   type WidgetSettingsVersionSummary,
 } from "./release-drawer"
 import {
+  NumberScrubber,
   SettingRow,
   SettingsDivider,
   SettingsGroup,
@@ -1614,6 +1616,106 @@ export const CustomizationForm = ({
                             }
                             description="Adds a download button to the chat header so visitors can save the transcript."
                             label="Allow transcript download"
+                          />
+                          <FormMessage className="mt-1.5" />
+                        </FormItem>
+                      )}
+                    />
+                  </SettingsGroup>
+
+                  <SettingsDivider />
+
+                  <SettingsGroup
+                    description="Whether visitors can send you screenshots and photos, and what the widget accepts when they do. Operators can always attach images to a reply."
+                    icon={ImagePlusIcon}
+                    title="Image attachments"
+                  >
+                    <FormField
+                      control={form.control}
+                      name="appearance.imageUploadsEnabled"
+                      render={({ field }) => (
+                        <FormItem className="min-w-0 space-y-0">
+                          <SettingRow
+                            control={
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                            }
+                            description="Adds an attach button to the widget composer. Visitors can also paste or drag an image straight into the chat."
+                            label="Let visitors attach images"
+                          />
+                          <FormMessage className="mt-1.5" />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="appearance.imageUploadMaxSizeMb"
+                      render={({ field }) => (
+                        <FormItem className="min-w-0 space-y-0">
+                          <FormControl>
+                            <NumberScrubber
+                              description="Checked on the server after the upload lands. Images are resized in the browser first, so most photos arrive well under any limit."
+                              disabled={!watchedValues.appearance?.imageUploadsEnabled}
+                              label="Largest image accepted"
+                              marks={[2, 5, 8, 12, 20]}
+                              max={20}
+                              min={1}
+                              onChange={field.onChange}
+                              unit="MB"
+                              value={Number(field.value)}
+                            />
+                          </FormControl>
+                          <FormMessage className="mt-1.5" />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="appearance.imageUploadMaxPerMessage"
+                      render={({ field }) => (
+                        <FormItem className="min-w-0 space-y-0">
+                          <FormControl>
+                            <NumberScrubber
+                              description="How many images a visitor can send in one message."
+                              disabled={!watchedValues.appearance?.imageUploadsEnabled}
+                              label="Images per message"
+                              max={6}
+                              min={1}
+                              onChange={field.onChange}
+                              value={Number(field.value)}
+                            />
+                          </FormControl>
+                          <FormMessage className="mt-1.5" />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="appearance.imageUploadAiVisionEnabled"
+                      render={({ field }) => (
+                        <FormItem className="min-w-0 space-y-0">
+                          <SettingRow
+                            control={
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  disabled={
+                                    !watchedValues.appearance
+                                      ?.imageUploadsEnabled
+                                  }
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                            }
+                            description="The assistant reads an attached image on the turn it arrives, then answers from the conversation text alone. Turn this off to keep images between the visitor and your operators."
+                            label="Let the assistant read attached images"
                           />
                           <FormMessage className="mt-1.5" />
                         </FormItem>

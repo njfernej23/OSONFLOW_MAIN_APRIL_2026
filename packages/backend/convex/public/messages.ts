@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values"
 import { action, query } from "../_generated/server"
 import { components, internal } from "../_generated/api"
+import type { Id } from "../_generated/dataModel"
 import { supportAgent } from "../system/ai/agents/supportAgent"
 import { paginationOptsValidator } from "convex/server"
 import { escalateConversation } from "../system/ai/tools/escalateConversation"
@@ -36,6 +37,7 @@ import {
   requireContactSessionConversation,
   requireContactSessionThread,
 } from "../lib/widgetAuth"
+import { buildModelImageParts } from "../lib/attachmentUploads"
 
 const getAgentMessageRole = (message: any): string => {
   const role = message?.message?.role ?? message?.role
@@ -278,12 +280,19 @@ const hasPaidOrganizationSubscription = async (
     : false
 }
 
+const describeAttachmentsForModel = (count: number, promptText: string) => {
+  const notice = `[The visitor attached ${count} image${count === 1 ? "" : "s"}. You cannot see ${count === 1 ? "it" : "them"} — ask about ${count === 1 ? "it" : "them"} in words if you need the detail.]`
+
+  return promptText ? `${promptText}\n\n${notice}` : notice
+}
+
 export const create = action({
   args: {
     prompt: v.string(),
     threadId: v.string(),
     contactSessionId: v.id("contactSessions"),
     workflowButtonId: v.optional(v.string()),
+    attachmentIds: v.optional(v.array(v.id("chatAttachments"))),
   },
   handler: async (ctx, args) => {
     const contactSession = await ctx.runQuery(
@@ -331,6 +340,61 @@ export const create = action({
       })
     }
 
+    const attachmentIds = args.attachmentIds ?? []
+    const promptText = args.prompt.trim()
+    let attachments: Array<{
+      id: Id<"chatAttachments">
+      storageId: Id<"_storage">
+      mediaType: string
+      filename: string
+      size: number
+    }> = []
+    let attachmentsVisibleToModel = false
+
+    if (attachmentIds.length > 0) {
+      const uploadPolicy = await ctx.runQuery(
+        internal.system.chatAttachments.getUploadPolicy,
+        {
+          organizationId: conversation.organizationId,
+          agentId: conversation.agentId,
+        }
+      )
+
+      if (!uploadPolicy.enabled) {
+        throw new ConvexError({
+          code: "FORBIDDEN",
+          message: "Image attachments are turned off for this widget.",
+        })
+      }
+
+      if (attachmentIds.length > uploadPolicy.maxPerMessage) {
+        throw new ConvexError({
+          code: "BAD_REQUEST",
+          message: `You can attach up to ${uploadPolicy.maxPerMessage} image${uploadPolicy.maxPerMessage === 1 ? "" : "s"} per message.`,
+        })
+      }
+
+      // Confirms every id belongs to this visitor and this conversation, and is
+      // not already attached to an earlier message.
+      attachments = await ctx.runQuery(
+        internal.system.chatAttachments.resolveForSend,
+        {
+          conversationId: conversation._id,
+          attachmentIds,
+          source: "contact",
+          contactSessionId: args.contactSessionId,
+        }
+      )
+      attachmentsVisibleToModel = uploadPolicy.aiVisionEnabled
+    }
+
+    if (!promptText && attachments.length === 0) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message: "Message is required",
+      })
+    }
+
     await enforceRateLimit(ctx, "widgetMessageBySession", {
       key: `${conversation.organizationId}:${args.contactSessionId}`,
       message: "You are sending messages too quickly. Please wait a moment.",
@@ -353,6 +417,7 @@ export const create = action({
         prompt: args.prompt,
         contactSessionId: args.contactSessionId,
         workflowButtonId: args.workflowButtonId,
+        attachmentIds,
       }
     )
 
@@ -432,7 +497,37 @@ export const create = action({
       configuredTools,
       enabledToolIds
     )
-    const bypassReplyCache = requiresLiveToolExecution(activeTools)
+    // An answer keyed on text alone must never be replayed for a message that
+    // also carried an image, and such an answer must not be cached either.
+    const bypassReplyCache =
+      requiresLiveToolExecution(activeTools) || attachments.length > 0
+
+    // With attachments the visitor's message is written here rather than by the
+    // generate call below, so the uploads can be bound to a real message id
+    // before any reply exists. The images stay out of the stored message: they
+    // are handed to the model for this turn only, which keeps a screenshot from
+    // being re-uploaded as context on every later turn of the conversation.
+    let promptMessageId: string | undefined
+
+    if (attachments.length > 0) {
+      const savedUserMessage = await saveMessage(ctx, components.agent, {
+        threadId: args.threadId,
+        message: {
+          role: "user",
+          content: promptText,
+        },
+      })
+
+      promptMessageId = savedUserMessage.messageId
+
+      await ctx.runMutation(internal.system.chatAttachments.bindToMessage, {
+        conversationId: conversation._id,
+        attachmentIds: attachments.map((attachment) => attachment.id),
+        messageId: promptMessageId,
+        source: "contact",
+        contactSessionId: args.contactSessionId,
+      })
+    }
 
     let assistantReplyText: string | null = null
 
@@ -512,6 +607,25 @@ export const create = action({
           activeTools
         )
 
+        const modelPrompt = attachments.length
+          ? [
+              {
+                role: "user" as const,
+                content: attachmentsVisibleToModel
+                  ? [
+                      ...(promptText
+                        ? [{ type: "text" as const, text: promptText }]
+                        : []),
+                      ...(await buildModelImageParts(ctx, attachments)),
+                    ]
+                  : describeAttachmentsForModel(
+                      attachments.length,
+                      promptText
+                    ),
+              },
+            ]
+          : args.prompt
+
         const result = await supportAgent.generateText(
           ctx,
           { threadId: args.threadId },
@@ -521,7 +635,10 @@ export const create = action({
               chatModel
             ),
             system: toolAwareSystemPrompt,
-            prompt: args.prompt,
+            prompt: modelPrompt,
+            // Anchors the reply to the message saved above so the prompt
+            // override is used for this call only and never written back.
+            promptMessageId,
             tools: chatTools,
           },
           {
@@ -578,10 +695,12 @@ export const create = action({
         }
       }
     } else {
-      await saveMessage(ctx, components.agent, {
-        threadId: args.threadId,
-        prompt: args.prompt,
-      })
+      if (!promptMessageId) {
+        await saveMessage(ctx, components.agent, {
+          threadId: args.threadId,
+          prompt: args.prompt,
+        })
+      }
 
       if (conversation.status === "unresolved" && !shouldTriggerAgent) {
         assistantReplyText =
@@ -629,6 +748,7 @@ export const create = action({
           threadId: args.threadId,
           contactSessionId: args.contactSessionId,
           prompt: args.prompt,
+          attachmentCount: attachments.length,
         },
       }
     )

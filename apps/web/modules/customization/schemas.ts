@@ -137,6 +137,10 @@ export const widgetSettingsSchema = z.object({
     autoOpenDelaySeconds: z.coerce.number().min(0).max(300),
     autoOpenFrequency: z.enum(["session", "visitor", "always"]),
     notificationSoundEnabled: z.boolean(),
+    imageUploadsEnabled: z.boolean(),
+    imageUploadMaxSizeMb: z.coerce.number().min(1).max(20),
+    imageUploadMaxPerMessage: z.coerce.number().min(1).max(6),
+    imageUploadAiVisionEnabled: z.boolean(),
   }),
   widgetCopy: z.object({
     homeGreeting: z

@@ -4,6 +4,10 @@ import { mutation, query } from "../_generated/server"
 import { Id } from "../_generated/dataModel"
 import { SUPPORT_AGENT_PROMPT } from "../system/ai/constants"
 import { enforceRateLimit } from "../lib/rateLimits"
+import {
+  DEFAULT_IMAGE_UPLOAD_POLICY,
+  IMAGE_UPLOAD_POLICY_BOUNDS,
+} from "../lib/chatAttachments"
 
 const DEFAULT_THEME = {
   primaryColor: "#000000",
@@ -47,6 +51,10 @@ const DEFAULT_APPEARANCE = {
   autoOpenDelaySeconds: 8,
   autoOpenFrequency: "session" as const,
   notificationSoundEnabled: true,
+  imageUploadsEnabled: DEFAULT_IMAGE_UPLOAD_POLICY.enabled,
+  imageUploadMaxSizeMb: DEFAULT_IMAGE_UPLOAD_POLICY.maxSizeMb,
+  imageUploadMaxPerMessage: DEFAULT_IMAGE_UPLOAD_POLICY.maxPerMessage,
+  imageUploadAiVisionEnabled: DEFAULT_IMAGE_UPLOAD_POLICY.aiVisionEnabled,
 }
 
 const DEFAULT_WIDGET_COPY = {
@@ -192,6 +200,10 @@ const appearanceValidator = v.object({
     v.union(v.literal("session"), v.literal("visitor"), v.literal("always"))
   ),
   notificationSoundEnabled: v.optional(v.boolean()),
+  imageUploadsEnabled: v.optional(v.boolean()),
+  imageUploadMaxSizeMb: v.optional(v.number()),
+  imageUploadMaxPerMessage: v.optional(v.number()),
+  imageUploadAiVisionEnabled: v.optional(v.boolean()),
 })
 
 const widgetCopyValidator = v.object({
@@ -266,6 +278,10 @@ type WidgetAppearance = {
   autoOpenDelaySeconds?: number
   autoOpenFrequency?: "session" | "visitor" | "always"
   notificationSoundEnabled?: boolean
+  imageUploadsEnabled?: boolean
+  imageUploadMaxSizeMb?: number
+  imageUploadMaxPerMessage?: number
+  imageUploadAiVisionEnabled?: boolean
 }
 
 type WidgetCopy = {
@@ -633,6 +649,28 @@ const mergeAppearance = (
     incoming?.notificationSoundEnabled ??
     base?.notificationSoundEnabled ??
     DEFAULT_APPEARANCE.notificationSoundEnabled,
+  imageUploadsEnabled:
+    incoming?.imageUploadsEnabled ??
+    base?.imageUploadsEnabled ??
+    DEFAULT_APPEARANCE.imageUploadsEnabled,
+  // Clamped here as well as at upload time: a draft is not allowed to describe
+  // a limit the server would refuse to honour.
+  imageUploadMaxSizeMb: clampNumber(
+    incoming?.imageUploadMaxSizeMb ?? base?.imageUploadMaxSizeMb,
+    IMAGE_UPLOAD_POLICY_BOUNDS.minSizeMb,
+    IMAGE_UPLOAD_POLICY_BOUNDS.maxSizeMb,
+    DEFAULT_APPEARANCE.imageUploadMaxSizeMb
+  ),
+  imageUploadMaxPerMessage: clampNumber(
+    incoming?.imageUploadMaxPerMessage ?? base?.imageUploadMaxPerMessage,
+    IMAGE_UPLOAD_POLICY_BOUNDS.minPerMessage,
+    IMAGE_UPLOAD_POLICY_BOUNDS.maxPerMessage,
+    DEFAULT_APPEARANCE.imageUploadMaxPerMessage
+  ),
+  imageUploadAiVisionEnabled:
+    incoming?.imageUploadAiVisionEnabled ??
+    base?.imageUploadAiVisionEnabled ??
+    DEFAULT_APPEARANCE.imageUploadAiVisionEnabled,
 })
 
 const mergeWidgetCopy = (

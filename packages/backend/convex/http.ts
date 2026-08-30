@@ -14,6 +14,7 @@ import {
   type MetaProvider,
   type MetaSignatureResult,
 } from "./lib/metaWebhook"
+import { timingSafeEqual } from "./lib/chatAttachments"
 
 const http = httpRouter()
 
@@ -579,6 +580,64 @@ http.route({
     }
 
     return new Response("EVENT_RECEIVED", { status: 200 })
+  }),
+})
+
+/**
+ * Serves a conversation image attachment.
+ *
+ * Attachments are never exposed as Convex storage URLs. The path carries the
+ * attachment id plus a 256-bit access key that only the conversation's
+ * participants are ever told, and deleting the attachment row revokes every
+ * copy of the link at once. The response is deliberately inert: a sniff-proof
+ * content type taken from our own validation (not from the uploader), a CSP
+ * that denies the document every capability, and `inline` disposition with a
+ * sanitized filename.
+ */
+http.route({
+  pathPrefix: "/chat-attachment/",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const url = new URL(request.url)
+    const pathParts = url.pathname.split("/").filter(Boolean)
+    const accessKey = pathParts[pathParts.length - 1]
+    const attachmentId = pathParts[pathParts.length - 2]
+
+    if (!attachmentId || !accessKey) {
+      return new Response("Not found", { status: 404 })
+    }
+
+    const attachment = await ctx.runQuery(
+      internal.system.chatAttachments.getForAccess,
+      { attachmentId }
+    )
+
+    // One shape of answer for "no such attachment" and "wrong key", so the
+    // route never confirms that an attachment id exists.
+    if (!attachment || !timingSafeEqual(attachment.accessKey, accessKey)) {
+      return new Response("Not found", { status: 404 })
+    }
+
+    const blob = await ctx.storage.get(attachment.storageId)
+
+    if (!blob) {
+      return new Response("Not found", { status: 404 })
+    }
+
+    return new Response(blob, {
+      status: 200,
+      headers: {
+        "Content-Type": attachment.mediaType,
+        // The URL names one immutable blob, so it can be cached hard. `private`
+        // keeps shared proxies from holding a copy of someone's conversation.
+        "Cache-Control": "private, max-age=31536000, immutable",
+        "Content-Disposition": `inline; filename="${attachment.filename}"`,
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+        "Cross-Origin-Resource-Policy": "cross-origin",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+      },
+    })
   }),
 })
 

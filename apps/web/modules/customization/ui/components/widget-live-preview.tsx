@@ -6,6 +6,7 @@ import {
   ChevronRightIcon,
   CircleHelpIcon,
   DownloadIcon,
+  ImagePlusIcon,
   MessageSquareTextIcon,
   MinusIcon,
   MonitorIcon,
@@ -324,6 +325,14 @@ const ChatScreenMock = ({
               : "border-zinc-200 bg-zinc-50"
           )}
         >
+          {appearance.imageUploadsEnabled ? (
+            <ImagePlusIcon
+              className={cn(
+                "size-3 shrink-0",
+                darkMode ? "text-zinc-500" : "text-zinc-400"
+              )}
+            />
+          ) : null}
           <span
             className={cn(
               "flex-1 truncate text-[9.5px]",

@@ -9,9 +9,12 @@
  */
 
 import type * as constants from "../constants.js";
+import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as lib_agentMessageText from "../lib/agentMessageText.js";
 import type * as lib_assistantTools from "../lib/assistantTools.js";
+import type * as lib_attachmentUploads from "../lib/attachmentUploads.js";
+import type * as lib_chatAttachments from "../lib/chatAttachments.js";
 import type * as lib_contactSessionIdentity from "../lib/contactSessionIdentity.js";
 import type * as lib_extractTextContent from "../lib/extractTextContent.js";
 import type * as lib_googleSheetsAuth from "../lib/googleSheetsAuth.js";
@@ -41,6 +44,7 @@ import type * as lib_workflowEngine from "../lib/workflowEngine.js";
 import type * as private_aiConversations from "../private/aiConversations.js";
 import type * as private_analytics from "../private/analytics.js";
 import type * as private_assistantTools from "../private/assistantTools.js";
+import type * as private_attachments from "../private/attachments.js";
 import type * as private_contactSessions from "../private/contactSessions.js";
 import type * as private_conversations from "../private/conversations.js";
 import type * as private_customerMemories from "../private/customerMemories.js";
@@ -63,6 +67,7 @@ import type * as private_widgetSettings from "../private/widgetSettings.js";
 import type * as private_workflows from "../private/workflows.js";
 import type * as public_aiConversations from "../public/aiConversations.js";
 import type * as public_assistantTools from "../public/assistantTools.js";
+import type * as public_attachments from "../public/attachments.js";
 import type * as public_contactSessions from "../public/contactSessions.js";
 import type * as public_conversations from "../public/conversations.js";
 import type * as public_messages from "../public/messages.js";
@@ -82,6 +87,7 @@ import type * as system_ai_tools_search from "../system/ai/tools/search.js";
 import type * as system_assistantTools from "../system/assistantTools.js";
 import type * as system_assistantTools_execute from "../system/assistantTools/execute.js";
 import type * as system_assistantTools_getChatTools from "../system/assistantTools/getChatTools.js";
+import type * as system_chatAttachments from "../system/chatAttachments.js";
 import type * as system_contactSessions from "../system/contactSessions.js";
 import type * as system_conversations from "../system/conversations.js";
 import type * as system_googleSheets from "../system/googleSheets.js";
@@ -110,9 +116,12 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   constants: typeof constants;
+  crons: typeof crons;
   http: typeof http;
   "lib/agentMessageText": typeof lib_agentMessageText;
   "lib/assistantTools": typeof lib_assistantTools;
+  "lib/attachmentUploads": typeof lib_attachmentUploads;
+  "lib/chatAttachments": typeof lib_chatAttachments;
   "lib/contactSessionIdentity": typeof lib_contactSessionIdentity;
   "lib/extractTextContent": typeof lib_extractTextContent;
   "lib/googleSheetsAuth": typeof lib_googleSheetsAuth;
@@ -142,6 +151,7 @@ declare const fullApi: ApiFromModules<{
   "private/aiConversations": typeof private_aiConversations;
   "private/analytics": typeof private_analytics;
   "private/assistantTools": typeof private_assistantTools;
+  "private/attachments": typeof private_attachments;
   "private/contactSessions": typeof private_contactSessions;
   "private/conversations": typeof private_conversations;
   "private/customerMemories": typeof private_customerMemories;
@@ -164,6 +174,7 @@ declare const fullApi: ApiFromModules<{
   "private/workflows": typeof private_workflows;
   "public/aiConversations": typeof public_aiConversations;
   "public/assistantTools": typeof public_assistantTools;
+  "public/attachments": typeof public_attachments;
   "public/contactSessions": typeof public_contactSessions;
   "public/conversations": typeof public_conversations;
   "public/messages": typeof public_messages;
@@ -183,6 +194,7 @@ declare const fullApi: ApiFromModules<{
   "system/assistantTools": typeof system_assistantTools;
   "system/assistantTools/execute": typeof system_assistantTools_execute;
   "system/assistantTools/getChatTools": typeof system_assistantTools_getChatTools;
+  "system/chatAttachments": typeof system_chatAttachments;
   "system/contactSessions": typeof system_contactSessions;
   "system/conversations": typeof system_conversations;
   "system/googleSheets": typeof system_googleSheets;

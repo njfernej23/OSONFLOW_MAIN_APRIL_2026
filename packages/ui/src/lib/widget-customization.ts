@@ -53,6 +53,12 @@ export type WidgetAppearanceSettings = {
   autoOpenDelaySeconds: number
   autoOpenFrequency: WidgetAutoOpenFrequency
   notificationSoundEnabled: boolean
+  /** Whether visitors may attach images to a message. */
+  imageUploadsEnabled: boolean
+  imageUploadMaxSizeMb: number
+  imageUploadMaxPerMessage: number
+  /** Whether the assistant is shown the images a visitor attaches. */
+  imageUploadAiVisionEnabled: boolean
 }
 
 /** Visitor-facing strings an organization can rewrite without a code change. */
@@ -106,6 +112,10 @@ export const DEFAULT_WIDGET_APPEARANCE: WidgetAppearanceSettings = {
   autoOpenDelaySeconds: 8,
   autoOpenFrequency: "session",
   notificationSoundEnabled: true,
+  imageUploadsEnabled: true,
+  imageUploadMaxSizeMb: 8,
+  imageUploadMaxPerMessage: 3,
+  imageUploadAiVisionEnabled: true,
 }
 
 export const DEFAULT_WIDGET_COPY: WidgetCopySettings = {
@@ -170,6 +180,10 @@ export const LAUNCHER_OFFSET_RANGE = { min: 0, max: 160 } as const
 /** Diameter in px of the round launcher button. */
 export const LAUNCHER_SIZE_RANGE = { min: 40, max: 76 } as const
 export const AUTO_OPEN_DELAY_RANGE = { min: 0, max: 300 } as const
+/** Per-image ceiling a moderator can set for visitor attachments, in MB. */
+export const IMAGE_UPLOAD_SIZE_RANGE = { min: 1, max: 20 } as const
+/** How many images a visitor may attach to one message. */
+export const IMAGE_UPLOAD_COUNT_RANGE = { min: 1, max: 6 } as const
 
 const clampToRange = (
   value: number,
@@ -202,6 +216,20 @@ export const clampAutoOpenDelaySeconds = (value: number): number =>
     Number(value),
     AUTO_OPEN_DELAY_RANGE,
     DEFAULT_WIDGET_APPEARANCE.autoOpenDelaySeconds
+  )
+
+export const clampImageUploadMaxSizeMb = (value: number): number =>
+  clampToRange(
+    Number(value),
+    IMAGE_UPLOAD_SIZE_RANGE,
+    DEFAULT_WIDGET_APPEARANCE.imageUploadMaxSizeMb
+  )
+
+export const clampImageUploadMaxPerMessage = (value: number): number =>
+  clampToRange(
+    Number(value),
+    IMAGE_UPLOAD_COUNT_RANGE,
+    DEFAULT_WIDGET_APPEARANCE.imageUploadMaxPerMessage
   )
 
 // These values are set by organization admins and end up inside inline styles,
@@ -407,6 +435,14 @@ export const mergeWidgetAppearance = (
       DEFAULT_WIDGET_APPEARANCE.autoOpenFrequency
     ),
     notificationSoundEnabled: merged.notificationSoundEnabled !== false,
+    imageUploadsEnabled: merged.imageUploadsEnabled !== false,
+    imageUploadMaxSizeMb: clampImageUploadMaxSizeMb(
+      merged.imageUploadMaxSizeMb
+    ),
+    imageUploadMaxPerMessage: clampImageUploadMaxPerMessage(
+      merged.imageUploadMaxPerMessage
+    ),
+    imageUploadAiVisionEnabled: merged.imageUploadAiVisionEnabled !== false,
   }
 }
 

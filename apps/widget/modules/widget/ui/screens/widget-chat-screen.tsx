@@ -7,7 +7,7 @@ import { useThreadMessages, toUIMessages } from "@convex-dev/agent/react"
 import { WidgetHeader } from "@/modules/widget/ui/components/widget-header"
 import { Button } from "@workspace/ui/components/button"
 import { useAtomValue, useSetAtom } from "jotai"
-import { ArrowLeftIcon, CheckCircle2Icon } from "lucide-react"
+import { ArrowLeftIcon, CheckCircle2Icon, ImagePlusIcon } from "lucide-react"
 import {
   chatReturnScreenAtom,
   workflowOnlyAtom,
@@ -20,6 +20,7 @@ import {
 } from "../../atoms/widget-atoms"
 import { useAction, useMutation, useQuery } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
+import type { Id } from "@workspace/backend/_generated/dataModel"
 import {
   AIConversation,
   AIConversationContent,
@@ -29,6 +30,16 @@ import {
   AIInputSubmit,
   AIInputTextarea,
 } from "@workspace/ui/components/ai/input"
+import {
+  AIAttachmentTray,
+  AIMessageAttachments,
+  type ChatMessageAttachment,
+} from "@workspace/ui/components/ai/attachment"
+import { useChatImageAttachments } from "@workspace/ui/hooks/use-chat-image-attachments"
+import {
+  ATTACHMENT_FILE_INPUT_ACCEPT,
+  imageFilesFromDataTransfer,
+} from "@workspace/ui/lib/chat-attachments"
 import { Form, FormField } from "@workspace/ui/components/form"
 import {
   AIMessage,
@@ -57,8 +68,10 @@ import {
 import { cn } from "@workspace/ui/lib/utils"
 import { WidgetEmailCapture } from "../components/widget-email-capture"
 
+// The composer can also be sent with images and no text, so emptiness is
+// checked at submit time against the attachment tray rather than by the schema.
 const formSchema = z.object({
-  message: z.string().min(1, "Message is required"),
+  message: z.string(),
 })
 
 type ChatHistoryMessage = {
@@ -160,6 +173,18 @@ const buildChatHistoryText = ({
   return `${[...headerLines, ...messageLines].join("\n").trimEnd()}\n`
 }
 
+/**
+ * Frees the local previews an optimistic bubble was showing, once the server
+ * has echoed the real message back with its hosted image URLs.
+ */
+const releaseOptimisticPreviews = (attachments: ChatMessageAttachment[]) => {
+  for (const attachment of attachments) {
+    if (attachment.url.startsWith("blob:")) {
+      URL.revokeObjectURL(attachment.url)
+    }
+  }
+}
+
 const BUBBLE_CLASS =
   "owc-bubble bg-[var(--widget-bot-bubble)] text-[var(--widget-bot-bubble-foreground)] group-[.is-user]:bg-[var(--widget-user-bubble)] group-[.is-user]:text-[var(--widget-user-bubble-foreground)]"
 
@@ -256,6 +281,15 @@ export const WidgetChatScreen = () => {
         }
       : "skip"
   )
+  const conversationAttachments = useQuery(
+    api.public.attachments.getForConversation,
+    conversationId && contactSessionId
+      ? {
+          conversationId,
+          contactSessionId,
+        }
+      : "skip"
+  )
   const chatHistoryExport = useQuery(
     api.public.messages.getConversationExport,
     canDownloadChatHistory && conversationId && contactSessionId
@@ -298,12 +332,40 @@ export const WidgetChatScreen = () => {
     () => toUIMessages(messages.results ?? []),
     [messages.results]
   )
+  const attachmentsByMessageId = useMemo(() => {
+    const grouped = new Map<string, ChatMessageAttachment[]>()
+
+    for (const attachment of conversationAttachments ?? []) {
+      if (!attachment.messageId) {
+        continue
+      }
+
+      const existing = grouped.get(attachment.messageId)
+
+      if (existing) {
+        existing.push(attachment)
+      } else {
+        grouped.set(attachment.messageId, [attachment])
+      }
+    }
+
+    // Oldest first, so a batch sent together keeps the order it was picked in.
+    for (const group of grouped.values()) {
+      group.sort((left, right) => (left.createdAt ?? 0) - (right.createdAt ?? 0))
+    }
+
+    return grouped
+  }, [conversationAttachments])
+  // A message carrying only images has no text, so emptiness alone no longer
+  // means there is nothing to show.
   const visibleMessages = useMemo(
     () =>
       uiMessages.filter(
-        (message) => getUiMessageText(message).trim().length > 0
+        (message) =>
+          getUiMessageText(message).trim().length > 0 ||
+          attachmentsByMessageId.has(message.id)
       ),
-    [uiMessages]
+    [attachmentsByMessageId, uiMessages]
   )
 
   // Card and Carousel steps render their own buttons, so the choice row below
@@ -350,6 +412,7 @@ export const WidgetChatScreen = () => {
   const [optimisticUserMessage, setOptimisticUserMessage] = useState<{
     text: string
     baseCount: number
+    attachments: ChatMessageAttachment[]
   } | null>(null)
   const showOptimisticUserMessage =
     optimisticUserMessage !== null &&
@@ -457,6 +520,7 @@ export const WidgetChatScreen = () => {
       optimisticUserMessage !== null &&
       userMessageCount > optimisticUserMessage.baseCount
     ) {
+      releaseOptimisticPreviews(optimisticUserMessage.attachments)
       setOptimisticUserMessage(null)
     }
   }, [optimisticUserMessage, userMessageCount])
@@ -476,10 +540,86 @@ export const WidgetChatScreen = () => {
   })
 
   const createMessage = useAction(api.public.messages.create)
+  const generateAttachmentUploadUrl = useMutation(
+    api.public.attachments.generateUploadUrl
+  )
+  const attachUploadedImage = useAction(api.public.attachments.attach)
+  const removeAttachment = useMutation(api.public.attachments.remove)
   const identifyContactSession = useAction(api.public.contactSessions.identify)
   const markConversationAsRead = useMutation(
     api.public.conversations.markAsRead
   )
+
+  const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const canAttachImages =
+    appearance.imageUploadsEnabled &&
+    !isConversationResolved &&
+    Boolean(conversationId && contactSessionId)
+
+  const attachments = useChatImageAttachments({
+    enabled: canAttachImages,
+    maxPerMessage: appearance.imageUploadMaxPerMessage,
+    maxSizeBytes: appearance.imageUploadMaxSizeMb * 1024 * 1024,
+    onError: setAttachmentNotice,
+    requestUploadUrl: async () => {
+      if (!conversationId || !contactSessionId) {
+        throw new Error("Missing session")
+      }
+
+      return await generateAttachmentUploadUrl({
+        conversationId,
+        contactSessionId,
+      })
+    },
+    attachUpload: async ({ storageId, filename, width, height }) => {
+      if (!conversationId || !contactSessionId) {
+        throw new Error("Missing session")
+      }
+
+      return await attachUploadedImage({
+        conversationId,
+        contactSessionId,
+        storageId: storageId as Id<"_storage">,
+        filename,
+        width,
+        height,
+      })
+    },
+    discardUpload: async (attachmentId) => {
+      if (!contactSessionId) {
+        return
+      }
+
+      await removeAttachment({
+        attachmentId: attachmentId as Id<"chatAttachments">,
+        contactSessionId,
+      })
+    },
+  })
+
+  const pickImages = () => {
+    setAttachmentNotice(null)
+    fileInputRef.current?.click()
+  }
+
+  const acceptDroppedImages = (files: File[]) => {
+    if (!canAttachImages || files.length === 0) {
+      return
+    }
+
+    setAttachmentNotice(null)
+    void attachments.addFiles(files)
+  }
+
+  // An image on its own is a message, so the send button no longer depends on
+  // the text field alone — but it does wait for every upload to be accepted.
+  const draftMessage = form.watch("message")
+  const canSendMessage =
+    !isComposerDisabled &&
+    !attachments.isUploading &&
+    (draftMessage.trim().length > 0 ||
+      attachments.readyAttachmentIds.length > 0)
 
   const holdMessage = (prompt: string) => {
     setHeldMessages((previous) =>
@@ -585,7 +725,11 @@ export const WidgetChatScreen = () => {
       return
     }
 
-    setOptimisticUserMessage({ text: prompt, baseCount: userMessageCount })
+    setOptimisticUserMessage({
+      text: prompt,
+      baseCount: userMessageCount,
+      attachments: [],
+    })
     setPendingAssistantMessageCount(assistantMessageCount + 1)
 
     void createMessage({
@@ -621,23 +765,52 @@ export const WidgetChatScreen = () => {
     }
 
     const prompt = values.message.trim()
+    const sentDrafts = attachments.drafts.filter(
+      (draft) => draft.status === "ready" && draft.attachmentId
+    )
+    const attachmentIds = sentDrafts.map(
+      (draft) => draft.attachmentId as Id<"chatAttachments">
+    )
 
-    if (!prompt) {
+    if (!prompt && attachmentIds.length === 0) {
       return
     }
 
-    if (isInputLockedForEmail) {
+    if (attachments.isUploading || isInputLockedForEmail) {
       return
     }
 
     form.reset()
+    setAttachmentNotice(null)
 
-    if (needsEmail !== false) {
+    // Held messages wait for an email address, and an upload is already bound
+    // to this conversation, so images are sent as their own message instead of
+    // being queued as text.
+    if (needsEmail !== false && attachmentIds.length === 0) {
       holdMessage(prompt)
       return
     }
 
-    setOptimisticUserMessage({ text: prompt, baseCount: userMessageCount })
+    // The previews keep showing from local memory until the server echoes the
+    // message back with its hosted URLs, so an image send never blinks.
+    const optimisticAttachments: ChatMessageAttachment[] = sentDrafts.map(
+      (draft) => ({
+        id: draft.attachmentId as string,
+        url: draft.previewUrl,
+        mediaType: "image/*",
+        filename: draft.filename,
+        size: draft.size,
+        width: draft.width,
+        height: draft.height,
+      })
+    )
+
+    attachments.clearAfterSend()
+    setOptimisticUserMessage({
+      text: prompt,
+      baseCount: userMessageCount,
+      attachments: optimisticAttachments,
+    })
     setPendingAssistantMessageCount(assistantMessageCount + 1)
 
     try {
@@ -645,15 +818,24 @@ export const WidgetChatScreen = () => {
         threadId,
         prompt,
         contactSessionId,
+        ...(attachmentIds.length > 0 ? { attachmentIds } : {}),
       })
     } catch {
+      // The tray was emptied so the bubble could show the previews; put it back
+      // so a failed send does not cost the visitor their pictures.
       setOptimisticUserMessage(null)
       setPendingAssistantMessageCount(null)
+      attachments.restoreDrafts(sentDrafts)
       form.setValue("message", prompt, {
         shouldValidate: true,
         shouldDirty: true,
         shouldTouch: true,
       })
+      setAttachmentNotice(
+        attachmentIds.length > 0
+          ? "That message could not be sent. Please try again."
+          : null
+      )
     }
   }
 
@@ -666,7 +848,11 @@ export const WidgetChatScreen = () => {
       return
     }
 
-    setOptimisticUserMessage({ text: button.label, baseCount: userMessageCount })
+    setOptimisticUserMessage({
+      text: button.label,
+      baseCount: userMessageCount,
+      attachments: [],
+    })
     setPendingAssistantMessageCount(assistantMessageCount + 1)
 
     try {
@@ -790,7 +976,26 @@ export const WidgetChatScreen = () => {
           </Button>
         ) : null}
       </WidgetHeader>
-      <AIConversation className="owc-thread">
+      <AIConversation
+        className="owc-thread"
+        onDragOver={(event) => {
+          if (canAttachImages) {
+            event.preventDefault()
+          }
+        }}
+        onDrop={(event) => {
+          if (!canAttachImages) {
+            return
+          }
+
+          const files = imageFilesFromDataTransfer(event.dataTransfer)
+
+          if (files.length > 0) {
+            event.preventDefault()
+            acceptDroppedImages(files)
+          }
+        }}
+      >
         <AIConversationContent className="owc-thread-content">
           <InfiniteScrollTrigger
             ref={topElementRef}
@@ -800,25 +1005,38 @@ export const WidgetChatScreen = () => {
             noMoreText="Beginning of chat"
           />
           {visibleMessages.map((message) => {
+            const messageAttachments = attachmentsByMessageId.get(message.id)
+            const messageText = getUiMessageText(message)
+
             return (
               <AIMessage
                 className="owc-msg"
                 from={message.role === "user" ? "user" : "assistant"}
                 key={message.id}
               >
-                <AIMessageContent className={BUBBLE_CLASS}>
-                  <AIResponse
-                    richActions={
-                      message.id === latestAssistantMessage?.id
-                        ? {
-                            onButtonClick: submitWorkflowChoice,
-                            disabled: !workflowChoices?.buttons?.length,
-                          }
-                        : undefined
-                    }
-                  >
-                    {getUiMessageText(message)}
-                  </AIResponse>
+                <AIMessageContent
+                  className={cn(
+                    BUBBLE_CLASS,
+                    messageAttachments && !messageText.trim() && "owc-bubble-media"
+                  )}
+                >
+                  {messageText.trim() ? (
+                    <AIResponse
+                      richActions={
+                        message.id === latestAssistantMessage?.id
+                          ? {
+                              onButtonClick: submitWorkflowChoice,
+                              disabled: !workflowChoices?.buttons?.length,
+                            }
+                          : undefined
+                      }
+                    >
+                      {messageText}
+                    </AIResponse>
+                  ) : null}
+                  {messageAttachments ? (
+                    <AIMessageAttachments attachments={messageAttachments} />
+                  ) : null}
                 </AIMessageContent>
                 {message.role === "assistant" && (
                   <DicebearAvatar
@@ -837,8 +1055,22 @@ export const WidgetChatScreen = () => {
               from="user"
               key="optimistic-user-message"
             >
-              <AIMessageContent className={BUBBLE_CLASS}>
-                <AIResponse>{optimisticUserMessage.text}</AIResponse>
+              <AIMessageContent
+                className={cn(
+                  BUBBLE_CLASS,
+                  !optimisticUserMessage.text &&
+                    optimisticUserMessage.attachments.length > 0 &&
+                    "owc-bubble-media"
+                )}
+              >
+                {optimisticUserMessage.text ? (
+                  <AIResponse>{optimisticUserMessage.text}</AIResponse>
+                ) : null}
+                {optimisticUserMessage.attachments.length > 0 ? (
+                  <AIMessageAttachments
+                    attachments={optimisticUserMessage.attachments}
+                  />
+                ) : null}
               </AIMessageContent>
             </AIMessage>
           )}
@@ -912,9 +1144,74 @@ export const WidgetChatScreen = () => {
             </p>
           ) : null}
 
+          {attachmentNotice ? (
+            <p className="owc-composer-alert" role="status">
+              {attachmentNotice}
+            </p>
+          ) : null}
+
+          <AIAttachmentTray
+            className="owc-attachment-tray"
+            drafts={attachments.drafts}
+            onRemove={attachments.removeDraft}
+          />
+
           {/* One row, so the composer reads as a single control rather than a
               stacked field with a detached toolbar. */}
-          <div className="owc-composer-row">
+          <div
+            className="owc-composer-row"
+            onDragOver={(event) => {
+              if (canAttachImages) {
+                event.preventDefault()
+              }
+            }}
+            onDrop={(event) => {
+              if (!canAttachImages) {
+                return
+              }
+
+              const files = imageFilesFromDataTransfer(event.dataTransfer)
+
+              if (files.length > 0) {
+                event.preventDefault()
+                acceptDroppedImages(files)
+              }
+            }}
+          >
+            {appearance.imageUploadsEnabled ? (
+              <>
+                <input
+                  accept={ATTACHMENT_FILE_INPUT_ACCEPT}
+                  className="sr-only"
+                  multiple
+                  onChange={(event) => {
+                    acceptDroppedImages(Array.from(event.target.files ?? []))
+                    // Reset so picking the same file twice still fires.
+                    event.target.value = ""
+                  }}
+                  ref={fileInputRef}
+                  tabIndex={-1}
+                  type="file"
+                />
+                <Button
+                  aria-label="Attach an image"
+                  className="owc-composer-attach"
+                  disabled={isComposerDisabled || !attachments.canAttachMore}
+                  onClick={pickImages}
+                  size="icon"
+                  title={
+                    attachments.canAttachMore
+                      ? "Attach an image"
+                      : `Up to ${appearance.imageUploadMaxPerMessage} image${appearance.imageUploadMaxPerMessage === 1 ? "" : "s"} per message`
+                  }
+                  type="button"
+                  variant="transparent"
+                >
+                  <ImagePlusIcon className="size-4" />
+                </Button>
+              </>
+            ) : null}
+
             <FormField
               control={form.control}
               disabled={isComposerDisabled}
@@ -932,6 +1229,20 @@ export const WidgetChatScreen = () => {
                       form.handleSubmit(onSubmit)()
                     }
                   }}
+                  onPaste={(event) => {
+                    if (!canAttachImages) {
+                      return
+                    }
+
+                    const files = imageFilesFromDataTransfer(
+                      event.clipboardData
+                    )
+
+                    if (files.length > 0) {
+                      event.preventDefault()
+                      acceptDroppedImages(files)
+                    }
+                  }}
                   placeholder={composerPlaceholder}
                   value={field.value}
                 />
@@ -940,8 +1251,12 @@ export const WidgetChatScreen = () => {
             <AIInputSubmit
               aria-label="Send message"
               className="owc-composer-send"
-              disabled={isComposerDisabled || !form.formState.isValid}
-              status={isAwaitingResponse ? "submitted" : "ready"}
+              disabled={!canSendMessage}
+              status={
+                isAwaitingResponse || attachments.isUploading
+                  ? "submitted"
+                  : "ready"
+              }
               type="submit"
             />
           </div>
