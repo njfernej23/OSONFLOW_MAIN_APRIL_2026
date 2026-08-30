@@ -11,6 +11,7 @@ export const execute = action({
     toolName: v.string(),
     args: v.any(),
     channel: v.optional(v.union(v.literal("chat"), v.literal("voice"))),
+    agentId: v.optional(v.string()),
   },
   returns: v.string(),
   handler: async (ctx, args): Promise<string> => {
@@ -31,11 +32,16 @@ export const execute = action({
       message: "This assistant is receiving too many requests right now.",
     })
 
+    // The realtime model runs in the visitor's browser and calls back in here
+    // by tool name, so this endpoint is reachable with hand-written arguments.
+    // Passing the agent through means it can only reach the tools that agent
+    // actually declares, rather than every voice-enabled tool in the org.
     return ctx.runAction(internal.system.assistantTools.execute.executeTool, {
       organizationId: args.organizationId,
       toolName: args.toolName,
       args: args.args,
       channel: args.channel ?? "voice",
+      agentId: args.agentId,
     })
   },
 })

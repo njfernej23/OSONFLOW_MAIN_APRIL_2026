@@ -243,6 +243,7 @@ export const useOpenAIRealtime = () => {
         toolName: name,
         args: parsedArgs,
         channel: "voice",
+        agentId: agentId ?? undefined,
       })
       sendClientEvent({
         type: "conversation.item.create",

@@ -1,7 +1,6 @@
 import { createTool } from '@convex-dev/agent';
 import z from "zod";
 import { internal } from "../../../_generated/api";
-import { supportAgent } from '../agents/supportAgent';
 
 export const resolveConversation = createTool({
     description: "Resolve a conversation when the user's issue has been successfully addressed",
@@ -15,14 +14,8 @@ export const resolveConversation = createTool({
             threadId: ctx.threadId,
         });
 
-        await supportAgent.saveMessage(ctx, {
-            threadId: ctx.threadId,
-            message: {
-                role: "assistant",
-                content: "Conversation resolved.",
-            }
-        });
-
-        return 'Conversation resolved'
+        // Returned to the model, not to the visitor: it writes the closing line
+        // the visitor actually reads.
+        return "The conversation has been marked resolved. Close off warmly and invite the user back if they need anything else."
     },
 });

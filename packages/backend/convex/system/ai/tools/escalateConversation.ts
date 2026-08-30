@@ -1,7 +1,6 @@
 import { createTool } from '@convex-dev/agent';
 import z from "zod";
 import { internal } from "../../../_generated/api";
-import { supportAgent } from '../agents/supportAgent';
 
 export const escalateConversation = createTool({
     description: "Escalate a conversation to a human operator when the user needs human assistance",
@@ -15,14 +14,8 @@ export const escalateConversation = createTool({
             threadId: ctx.threadId,
         });
 
-        await supportAgent.saveMessage(ctx, {
-            threadId: ctx.threadId,
-            message: {
-                role: "assistant",
-                content: "Conversation escalated to a human operator.",
-            }
-        });
-
-        return 'Conversation escalated to a human operator.'
+        // Returned to the model, not to the visitor: it writes the sentence the
+        // visitor actually reads, in their language and the brand's voice.
+        return "The conversation has been escalated to a human operator. Tell the user a teammate will pick this up shortly."
     },
 });

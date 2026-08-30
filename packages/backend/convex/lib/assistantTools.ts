@@ -82,6 +82,52 @@ export const sanitizeAssistantToolName = (rawName: string) => {
   return normalized
 }
 
+/**
+ * Normalizes a tool parameter name.
+ *
+ * Parameters are generated from sheet headers, so they arrive with spaces and
+ * mixed case ("Bolaning yoshi"). A model reproduces `bolaning_yoshi` far more
+ * reliably than a spaced property name, and column matching folds the two to
+ * the same form, so the sheet still lines up. Unlike a tool name this may start
+ * with a digit — a column called "2024" has to stay addressable.
+ */
+export const sanitizeAssistantToolParameterName = (rawName: string) => {
+  const normalized = rawName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+
+  if (!normalized) {
+    throw new Error("Parameter name is required")
+  }
+
+  return normalized
+}
+
+export const sanitizeAssistantToolParameters = (
+  parameters: AssistantToolParameter[]
+): AssistantToolParameter[] => {
+  const seen = new Set<string>()
+
+  return parameters.map((parameter) => {
+    const name = sanitizeAssistantToolParameterName(parameter.name)
+
+    // Two headers that differ only in punctuation would collide here, and the
+    // loser could never be matched back to its column. Better to say so than to
+    // silently ship a parameter that always writes an empty cell.
+    if (seen.has(name)) {
+      throw new Error(
+        `Two parameters resolve to the same name ("${name}"). Rename one of them.`
+      )
+    }
+
+    seen.add(name)
+
+    return { ...parameter, name }
+  })
+}
+
 export const buildOpenAIToolParameters = (
   parameters: AssistantToolParameter[]
 ) => {

@@ -2,7 +2,6 @@ import { createTool } from "@convex-dev/agent"
 import z from "zod"
 import { internal } from "../../../_generated/api"
 import { Doc } from "../../../_generated/dataModel"
-import { supportAgent } from "../agents/supportAgent"
 
 const buildParameterSchema = (parameters: Doc<"assistantTools">["parameters"]) => {
   const shape: Record<string, z.ZodTypeAny> = {}
@@ -29,7 +28,10 @@ const buildParameterSchema = (parameters: Doc<"assistantTools">["parameters"]) =
 
 export const buildAssistantToolsForChat = (
   organizationId: string,
-  configuredTools: Doc<"assistantTools">[]
+  configuredTools: Doc<"assistantTools">[],
+  // Carried through to execution so the callable set is narrowed by the same
+  // agent selection that decided which tools were offered here.
+  agentId?: string
 ) => {
   const tools: Record<string, ReturnType<typeof createTool<any, string>>> = {}
 
@@ -47,15 +49,7 @@ export const buildAssistantToolsForChat = (
             threadId: ctx.threadId,
           })
 
-          await supportAgent.saveMessage(ctx, {
-            threadId: ctx.threadId,
-            message: {
-              role: "assistant",
-              content: "Conversation escalated to a human operator.",
-            },
-          })
-
-          return "Conversation escalated to a human operator."
+          return "The conversation has been escalated to a human operator. Tell the user a teammate will pick this up shortly."
         },
       })
       continue
@@ -74,15 +68,7 @@ export const buildAssistantToolsForChat = (
             threadId: ctx.threadId,
           })
 
-          await supportAgent.saveMessage(ctx, {
-            threadId: ctx.threadId,
-            message: {
-              role: "assistant",
-              content: "Conversation resolved.",
-            },
-          })
-
-          return "Conversation resolved."
+          return "The conversation has been marked resolved. Close off warmly and invite the user back if they need anything else."
         },
       })
       continue
@@ -94,8 +80,13 @@ export const buildAssistantToolsForChat = (
         tool.parameters.length > 0
           ? buildParameterSchema(tool.parameters)
           : z.object({}),
+      // The return value goes to the model and nowhere else. It is raw
+      // integration output — a spreadsheet row, an API body — and writing it
+      // into the thread would put the organization's own data in front of the
+      // visitor next to the assistant's actual answer. The model reads it and
+      // replies in its own words.
       execute: async (ctx, args): Promise<string> => {
-        const result = await ctx.runAction(
+        return await ctx.runAction(
           internal.system.assistantTools.execute.executeTool,
           {
             organizationId,
@@ -103,22 +94,9 @@ export const buildAssistantToolsForChat = (
             args,
             threadId: ctx.threadId,
             channel: "chat",
+            agentId,
           }
         )
-
-        const reply = result.trim()
-
-        if (ctx.threadId && reply) {
-          await supportAgent.saveMessage(ctx, {
-            threadId: ctx.threadId,
-            message: {
-              role: "assistant",
-              content: reply,
-            },
-          })
-        }
-
-        return result
       },
     })
   }

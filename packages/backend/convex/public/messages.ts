@@ -280,6 +280,13 @@ const hasPaidOrganizationSubscription = async (
     : false
 }
 
+/** Whether the generation actually invoked a tool on any of its steps. */
+const didCallTool = (result: any) =>
+  Boolean(
+    result?.toolCalls?.length ||
+      result?.steps?.some((step: any) => step?.toolCalls?.length)
+  )
+
 const describeAttachmentsForModel = (count: number, promptText: string) => {
   const notice = `[The visitor attached ${count} image${count === 1 ? "" : "s"}. You cannot see ${count === 1 ? "it" : "them"} — ask about ${count === 1 ? "it" : "them"} in words if you need the detail.]`
 
@@ -587,7 +594,8 @@ export const create = action({
         const dynamicTools = await getEnabledChatTools(
           ctx,
           conversation.organizationId,
-          enabledToolIds
+          enabledToolIds,
+        conversation.agentId
         )
 
         const legacyTools = {
@@ -657,6 +665,22 @@ export const create = action({
           latestAssistantMessage.id !== previousAssistantMessage?.id
             ? latestAssistantMessage.text
             : null)
+
+        // A turn that spent every step calling tools leaves no text to show.
+        // The tool's own output is internal data, so the visitor gets a plain
+        // acknowledgement rather than a look at what the integration returned.
+        if (!assistantReplyText && didCallTool(result)) {
+          assistantReplyText =
+            "Thanks — that's been taken care of. Anything else I can help with?"
+
+          await saveMessage(ctx, components.agent, {
+            threadId: args.threadId,
+            message: {
+              role: "assistant",
+              content: assistantReplyText,
+            },
+          })
+        }
 
         const updatedConversation = await ctx.runQuery(
           internal.system.conversations.getByThreadId,

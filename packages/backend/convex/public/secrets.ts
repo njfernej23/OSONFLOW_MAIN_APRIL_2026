@@ -10,6 +10,7 @@ import {
   buildOpenAIVoiceTools,
   buildVoiceToolInstructions,
 } from "../lib/voiceToolDeclarations"
+import { filterAssistantToolsByIds } from "../system/assistantTools/getChatTools"
 import type { VoiceCallSettings } from "../lib/voiceCallSettings"
 
 type RealtimeSettings = {
@@ -179,10 +180,15 @@ export const createOpenAIRealtimeSession = action({
         channel: "voice",
       }
     )
+    // The agent's own tool selection applies to voice as well as chat. Without
+    // it, a tool a moderator had unticked for this agent was still declared to
+    // the realtime model, and so still callable.
+    const agentVoiceTools = filterAssistantToolsByIds(
+      configuredVoiceTools,
+      widgetSettings?.enabledToolIds
+    )
     const voiceTools =
-      configuredVoiceTools.length > 0
-        ? configuredVoiceTools
-        : defaultVoiceTools()
+      agentVoiceTools.length > 0 ? agentVoiceTools : defaultVoiceTools()
     const voiceCallSettings = widgetSettings?.voiceCallSettings
 
     const response: Response = await fetch(
@@ -333,10 +339,13 @@ export const createGeminiLiveToken = action({
           channel: "voice",
         }
       )
+      // Same as the OpenAI path: the agent's tool selection governs voice too.
+      const agentVoiceTools = filterAssistantToolsByIds(
+        configuredVoiceTools,
+        widgetSettings?.enabledToolIds
+      )
       const voiceTools =
-        configuredVoiceTools.length > 0
-          ? configuredVoiceTools
-          : defaultVoiceTools()
+        agentVoiceTools.length > 0 ? agentVoiceTools : defaultVoiceTools()
       const voiceCallSettings = widgetSettings?.voiceCallSettings
       const ai = new GoogleGenAI({
         apiKey,

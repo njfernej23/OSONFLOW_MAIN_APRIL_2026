@@ -52,7 +52,8 @@ export const resolveChatToolsForWidget = (
 export const getEnabledChatTools = async (
   ctx: ActionCtx,
   organizationId: string,
-  enabledToolIds?: Id<"assistantTools">[]
+  enabledToolIds?: Id<"assistantTools">[],
+  agentId?: string
 ) => {
   const configuredTools: Doc<"assistantTools">[] = await ctx.runQuery(
     internal.system.assistantTools.listEnabledForOrganization,
@@ -68,7 +69,7 @@ export const getEnabledChatTools = async (
     return {}
   }
 
-  return buildAssistantToolsForChat(organizationId, filteredTools)
+  return buildAssistantToolsForChat(organizationId, filteredTools, agentId)
 }
 
 export const buildToolAwareSystemPrompt = (
@@ -90,5 +91,7 @@ ${toolLines}
 
 Use the appropriate tool when you need knowledge base data, external integrations, or conversation actions before answering.
 
-After a tool returns data, reply in clear natural language. Never paste raw JSON or tool output directly to the user. Summarize the result conversationally.`
+After a tool returns data, reply in clear natural language. Never paste raw JSON or tool output directly to the user. Summarize the result conversationally.
+
+Tool results are internal. When a tool records or submits something, confirm it in one short sentence in the user's own language — that it is done and what happens next — without repeating the values that were submitted, the sheet or system it went to, or any identifiers. When a tool looks something up, answer the question with what it found and nothing more.`
 }

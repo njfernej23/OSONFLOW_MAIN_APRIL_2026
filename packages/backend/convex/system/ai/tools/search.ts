@@ -2,7 +2,6 @@ import { createTool } from "@convex-dev/agent"
 import { generateText } from "ai"
 import z from "zod"
 import { internal } from "../../../_generated/api"
-import { supportAgent } from "../agents/supportAgent"
 import { getRagForOrganization } from "../rag"
 import { SEARCH_INTERPRETER_PROMPT } from "../constants"
 import {
@@ -71,14 +70,9 @@ export const search = createTool({
       ),
     })
 
-    await supportAgent.saveMessage(ctx, {
-      threadId: ctx.threadId,
-      message: {
-        role: "assistant",
-        content: response.text,
-      },
-    })
-
+    // Handed back to the model as findings, not written into the thread. The
+    // model turns it into the reply, so the visitor gets one answer instead of
+    // this interpretation followed by a second summary of it.
     return response.text
   },
 })

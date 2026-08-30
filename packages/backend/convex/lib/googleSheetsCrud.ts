@@ -49,7 +49,6 @@ type SheetRangeParts = {
 
 const DEFAULT_MAX_LOOKUP_ROWS = 25
 const DEFAULT_MAX_SCAN_ROWS = 5000
-const DEFAULT_NO_CRITERIA_ROWS = 5
 
 const parseSheetRange = (range: string): SheetRangeParts => {
   const trimmed = range.trim() || "Sheet1"
@@ -124,6 +123,62 @@ const normalizeArgMap = (args: Record<string, unknown>) =>
   Object.fromEntries(
     Object.entries(args).map(([key, value]) => [key, String(value ?? "").trim()])
   )
+
+/**
+ * The form a column header and a tool parameter name are compared in.
+ *
+ * Parameters are generated from the sheet's own headers, so a header like
+ * "Bolaning yoshi" becomes a parameter the model has to reproduce space for
+ * space. Anything it emits instead — `bolaning_yoshi`, `Bolaning Yoshi` — used
+ * to miss, and a miss is invisible: the row is still appended, the cell is just
+ * blank. Folding case and punctuation makes those all land in the right column.
+ */
+const canonicalColumnKey = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+
+/**
+ * Reads a value out of a record keyed by column name, exact match first so a
+ * sheet with two headers that differ only in punctuation stays predictable.
+ * Used in both directions: a header against the model's arguments, and an
+ * argument name against a row.
+ */
+const resolveByColumnName = <T>(
+  record: Record<string, T>,
+  key: string
+): T | undefined => {
+  if (record[key] !== undefined) {
+    return record[key]
+  }
+
+  const target = canonicalColumnKey(key)
+
+  if (!target) {
+    return undefined
+  }
+
+  for (const [candidate, value] of Object.entries(record)) {
+    if (canonicalColumnKey(candidate) === target) {
+      return value
+    }
+  }
+
+  return undefined
+}
+
+/** Same fold, for matching a configured column list against a header. */
+const columnListIncludes = (columns: string[], header: string) => {
+  if (columns.includes(header)) {
+    return true
+  }
+
+  const target = canonicalColumnKey(header)
+
+  return columns.some((column) => canonicalColumnKey(column) === target)
+}
 
 const projectReturnColumns = (
   row: Record<string, string>,
@@ -201,17 +256,17 @@ export const findMatchingRows = (
   const argMap = normalizeArgMap(args)
   const searchEntries = Object.entries(argMap).filter(
     ([key, value]) =>
-      value && (searchColumns.length === 0 || searchColumns.includes(key))
+      value && (searchColumns.length === 0 || columnListIncludes(searchColumns, key))
   )
 
   if (searchEntries.length === 0) {
-    return rows.slice(0, DEFAULT_NO_CRITERIA_ROWS)
+    return []
   }
 
   const matches: SheetRowRecord[] = []
   for (const row of rows) {
     const ok = searchEntries.every(([key, value]) =>
-      cellMatches(String(row[key] ?? ""), value, matchMode)
+      cellMatches(String(resolveByColumnName(row, key) ?? ""), value, matchMode)
     )
     if (ok) {
       matches.push(row)
@@ -307,7 +362,8 @@ const getSearchEntries = (
   const argMap = normalizeArgMap(args)
   return Object.entries(argMap).filter(
     ([key, value]) =>
-      value && (searchColumns.length === 0 || searchColumns.includes(key))
+      value &&
+      (searchColumns.length === 0 || columnListIncludes(searchColumns, key))
   )
 }
 
@@ -480,6 +536,16 @@ export const executeGoogleSheetsOperation = async ({
   const searchEntries = getSearchEntries(args, searchColumns)
   const useGviz = shouldUseGviz(auth, queryStrategy, searchEntries)
 
+  // A read or a write with nothing to match on is refused rather than defaulted
+  // to "the first few rows". Answering an empty lookup with real rows hands the
+  // sheet's contents to whoever asked for nothing, and an empty delete would
+  // otherwise resolve to whichever row happened to come first.
+  if (operation !== "append" && searchEntries.length === 0) {
+    return operation === "lookup"
+      ? "No search values were provided. Ask the user for at least one of this tool's search fields, then look the record up."
+      : "No search values were provided. Ask the user which record they mean before changing anything."
+  }
+
   // Append: header row only — never pull the full sheet
   if (operation === "append") {
     const headers = await fetchHeaderRow({
@@ -498,10 +564,10 @@ export const executeGoogleSheetsOperation = async ({
     const argMap = normalizeArgMap(args)
     const rowValues = headers.map((header) => {
       if (!header) return ""
-      if (valueColumns.length > 0 && !valueColumns.includes(header)) {
+      if (valueColumns.length > 0 && !columnListIncludes(valueColumns, header)) {
         return ""
       }
-      return argMap[header] ?? ""
+      return resolveByColumnName(argMap, header) ?? ""
     })
 
     const endColumn = columnIndexToLetter(Math.max(headers.length - 1, 0))
@@ -579,6 +645,11 @@ export const executeGoogleSheetsOperation = async ({
     (operation === "update" || operation === "delete") &&
     searchEntries.length > 0
   ) {
+    // Only the read half of this block may fall through to the scan path. A
+    // write that throws after Google already applied it must surface the error:
+    // retrying a delete would remove whichever row shifted up into its place.
+    let hasIssuedWrite = false
+
     try {
       const headers = await fetchHeaderRow({
         auth,
@@ -628,6 +699,7 @@ export const executeGoogleSheetsOperation = async ({
         const startIndex = targetRow._sheetRowNumber - 1
         const endIndex = targetRow._sheetRowNumber
 
+        hasIssuedWrite = true
         await sheetsRequest(
           auth,
           `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
@@ -659,12 +731,26 @@ export const executeGoogleSheetsOperation = async ({
       const columnsToUpdate =
         updateColumns.length > 0
           ? updateColumns
-          : Object.keys(argMap).filter((key) => !searchColumns.includes(key))
+          : Object.keys(argMap).filter(
+              (key) => !columnListIncludes(searchColumns, key)
+            )
 
       const nextRow = { ...targetRow }
       for (const column of columnsToUpdate) {
-        if (argMap[column] !== undefined && argMap[column] !== "") {
-          nextRow[column] = argMap[column]!
+        const value = resolveByColumnName(argMap, column)
+
+        if (value !== undefined && value !== "") {
+          // Written under the sheet's own header, not the argument's spelling,
+          // so a canonical match cannot introduce a stray column.
+          const header = headers.find(
+            (candidate) =>
+              candidate === column ||
+              canonicalColumnKey(candidate) === canonicalColumnKey(column)
+          )
+
+          if (header) {
+            nextRow[header] = value
+          }
         }
       }
 
@@ -677,6 +763,7 @@ export const executeGoogleSheetsOperation = async ({
         headers.length
       )
 
+      hasIssuedWrite = true
       await sheetsRequest(
         auth,
         `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
@@ -691,8 +778,12 @@ export const executeGoogleSheetsOperation = async ({
       const { _sheetRowNumber, ...rowSnapshot } = nextRow
       return `Updated row ${targetRow._sheetRowNumber} in ${sheetName}: ${JSON.stringify(rowSnapshot)}`
     } catch (error) {
+      if (hasIssuedWrite) {
+        throw error
+      }
+
       console.error(
-        "Google Sheets mutation path failed, falling back to scan:",
+        "Google Sheets mutation lookup failed, falling back to scan:",
         error instanceof Error ? error.message : error
       )
     }

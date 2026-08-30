@@ -5,6 +5,7 @@ import { internalAction } from "../../_generated/server"
 import { internal } from "../../_generated/api"
 import { Doc } from "../../_generated/dataModel"
 import { interpolateTemplate } from "../../lib/assistantTools"
+import { filterAssistantToolsByIds } from "./getChatTools"
 import { generateText } from "ai"
 import { getRagForOrganization } from "../ai/rag"
 import { SEARCH_INTERPRETER_PROMPT } from "../ai/constants"
@@ -18,6 +19,20 @@ import {
   type GoogleSheetsOperation,
 } from "../../lib/googleSheetsCrud"
 import { OutboundUrlError, safeFetch } from "../../lib/outboundUrl"
+
+/**
+ * Caps what an external response contributes to the model's context. The whole
+ * thread is re-sent on every turn, so an endpoint that answers with a large
+ * document would otherwise keep costing tokens for the rest of the
+ * conversation. Truncation is stated so the model does not read a cut-off
+ * payload as the complete answer.
+ */
+const MAX_TOOL_RESPONSE_CHARS = 2000
+
+const truncateForModel = (text: string, limit = MAX_TOOL_RESPONSE_CHARS) =>
+  text.length <= limit
+    ? text
+    : `${text.slice(0, limit)}\n\n[Response truncated at ${limit} characters.]`
 
 const parseSheetLookupMatches = (rawResult: string) => {
   try {
@@ -87,9 +102,17 @@ const executeGoogleSheets = async (
 
     return formatSheetLookupContext(matches, args)
   } catch (error) {
-    return error instanceof Error
-      ? error.message
-      : "Unable to complete the Google Sheets action."
+    // Every other return from this function reads like a result, so a failure
+    // has to announce itself — otherwise the model cannot tell a completed
+    // write from one that never happened. The spreadsheet id is stripped from
+    // whatever Google said, since that string reaches the model.
+    console.error("Google Sheets tool failed", error)
+
+    const detail = (error instanceof Error ? error.message : "")
+      .replaceAll(spreadsheetId, "the configured spreadsheet")
+      .slice(0, 300)
+
+    return `The Google Sheets action did not complete.${detail ? ` Reason: ${detail}` : ""} Do not tell the user it succeeded.`
   }
 }
 
@@ -155,10 +178,10 @@ const executeApiRequest = async (
   const text = await response.text()
 
   if (!response.ok) {
-    return `API request failed (${response.status}): ${text.slice(0, 1000)}`
+    return `API request failed (${response.status}): ${truncateForModel(text, 500)}`
   }
 
-  return text.slice(0, 4000)
+  return truncateForModel(text)
 }
 
 const executeCustomWebhook = async (
@@ -194,10 +217,10 @@ const executeCustomWebhook = async (
   const text = await response.text()
 
   if (!response.ok) {
-    return `Webhook call failed (${response.status}): ${text.slice(0, 1000)}`
+    return `Webhook call failed (${response.status}): ${truncateForModel(text, 500)}`
   }
 
-  return text.slice(0, 4000)
+  return truncateForModel(text)
 }
 
 const executeQuery = async (
@@ -258,6 +281,13 @@ export const executeTool = internalAction({
     args: v.any(),
     threadId: v.optional(v.string()),
     channel: v.optional(v.union(v.literal("chat"), v.literal("voice"))),
+    /**
+     * The agent whose tool selection applies. Voice models run in the visitor's
+     * browser and call back in here by name, so the callable set has to be
+     * narrowed the same way the declared set is — otherwise a tool a moderator
+     * unticked for this agent stays reachable by naming it directly.
+     */
+    agentId: v.optional(v.string()),
   },
   returns: v.string(),
   handler: async (ctx, args): Promise<string> => {
@@ -269,7 +299,18 @@ export const executeTool = internalAction({
       }
     )
 
-    const tool = tools.find((entry) => entry.name === args.toolName)
+    const widgetSettings = await ctx.runQuery(
+      internal.system.widgetSettings.getByOrganizationId,
+      {
+        organizationId: args.organizationId,
+        agentId: args.agentId,
+      }
+    )
+
+    const tool = filterAssistantToolsByIds(
+      tools,
+      widgetSettings?.enabledToolIds
+    ).find((entry) => entry.name === args.toolName)
 
     if (!tool) {
       return `Tool "${args.toolName}" is not available.`

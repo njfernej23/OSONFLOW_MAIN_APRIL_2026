@@ -13,6 +13,7 @@ import {
   BUILTIN_ASSISTANT_TOOLS,
   isVoiceCompatibleAssistantTool,
   sanitizeAssistantToolName,
+  sanitizeAssistantToolParameters,
 } from "../lib/assistantTools"
 import { validateAssistantToolConfig } from "../lib/validateAssistantToolConfig"
 
@@ -209,6 +210,17 @@ export const create = mutation({
 
     validateAssistantToolConfig(args.type, args.config)
 
+    let parameters: typeof args.parameters
+    try {
+      parameters = sanitizeAssistantToolParameters(args.parameters)
+    } catch (error) {
+      throw new ConvexError({
+        code: "BAD_REQUEST",
+        message:
+          error instanceof Error ? error.message : "Invalid tool parameter",
+      })
+    }
+
     const tools = await ctx.db
       .query("assistantTools")
       .withIndex("by_organization_id", (q) =>
@@ -227,7 +239,7 @@ export const create = mutation({
       enabledForVoice:
         args.enabledForVoice &&
         isVoiceCompatibleAssistantTool({ type: args.type }),
-      parameters: args.parameters,
+      parameters,
       config: args.config,
       sortOrder: tools.length,
       updatedAt: Date.now(),
@@ -280,7 +292,15 @@ export const update = mutation({
     }
 
     if (args.parameters !== undefined) {
-      updates.parameters = args.parameters
+      try {
+        updates.parameters = sanitizeAssistantToolParameters(args.parameters)
+      } catch (error) {
+        throw new ConvexError({
+          code: "BAD_REQUEST",
+          message:
+            error instanceof Error ? error.message : "Invalid tool parameter",
+        })
+      }
     }
 
     if (args.config !== undefined) {

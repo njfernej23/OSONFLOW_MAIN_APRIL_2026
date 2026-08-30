@@ -397,6 +397,7 @@ export const useGeminiLive = () => {
             toolName: functionCall.name ?? "unknown_tool",
             args,
             channel: "voice",
+            agentId: agentId ?? undefined,
           })
           return {
             id: functionCall.id,
