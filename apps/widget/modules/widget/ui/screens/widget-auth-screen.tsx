@@ -180,7 +180,8 @@ export const WidgetAuthScreen = () => {
               {theme.logoUrl ? (
                 <img
                   alt="Assistant logo"
-                  className="size-10 rounded-full bg-white/92 object-contain p-1.5 shadow-sm"
+                  className="owc-protected-image size-10 rounded-full bg-white/92 object-contain p-1.5 shadow-sm"
+                  draggable={false}
                   src={theme.logoUrl}
                 />
               ) : (

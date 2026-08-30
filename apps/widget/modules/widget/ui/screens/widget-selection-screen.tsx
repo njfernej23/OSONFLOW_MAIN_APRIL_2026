@@ -57,7 +57,8 @@ const HomeBrandMark = ({ theme }: { theme: WidgetThemeSettings }) => {
     return (
       <img
         alt="Assistant logo"
-        className="h-10 max-w-[10rem] rounded-2xl bg-white/92 object-contain p-1.5 shadow-sm"
+        className="owc-protected-image h-10 max-w-[10rem] rounded-2xl bg-white/92 object-contain p-1.5 shadow-sm"
+        draggable={false}
         src={imageUrl}
       />
     )

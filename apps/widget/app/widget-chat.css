@@ -353,3 +353,16 @@
     animation: none;
   }
 }
+
+/*
+ * Brand artwork the visitor should not be able to lift out of the widget: no
+ * drag onto the desktop, no selection highlight sweeping over it, and no
+ * right-click "Save image as" - pointer events pass straight through, so the
+ * image is never the context-menu target.
+ */
+.owc-protected-image {
+  -webkit-user-drag: none;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none;
+}

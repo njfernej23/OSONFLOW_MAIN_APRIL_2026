@@ -754,7 +754,12 @@ export const WidgetChatScreen = () => {
 
           <span aria-hidden className="owc-header-avatar shrink-0">
             {theme.logoUrl ? (
-              <img alt="" src={theme.logoUrl} />
+              <img
+                alt=""
+                className="owc-protected-image"
+                draggable={false}
+                src={theme.logoUrl}
+              />
             ) : (
               assistantInitials
             )}
