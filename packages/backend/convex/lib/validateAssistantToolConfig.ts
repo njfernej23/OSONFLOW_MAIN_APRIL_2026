@@ -87,6 +87,13 @@ export const validateAssistantToolConfig = (
     }
   }
 
+  if (type === "google_calendar" && !config?.calendarId?.trim()) {
+    throw new ConvexError({
+      code: "BAD_REQUEST",
+      message: "Google Calendar tools require a calendar ID.",
+    })
+  }
+
   if (type === "api_request") {
     if (!config?.url?.trim()) {
       throw new ConvexError({

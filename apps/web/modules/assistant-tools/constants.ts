@@ -4,7 +4,7 @@ export type AssistantTool = Doc<"assistantTools">
 
 export type IntegrationToolType = Extract<
   AssistantTool["type"],
-  "google_sheets" | "api_request" | "custom_webhook"
+  "google_sheets" | "google_calendar" | "api_request" | "custom_webhook"
 >
 
 export type BuiltinToolType = Extract<
@@ -16,12 +16,18 @@ export type GoogleSheetsOperation = NonNullable<
   AssistantTool["config"]
 >["operation"]
 
+/** Calendar reuses the same operation vocabulary: lookup = search/list events. */
+export type GoogleCalendarOperation = NonNullable<
+  AssistantTool["config"]
+>["operation"]
+
 export const ASSISTANT_TOOL_TYPE_LABELS: Record<AssistantTool["type"], string> =
   {
     query: "Query",
     handoff: "Handoff",
     resolve: "Resolve",
     google_sheets: "Google Sheets",
+    google_calendar: "Google Calendar",
     api_request: "API Request",
     custom_webhook: "Custom Tool",
   }
@@ -223,6 +229,203 @@ export const GOOGLE_SHEETS_TEMPLATES: Array<{
       matchMode: "exact",
       queryStrategy: "gviz",
       requireUniqueMatch: true,
+    },
+  },
+]
+
+export const GOOGLE_CALENDAR_OPERATION_LABELS: Record<
+  NonNullable<GoogleCalendarOperation>,
+  string
+> = {
+  lookup: "Find events",
+  append: "Create event",
+  update: "Update event",
+  delete: "Cancel event",
+}
+
+export const GOOGLE_CALENDAR_TEMPLATES: Array<{
+  operation: NonNullable<GoogleCalendarOperation>
+  title: string
+  description: string
+  name: string
+  toolDescription: string
+  parameters: AssistantTool["parameters"]
+  config: NonNullable<AssistantTool["config"]>
+}> = [
+  {
+    operation: "lookup",
+    title: "Find events",
+    description: "Search events by text, or check what's on the calendar",
+    name: "find_calendar_events",
+    toolDescription:
+      "Search the calendar for events matching a query, or list what's scheduled in a time range. Use this to check availability before booking.",
+    parameters: [
+      {
+        name: "query",
+        description: "Text to search for in event titles or descriptions",
+        type: "string",
+        required: false,
+      },
+      {
+        name: "time_min",
+        description: "Only include events starting after this ISO 8601 date/time",
+        type: "string",
+        required: false,
+      },
+      {
+        name: "time_max",
+        description: "Only include events starting before this ISO 8601 date/time",
+        type: "string",
+        required: false,
+      },
+    ],
+    config: {
+      operation: "lookup",
+      calendarId: "primary",
+    },
+  },
+  {
+    operation: "append",
+    title: "Create event",
+    description: "Book a new event on the calendar",
+    name: "create_calendar_event",
+    toolDescription:
+      "Create a new event on the calendar, such as booking an appointment.",
+    parameters: [
+      {
+        name: "summary",
+        description: "Title of the event",
+        type: "string",
+        required: true,
+      },
+      {
+        name: "start_time",
+        description: "Start time as an ISO 8601 date/time (e.g. 2026-09-01T14:00:00+05:00)",
+        type: "string",
+        required: true,
+      },
+      {
+        name: "end_time",
+        description: "End time as an ISO 8601 date/time",
+        type: "string",
+        required: true,
+      },
+      {
+        name: "description",
+        description: "Extra details about the event",
+        type: "string",
+        required: false,
+      },
+      {
+        name: "location",
+        description: "Where the event takes place",
+        type: "string",
+        required: false,
+      },
+      {
+        name: "attendees",
+        description: "Comma-separated email addresses to invite",
+        type: "string",
+        required: false,
+      },
+    ],
+    config: {
+      operation: "append",
+      calendarId: "primary",
+    },
+  },
+  {
+    operation: "update",
+    title: "Update event",
+    description: "Find an event and change its details",
+    name: "update_calendar_event",
+    toolDescription:
+      "Update an existing calendar event. Pass event_id if it is already known from a previous search, otherwise pass a query and/or time range to find it first.",
+    parameters: [
+      {
+        name: "event_id",
+        description: "ID of the event to update, if already known",
+        type: "string",
+        required: false,
+      },
+      {
+        name: "query",
+        description: "Text to find the event by, if the ID is not known",
+        type: "string",
+        required: false,
+      },
+      {
+        name: "time_min",
+        description: "Narrows the search to events starting after this ISO 8601 date/time",
+        type: "string",
+        required: false,
+      },
+      {
+        name: "time_max",
+        description: "Narrows the search to events starting before this ISO 8601 date/time",
+        type: "string",
+        required: false,
+      },
+      {
+        name: "summary",
+        description: "New title for the event",
+        type: "string",
+        required: false,
+      },
+      {
+        name: "start_time",
+        description: "New start time as an ISO 8601 date/time",
+        type: "string",
+        required: false,
+      },
+      {
+        name: "end_time",
+        description: "New end time as an ISO 8601 date/time",
+        type: "string",
+        required: false,
+      },
+    ],
+    config: {
+      operation: "update",
+      calendarId: "primary",
+    },
+  },
+  {
+    operation: "delete",
+    title: "Cancel event",
+    description: "Find an event and remove it from the calendar",
+    name: "cancel_calendar_event",
+    toolDescription:
+      "Cancel and remove an existing calendar event. Pass event_id if it is already known from a previous search, otherwise pass a query and/or time range to find it first.",
+    parameters: [
+      {
+        name: "event_id",
+        description: "ID of the event to cancel, if already known",
+        type: "string",
+        required: false,
+      },
+      {
+        name: "query",
+        description: "Text to find the event by, if the ID is not known",
+        type: "string",
+        required: false,
+      },
+      {
+        name: "time_min",
+        description: "Narrows the search to events starting after this ISO 8601 date/time",
+        type: "string",
+        required: false,
+      },
+      {
+        name: "time_max",
+        description: "Narrows the search to events starting before this ISO 8601 date/time",
+        type: "string",
+        required: false,
+      },
+    ],
+    config: {
+      operation: "delete",
+      calendarId: "primary",
     },
   },
 ]

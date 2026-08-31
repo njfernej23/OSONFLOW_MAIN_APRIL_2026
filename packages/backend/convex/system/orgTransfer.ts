@@ -28,7 +28,8 @@ const webhookProviderConfigValidator = v.object({
 const pluginServiceValidator = v.union(
   v.literal("openai_realtime"),
   v.literal("gemini_live"),
-  v.literal("google_sheets")
+  v.literal("google_sheets"),
+  v.literal("google_calendar")
 )
 
 const workflowDefinitionValidator = v.object({

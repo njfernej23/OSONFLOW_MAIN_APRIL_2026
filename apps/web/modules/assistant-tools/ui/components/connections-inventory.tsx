@@ -53,7 +53,12 @@ const buildEntries = (tools: AssistantTool[]): HostEntry[] => {
   const entries = new Map<string, HostEntry>()
 
   for (const tool of tools) {
-    if (tool.isBuiltin || tool.type === "google_sheets") continue
+    if (
+      tool.isBuiltin ||
+      tool.type === "google_sheets" ||
+      tool.type === "google_calendar"
+    )
+      continue
 
     const host = hostOf(tool)
 

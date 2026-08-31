@@ -6,7 +6,8 @@ export const upsert = internalMutation({
     service: v.union(
       v.literal("openai_realtime"),
       v.literal("gemini_live"),
-      v.literal("google_sheets")
+      v.literal("google_sheets"),
+      v.literal("google_calendar")
     ),
     secretName: v.string(),
     secretValue: v.optional(v.string()),
@@ -43,7 +44,8 @@ export const getByOrganizationIdAndService = internalQuery({
     service: v.union(
       v.literal("openai_realtime"),
       v.literal("gemini_live"),
-      v.literal("google_sheets")
+      v.literal("google_sheets"),
+      v.literal("google_calendar")
     ),
   },
   handler: async (ctx, args) => {

@@ -25,6 +25,7 @@ export const requiresLiveToolExecution = (tools: Doc<"assistantTools">[]) =>
       tool.isEnabled &&
       tool.enabledForChat &&
       (tool.type === "google_sheets" ||
+        tool.type === "google_calendar" ||
         tool.type === "api_request" ||
         tool.type === "custom_webhook")
   )

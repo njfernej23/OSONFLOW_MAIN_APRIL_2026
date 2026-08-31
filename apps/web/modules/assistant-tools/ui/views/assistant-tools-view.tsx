@@ -30,6 +30,7 @@ import { cn } from "@workspace/ui/lib/utils"
 import {
   AudioLinesIcon,
   BracesIcon,
+  CalendarClockIcon,
   ChevronDownIcon,
   CopyIcon,
   ExternalLinkIcon,
@@ -76,6 +77,7 @@ import {
 import {
   CHAT_MODEL_OPTIONS,
   createEmptyParameter,
+  GOOGLE_CALENDAR_OPERATION_LABELS,
   GOOGLE_SHEETS_MATCH_MODE_OPTIONS,
   GOOGLE_SHEETS_OPERATION_LABELS,
   GOOGLE_SHEETS_QUERY_STRATEGY_OPTIONS,
@@ -90,6 +92,7 @@ import {
 } from "../../lib/tool-auth"
 import { BrandMark, brandStyle } from "../components/brand-mark"
 import { ConnectionsInventory } from "../components/connections-inventory"
+import { GoogleCalendarConnectionCard } from "../components/google-calendar-connection-card"
 import { GoogleConnectionCard } from "../components/google-connection-card"
 import { RequestHeadersEditor } from "../components/request-headers-editor"
 import { SheetColumnPicker } from "../components/sheet-column-picker"
@@ -193,6 +196,15 @@ export const AssistantToolsView = () => {
   const upsertGoogleSheetsApiKey = useMutation(
     api.private.googleSheets.upsertApiKey
   )
+  const googleCalendarStatus = useQuery(
+    api.private.googleCalendar.getConnectionStatus
+  )
+  const getGoogleCalendarOAuthUrl = useAction(
+    api.private.googleCalendar.getOAuthAuthorizationUrl
+  )
+  const disconnectGoogleCalendar = useMutation(
+    api.private.googleCalendar.disconnect
+  )
   const bootstrapBuiltinTools = useMutation(
     api.private.assistantTools.bootstrapBuiltinTools
   )
@@ -226,6 +238,10 @@ export const AssistantToolsView = () => {
   const [showApiKeyFallback, setShowApiKeyFallback] = useState(false)
   const [isConnectingGoogle, setIsConnectingGoogle] = useState(false)
   const [isDisconnectingGoogle, setIsDisconnectingGoogle] = useState(false)
+  const [isConnectingGoogleCalendar, setIsConnectingGoogleCalendar] =
+    useState(false)
+  const [isDisconnectingGoogleCalendar, setIsDisconnectingGoogleCalendar] =
+    useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDuplicating, setIsDuplicating] = useState(false)
   const [isSavingGoogleKey, setIsSavingGoogleKey] = useState(false)
@@ -330,11 +346,15 @@ export const AssistantToolsView = () => {
 
   const isGoogleSheetsEditor =
     selectedTool?.type === "google_sheets" || newToolType === "google_sheets"
+  const isGoogleCalendarEditor =
+    selectedTool?.type === "google_calendar" ||
+    newToolType === "google_calendar"
   const selectedToolType = selectedTool?.type ?? newToolType
   const isVoiceUnsupportedTool = selectedToolType
     ? VOICE_UNSUPPORTED_TOOL_TYPES.has(selectedToolType)
     : false
   const isGoogleConnected = Boolean(googleSheetsStatus?.isConfigured)
+  const isGoogleCalendarConnected = Boolean(googleCalendarStatus?.isConfigured)
 
   const activeBlueprint: ToolBlueprint | undefined = useMemo(() => {
     if (selectedTool) {
@@ -708,6 +728,11 @@ export const AssistantToolsView = () => {
       }
     }
 
+    if (isGoogleCalendarEditor && !editor.config.calendarId?.trim()) {
+      toast.error("Choose a calendar before saving")
+      return
+    }
+
     if (selectedToolType === "api_request" && !editor.config.url?.trim()) {
       toast.error("Add the endpoint this tool should call")
       return
@@ -859,6 +884,39 @@ export const AssistantToolsView = () => {
     }
   }
 
+  const handleConnectGoogleCalendar = async () => {
+    setIsConnectingGoogleCalendar(true)
+
+    try {
+      const { authorizationUrl } = await getGoogleCalendarOAuthUrl()
+      window.location.assign(authorizationUrl)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to start Google sign-in"
+      )
+      setIsConnectingGoogleCalendar(false)
+    }
+  }
+
+  const handleDisconnectGoogleCalendar = async () => {
+    setIsDisconnectingGoogleCalendar(true)
+
+    try {
+      await disconnectGoogleCalendar()
+      toast.success("Google Calendar disconnected")
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to disconnect Google Calendar"
+      )
+    } finally {
+      setIsDisconnectingGoogleCalendar(false)
+    }
+  }
+
   const handleSaveGoogleKey = async () => {
     if (!googleApiKey.trim()) {
       toast.error("Google Sheets API key is required")
@@ -998,6 +1056,27 @@ export const AssistantToolsView = () => {
           done:
             (editor.config.searchColumns?.length ?? 0) > 0 ||
             (editor.config.valueColumns?.length ?? 0) > 0,
+        }
+      )
+    } else if (isGoogleCalendarEditor) {
+      steps.push(
+        {
+          id: "google-calendar",
+          label: "Google Calendar connected",
+          description: "Connect once — every Calendar tool reuses the grant.",
+          done: isGoogleCalendarConnected,
+        },
+        {
+          id: "calendar",
+          label: "Calendar chosen",
+          description: "Which calendar this tool reads and writes.",
+          done: Boolean(editor.config.calendarId?.trim()),
+        },
+        {
+          id: "arguments",
+          label: "Arguments named",
+          description: "Every parameter needs a name the model can fill.",
+          done: editor.parameters.every((parameter) => parameter.name.trim()),
         }
       )
     } else if (!selectedTool?.isBuiltin) {
@@ -1178,9 +1257,17 @@ export const AssistantToolsView = () => {
                 />
                 <ConsoleMeta
                   dot
-                  label="Google"
+                  label="Sheets"
                   tone={isGoogleConnected ? "positive" : "neutral"}
                   value={isGoogleConnected ? "Connected" : "Not connected"}
+                />
+                <ConsoleMeta
+                  dot
+                  label="Calendar"
+                  tone={isGoogleCalendarConnected ? "positive" : "neutral"}
+                  value={
+                    isGoogleCalendarConnected ? "Connected" : "Not connected"
+                  }
                 />
                 <ConsoleMeta
                   label="Catalog"
@@ -2254,6 +2341,58 @@ export const AssistantToolsView = () => {
                           </Panel>
                         ) : null}
 
+                        {/* ── google calendar ──────────────────────────────── */}
+                        {isGoogleCalendarEditor ? (
+                          <Panel quiet>
+                            <PanelHeader
+                              actions={
+                                <Pill tone="positive">
+                                  {GOOGLE_CALENDAR_OPERATION_LABELS[operation]}
+                                </Pill>
+                              }
+                              description="The Google account and calendar this tool reads from and writes to."
+                              icon={CalendarClockIcon}
+                              title="Calendar"
+                            />
+                            <PanelBody className="space-y-4">
+                              <GoogleCalendarConnectionCard
+                                isConnecting={isConnectingGoogleCalendar}
+                                isDisconnecting={isDisconnectingGoogleCalendar}
+                                onConnect={handleConnectGoogleCalendar}
+                                onDisconnect={handleDisconnectGoogleCalendar}
+                                onManage={() =>
+                                  guardUnsaved(() => setSection("connections"))
+                                }
+                                status={googleCalendarStatus}
+                                variant="compact"
+                              />
+
+                              <div className="space-y-2">
+                                <Label>Calendar ID</Label>
+                                <Input
+                                  className="font-mono text-xs"
+                                  onChange={(event) =>
+                                    patchConfig({
+                                      calendarId: event.target.value,
+                                    })
+                                  }
+                                  placeholder="primary"
+                                  value={editor.config.calendarId ?? ""}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                  Use{" "}
+                                  <code className="font-mono text-foreground">
+                                    primary
+                                  </code>{" "}
+                                  for the connected account's own calendar, or
+                                  paste another calendar's ID from that
+                                  calendar's settings in Google Calendar.
+                                </p>
+                              </div>
+                            </PanelBody>
+                          </Panel>
+                        ) : null}
+
                         {/* ── api request ──────────────────────────────────── */}
                         {selectedToolType === "api_request" ? (
                           <Panel quiet>
@@ -2583,6 +2722,14 @@ export const AssistantToolsView = () => {
               }
               showApiKeyFallback={showApiKeyFallback}
               status={googleSheetsStatus}
+            />
+
+            <GoogleCalendarConnectionCard
+              isConnecting={isConnectingGoogleCalendar}
+              isDisconnecting={isDisconnectingGoogleCalendar}
+              onConnect={handleConnectGoogleCalendar}
+              onDisconnect={handleDisconnectGoogleCalendar}
+              status={googleCalendarStatus}
             />
 
             <Panel>

@@ -50,6 +50,7 @@ export const ASSISTANT_TOOL_TYPE_LABELS: Record<AssistantToolType, string> = {
   handoff: "Handoff",
   resolve: "Resolve",
   google_sheets: "Google Sheets",
+  google_calendar: "Google Calendar",
   api_request: "API Request",
   custom_webhook: "Custom Tool",
 }

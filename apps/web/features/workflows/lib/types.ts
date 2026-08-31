@@ -130,6 +130,7 @@ export type AgentToolKind =
   | 'function'
   | 'mcp'
   | 'googleSheets'
+  | 'googleCalendar'
   | 'zendesk'
   | 'salesforce'
   | 'shopify'

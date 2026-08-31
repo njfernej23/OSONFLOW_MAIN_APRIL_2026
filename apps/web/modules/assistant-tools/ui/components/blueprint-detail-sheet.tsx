@@ -242,7 +242,9 @@ export const BlueprintDetailSheet = ({
               </Section>
             ) : null}
 
-            {draft && draft.type !== "google_sheets" ? (
+            {draft &&
+            draft.type !== "google_sheets" &&
+            draft.type !== "google_calendar" ? (
               <Section title="The request it makes">
                 <RequestPreview
                   config={draft.config}

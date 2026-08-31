@@ -18,6 +18,11 @@ import {
   formatSheetLookupContext,
   type GoogleSheetsOperation,
 } from "../../lib/googleSheetsCrud"
+import { resolveGoogleCalendarAuth } from "../../lib/googleCalendarAuth"
+import {
+  executeGoogleCalendarOperation,
+  type GoogleCalendarOperation,
+} from "../../lib/googleCalendarCrud"
 import { OutboundUrlError, safeFetch } from "../../lib/outboundUrl"
 
 /**
@@ -113,6 +118,36 @@ const executeGoogleSheets = async (
       .slice(0, 300)
 
     return `The Google Sheets action did not complete.${detail ? ` Reason: ${detail}` : ""} Do not tell the user it succeeded.`
+  }
+}
+
+const executeGoogleCalendar = async (
+  ctx: any,
+  tool: Doc<"assistantTools">,
+  args: Record<string, unknown>
+): Promise<string> => {
+  const calendarId = tool.config?.calendarId?.trim() || "primary"
+  const operation = (tool.config?.operation ?? "lookup") as GoogleCalendarOperation
+
+  const auth = await resolveGoogleCalendarAuth(ctx, tool.organizationId)
+
+  if (!auth) {
+    return "Google Calendar is not connected. Connect your Google account in Assistant Tools."
+  }
+
+  try {
+    return await executeGoogleCalendarOperation({
+      auth,
+      calendarId,
+      operation,
+      args,
+    })
+  } catch (error) {
+    console.error("Google Calendar tool failed", error)
+
+    const detail = (error instanceof Error ? error.message : "").slice(0, 300)
+
+    return `The Google Calendar action did not complete.${detail ? ` Reason: ${detail}` : ""} Do not tell the user it succeeded.`
   }
 }
 
@@ -344,6 +379,8 @@ export const executeTool = internalAction({
       }
       case "google_sheets":
         return executeGoogleSheets(ctx, tool, toolArgs)
+      case "google_calendar":
+        return executeGoogleCalendar(ctx, tool, toolArgs)
       case "api_request":
         return executeApiRequest(tool, toolArgs)
       case "custom_webhook":

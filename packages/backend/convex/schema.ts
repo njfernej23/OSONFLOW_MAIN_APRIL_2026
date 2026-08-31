@@ -244,6 +244,7 @@ const assistantToolTypeValidator = v.union(
   v.literal("handoff"),
   v.literal("resolve"),
   v.literal("google_sheets"),
+  v.literal("google_calendar"),
   v.literal("api_request"),
   v.literal("custom_webhook")
 )
@@ -280,6 +281,9 @@ const assistantToolConfigValidator = v.object({
   maxLookupRows: v.optional(v.number()),
   maxScanRows: v.optional(v.number()),
   requireUniqueMatch: v.optional(v.boolean()),
+  // Google Calendar — reuses `operation` above (lookup = search/list events,
+  // append = create, update = update, delete = delete).
+  calendarId: v.optional(v.string()),
   url: v.optional(v.string()),
   method: v.optional(v.union(v.literal("GET"), v.literal("POST"))),
   headersJson: v.optional(v.string()),
@@ -491,7 +495,8 @@ export default defineSchema({
     service: v.union(
       v.literal("openai_realtime"),
       v.literal("gemini_live"),
-      v.literal("google_sheets")
+      v.literal("google_sheets"),
+      v.literal("google_calendar")
     ),
     secretName: v.string(),
     secretValue: v.optional(v.string()),
@@ -600,6 +605,15 @@ export default defineSchema({
     .index("by_state", ["state"])
     .index("by_organization_id", ["organizationId"]),
   googleSheetsOAuthStates: defineTable({
+    organizationId: v.string(),
+    actorId: v.optional(v.string()),
+    state: v.string(),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_state", ["state"])
+    .index("by_organization_id", ["organizationId"]),
+  googleCalendarOAuthStates: defineTable({
     organizationId: v.string(),
     actorId: v.optional(v.string()),
     state: v.string(),

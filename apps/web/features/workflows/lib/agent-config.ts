@@ -17,6 +17,7 @@ export type AssistantToolType =
   | 'handoff'
   | 'resolve'
   | 'google_sheets'
+  | 'google_calendar'
   | 'api_request'
   | 'custom_webhook';
 
@@ -53,6 +54,13 @@ export const AGENT_TOOLS: AgentToolOption[] = [
     icon: 'library',
     description: 'Look rows up, append them, or update a spreadsheet.',
     availability: { status: 'needsTool', toolTypes: ['google_sheets'] },
+  },
+  {
+    kind: 'googleCalendar',
+    label: 'Google Calendar',
+    icon: 'tool',
+    description: 'Create, look up, update, or cancel calendar events.',
+    availability: { status: 'needsTool', toolTypes: ['google_calendar'] },
   },
   {
     kind: 'function',

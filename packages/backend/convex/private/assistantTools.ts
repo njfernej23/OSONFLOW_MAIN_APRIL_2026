@@ -22,6 +22,7 @@ const assistantToolTypeValidator = v.union(
   v.literal("handoff"),
   v.literal("resolve"),
   v.literal("google_sheets"),
+  v.literal("google_calendar"),
   v.literal("api_request"),
   v.literal("custom_webhook")
 )
@@ -58,6 +59,7 @@ const assistantToolConfigValidator = v.object({
   maxLookupRows: v.optional(v.number()),
   maxScanRows: v.optional(v.number()),
   requireUniqueMatch: v.optional(v.boolean()),
+  calendarId: v.optional(v.string()),
   url: v.optional(v.string()),
   method: v.optional(v.union(v.literal("GET"), v.literal("POST"))),
   headersJson: v.optional(v.string()),

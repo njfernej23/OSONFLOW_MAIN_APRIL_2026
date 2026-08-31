@@ -1,4 +1,5 @@
 import {
+  CalendarClockIcon,
   SearchIcon,
   ServerCogIcon,
   ShieldCheckIcon,
@@ -10,6 +11,7 @@ import {
 import type { AssistantTool } from "../constants"
 import { automationBlueprints } from "./automation"
 import { builtinBlueprints } from "./builtin"
+import { googleCalendarBlueprints } from "./calendar"
 import { crmBlueprints } from "./crm"
 import { customBlueprints } from "./custom"
 import { dataBlueprints } from "./data"
@@ -34,6 +36,7 @@ export type {
 export const TOOL_BLUEPRINTS: ToolBlueprint[] = [
   ...builtinBlueprints,
   ...googleSheetsBlueprints,
+  ...googleCalendarBlueprints,
   ...messagingBlueprints,
   ...crmBlueprints,
   ...dataBlueprints,
@@ -104,6 +107,13 @@ const FALLBACK_PRESENTATION: Record<string, ToolPresentation> = {
     vendor: "Google Sheets",
     typeLabel: "Google Sheets",
   },
+  google_calendar: {
+    icon: CalendarClockIcon,
+    tone: "info",
+    brand: "#1a73e8",
+    vendor: "Google Calendar",
+    typeLabel: "Google Calendar",
+  },
   api_request: {
     icon: ServerCogIcon,
     tone: "accent",
@@ -142,6 +152,22 @@ export const resolveToolPresentation = (
   if (tool.type === "google_sheets") {
     const blueprint =
       BLUEPRINTS_BY_ID[`google_sheets_${tool.config?.operation ?? "lookup"}`]
+
+    if (blueprint) {
+      return {
+        icon: blueprint.icon,
+        tone: blueprint.tone,
+        brand: blueprint.brand,
+        vendor: blueprint.vendor,
+        typeLabel: blueprint.title,
+        blueprint,
+      }
+    }
+  }
+
+  if (tool.type === "google_calendar") {
+    const blueprint =
+      BLUEPRINTS_BY_ID[`google_calendar_${tool.config?.operation ?? "lookup"}`]
 
     if (blueprint) {
       return {

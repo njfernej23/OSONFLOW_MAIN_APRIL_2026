@@ -54,7 +54,7 @@ type OrgBundle = {
     isActive?: boolean
   }>
   plugins?: Array<{
-    service: "openai_realtime" | "gemini_live" | "google_sheets"
+    service: "openai_realtime" | "gemini_live" | "google_sheets" | "google_calendar"
     secretName: string
     value: unknown
   }>
@@ -840,7 +840,8 @@ export const importBundle = action({
           !secretValue ||
           (plugin.service !== "openai_realtime" &&
             plugin.service !== "gemini_live" &&
-            plugin.service !== "google_sheets")
+            plugin.service !== "google_sheets" &&
+            plugin.service !== "google_calendar")
         ) {
           continue
         }
