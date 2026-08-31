@@ -1,6 +1,6 @@
 import { requireOrganizationIdentity } from "../lib/organizationIdentity"
 import { ConvexError, v } from "convex/values"
-import { mutation, query } from "../_generated/server"
+import { internalMutation, mutation, query } from "../_generated/server"
 import { Id } from "../_generated/dataModel"
 import { SUPPORT_AGENT_PROMPT } from "../system/ai/constants"
 import { enforceRateLimit } from "../lib/rateLimits"
@@ -1174,6 +1174,34 @@ const saveDraftForOrganization = async (
     action: "bootstrap",
   })
 }
+
+/**
+ * Entry point for AI setup.
+ *
+ * Deliberately writes the draft and nothing else: a generated setup is a
+ * proposal, and the owner still reviews and publishes it through the designer
+ * like any other change. Shares saveDraftForOrganization with the hand-edited
+ * path so draft merging, bootstrapping and version records stay identical.
+ */
+export const applyGeneratedDraft = internalMutation({
+  args: {
+    organizationId: v.string(),
+    actorId: v.optional(v.string()),
+    ...widgetSettingsArgsValidator,
+  },
+  handler: async (ctx, args) => {
+    const { organizationId, actorId, ...draftArgs } = args
+    const agentId = normalizeAgentId(draftArgs.agentId)
+
+    await saveDraftForOrganization(
+      ctx,
+      organizationId,
+      agentId,
+      actorId,
+      draftArgs
+    )
+  },
+})
 
 export const saveDraft = mutation({
   args: widgetSettingsArgsValidator,

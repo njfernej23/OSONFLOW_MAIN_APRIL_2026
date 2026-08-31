@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
 import type { Id } from "@workspace/backend/_generated/dataModel"
+import { CreateWithAiDialog } from "./create-with-ai-dialog"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -38,6 +39,7 @@ import {
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
+  SparklesIcon,
   TrashIcon,
   WorkflowIcon,
 } from "lucide-react"
@@ -141,12 +143,22 @@ export const WorkflowsListView = () => {
             conversations; the rest stay drafts until you publish them.
           </p>
         </div>
-        <Button asChild size="sm">
-          <Link href="/workflows/new">
-            <PlusIcon className="size-4" />
-            New workflow
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <CreateWithAiDialog
+            trigger={
+              <Button size="sm" variant="outline">
+                <SparklesIcon className="size-4" />
+                Draft with AI
+              </Button>
+            }
+          />
+          <Button asChild size="sm">
+            <Link href="/workflows/new">
+              <PlusIcon className="size-4" />
+              New workflow
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {workflows === undefined ? (
@@ -167,12 +179,22 @@ export const WorkflowsListView = () => {
               handle conversations automatically.
             </p>
           </div>
-          <Button asChild size="sm">
-            <Link href="/workflows/new">
-              <PlusIcon className="size-4" />
-              Create your first workflow
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <CreateWithAiDialog
+              trigger={
+                <Button size="sm">
+                  <SparklesIcon className="size-4" />
+                  Describe it and let AI draft it
+                </Button>
+              }
+            />
+            <Button asChild size="sm" variant="outline">
+              <Link href="/workflows/new">
+                <PlusIcon className="size-4" />
+                Start from blank
+              </Link>
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="rounded-xl border">

@@ -176,6 +176,12 @@ export const DASHBOARD_MAP: DashboardMapGroup[] = [
     hint: "You will visit these while getting started, then rarely again.",
     entries: [
       {
+        title: "Set up with AI",
+        href: "/ai-setup",
+        description:
+          "Give it your website address, answer a few questions, and it writes your knowledge base, instructions and chat window for you to review.",
+      },
+      {
         title: "Knowledge base",
         href: "/files",
         description:

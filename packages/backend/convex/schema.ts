@@ -320,6 +320,59 @@ const workflowTraceEventValidator = v.object({
   detail: v.optional(v.string()),
 })
 
+/* ── AI setup ───────────────────────────────────────────────────────────── */
+
+/** What the crawler and the model worked out about the business. */
+const aiSetupSiteProfileValidator = v.object({
+  businessName: v.string(),
+  /** One or two sentences, in plain language. */
+  summary: v.string(),
+  industry: v.string(),
+  /** BCP-47-ish tags detected on the site, e.g. ["uz", "ru"]. */
+  languages: v.array(v.string()),
+  /** Things the assistant will be asked about most, drawn from the pages. */
+  topics: v.array(v.string()),
+  /** Facts worth pinning: phone numbers, addresses, hours. */
+  keyFacts: v.array(v.string()),
+  /** Questions the site does NOT answer, so the assistant must not guess. */
+  gaps: v.array(v.string()),
+})
+
+/** One guided question, and the owner's answer to it. */
+const aiSetupAnswerValidator = v.object({
+  id: v.string(),
+  question: v.string(),
+  answer: v.string(),
+})
+
+const aiSetupToolPlanValidator = v.object({
+  name: v.string(),
+  description: v.string(),
+  type: assistantToolTypeValidator,
+  parameters: v.array(assistantToolParameterValidator),
+  /** Why this tool suits this business, shown in the review step. */
+  rationale: v.string(),
+})
+
+const aiSetupKnowledgeDocValidator = v.object({
+  title: v.string(),
+  body: v.string(),
+  sourceUrl: v.optional(v.string()),
+})
+
+/** Everything AI setup proposes, before the owner applies any of it. */
+const aiSetupPlanValidator = v.object({
+  systemPrompt: v.string(),
+  greetMessage: v.string(),
+  assistantName: v.string(),
+  defaultSuggestions: defaultSuggestionsValidator,
+  widgetCopy: v.optional(widgetCopyValidator),
+  theme: v.optional(themeValidator),
+  helpTopics: v.optional(storedHelpTopicsValidator),
+  tools: v.array(aiSetupToolPlanValidator),
+  knowledgeDocs: v.array(aiSetupKnowledgeDocValidator),
+})
+
 export default defineSchema({
   subscriptions: defineTable({
     organizationId: v.string(),
@@ -958,4 +1011,38 @@ export default defineSchema({
       "organizationId",
       "lastSeenAt",
     ]),
+  /**
+   * One run of AI setup: the crawl it read, the plan it wrote, and what the
+   * owner applied. Kept as a row rather than passed through the client so the
+   * corpus never round-trips, and so a half-finished setup can be resumed.
+   */
+  aiSetupRuns: defineTable({
+    organizationId: v.string(),
+    createdBy: v.optional(v.string()),
+    sourceUrl: v.string(),
+    origin: v.string(),
+    status: v.union(
+      v.literal("analyzing"),
+      v.literal("awaiting_answers"),
+      v.literal("generating"),
+      v.literal("ready"),
+      v.literal("applied"),
+      v.literal("failed")
+    ),
+    /** Flattened page text the model reasons over. */
+    corpus: v.optional(v.string()),
+    pages: v.optional(
+      v.array(v.object({ url: v.string(), title: v.string() }))
+    ),
+    siteProfile: v.optional(aiSetupSiteProfileValidator),
+    answers: v.optional(v.array(aiSetupAnswerValidator)),
+    plan: v.optional(aiSetupPlanValidator),
+    appliedAt: v.optional(v.number()),
+    appliedSurfaces: v.optional(v.array(v.string())),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organization_id", ["organizationId"])
+    .index("by_organization_id_and_updated_at", ["organizationId", "updatedAt"]),
 })

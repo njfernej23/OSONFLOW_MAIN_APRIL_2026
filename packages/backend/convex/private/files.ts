@@ -10,7 +10,16 @@ import { internal } from "../_generated/api";
 import { generateText } from "ai";
 import { getOpenAIChatModelFromSecretValue } from "../lib/openai";
 import { enforceRateLimit } from "../lib/rateLimits";
-import { OutboundUrlError, assertSafeOutboundUrl, safeFetch } from "../lib/outboundUrl";
+import { OutboundUrlError, safeFetch } from "../lib/outboundUrl";
+import {
+    MAX_SCRAPED_HTML_LENGTH,
+    MAX_SCRAPED_TEXT_LENGTH,
+    SCRAPER_USER_AGENT,
+    SCRAPE_TIMEOUT_MS,
+    decodeHtmlEntities,
+    extractWebsiteTextFromHtml,
+    normalizeAndValidateWebsiteUrl,
+} from "../lib/websiteText";
 
 function guessMimeType(filename: string, bytes: ArrayBuffer): string {
     return (
@@ -20,11 +29,7 @@ function guessMimeType(filename: string, bytes: ArrayBuffer): string {
     )
 }
 
-const SCRAPE_TIMEOUT_MS = 15_000;
-const MAX_SCRAPED_HTML_LENGTH = 1_500_000;
-const MAX_SCRAPED_TEXT_LENGTH = 120_000;
 const MAX_VIEWER_TEXT_LENGTH = 200_000;
-const SCRAPER_USER_AGENT = "OsonflowKnowledgeBaseBot/1.0";
 
 const KNOWLEDGE_TEST_PROMPT = `
 You are a knowledge base QA evaluator for a SaaS support AI.
@@ -45,71 +50,6 @@ Rules:
 - Do not invent policies, prices, steps, dates, links, or product details.
 - Keep the answer concise and practical.
 `;
-
-function normalizeAndValidateWebsiteUrl(rawUrl: string): string {
-    const normalized = rawUrl.trim();
-
-    if (!normalized) {
-        throw new ConvexError({
-            code: "BAD_REQUEST",
-            message: "Website URL is required",
-        });
-    }
-
-    // The scraped body is stored in the organization's knowledge base and read
-    // back through the assistant, so an unvalidated URL here is a readable SSRF
-    // rather than a blind one.
-    try {
-        return assertSafeOutboundUrl(normalized).toString();
-    } catch (error) {
-        throw new ConvexError({
-            code: "BAD_REQUEST",
-            message:
-                error instanceof OutboundUrlError
-                    ? error.message
-                    : "Invalid website URL",
-        });
-    }
-}
-
-function decodeHtmlEntities(content: string): string {
-    return content
-        .replaceAll("&nbsp;", " ")
-        .replaceAll("&amp;", "&")
-        .replaceAll("&quot;", "\"")
-        .replaceAll("&#39;", "'")
-        .replaceAll("&lt;", "<")
-        .replaceAll("&gt;", ">");
-}
-
-function extractWebsiteTextFromHtml(html: string): {
-    title?: string;
-    description?: string;
-    bodyText: string;
-} {
-    const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-    const descriptionMatch = html.match(
-        /<meta[^>]+name=["']description["'][^>]+content=["']([\s\S]*?)["'][^>]*>/i
-    );
-    const ogDescriptionMatch = html.match(
-        /<meta[^>]+property=["']og:description["'][^>]+content=["']([\s\S]*?)["'][^>]*>/i
-    );
-
-    const cleanedHtml = html
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
-        .replace(/<noscript[^>]*>[\s\S]*?<\/noscript>/gi, " ")
-        .replace(/<svg[^>]*>[\s\S]*?<\/svg>/gi, " ")
-        .replace(/<[^>]+>/g, " ");
-
-    const bodyText = decodeHtmlEntities(cleanedHtml).replace(/\s+/g, " ").trim();
-
-    return {
-        title: titleMatch?.[1]?.trim(),
-        description: (descriptionMatch?.[1] || ogDescriptionMatch?.[1])?.trim(),
-        bodyText,
-    };
-}
 
 function safeJsonParse(value: string): Record<string, unknown> | null {
     try {
