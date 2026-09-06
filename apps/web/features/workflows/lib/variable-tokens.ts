@@ -7,6 +7,7 @@ import type {
   CaptureNodeData,
   ChoiceNodeData,
   GenericNodeData,
+  JavascriptNodeData,
   NodeData,
   NodeType,
   SetVariableNodeData,
@@ -75,6 +76,14 @@ export const collectWorkflowVariables = (
         case 'tool':
           add((step.data as ToolNodeData).outputVariable, `Result of "${named}"`);
           break;
+        case 'javascript':
+          // A snippet's outputs are the one set of variables the graph cannot
+          // work out for itself, so the step declares them.
+          for (const name of (step.data as JavascriptNodeData).outputVariables ??
+            []) {
+            add(name, `Returned by "${named}"`);
+          }
+          break;
         default:
           add(
             (step.data as GenericNodeData).outputVariable,
@@ -98,8 +107,17 @@ export const escapeHtml = (value: string) =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
+/*
+ * `class="variable-token[^"]*"` rather than an exact match: a pill for a
+ * variable no step is known to produce is emitted as
+ * `class="variable-token unknown"`, and an exact match skipped it. The pill
+ * then survived untokenising, so its `{{` and `}}` stayed split across the
+ * inner <b> tags and the substitution below could never see a whole
+ * `{{name}}` — every variable coming out of a JavaScript, Function or API
+ * step rendered literally in the test run.
+ */
 const TOKEN_PATTERN =
-  /<span[^>]*class="variable-token"[^>]*data-variable="([^"]*)"[^>]*>[\s\S]*?<\/span>/g;
+  /<span[^>]*class="variable-token[^"]*"[^>]*data-variable="([^"]*)"[^>]*>[\s\S]*?<\/span>/g;
 
 /** Turn tokens back into plain {{name}} so re-tokenising is idempotent. */
 export const untokenizeVariables = (html: string) =>

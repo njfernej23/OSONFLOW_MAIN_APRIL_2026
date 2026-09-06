@@ -141,8 +141,30 @@ export type ConditionOperator =
   | "not_equals"
   | "contains"
   | "not_contains"
+  | "greater_than"
+  | "less_than"
   | "exists"
   | "not_exists"
+
+/**
+ * Variables are always strings, so a numeric comparison has to opt in. Anything
+ * that is not a pair of numbers compares false rather than falling back to a
+ * string compare, which would make "9" < "10" quietly wrong.
+ */
+const compareNumbers = (
+  actual: string,
+  expected: string,
+  passes: (a: number, b: number) => boolean
+) => {
+  const left = Number.parseFloat(actual.replace(/[^0-9.eE+-]/g, ""))
+  const right = Number.parseFloat(expected.replace(/[^0-9.eE+-]/g, ""))
+
+  if (!Number.isFinite(left) || !Number.isFinite(right)) {
+    return false
+  }
+
+  return passes(left, right)
+}
 
 export const evaluateCondition = (
   data: JsonRecord,
@@ -161,6 +183,10 @@ export const evaluateCondition = (
       return actual.toLowerCase().includes(expected.toLowerCase())
     case "not_contains":
       return !actual.toLowerCase().includes(expected.toLowerCase())
+    case "greater_than":
+      return compareNumbers(actual, expected, (a, b) => a > b)
+    case "less_than":
+      return compareNumbers(actual, expected, (a, b) => a < b)
     case "exists":
       return hasValue
     case "not_exists":

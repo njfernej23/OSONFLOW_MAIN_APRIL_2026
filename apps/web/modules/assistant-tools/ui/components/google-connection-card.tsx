@@ -94,18 +94,29 @@ export const GoogleConnectionCard = ({
   isRefreshing = false,
 }: GoogleConnectionCardProps) => {
   const isOAuth = status?.authMethod === "oauth"
+  // The server has no Google Sheets OAuth app, so no connect flow can start.
+  const isOAuthUnavailable = status !== undefined && !status.oauthAvailable
 
   if (variant === "compact") {
     return (
       <div className="console-inset flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2.5">
           <StatusPill status={status} />
-          <span className="truncate text-xs text-muted-foreground">
+          <span
+            className={cn(
+              "min-w-0 text-xs",
+              isOAuthUnavailable && !isOAuth
+                ? "console-tone-warning"
+                : "text-muted-foreground"
+            )}
+          >
             {isOAuth
               ? `${spreadsheetCount ?? 0} spreadsheet${
                   spreadsheetCount === 1 ? "" : "s"
                 } available`
-              : "Connect Google to browse spreadsheets and tabs here."}
+              : isOAuthUnavailable
+                ? "Google sign-in isn't set up on this server yet — an admin needs to add the Sheets OAuth credentials in Convex."
+                : "Connect Google to browse spreadsheets and tabs here."}
           </span>
         </div>
 

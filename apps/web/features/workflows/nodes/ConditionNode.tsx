@@ -9,6 +9,8 @@ const OPERATOR_LABELS: Record<string, string> = {
   not_equals: '!=',
   contains: 'contains',
   not_contains: '!contains',
+  greater_than: '>',
+  less_than: '<',
   exists: 'exists',
   not_exists: '!exists',
 };

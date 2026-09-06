@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@workspace/ui/components/button"
+import { cn } from "@workspace/ui/lib/utils"
 import {
   Loader2Icon,
   LogOutIcon,
@@ -60,16 +61,27 @@ export const GoogleCalendarConnectionCard = ({
   onManage,
 }: GoogleCalendarConnectionCardProps) => {
   const isConnected = Boolean(status?.isConfigured)
+  // The server has no Google Calendar OAuth app, so no connect flow can start.
+  const isOAuthUnavailable = status !== undefined && !status.oauthAvailable
 
   if (variant === "compact") {
     return (
       <div className="console-inset flex flex-wrap items-center justify-between gap-3 px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2.5">
           <StatusPill status={status} />
-          <span className="truncate text-xs text-muted-foreground">
+          <span
+            className={cn(
+              "min-w-0 text-xs",
+              isOAuthUnavailable && !isConnected
+                ? "console-tone-warning"
+                : "text-muted-foreground"
+            )}
+          >
             {isConnected
               ? "Every Calendar tool in this workspace reuses this account."
-              : "Connect Google to let this tool read and write calendar events."}
+              : isOAuthUnavailable
+                ? "Google Calendar sign-in isn't set up on this server yet — an admin needs to add the Calendar OAuth credentials in Convex."
+                : "Connect Google to let this tool read and write calendar events."}
           </span>
         </div>
 

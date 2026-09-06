@@ -18,6 +18,7 @@ import {
   DialogTrigger,
 } from "@workspace/ui/components/dialog"
 import { Textarea } from "@workspace/ui/components/textarea"
+import { readableError } from "../lib/readable-error"
 
 /** Concrete goals produce far better graphs than abstract ones, so seed the box. */
 const EXAMPLES = [
@@ -84,11 +85,7 @@ export const CreateWithAiDialog = ({
       setGoal("")
       router.push(`/workflows/${saved.id}`)
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Could not draft that workflow."
-      )
+      toast.error(readableError(error, "Could not draft that workflow."))
     } finally {
       setIsWorking(false)
     }

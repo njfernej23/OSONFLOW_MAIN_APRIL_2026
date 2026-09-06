@@ -62,8 +62,10 @@
   --dur: 0.16s;
 
   /* Every docked panel reads these, which is what keeps the inspector
-     the same size no matter which step type is selected. */
-  --panel-w: 384px;
+     the same size no matter which step type is selected. The builder shell
+     overwrites --panel-w inline with the width the user dragged the panel to,
+     so the value here is only the fallback before that lands. */
+  --panel-w: 468px;
   --panel-inset: 14px;
   --panel-top: 14px;
 
@@ -1265,6 +1267,53 @@
   animation: sheetIn 0.22s var(--ease) both;
 }
 
+/* Grab strip down the panel's docked edge. It sits inside the sheet's rounded
+   corner rather than outside it, so the canvas keeps every pixel it has. */
+.panel-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 3;
+  width: 10px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.panel-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 3px;
+  height: 46px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: var(--line-2);
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease);
+}
+
+.panel-resize-handle:hover::after,
+.panel-resize-handle:focus-visible::after,
+body.panel-resizing .panel-resize-handle::after {
+  opacity: 1;
+}
+
+.panel-resize-handle:focus-visible {
+  outline: none;
+}
+
+.panel-resize-handle:focus-visible::after {
+  background: var(--accent);
+}
+
+/* Nothing should select or hover-highlight while a drag is in flight. */
+body.panel-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
 /* The run drawer docks beside the inspector instead of covering it. */
 .builder-shell.run-drawer-open .inspector-sheet:not(.chat-inspector-sheet) {
   right: calc(var(--panel-inset) * 2 + var(--panel-w));
@@ -2299,6 +2348,12 @@ body.dock-resizing {
   gap: 14px;
 }
 
+/*
+ * A field label stacks its caption above its control. Scoped to `label` so it
+ * reaches every plain field, which also means it out-specifies any single-class
+ * rule on a label: components that lay their label out differently opt back out
+ * through `.builder-shell` below rather than by class alone.
+ */
 .builder-shell label {
   display: flex;
   flex-direction: column;
@@ -2307,6 +2362,31 @@ body.dock-resizing {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: -0.005em;
+}
+
+/* Labels that are a row — a caption beside its switch, checkbox or select. */
+.builder-shell .agent-capability {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.builder-shell .field-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.builder-shell .agent-model-pill {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.builder-shell .agent-editor-field {
+  display: grid;
+  gap: 6px;
 }
 
 .builder-shell input,
@@ -2365,24 +2445,37 @@ body.dock-resizing {
   line-height: 1.45;
 }
 
+/*
+ * Helper text wraps. It used to be clamped to a single ellipsised line to keep
+ * the panel a fixed width, but that hid the half of each hint that explains
+ * what to type — the panel is wide enough to read the whole sentence.
+ */
 .helper {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 /* Debug detail, parked at the foot of the panel rather than leading it. */
+/* Support detail, parked at the foot of the panel rather than leading it. The
+   raw node id used to be printed here; it means nothing to the person running
+   the business, so it is behind a copy action instead. */
 .inspector-footnote {
   margin-top: auto;
-  padding-top: 14px;
+  align-self: flex-start;
+  padding: 14px 0 0;
+  border: 0;
   border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
   color: var(--faint);
+  cursor: pointer;
+  font: inherit;
   font-size: 11px;
+  text-align: left;
+  transition: color var(--dur) var(--ease);
 }
 
-.inspector-footnote code {
-  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: 10.5px;
+.inspector-footnote:hover {
+  color: var(--muted);
 }
 
 .field-row {

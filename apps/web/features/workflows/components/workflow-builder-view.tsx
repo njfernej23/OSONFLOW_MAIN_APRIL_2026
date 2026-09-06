@@ -20,7 +20,9 @@ import ReactFlow, {
   BackgroundVariant,
   BaseEdge,
   EdgeLabelRenderer,
+  getRectOfNodes,
   getSmoothStepPath,
+  getTransformForBounds,
   Position,
   useStore,
   type Connection,
@@ -211,8 +213,13 @@ type CanvasActionMenuState = {
 }
 
 const DEFAULT_CANVAS_VIEWPORT: Viewport = { x: 0, y: 0, zoom: 0.88 }
+/*
+ * 45% padding left the graph occupying barely half the canvas and fitting at
+ * around a third of full zoom, which is too small to read a step. 18% still
+ * keeps the flow clear of the rail and the docked panel.
+ */
 const WORKFLOW_FIT_VIEW_OPTIONS: FitViewOptions = {
-  padding: 0.45,
+  padding: 0.18,
   maxZoom: 0.88,
 }
 const CANVAS_DOT_GAP = 24
@@ -838,6 +845,20 @@ const getAccent = (type: NodeType): GenericNodeData["accent"] => {
   return getStepOption(type)?.category ?? "system"
 }
 
+/*
+ * Docked panel width. Wider than a sidebar by default because a step's whole
+ * configuration — an API body, a set of exit conditions, a message with
+ * variables in it — is meant to be read without scrolling sideways; the drag
+ * handle on the panel's left edge takes it further for people on big screens.
+ */
+const DEFAULT_PANEL_WIDTH = 468
+const MIN_PANEL_WIDTH = 380
+const MAX_PANEL_WIDTH = 860
+const PANEL_WIDTH_STORAGE_KEY = "osonflow:workflow-panel-width"
+
+const clampPanelWidth = (value: number) =>
+  Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, Math.round(value)))
+
 const createNodeData = (type: NodeType): NodeData => {
   switch (type) {
     case "start":
@@ -859,7 +880,7 @@ const createNodeData = (type: NodeType): NodeData => {
     case "buttons":
       return {
         label: "Buttons",
-        buttons: [createButton("I agree"), createButton("I don't agree")],
+        buttons: [createButton("Option 1"), createButton("Option 2")],
       }
     case "choice":
       return {
@@ -874,14 +895,20 @@ const createNodeData = (type: NodeType): NodeData => {
         variableKey: "lastInput",
         prompt: "Please reply with your answer.",
       }
+    /*
+     * Empty rather than "variable"/"value". Those read as placeholder text but
+     * were real values, so a fresh Condition compared a variable literally
+     * named "variable" and was quietly false forever — and the publish checks
+     * saw a filled-in key and said nothing. Empty is what the checks can catch.
+     */
     case "setVariable":
-      return { label: "Set Variable", key: "variable", value: "value" }
+      return { label: "Set Variable", key: "", value: "" }
     case "condition":
       return {
         label: "Condition",
-        key: "variable",
+        key: "",
         operator: "equals",
-        value: "value",
+        value: "",
       }
     case "prompt":
       return {
@@ -1448,6 +1475,15 @@ export const WorkflowBuilderView = ({
     api.private.workflows.movePresenceCursor
   )
   const builderShellRef = useRef<HTMLDivElement | null>(null)
+  /**
+   * Width of every docked panel. One number, read by the inspector, the agent
+   * side sheet and the run chat alike, so widening one widens all of them and
+   * moving between steps still never resizes the panel under the cursor.
+   */
+  const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH)
+  const panelResizeRef = useRef<{ startX: number; startWidth: number } | null>(
+    null
+  )
   const lastCanvasPointerRef = useRef<{ x: number; y: number } | null>(null)
   const lastFlowCursorRef = useRef<{ x: number; y: number } | null>(null)
   const pendingConnectionRef = useRef<PendingConnection | null>(null)
@@ -1908,6 +1944,58 @@ export const WorkflowBuilderView = ({
   }
 
   /**
+   * The strip of canvas nothing is docked over, in the canvas's own
+   * coordinates.
+   *
+   * Everything here used to be measured against the window, but the builder
+   * does not start at the window's left edge — the dashboard's navigation sits
+   * in front of it. Framing a node against `window.innerWidth` therefore parked
+   * it under that navigation and called it visible. Measuring the shell is what
+   * makes "centred" mean centred in the canvas the user can actually see.
+   */
+  const visibleCanvasRect = useCallback(() => {
+    const shell = builderShellRef.current
+    const bounds = shell?.getBoundingClientRect()
+    const shellWidth = bounds?.width ?? window.innerWidth
+    const shellHeight = bounds?.height ?? window.innerHeight
+
+    const inset = readShellLength("--panel-inset", 14)
+    const panel = readShellLength("--panel-w", DEFAULT_PANEL_WIDTH)
+
+    // The step rail down the left, plus a little air.
+    const left = 96
+    // The inspector and the run chat both dock right at the same width; when
+    // both are open they sit side by side. The shell already carries a class
+    // for the open inspector, so read that rather than depend on state that is
+    // derived further down the component.
+    const dockedPanels =
+      (shell?.classList.contains("inspector-open") ? 1 : 0) +
+      (drawerMode === "run" ? 1 : 0)
+    const right = Math.max(
+      left + 240,
+      shellWidth - dockedPanels * (panel + inset) - inset
+    )
+    const top = 84
+    const bottom = Math.max(
+      top + 180,
+      shellHeight -
+        (drawerMode === "run" ? readShellLength("--dock-h", 264) + inset : 0) -
+        70
+    )
+
+    return {
+      left,
+      right,
+      top,
+      bottom,
+      width: right - left,
+      height: bottom - top,
+      offsetX: bounds?.left ?? 0,
+      offsetY: bounds?.top ?? 0,
+    }
+  }, [drawerMode])
+
+  /**
    * Puts a node in the middle of the canvas the run leaves visible — between
    * the step rail and the chat panel, above the log dock. The run follows the
    * conversation, so the step that just fired is always under the eye instead
@@ -1920,34 +2008,25 @@ export const WorkflowBuilderView = ({
       }
 
       const zoom = reactFlow.getZoom()
-      const inset = readShellLength("--panel-inset", 14)
-      const chatWidth = readShellLength("--panel-w", 384)
-      const dockHeight = readShellLength("--dock-h", 264)
-
-      const left = 92
-      const right = Math.max(
-        left + 200,
-        window.innerWidth - chatWidth - inset * 2
-      )
-      const top = 76
-      const bottom = Math.max(
-        top + 160,
-        window.innerHeight - dockHeight - inset * 2
-      )
+      const area = visibleCanvasRect()
 
       const width = node.width ?? (node.type === "start" ? 148 : 300)
       const height = node.height ?? (node.type === "start" ? 56 : 126)
 
       reactFlow.setViewport(
         {
-          x: (left + right) / 2 - (node.position.x + width / 2) * zoom,
-          y: (top + bottom) / 2 - (node.position.y + height / 2) * zoom,
+          x:
+            (area.left + area.right) / 2 -
+            (node.position.x + width / 2) * zoom,
+          y:
+            (area.top + area.bottom) / 2 -
+            (node.position.y + height / 2) * zoom,
           zoom,
         },
         { duration }
       )
     },
-    [reactFlow]
+    [reactFlow, visibleCanvasRect]
   )
 
   const revealNodeBesidePanel = useCallback(
@@ -1959,24 +2038,20 @@ export const WorkflowBuilderView = ({
       const zoom = reactFlow.getZoom()
       const width = (node.width ?? (node.type === "start" ? 148 : 300)) * zoom
       const height = (node.height ?? (node.type === "start" ? 56 : 126)) * zoom
-      const topLeft = reactFlow.flowToScreenPosition(node.position)
-      const panelWidth = Math.min(430, Math.max(0, window.innerWidth - 36))
-      const safeLeft = 132
-      const safeRight = Math.max(
-        safeLeft + 160,
-        window.innerWidth - panelWidth - 24
-      )
-      const safeTop = 88
-      const safeBottom = Math.max(
-        safeTop + 120,
-        window.innerHeight - readShellLength("--dock-h", 0) - 24
-      )
+      const screen = reactFlow.flowToScreenPosition(node.position)
+      const area = visibleCanvasRect()
+      // flowToScreenPosition answers in window coordinates; the safe area is
+      // measured from the shell, so bring the two into the same frame.
+      const topLeft = {
+        x: screen.x - area.offsetX,
+        y: screen.y - area.offsetY,
+      }
 
       const isVisible =
-        topLeft.x >= safeLeft &&
-        topLeft.x + width <= safeRight &&
-        topLeft.y >= safeTop &&
-        topLeft.y + height <= safeBottom
+        topLeft.x >= area.left &&
+        topLeft.x + width <= area.right &&
+        topLeft.y >= area.top &&
+        topLeft.y + height <= area.bottom
 
       if (isVisible) {
         return
@@ -1988,14 +2063,76 @@ export const WorkflowBuilderView = ({
 
       reactFlow.setViewport(
         {
-          x: (safeLeft + safeRight) / 2 - centerX * nextZoom,
-          y: (safeTop + safeBottom) / 2 - centerY * nextZoom,
+          x: (area.left + area.right) / 2 - centerX * nextZoom,
+          y: (area.top + area.bottom) / 2 - centerY * nextZoom,
           zoom: nextZoom,
         },
         { duration }
       )
     },
-    [reactFlow]
+    [reactFlow, visibleCanvasRect]
+  )
+
+  /** Centres one node in the strip the docked panels leave visible. */
+  const centerNodeInView = useCallback(
+    (node: WorkflowNode, zoom: number, duration: number) => {
+      if (!reactFlow) {
+        return
+      }
+
+      const area = visibleCanvasRect()
+      const width = node.width ?? (node.type === "start" ? 148 : 300)
+      const height = node.height ?? (node.type === "start" ? 56 : 126)
+
+      reactFlow.setViewport(
+        {
+          x: (area.left + area.right) / 2 - (node.position.x + width / 2) * zoom,
+          y: (area.top + area.bottom) / 2 - (node.position.y + height / 2) * zoom,
+          zoom,
+        },
+        { duration }
+      )
+    },
+    [reactFlow, visibleCanvasRect]
+  )
+
+  /**
+   * Fits the whole graph into the visible strip rather than into the canvas
+   * element, so "Fit canvas" never tucks the right-hand third of a flow behind
+   * the open inspector.
+   */
+  const fitCanvas = useCallback(
+    (duration = 320) => {
+      if (!reactFlow) {
+        return
+      }
+
+      // ReactFlow's own store, not the local ref: it is populated (and its
+      // nodes measured) before the ref effect has run, which is exactly when
+      // the workflow-loaded fit fires.
+      const graphNodes = reactFlow.getNodes()
+
+      if (graphNodes.length === 0) {
+        return
+      }
+
+      const area = visibleCanvasRect()
+      const bounds = getRectOfNodes(graphNodes)
+      const [x, y, zoom] = getTransformForBounds(
+        bounds,
+        area.width,
+        area.height,
+        0.2,
+        WORKFLOW_FIT_VIEW_OPTIONS.maxZoom ?? 0.88,
+        WORKFLOW_FIT_VIEW_OPTIONS.padding ?? 0.45
+      )
+
+      reactFlow.setViewport(
+        { x: x + area.left, y: y + area.top, zoom },
+        { duration }
+      )
+    },
+    [reactFlow, visibleCanvasRect]
   )
 
   // Follow the run: whichever node is waiting on the user, or just fired.
@@ -2716,6 +2853,117 @@ export const WorkflowBuilderView = ({
     setStatus(`${getStepOption(type)?.label ?? "Step"} added.`)
 
     return node
+  }
+
+  /**
+   * Nudges a new node down until it stops sitting on an existing one.
+   *
+   * A step dropped at the pointer used to land straight on top of whatever was
+   * already there, which reads as the step having failed to appear at all.
+   */
+  const findFreePosition = (
+    type: NodeType,
+    position: { x: number; y: number }
+  ) => {
+    const size = getEstimatedNodeSize(type)
+    const gap = 24
+    let candidate = { ...position }
+
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      const overlaps = nodesRef.current.some((existing) => {
+        const bounds = getNodeBounds(existing)
+
+        if (!bounds) return false
+
+        return (
+          candidate.x < bounds.x + bounds.width + gap &&
+          candidate.x + size.width + gap > bounds.x &&
+          candidate.y < bounds.y + bounds.height + gap &&
+          candidate.y + size.height + gap > bounds.y
+        )
+      })
+
+      if (!overlaps) {
+        return candidate
+      }
+
+      candidate = { x: candidate.x, y: candidate.y + size.height + gap * 2 }
+    }
+
+    return candidate
+  }
+
+  /**
+   * Clicking a step in the library adds it, the same as dragging it out does.
+   *
+   * The library was drag-only, which is invisible: there is nothing on a list
+   * of steps that says "you have to drag me", so a click that does nothing
+   * reads as the builder being broken. A click drops the step beside whatever
+   * is selected and wires it up, because that is what the user was going to do
+   * with it anyway.
+   */
+  const addStepFromLibrary = (type: NodeType) => {
+    if (!reactFlow) {
+      return
+    }
+
+    const anchor =
+      nodesRef.current.find((node) => node.id === selectedNodeId) ??
+      nodesRef.current[nodesRef.current.length - 1] ??
+      null
+
+    let position: { x: number; y: number }
+
+    if (anchor) {
+      const bounds = getNodeBounds(anchor)
+      position = findFreePosition(type, {
+        x: (bounds?.x ?? 0) + (bounds?.width ?? 200) + 120,
+        y: bounds?.y ?? 0,
+      })
+    } else {
+      const area = visibleCanvasRect()
+      position = findFreePosition(
+        type,
+        reactFlow.screenToFlowPosition({
+          x: area.offsetX + (area.left + area.right) / 2,
+          y: area.offsetY + (area.top + area.bottom) / 2,
+        })
+      )
+    }
+
+    const created = createCanvasNode(type, position)
+
+    if (!created) {
+      return
+    }
+
+    // Only wire it up when the anchor's plain "next" port is still free —
+    // guessing at a branch port would silently reroute an existing path.
+    const anchorHasDefaultExit =
+      anchor &&
+      anchor.id !== created.id &&
+      (() => {
+        const steps = toBlockSteps(anchor)
+        const last = steps[steps.length - 1]
+        return !last || stepPorts(last).length === 0
+      })() &&
+      !edges.some((edge) => edge.source === anchor.id && !edge.sourceHandle)
+
+    if (anchor && anchorHasDefaultExit) {
+      setEdges((next) =>
+        addEdge(
+          createWorkflowEdge({
+            id: createId("edge"),
+            source: anchor.id,
+            target: created.id,
+          }),
+          next
+        )
+      )
+      setStatus(`${getStepOption(type)?.label ?? "Step"} added and connected.`)
+    }
+
+    setActiveCategory(null)
   }
 
   const connectToNewNode = (type: NodeType) => {
@@ -3993,11 +4241,16 @@ export const WorkflowBuilderView = ({
     )
 
     if (isInitialLoad) {
-      requestAnimationFrame(() => reactFlow?.fitView(WORKFLOW_FIT_VIEW_OPTIONS))
+      // Two frames: the first lets ReactFlow mount the nodes, the second lets
+      // it measure them, and an unmeasured node has no size to fit around.
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => fitCanvas(0))
+      )
     }
   }, [
     applyDefinitionToState,
     clearSelectedNode,
+    fitCanvas,
     loadedWorkflow,
     reactFlow,
     toDefinition,
@@ -4441,6 +4694,118 @@ export const WorkflowBuilderView = ({
       !nodeMenu &&
       !agentEditorOpen
   )
+  /*
+   * Restore the width this user last dragged the panel to.
+   *
+   * The stored value exists only on the client, so it cannot be the initial
+   * state without the first client render disagreeing with the server's HTML.
+   * Reading it after mount is the one correct place, and the single extra
+   * render it costs happens once per builder session.
+   */
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(PANEL_WIDTH_STORAGE_KEY)
+      const parsed = stored ? Number.parseFloat(stored) : Number.NaN
+
+      if (Number.isFinite(parsed)) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only preference, necessarily read after hydration
+        setPanelWidth(clampPanelWidth(parsed))
+      }
+    } catch {
+      // Private windows and blocked site data just keep the default.
+    }
+  }, [])
+
+  const startPanelResize = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      event.preventDefault()
+      panelResizeRef.current = { startX: event.clientX, startWidth: panelWidth }
+
+      const onMove = (move: PointerEvent) => {
+        const drag = panelResizeRef.current
+
+        if (!drag) return
+
+        // The panel is docked right, so dragging left has to widen it.
+        setPanelWidth(
+          clampPanelWidth(drag.startWidth + (drag.startX - move.clientX))
+        )
+      }
+
+      const onUp = () => {
+        panelResizeRef.current = null
+        window.removeEventListener("pointermove", onMove)
+        window.removeEventListener("pointerup", onUp)
+        document.body.classList.remove("panel-resizing")
+
+        setPanelWidth((current) => {
+          try {
+            window.localStorage.setItem(
+              PANEL_WIDTH_STORAGE_KEY,
+              String(current)
+            )
+          } catch {
+            // Nothing to do: the width simply resets next session.
+          }
+          return current
+        })
+      }
+
+      document.body.classList.add("panel-resizing")
+      window.addEventListener("pointermove", onMove)
+      window.addEventListener("pointerup", onUp)
+    },
+    [panelWidth]
+  )
+
+  /** Keyboard equivalent of the drag handle, in one sensible step. */
+  const nudgePanelWidth = useCallback((delta: number) => {
+    setPanelWidth((current) => {
+      const next = clampPanelWidth(current + delta)
+      try {
+        window.localStorage.setItem(PANEL_WIDTH_STORAGE_KEY, String(next))
+      } catch {
+        // See above.
+      }
+      return next
+    })
+  }, [])
+
+  const panelResizeHandle = (
+    <div
+      className="panel-resize-handle"
+      role="separator"
+      aria-label="Resize panel"
+      aria-orientation="vertical"
+      aria-valuenow={panelWidth}
+      aria-valuemin={MIN_PANEL_WIDTH}
+      aria-valuemax={MAX_PANEL_WIDTH}
+      tabIndex={0}
+      onPointerDown={startPanelResize}
+      onDoubleClick={() => {
+        setPanelWidth(DEFAULT_PANEL_WIDTH)
+        try {
+          window.localStorage.setItem(
+            PANEL_WIDTH_STORAGE_KEY,
+            String(DEFAULT_PANEL_WIDTH)
+          )
+        } catch {
+          // See above.
+        }
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "ArrowLeft") {
+          event.preventDefault()
+          nudgePanelWidth(24)
+        } else if (event.key === "ArrowRight") {
+          event.preventDefault()
+          nudgePanelWidth(-24)
+        }
+      }}
+      title="Drag to resize · double-click to reset"
+    />
+  )
+
   const shellClasses = [
     "builder-shell",
     inspectorOpen ? "inspector-open" : "",
@@ -4479,7 +4844,11 @@ export const WorkflowBuilderView = ({
   )
 
   const shell = (
-    <div className={shellClasses} ref={builderShellRef}>
+    <div
+      className={shellClasses}
+      ref={builderShellRef}
+      style={{ "--panel-w": `${panelWidth}px` } as CSSProperties}
+    >
       <aside className="category-rail" aria-label="Step categories">
         {stepsByCategory.map((category) => (
           <button
@@ -4515,7 +4884,8 @@ export const WorkflowBuilderView = ({
               className="step-option"
               draggable
               onDragStart={(event) => onStepDragStart(event, step)}
-              title={step.description}
+              onClick={() => addStepFromLibrary(step.type)}
+              title={`${step.description} — click to add, or drag onto the canvas`}
             >
               <Icon name={step.icon} size={22} />
               <span>{step.label}</span>
@@ -4773,11 +5143,9 @@ export const WorkflowBuilderView = ({
                   const node = nodes.find((entry) => entry.id === issue.nodeId)
                   if (!node) return
                   openSelectedNode(node)
-                  reactFlow?.setCenter(
-                    node.position.x + 150,
-                    node.position.y + 60,
-                    { zoom: 0.9, duration: 320 }
-                  )
+                  // Centre it in the canvas the panels leave visible, not in
+                  // the container they are sitting on top of.
+                  centerNodeInView(node, 0.9, 320)
                 }}
               >
                 <span className="validation-dot" aria-hidden />
@@ -4936,7 +5304,7 @@ export const WorkflowBuilderView = ({
         <button
           title="Fit canvas"
           aria-label="Fit canvas"
-          onClick={() => reactFlow?.fitView(WORKFLOW_FIT_VIEW_OPTIONS)}
+          onClick={() => fitCanvas()}
         >
           <Icon name="fit" size={19} />
         </button>
@@ -5432,6 +5800,7 @@ export const WorkflowBuilderView = ({
             inspectorType === "card" ? "card-editor-sheet" : ""
           }`}
         >
+          {panelResizeHandle}
           {selectedBlockSteps.length > 1 && (
             <section className="block-step-list" aria-label="Block steps">
               <div className="block-step-list-header">
@@ -6426,6 +6795,7 @@ export const WorkflowBuilderView = ({
                           Variable
                           <input
                             value={data.key ?? ""}
+                            placeholder="e.g. orderNumber"
                             onChange={(event) =>
                               updateInspectorData( {
                                 ...data,
@@ -6459,6 +6829,7 @@ export const WorkflowBuilderView = ({
                           Variable
                           <input
                             value={data.key ?? ""}
+                            placeholder="e.g. orderNumber"
                             onChange={(event) =>
                               updateInspectorData( {
                                 ...data,
@@ -6483,6 +6854,12 @@ export const WorkflowBuilderView = ({
                             <option value="not_equals">Not equals</option>
                             <option value="contains">Contains</option>
                             <option value="not_contains">Not contains</option>
+                            <option value="greater_than">
+                              Greater than (number)
+                            </option>
+                            <option value="less_than">
+                              Less than (number)
+                            </option>
                             <option value="exists">Exists</option>
                             <option value="not_exists">Not exists</option>
                           </select>
@@ -7076,6 +7453,27 @@ export const WorkflowBuilderView = ({
                           return an object of values to set. No network or file
                           access. Throwing takes the error branch.
                         </p>
+                        <label>
+                          Variables it sets
+                          <input
+                            value={(data.outputVariables ?? []).join(", ")}
+                            placeholder="e.g. parcelState, parcelTitle"
+                            onChange={(event) =>
+                              updateInspectorData({
+                                ...data,
+                                outputVariables: event.target.value
+                                  .split(",")
+                                  .map((name) => name.trim())
+                                  .filter(Boolean),
+                              })
+                            }
+                          />
+                        </label>
+                        <p className="helper">
+                          Naming them here is what lets later steps offer them
+                          in the variable picker — the snippet still sets
+                          whatever it returns either way.
+                        </p>
                       </>
                     )
                   })()}
@@ -7294,9 +7692,19 @@ export const WorkflowBuilderView = ({
                     </label>
                   </>
                 )}
-                <div className="inspector-footnote">
-                  Node id <code>{selectedNode.id}</code>
-                </div>
+                <button
+                  type="button"
+                  className="inspector-footnote"
+                  title="Copy this step's reference — support can use it to find the step"
+                  onClick={() => {
+                    void navigator.clipboard
+                      ?.writeText(selectedNode.id)
+                      .then(() => setStatus("Step reference copied."))
+                      .catch(() => setStatus("Could not copy the reference."))
+                  }}
+                >
+                  Copy step reference
+                </button>
               </div>
             </section>
           )}

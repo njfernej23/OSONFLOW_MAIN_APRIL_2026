@@ -45,6 +45,66 @@ const asSteps = (node: Node<NodeData>): BlockStep[] =>
         },
       ];
 
+/** A few words of the step's own content, so two Messages are tellable apart. */
+const stepHint = (step: BlockStep): string => {
+  const data = step.data as Record<string, unknown>;
+  const pick = (value: unknown) =>
+    typeof value === 'string' ? value.replace(/<[^>]*>/g, ' ').trim() : '';
+
+  const hint =
+    pick(data.text) ||
+    pick(data.prompt) ||
+    pick(data.variableKey) ||
+    pick(data.key) ||
+    pick(data.url) ||
+    pick(data.toolName) ||
+    pick(data.instructions) ||
+    pick(data.query);
+
+  if (!hint) return '';
+
+  const short = hint.replace(/\s+/g, ' ');
+
+  return short.length > 32 ? `${short.slice(0, 31)}…` : short;
+};
+
+const stepName = (step: BlockStep) => {
+  const custom = (step.data.customName as string | undefined)?.trim();
+
+  if (custom) return custom;
+
+  const label = (step.data.label as string | undefined)?.trim() || step.type;
+  const hint = stepHint(step);
+
+  return hint ? `${label}: ${hint}` : label;
+};
+
+/**
+ * What to call a block in an issue.
+ *
+ * A block's own `type` is the literal string "block", so every issue used to
+ * read `"block" has no next step` — three of them on a three-branch flow, all
+ * identical and none of them pointing anywhere. Naming it after the steps it
+ * holds is what makes the list actionable.
+ */
+const nodeName = (node: Node<NodeData>) => {
+  const custom = (node.data.customName as string | undefined)?.trim();
+
+  if (custom) return custom;
+
+  if (node.type !== 'block') {
+    return (node.data.label as string | undefined)?.trim() || node.type;
+  }
+
+  const steps = (node.data as BlockNodeData).steps ?? [];
+
+  if (steps.length === 0) return 'Empty block';
+
+  const first = stepName(steps[0]!);
+
+  return steps.length > 1 ? `${first} +${steps.length - 1}` : first;
+};
+
 /**
  * Checks a workflow against the rules the runtime actually enforces, so
  * problems surface in the builder instead of mid-conversation.
@@ -55,8 +115,13 @@ export const validateWorkflow = (
   componentStatus: Map<string, { name: string; isPublished: boolean }> = new Map()
 ): ValidationIssue[] => {
   const issues: ValidationIssue[] = [];
+  // The id is a React key, so it has to stay unique even when one node raises
+  // the same complaint twice (two unnamed exits, say).
   const push = (issue: Omit<ValidationIssue, 'id'>) =>
-    issues.push({ ...issue, id: `${issue.nodeId ?? 'flow'}:${issue.title}` });
+    issues.push({
+      ...issue,
+      id: `${issue.nodeId ?? 'flow'}:${issues.length}:${issue.title}`,
+    });
 
   const startNodes = nodes.filter((node) => node.type === 'start');
 
@@ -86,7 +151,7 @@ export const validateWorkflow = (
   }
 
   for (const node of nodes) {
-    const label = (node.data.customName as string | undefined)?.trim() || node.type;
+    const label = nodeName(node);
 
     if (startNodes.length > 0 && !reachable.has(node.id)) {
       push({
@@ -101,8 +166,7 @@ export const validateWorkflow = (
     const lastStep = steps[steps.length - 1];
 
     steps.forEach((step, index) => {
-      const stepLabel =
-        (step.data.customName as string | undefined)?.trim() || step.type;
+      const stepLabel = stepName(step);
       const isLast = index === steps.length - 1;
 
       // An agent with exits branches, so anything after it in a block is

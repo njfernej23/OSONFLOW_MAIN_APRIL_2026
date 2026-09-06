@@ -1,10 +1,11 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useAction } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
 
 import Icon from "../nodes/StepIcon"
+import { readableError } from "../lib/readable-error"
 import {
   AGENT_CAPABILITIES,
   AGENT_MODELS,
@@ -177,14 +178,29 @@ const AgentEditor = ({
       patch({ instructions: text })
     } catch (error) {
       setGenerateError(
-        error instanceof Error
-          ? error.message
-          : "Could not generate instructions."
+        readableError(error, "Could not generate instructions.")
       )
     } finally {
       setGenerating(false)
     }
   }
+
+  /*
+   * Escape dismisses it like any other dialog. Clicking the scrim already
+   * closed it, but a modal that ignores Escape reads as stuck — and the
+   * listener has to be on the window because focus is not always inside the
+   * panel when it opens.
+   */
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return
+      event.stopPropagation()
+      onClose()
+    }
+
+    window.addEventListener("keydown", onKeyDown, true)
+    return () => window.removeEventListener("keydown", onKeyDown, true)
+  }, [onClose])
 
   return (
     <div

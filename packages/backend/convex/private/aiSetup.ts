@@ -733,36 +733,58 @@ const workflowNodeSchema = z.object({
     "end",
   ]),
   label: z.string(),
-  /** Free-form per-type payload; validated and shaped after generation. */
-  text: z.string().optional(),
-  variable: z.string().optional(),
-  value: z.string().optional(),
-  instructions: z.string().optional(),
-  options: z.array(z.string()).optional(),
-  conditionVariable: z.string().optional(),
+  /*
+   * Free-form per-type payload; validated and shaped after generation.
+   *
+   * Nullable rather than optional: OpenAI's strict structured outputs requires
+   * every property to appear in `required`, so an optional field made the whole
+   * request fail before the model ever ran. The mapping below already treats a
+   * missing field and an empty one the same way.
+   */
+  text: z.string().nullable(),
+  variable: z.string().nullable(),
+  value: z.string().nullable(),
+  instructions: z.string().nullable(),
+  options: z.array(z.string()).nullable(),
+  conditionVariable: z.string().nullable(),
   conditionOperator: z
-    .enum(["equals", "not_equals", "contains", "not_contains", "exists", "not_exists"])
-    .optional(),
-  conditionValue: z.string().optional(),
+    .enum([
+      "equals",
+      "not_equals",
+      "contains",
+      "not_contains",
+      "greater_than",
+      "less_than",
+      "exists",
+      "not_exists",
+    ])
+    .nullable(),
+  conditionValue: z.string().nullable(),
 })
 
 const workflowPlanSchema = z.object({
   name: z.string(),
   description: z.string(),
-  nodes: z.array(workflowNodeSchema).min(3).max(14),
+  nodes: z.array(workflowNodeSchema),
   edges: z.array(
     z.object({
       source: z.string(),
       target: z.string(),
       /** "true"/"false" for a condition, or a button label. */
-      branch: z.string().optional(),
+      branch: z.string().nullable(),
     })
   ),
 })
 
-/** Laid out as a simple column so the generated graph is readable on the canvas. */
-const NODE_X = 320
-const NODE_Y_STEP = 170
+/*
+ * The canvas reads left to right, so a draft is laid out in the same direction:
+ * one column per hop from Start, and one row per branch inside a column. A flat
+ * vertical list — which is what this used to produce — fits the screen at about
+ * a third of full zoom and is unreadable the moment it lands.
+ */
+const NODE_X_STEP = 360
+const NODE_Y_STEP = 210
+const NODE_ORIGIN = { x: 120, y: 80 }
 
 /**
  * Drafts a whole workflow graph from a described goal.
@@ -825,13 +847,15 @@ export const generateWorkflowDraft = action({
         "- every path ends at an `end` node;",
         "- every non-terminal node has at least one outgoing edge;",
         "- a `condition` node has exactly two outgoing edges, with branch \"true\" and branch \"false\";",
-        "- a `buttons` node has one outgoing edge per option, and the edge's branch equals the option label exactly;",
+        "- a `buttons` node has one outgoing edge per option, and every one of those edges sets `branch` to that option's label, copied exactly — an edge out of a `buttons` node with a null branch is always a mistake;",
         "- edge `source` and `target` must be ids of nodes you returned.",
         "",
         "Node meanings: `message` says something; `capture` asks a question and stores the reply in `variable`; `buttons` offers fixed choices; `condition` branches on a variable; `setVariable` stores a value; `agent` hands a step to the AI with `instructions`; `kbSearch` looks the answer up in the knowledge base; `end` finishes.",
         "",
         "Prefer capture + condition over an agent step when the outcome must be identical every time - that is the whole point of a workflow.",
-        "Write all customer-facing text in the language the goal is written in.",
+        "To put a captured answer back into a message, wrap its name in double braces: {{orderNumber}}. Single braces are printed literally and are always a bug.",
+        "`greater_than` and `less_than` compare numbers, so use them for sizes, quantities and prices rather than matching text.",
+        "Write every customer-facing string in the same language as the goal below, and in no other language.",
         "Keep it under ten nodes unless the goal genuinely needs more.",
       ].join("\n"),
       prompt: [
@@ -843,47 +867,217 @@ export const generateWorkflowDraft = action({
         .join("\n"),
     })
 
-    // Give every node a position so the graph is legible the moment it lands.
-    const nodes = object.nodes.map((node, index) => ({
+    const variableNames = new Set(
+      object.nodes
+        .flatMap((node) => [node.variable, node.conditionVariable])
+        .map((name) => (name ?? "").trim())
+        .filter(Boolean)
+    )
+
+    /**
+     * Models reach for `{orderNumber}` about as often as `{{orderNumber}}`, and
+     * the runtime only interpolates the double-braced form — so a single-braced
+     * name would be shown to the customer verbatim. Repair the ones that name a
+     * variable this graph actually collects, and leave anything else alone.
+     */
+    const repairTemplates = (value: string) =>
+      value.replace(/(^|[^{]){\s*([\w.-]+)\s*}/g, (match, lead: string, name: string) =>
+        variableNames.has(name) ? `${lead}{{${name}}}` : match
+      )
+
+    const text = (value: string | null | undefined) =>
+      repairTemplates((value ?? "").trim())
+
+    /**
+     * The model describes a step in its own vocabulary; the canvas and the
+     * runtime read specific keys (`variableKey`, `key`, `buttons`). Shaping
+     * each type here is what makes a drafted graph actually run — writing the
+     * model's own field names through produced nodes with no configuration at
+     * all.
+     */
+    const buttonsFor = (node: (typeof object.nodes)[number]) =>
+      (node.options ?? []).map((label, optionIndex) => ({
+        id: `${node.id}-option-${optionIndex}`,
+        label,
+      }))
+
+    const dataFor = (node: (typeof object.nodes)[number]) => {
+      const label = text(node.label) || node.type
+
+      switch (node.type) {
+        case "message":
+          return { label: "Message", text: text(node.text) }
+        case "capture":
+          return {
+            label: "Capture",
+            variableKey: text(node.variable) || "lastInput",
+            prompt: text(node.text),
+          }
+        case "buttons":
+          return { label: "Buttons", buttons: buttonsFor(node) }
+        case "condition":
+          return {
+            label: "Condition",
+            key: text(node.conditionVariable) || text(node.variable),
+            operator: node.conditionOperator ?? "equals",
+            value: text(node.conditionValue) || text(node.value),
+          }
+        case "setVariable":
+          return {
+            label: "Set Variable",
+            key: text(node.variable),
+            value: text(node.value),
+          }
+        case "agent":
+          return {
+            label: label === node.type ? "Agent" : label,
+            instructions: text(node.instructions) || text(node.text),
+            talksFirst: true,
+            useKnowledgeBase: true,
+            outputVariable: "lastAiResponse",
+            accent: "agent",
+          }
+        case "kbSearch":
+          return {
+            label: "KB search",
+            query: text(node.text) || "{{lastInput}}",
+            outputVariable: text(node.variable) || "kbAnswer",
+            sendAsMessage: true,
+          }
+        case "end":
+          return {
+            label: "End",
+            description: text(node.text) || "Conversation ended.",
+            accent: "logic",
+          }
+        case "start":
+        default:
+          return { label: "Start" }
+      }
+    }
+
+    const declaredIds = new Set(object.nodes.map((node) => node.id))
+
+    /**
+     * Position every node by how far it is from Start, so the graph fans out
+     * left to right and each branch gets its own row.
+     */
+    const layout = () => {
+      const children = new Map<string, string[]>()
+
+      for (const edge of object.edges) {
+        if (!declaredIds.has(edge.source) || !declaredIds.has(edge.target)) {
+          continue
+        }
+        children.set(edge.source, [...(children.get(edge.source) ?? []), edge.target])
+      }
+
+      const depth = new Map<string, number>()
+      const start =
+        object.nodes.find((node) => node.type === "start")?.id ??
+        object.nodes[0]?.id
+
+      if (start) {
+        const queue: Array<{ id: string; at: number }> = [{ id: start, at: 0 }]
+
+        while (queue.length > 0) {
+          const { id, at } = queue.shift()!
+
+          // Keep the deepest placement so a node that is also reachable by a
+          // short path still sits after everything that leads into it.
+          if ((depth.get(id) ?? -1) >= at) continue
+          depth.set(id, at)
+
+          for (const child of children.get(id) ?? []) {
+            queue.push({ id: child, at: at + 1 })
+          }
+        }
+      }
+
+      // Anything the model left unwired still needs somewhere to go.
+      let orphanColumn = Math.max(0, ...depth.values()) + 1
+      for (const node of object.nodes) {
+        if (!depth.has(node.id)) {
+          depth.set(node.id, orphanColumn)
+          orphanColumn += 1
+        }
+      }
+
+      const rowsPerColumn = new Map<number, number>()
+      const positions = new Map<string, { x: number; y: number }>()
+
+      for (const node of object.nodes) {
+        const column = depth.get(node.id) ?? 0
+        const row = rowsPerColumn.get(column) ?? 0
+        rowsPerColumn.set(column, row + 1)
+        positions.set(node.id, {
+          x: NODE_ORIGIN.x + column * NODE_X_STEP,
+          y: NODE_ORIGIN.y + row * NODE_Y_STEP,
+        })
+      }
+
+      return positions
+    }
+
+    const positions = layout()
+
+    const nodes = object.nodes.map((node) => ({
       id: node.id,
       type: node.type,
-      position: { x: NODE_X, y: 80 + index * NODE_Y_STEP },
-      data: {
-        label: node.label,
-        ...(node.text ? { text: node.text } : {}),
-        ...(node.variable ? { variable: node.variable } : {}),
-        ...(node.value ? { value: node.value } : {}),
-        ...(node.instructions ? { instructions: node.instructions } : {}),
-        ...(node.options
-          ? {
-              options: node.options.map((label, optionIndex) => ({
-                id: `${node.id}-option-${optionIndex}`,
-                label,
-              })),
-            }
-          : {}),
-        ...(node.conditionVariable
-          ? {
-              variable: node.conditionVariable,
-              operator: node.conditionOperator ?? "equals",
-              value: node.conditionValue ?? "",
-            }
-          : {}),
-      },
+      position: positions.get(node.id) ?? { ...NODE_ORIGIN },
+      data: dataFor(node),
     }))
 
     const nodeIds = new Set(nodes.map((node) => node.id))
+
+    // A Buttons branch is named by its label, but the port it has to attach to
+    // is the generated option id, so resolve one to the other.
+    const portByLabel = new Map<string, string>()
+
+    for (const node of object.nodes) {
+      if (node.type !== "buttons") continue
+
+      for (const button of buttonsFor(node)) {
+        portByLabel.set(
+          `${node.id}::${button.label.trim().toLowerCase()}`,
+          button.id
+        )
+      }
+    }
+
+    const buttonNodeIds = new Set(
+      object.nodes.filter((node) => node.type === "buttons").map((node) => node.id)
+    )
+
+    const handleFor = (source: string, branch: string) => {
+      if (!branch) return null
+
+      const port = portByLabel.get(`${source}::${branch.trim().toLowerCase()}`)
+
+      if (port) return port
+
+      // A branch name that matches no option would become a handle no port
+      // has, drawing an edge from nowhere. Drop it and let the publish checks
+      // report the option as unwired, which is the truth.
+      if (buttonNodeIds.has(source)) return null
+
+      return branch
+    }
 
     // Drop edges the model invented for nodes it did not return, rather than
     // handing the canvas a graph that cannot render.
     const edges = object.edges
       .filter((edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target))
-      .map((edge, index) => ({
-        id: `edge-${index}`,
-        source: edge.source,
-        target: edge.target,
-        ...(edge.branch ? { sourceHandle: edge.branch } : {}),
-      }))
+      .map((edge, index) => {
+        const sourceHandle = handleFor(edge.source, text(edge.branch))
+
+        return {
+          id: `edge-${index}`,
+          source: edge.source,
+          target: edge.target,
+          ...(sourceHandle ? { sourceHandle } : {}),
+        }
+      })
 
     return {
       schemaVersion: 1,

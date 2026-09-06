@@ -65,23 +65,52 @@ You must answer with the structured object you were given a schema for:
 - "reply" is what the user sees. Always write something, even when taking an exit.
 - "exitId" is the id of an exit condition, and only when that exit's described
   situation is genuinely true right now. Use null to keep the conversation going.
-- "variables" is anything you have learned that an exit requires. Only include a
-  value the user actually gave you; never guess one.
+- "variables" is anything you have learned that an exit requires, as a list of
+  {"key","value"} pairs. Only include a value the user actually gave you; never
+  guess one, and return an empty list when you have learned nothing.
 - "buttons" offers quick replies. Leave it empty unless buttons are enabled and
   a short closed set of answers genuinely helps.
 - "action" is "end" only when the conversation is finished, "callForward" only
   when a human needs to take over, and "continue" otherwise.
-- "toolName" calls one of the listed tools; leave it null when you do not need one.`
+- "toolName" calls one of the listed tools; leave it null when you do not need one.
+- "toolInput" is that tool's arguments, in the same {"key","value"} list shape;
+  return an empty list when you are not calling a tool.`
+
+/**
+ * Key/value pairs rather than a record: OpenAI's strict structured outputs
+ * rejects the `propertyNames` keyword a Zod record compiles to, which failed
+ * every agent turn before the model ever saw the prompt.
+ */
+const keyValueSchema = z.object({
+  key: z.string(),
+  value: z.string(),
+})
 
 const exitSchema = z.object({
   reply: z.string(),
   exitId: z.string().nullable(),
   action: z.enum(["continue", "end", "callForward"]),
   buttons: z.array(z.string()),
-  variables: z.record(z.string(), z.string()),
+  variables: z.array(keyValueSchema),
   toolName: z.string().nullable(),
-  toolInput: z.record(z.string(), z.string()),
+  toolInput: z.array(keyValueSchema),
 })
+
+const pairsToRecord = (pairs: Array<{ key: string; value: string }> | null | undefined) => {
+  const out: Record<string, string> = {}
+
+  for (const pair of pairs ?? []) {
+    const key = asString(pair?.key).trim()
+
+    if (!key) {
+      continue
+    }
+
+    out[key] = asString(pair?.value)
+  }
+
+  return out
+}
 
 const readExits = (data: JsonRecord): AgentExitDefinition[] => {
   if (!Array.isArray(data.exitConditions)) return []
@@ -254,7 +283,10 @@ export const runAgentTurn = async (
       break
     }
 
-    const result = await args.executeTool(requested, object.toolInput ?? {})
+    const result = await args.executeTool(
+      requested,
+      pairsToRecord(object.toolInput)
+    )
     toolCalls.push({ name: requested, result })
     prompt = `${prompt}\n\nYou called ${requested} and it returned:\n${result}\n\nAnswer the user now; do not call another tool.`
   }
@@ -273,9 +305,9 @@ export const runAgentTurn = async (
   }
 
   const collected: RuntimeVariables = {}
-  for (const [key, value] of Object.entries(object.variables ?? {})) {
-    if (!key.trim() || key.startsWith("__")) continue
-    collected[key] = String(value)
+  for (const [key, value] of Object.entries(pairsToRecord(object.variables))) {
+    if (key.startsWith("__")) continue
+    collected[key] = value
   }
 
   const chosen = exits.find((exit) => exit.id === object.exitId) ?? null

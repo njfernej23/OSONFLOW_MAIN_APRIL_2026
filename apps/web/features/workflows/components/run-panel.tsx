@@ -12,6 +12,7 @@ import {
 import type { Edge, Node } from "reactflow"
 import { useAction, useConvex } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
+import { readableError } from "../lib/readable-error"
 import { untokenizeVariables } from "../lib/variable-tokens"
 import { isAgentStepType } from "../lib/types"
 import type { Id } from "@workspace/backend/_generated/dataModel"
@@ -247,6 +248,22 @@ const RunnerIcon = ({ name }: { name: RunnerIconName }) => {
   )
 }
 
+/** Mirrors compareNumbers in the published engine. */
+const compareNumbers = (
+  actual: string,
+  expected: string,
+  passes: (a: number, b: number) => boolean
+) => {
+  const left = Number.parseFloat(actual.replace(/[^0-9.eE+-]/g, ""))
+  const right = Number.parseFloat(expected.replace(/[^0-9.eE+-]/g, ""))
+
+  if (!Number.isFinite(left) || !Number.isFinite(right)) {
+    return false
+  }
+
+  return passes(left, right)
+}
+
 const evaluateCondition = (
   data: ConditionNodeData,
   variables: RuntimeVariables
@@ -262,6 +279,10 @@ const evaluateCondition = (
       return left.toLowerCase().includes(expected.toLowerCase())
     case "not_contains":
       return !left.toLowerCase().includes(expected.toLowerCase())
+    case "greater_than":
+      return compareNumbers(left, expected, (a, b) => a > b)
+    case "less_than":
+      return compareNumbers(left, expected, (a, b) => a < b)
     case "exists":
       return hasValue
     case "not_exists":
@@ -375,6 +396,30 @@ const RunPanel = ({
   const nodeMap = useMemo(
     () => new Map(activeNodes.map((node) => [node.id, node])),
     [activeNodes]
+  )
+
+  /**
+   * Config of the step that is actually waiting.
+   *
+   * Inside a Block the pending node is the block itself, so reading the node's
+   * own data gets the block's `steps` array rather than the Capture or Choice
+   * that asked the question — and every `variableKey` lookup silently fell back
+   * to `lastInput`, writing the answer to the wrong variable.
+   */
+  const pendingStepData = useCallback(
+    (nodeId: string, stepIndex: number) => {
+      const node = nodeMap.get(nodeId)
+
+      if (!node) return undefined
+
+      if (node.type === "block") {
+        const steps = (node.data as BlockNodeData).steps ?? []
+        return steps[stepIndex]?.data
+      }
+
+      return node.data
+    },
+    [nodeMap]
   )
 
   const getNextNodeId = useCallback(
@@ -1344,7 +1389,7 @@ const RunPanel = ({
 
           fail(
             "Component failed",
-            error instanceof Error ? error.message : "Could not load component",
+            readableError(error, "Could not load component"),
             "I had trouble running a step. A human operator will continue from here."
           )
         }
@@ -1391,7 +1436,7 @@ const RunPanel = ({
 
           fail(
             "Tool step failed",
-            error instanceof Error ? error.message : "Tool failed",
+            readableError(error, "Tool failed"),
             "I had trouble running a step. A human operator will continue from here."
           )
         }
@@ -1457,7 +1502,7 @@ const RunPanel = ({
 
           fail(
             "Function failed",
-            error instanceof Error ? error.message : "Snippet failed",
+            readableError(error, "Snippet failed"),
             "I had trouble running a step. A human operator will continue from here."
           )
         }
@@ -1513,7 +1558,7 @@ const RunPanel = ({
 
           fail(
             "JavaScript step failed",
-            error instanceof Error ? error.message : "Snippet failed",
+            readableError(error, "Snippet failed"),
             "I had trouble running a step. A human operator will continue from here."
           )
         }
@@ -1559,7 +1604,7 @@ const RunPanel = ({
 
           fail(
             "API step failed",
-            error instanceof Error ? error.message : "Request failed",
+            readableError(error, "Request failed"),
             "I had trouble reaching that service. A human operator will continue from here."
           )
         }
@@ -1713,7 +1758,7 @@ const RunPanel = ({
 
           fail(
             "Agent turn failed",
-            error instanceof Error ? error.message : "Agent step failed",
+            readableError(error, "Agent step failed"),
             "I had trouble completing this agent step. A human operator will continue from here."
           )
           return
@@ -1770,7 +1815,7 @@ const RunPanel = ({
 
         fail(
           "AI step failed",
-          error instanceof Error ? error.message : "Workflow AI step failed",
+          readableError(error, "Workflow AI step failed"),
           "I had trouble completing this AI step. A human operator will continue from here."
         )
       }
@@ -1950,7 +1995,7 @@ const RunPanel = ({
     }
 
     if (waitingMode === "choice") {
-      const data = nodeMap.get(pendingNodeId)?.data as
+      const data = pendingStepData(pendingNodeId, pendingStepIndex) as
         | ChoiceNodeData
         | undefined
       nextVars[data?.variableKey || "lastInput"] = label
@@ -2052,7 +2097,9 @@ const RunPanel = ({
       return
     }
 
-    const data = nodeMap.get(pendingNodeId)?.data as CaptureNodeData | undefined
+    const data = pendingStepData(pendingNodeId, pendingStepIndex) as
+      | CaptureNodeData
+      | undefined
     const key = data?.variableKey || "lastInput"
     const nextVars: RuntimeVariables = {
       ...variables,
