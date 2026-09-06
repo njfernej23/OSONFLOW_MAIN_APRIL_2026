@@ -2,6 +2,7 @@ import { internal } from "../../_generated/api"
 import { Doc, Id } from "../../_generated/dataModel"
 import { ActionCtx } from "../../_generated/server"
 import { buildAssistantToolsForChat } from "../ai/tools/buildAssistantTools"
+import { buildGoogleSheetsToolGuidance } from "../../lib/assistantTools"
 
 export const filterAssistantToolsByIds = (
   tools: Doc<"assistantTools">[],
@@ -85,10 +86,12 @@ export const buildToolAwareSystemPrompt = (
     .map((tool) => `- **${tool.name}** → ${tool.description}`)
     .join("\n")
 
+  const sheetsGuidance = buildGoogleSheetsToolGuidance(tools)
+
   return `${basePrompt}
 
 ## Available tools
-${toolLines}
+${toolLines}${sheetsGuidance ? `\n\n${sheetsGuidance}` : ""}
 
 Use the appropriate tool when you need knowledge base data, external integrations, or conversation actions before answering.
 

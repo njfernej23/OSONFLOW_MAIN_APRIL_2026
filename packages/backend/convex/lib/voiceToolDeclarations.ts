@@ -1,6 +1,10 @@
 import { Doc } from "../_generated/dataModel"
 import { Type } from "@google/genai"
-import { buildOpenAIToolParameters } from "./assistantTools"
+import {
+  buildGoogleSheetsToolGuidance,
+  buildOpenAIToolParameters,
+} from "./assistantTools"
+import { resolveGoogleSheetsToolParameters } from "./googleSheetsColumns"
 import {
   buildEndCallGeminiDeclaration,
   buildEndCallInstruction,
@@ -18,7 +22,9 @@ export const buildOpenAIVoiceTools = (
     type: "function" as const,
     name: tool.name,
     description: tool.description,
-    parameters: buildOpenAIToolParameters(tool.parameters),
+    parameters: buildOpenAIToolParameters(
+      resolveGoogleSheetsToolParameters(tool)
+    ),
   }))
 
   if (!resolved.autoEndOnGoodbye) {
@@ -40,7 +46,7 @@ export const buildGeminiVoiceTools = (
       parameters: {
         type: Type.OBJECT,
         properties: Object.fromEntries(
-          tool.parameters.map((parameter) => [
+          resolveGoogleSheetsToolParameters(tool).map((parameter) => [
             parameter.name,
             {
               type:
@@ -53,7 +59,7 @@ export const buildGeminiVoiceTools = (
             },
           ])
         ),
-        required: tool.parameters
+        required: resolveGoogleSheetsToolParameters(tool)
           .filter((parameter) => parameter.required)
           .map((parameter) => parameter.name),
       },
@@ -84,6 +90,12 @@ export const buildVoiceToolInstructions = (
 Use the appropriate tool when you need external data or knowledge before answering.
 If a tool returns no useful information, say you could not find that information.`
     )
+  }
+
+  const sheetsGuidance = buildGoogleSheetsToolGuidance(tools)
+
+  if (sheetsGuidance) {
+    sections.push(sheetsGuidance)
   }
 
   const endCallInstruction = buildEndCallInstruction(resolved.autoEndOnGoodbye)

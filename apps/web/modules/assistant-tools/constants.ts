@@ -46,7 +46,8 @@ export const GOOGLE_SHEETS_MATCH_MODE_OPTIONS = [
   {
     value: "exact" as const,
     label: "Exact match",
-    description: "Case-insensitive full cell match (best for email, ID, role)",
+    description:
+      "Case-insensitive full cell match, ignoring separators in phone numbers",
   },
   {
     value: "contains" as const,
@@ -89,18 +90,19 @@ export const GOOGLE_SHEETS_TEMPLATES: Array<{
     description: "Find rows by name, phone, or other columns",
     name: "lookup_sheet_row",
     toolDescription:
-      "Look up rows in the Google Sheet using the provided search fields.",
+      "Look up an existing row in the Google Sheet using the provided search fields.",
     icon: "⌕",
     parameters: [
       {
         name: "name",
-        description: "Name or account label to search for",
+        description: 'Value to find the row by, matched against the "name" column.',
         type: "string",
         required: true,
       },
       {
-        name: "phone_last4",
-        description: "Last 4 digits of the phone number",
+        name: "phone",
+        description:
+          'Value to find the row by, matched against the "phone" column.',
         type: "string",
         required: false,
       },
@@ -121,24 +123,24 @@ export const GOOGLE_SHEETS_TEMPLATES: Array<{
     description: "Insert a new row with name, phone, and other fields",
     name: "add_sheet_row",
     toolDescription:
-      "Add a new row to the Google Sheet with the provided column values.",
+      "Add a new row to the Google Sheet with the provided column values. Use this only for a record that is not in the sheet yet — to change something already recorded, use the update tool instead.",
     icon: "+",
     parameters: [
       {
         name: "name",
-        description: "Name to add to the sheet",
+        description: 'Value for the "name" column of the new row.',
         type: "string",
         required: true,
       },
       {
         name: "phone",
-        description: "Phone number to add",
+        description: 'Value for the "phone" column of the new row.',
         type: "string",
         required: false,
       },
       {
         name: "email",
-        description: "Email address to add",
+        description: 'Value for the "email" column of the new row.',
         type: "string",
         required: false,
       },
@@ -156,36 +158,41 @@ export const GOOGLE_SHEETS_TEMPLATES: Array<{
     description: "Find a row and update its fields",
     name: "update_sheet_row",
     toolDescription:
-      "Find a row in the Google Sheet by lookup fields, then update the provided columns.",
+      "Correct or change a row that is already in the Google Sheet: find it with the values currently stored there, then write the new values. Use this whenever the user changes something that was recorded earlier.",
     icon: "✎",
     parameters: [
       {
         name: "name",
-        description: "Name used to find the row",
+        description:
+          'The value already stored in the "name" column, used to find the row to change. Never pass the new value here.',
         type: "string",
         required: true,
       },
       {
-        name: "phone_last4",
-        description: "Last 4 digits used to find the row",
+        name: "phone",
+        description:
+          'The value already stored in the "phone" column, used to find the row to change. Never pass the new value here.',
         type: "string",
         required: false,
       },
       {
-        name: "phone",
-        description: "New phone number value",
+        name: "new_phone",
+        description:
+          'New value to write into the "phone" column, replacing what is there.',
         type: "string",
         required: false,
       },
       {
         name: "email",
-        description: "New email value",
+        description:
+          'New value to write into the "email" column, replacing what is there.',
         type: "string",
         required: false,
       },
       {
         name: "status",
-        description: "New status value",
+        description:
+          'New value to write into the "status" column, replacing what is there.',
         type: "string",
         required: false,
       },
@@ -206,18 +213,20 @@ export const GOOGLE_SHEETS_TEMPLATES: Array<{
     description: "Find a row and remove it from the sheet",
     name: "delete_sheet_row",
     toolDescription:
-      "Find a row in the Google Sheet using lookup fields and delete it.",
+      "Find a row in the Google Sheet using lookup fields and delete it. Use this only when the user asks for the record to be removed.",
     icon: "×",
     parameters: [
       {
         name: "name",
-        description: "Name used to find the row to delete",
+        description:
+          'Value to find the row to delete by, matched against the "name" column.',
         type: "string",
         required: true,
       },
       {
-        name: "phone_last4",
-        description: "Last 4 digits used to find the row to delete",
+        name: "phone",
+        description:
+          'Value to find the row to delete by, matched against the "phone" column.',
         type: "string",
         required: false,
       },

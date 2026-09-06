@@ -167,3 +167,66 @@ export const interpolateTemplate = (
     const value = args[key]
     return value === undefined || value === null ? "" : String(value)
   })
+
+/**
+ * Extra instruction for an assistant that can write to a spreadsheet.
+ *
+ * Without it a model treats "no, my number is actually X" as something new to
+ * record: it calls the add tool a second time, so the sheet ends up with two
+ * rows for one person and the correction is never applied to the first. The
+ * guidance is generated from the tools the organization actually enabled, so
+ * it names them rather than describing a generic pattern.
+ */
+export const buildGoogleSheetsToolGuidance = (
+  tools: Pick<Doc<"assistantTools">, "type" | "name" | "config">[]
+) => {
+  const sheetsTools = tools.filter((tool) => tool.type === "google_sheets")
+
+  if (sheetsTools.length === 0) {
+    return ""
+  }
+
+  const namesFor = (operation: string) =>
+    sheetsTools
+      .filter((tool) => (tool.config?.operation ?? "lookup") === operation)
+      .map((tool) => tool.name)
+
+  const addTools = namesFor("append")
+  const updateTools = namesFor("update")
+  const deleteTools = namesFor("delete")
+  const lines: string[] = []
+
+  if (updateTools.length > 0) {
+    lines.push(
+      `- To change or correct something that is already recorded, use ${updateTools.join(
+        " or "
+      )}. Pass the value currently stored in the sheet in the search fields, and the corrected value in the field whose name starts with \`new_\`.`
+    )
+  }
+
+  if (addTools.length > 0) {
+    lines.push(
+      `- Use ${addTools.join(
+        " or "
+      )} only for a record that does not exist yet. A second row for the same person is a data error, not a correction${
+        updateTools.length > 0
+          ? `, so never answer a correction by calling ${addTools.join(" or ")} again`
+          : ""
+      }.`
+    )
+  }
+
+  if (deleteTools.length > 0) {
+    lines.push(
+      `- Use ${deleteTools.join(
+        " or "
+      )} only when the user asks for the record to be removed.`
+    )
+  }
+
+  lines.push(
+    "- If a spreadsheet tool reports that no row matched, or that several rows matched, tell the user and ask for exactly the detail it asked for. Never say a change was saved unless the tool confirmed it."
+  )
+
+  return `## Working with the spreadsheet\n${lines.join("\n")}`
+}

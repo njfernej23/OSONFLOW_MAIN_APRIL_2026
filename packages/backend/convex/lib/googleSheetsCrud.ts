@@ -5,12 +5,20 @@ import {
   type GoogleSheetsAuth,
 } from "./googleSheetsAuth"
 import {
+  canonicalColumnKey,
+  columnListIncludes,
+  newValueParameterName,
+  resolveByColumnName,
+  resolveHeaderForColumn,
+} from "./googleSheetsColumns"
+import {
   buildGvizSelectClause,
   buildGvizWhereClause,
   buildHeaderLetterMap,
   columnIndexToLetter,
   fetchWithRetry,
   queryGoogleSheetWithGviz,
+  resolveHeaderLetter,
   type GoogleSheetsMatchMode,
 } from "./googleSheetsQuery"
 
@@ -46,6 +54,8 @@ type SheetRangeParts = {
   sheetName: string
   range: string
 }
+
+type SearchEntry = [string, string]
 
 const DEFAULT_MAX_LOOKUP_ROWS = 25
 const DEFAULT_MAX_SCAN_ROWS = 5000
@@ -124,61 +134,13 @@ const normalizeArgMap = (args: Record<string, unknown>) =>
     Object.entries(args).map(([key, value]) => [key, String(value ?? "").trim()])
   )
 
-/**
- * The form a column header and a tool parameter name are compared in.
- *
- * Parameters are generated from the sheet's own headers, so a header like
- * "Bolaning yoshi" becomes a parameter the model has to reproduce space for
- * space. Anything it emits instead — `bolaning_yoshi`, `Bolaning Yoshi` — used
- * to miss, and a miss is invisible: the row is still appended, the cell is just
- * blank. Folding case and punctuation makes those all land in the right column.
- */
-const canonicalColumnKey = (value: string) =>
-  value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
+const describeColumns = (columns: string[]) =>
+  columns.filter(Boolean).join(", ")
 
-/**
- * Reads a value out of a record keyed by column name, exact match first so a
- * sheet with two headers that differ only in punctuation stays predictable.
- * Used in both directions: a header against the model's arguments, and an
- * argument name against a row.
- */
-const resolveByColumnName = <T>(
-  record: Record<string, T>,
-  key: string
-): T | undefined => {
-  if (record[key] !== undefined) {
-    return record[key]
-  }
-
-  const target = canonicalColumnKey(key)
-
-  if (!target) {
-    return undefined
-  }
-
-  for (const [candidate, value] of Object.entries(record)) {
-    if (canonicalColumnKey(candidate) === target) {
-      return value
-    }
-  }
-
-  return undefined
-}
-
-/** Same fold, for matching a configured column list against a header. */
-const columnListIncludes = (columns: string[], header: string) => {
-  if (columns.includes(header)) {
-    return true
-  }
-
-  const target = canonicalColumnKey(header)
-
-  return columns.some((column) => canonicalColumnKey(column) === target)
-}
+const describeCriteria = (searchEntries: SearchEntry[]) =>
+  searchEntries.length === 0
+    ? "the values provided"
+    : searchEntries.map(([key, value]) => `${key}: ${value}`).join(", ")
 
 const projectReturnColumns = (
   row: Record<string, string>,
@@ -232,6 +194,50 @@ export const formatSheetLookupContext = (
   return `${full.slice(0, maxChars)}\n\n[Results truncated for size. Ask for a more specific search if needed.]`
 }
 
+const MIN_PHONE_DIGITS = 7
+
+const digitsOnly = (value: string) => value.replace(/\D/g, "")
+
+/**
+ * Whether a value is a bare number or a formatted one — a phone number, an
+ * order id, an amount. Spreadsheets store these as numbers, so what comes back
+ * ("940431330") and what the visitor says ("+998 94 043 13 30") are the same
+ * value written two ways.
+ */
+const isNumericLike = (value: string) => {
+  const trimmed = value.trim()
+
+  if (!trimmed) {
+    return false
+  }
+
+  return /^[+(]?[\d\s()\-.+]+$/.test(trimmed) && digitsOnly(trimmed).length > 0
+}
+
+/**
+ * Compares two numeric values by their digits, so separators and a country
+ * code cannot hide a match. Requires enough digits that the comparison is
+ * about one specific record: a two-digit quantity column must never match a
+ * phone number that happens to end in the same pair.
+ */
+const numericEquivalent = (cell: string, value: string) => {
+  const cellDigits = digitsOnly(cell)
+  const valueDigits = digitsOnly(value)
+
+  if (
+    cellDigits.length < MIN_PHONE_DIGITS ||
+    valueDigits.length < MIN_PHONE_DIGITS
+  ) {
+    return cellDigits === valueDigits && cellDigits.length > 0
+  }
+
+  return (
+    cellDigits === valueDigits ||
+    cellDigits.endsWith(valueDigits) ||
+    valueDigits.endsWith(cellDigits)
+  )
+}
+
 const cellMatches = (
   cell: string,
   value: string,
@@ -240,25 +246,28 @@ const cellMatches = (
   if (matchMode === "equals") {
     return cell === value
   }
+
+  const numeric = isNumericLike(cell) && isNumericLike(value)
+
   if (matchMode === "exact") {
-    return cell.toLowerCase() === value.toLowerCase()
+    return (
+      cell.toLowerCase() === value.toLowerCase() ||
+      (numeric && numericEquivalent(cell, value))
+    )
   }
-  return cell.toLowerCase().includes(value.toLowerCase())
+
+  return (
+    cell.toLowerCase().includes(value.toLowerCase()) ||
+    (numeric && numericEquivalent(cell, value))
+  )
 }
 
 export const findMatchingRows = (
   rows: SheetRowRecord[],
-  searchColumns: string[],
-  args: Record<string, unknown>,
+  searchEntries: SearchEntry[],
   matchMode: GoogleSheetsMatchMode = "contains",
   maxLookupRows = DEFAULT_MAX_LOOKUP_ROWS
 ) => {
-  const argMap = normalizeArgMap(args)
-  const searchEntries = Object.entries(argMap).filter(
-    ([key, value]) =>
-      value && (searchColumns.length === 0 || columnListIncludes(searchColumns, key))
-  )
-
   if (searchEntries.length === 0) {
     return []
   }
@@ -327,15 +336,6 @@ const getSheetId = async (
   return match.properties.sheetId
 }
 
-const buildA1RowRange = (
-  sheetName: string,
-  rowNumber: number,
-  columnCount: number
-) => {
-  const endColumn = columnIndexToLetter(Math.max(columnCount - 1, 0))
-  return `${sheetName}!A${rowNumber}:${endColumn}${rowNumber}`
-}
-
 const fetchHeaderRow = async ({
   auth,
   spreadsheetId,
@@ -355,26 +355,97 @@ const fetchHeaderRow = async ({
   return (values[0] ?? []).map((header) => header.trim())
 }
 
+/**
+ * The arguments an update tool uses to find its row, separated from the ones
+ * carrying the new values.
+ *
+ * `new_<column>` exists precisely because a column can be on both sides of an
+ * update — "find the row with this phone number, write that one" — so those
+ * arguments are never read as filters.
+ */
 const getSearchEntries = (
-  args: Record<string, unknown>,
-  searchColumns: string[]
-) => {
-  const argMap = normalizeArgMap(args)
-  return Object.entries(argMap).filter(
+  argMap: Record<string, string>,
+  searchColumns: string[],
+  excludedNames: Set<string>
+): SearchEntry[] =>
+  Object.entries(argMap).filter(
     ([key, value]) =>
       value &&
+      !excludedNames.has(canonicalColumnKey(key)) &&
       (searchColumns.length === 0 || columnListIncludes(searchColumns, key))
   )
+
+/** The `new_<column>` argument names an update tool declares. */
+const getNewValueParameterNames = (updateColumns: string[]) =>
+  new Set(updateColumns.map((column) => newValueParameterName(column)))
+
+/**
+ * The values an update should write, keyed by the sheet column they belong to.
+ *
+ * A column that also finds the row is only written when its `new_<column>`
+ * argument is present: the plain argument is the filter, and treating it as
+ * the new value would rewrite the cell with what was already in it.
+ */
+const resolveUpdateValues = ({
+  argMap,
+  searchColumns,
+  updateColumns,
+}: {
+  argMap: Record<string, string>
+  searchColumns: string[]
+  updateColumns: string[]
+}) => {
+  const values = new Map<string, string>()
+
+  const columns =
+    updateColumns.length > 0
+      ? updateColumns
+      : // No update columns configured: every argument that is not a filter is
+        // taken as a value to write, which is how these tools behaved before
+        // the column pickers existed.
+        Object.keys(argMap).map((key) =>
+          key.startsWith("new_") ? key.slice("new_".length) : key
+        )
+
+  for (const column of columns) {
+    if (!column.trim()) {
+      continue
+    }
+
+    const explicit = resolveByColumnName(argMap, newValueParameterName(column))
+
+    if (explicit !== undefined && explicit !== "") {
+      values.set(column, explicit)
+      continue
+    }
+
+    if (columnListIncludes(searchColumns, column)) {
+      continue
+    }
+
+    const direct = resolveByColumnName(argMap, column)
+
+    if (direct !== undefined && direct !== "") {
+      values.set(column, direct)
+    }
+  }
+
+  return values
 }
 
 const shouldUseGviz = (
-  auth: GoogleSheetsAuth,
   queryStrategy: GoogleSheetsQueryStrategy,
-  searchEntries: Array<[string, string]>
+  searchEntries: SearchEntry[]
 ) => {
   if (queryStrategy === "scan") return false
-  // gviz works best with OAuth; API key can work for public sheets
   if (searchEntries.length === 0) return false
+
+  // A gviz query cannot compare a numeric cell with a text literal, and it has
+  // no way to ignore the separators in a typed phone number. Both are what the
+  // local scan is for, so anything numeric skips the server-side query rather
+  // than failing over to it after a wasted round trip.
+  if (searchEntries.some(([, value]) => isNumericLike(value))) return false
+
   return true
 }
 
@@ -392,7 +463,7 @@ const lookupViaGviz = async ({
   spreadsheetId: string
   sheetName: string
   headers: string[]
-  searchEntries: Array<[string, string]>
+  searchEntries: SearchEntry[]
   returnColumns?: string[]
   matchMode: GoogleSheetsMatchMode
   maxLookupRows: number
@@ -420,19 +491,26 @@ const lookupViaGviz = async ({
   return rows.map((row) => projectReturnColumns(row, returnColumns))
 }
 
+type MutationTarget = {
+  headers: string[]
+  matches: SheetRowRecord[]
+  ambiguousCount?: number
+  scanTruncated: boolean
+}
+
 /**
- * gviz does not return sheet row numbers. For update/delete we use gviz only
- * to confirm match count / uniqueness, then locate the row with a bounded
- * values scan (capped by maxScanRows) using the same match mode.
+ * Locates the row an update or delete should act on.
+ *
+ * gviz does not return sheet row numbers, so it can only rule the sheet out
+ * early: no match, or too many. The row itself always comes from a bounded
+ * values scan, and a failed gviz probe degrades to that scan rather than
+ * failing the whole operation.
  */
-const findRowsForMutation = async ({
+const resolveMutationTarget = async ({
   auth,
   spreadsheetId,
   sheetName,
-  headers,
   searchEntries,
-  searchColumns,
-  args,
   matchMode,
   maxLookupRows,
   maxScanRows,
@@ -444,10 +522,7 @@ const findRowsForMutation = async ({
   auth: GoogleSheetsAuth
   spreadsheetId: string
   sheetName: string
-  headers: string[]
-  searchEntries: Array<[string, string]>
-  searchColumns: string[]
-  args: Record<string, unknown>
+  searchEntries: SearchEntry[]
   matchMode: GoogleSheetsMatchMode
   maxLookupRows: number
   maxScanRows: number
@@ -455,34 +530,56 @@ const findRowsForMutation = async ({
   dataRange?: string
   range: string
   preferGviz: boolean
-}): Promise<SheetRowRecord[]> => {
-  if (preferGviz && searchEntries.length > 0) {
-    const headerLetterMap = buildHeaderLetterMap(headers)
-    const where = buildGvizWhereClause({
-      searchEntries,
-      headerLetterMap,
-      matchMode,
-    })
-    // Only need to know how many match — select first search column
-    const firstLetter =
-      headerLetterMap.get(searchEntries[0]![0]) ?? columnIndexToLetter(0)
-    const tq = `SELECT ${firstLetter} WHERE ${where} LIMIT ${Math.max(maxLookupRows + 1, 2)}`
-    const { rows: matched } = await queryGoogleSheetWithGviz({
-      auth,
-      spreadsheetId,
-      sheetName,
-      tq,
-    })
+}): Promise<MutationTarget> => {
+  let headers: string[] = []
 
-    if (matched.length === 0) {
-      return []
-    }
+  try {
+    headers = await fetchHeaderRow({ auth, spreadsheetId, sheetName, headerRow })
+  } catch (error) {
+    console.error(
+      "Google Sheets header read failed, falling back to the scan range:",
+      error instanceof Error ? error.message : error
+    )
+  }
 
-    if (matched.length > maxLookupRows) {
-      // Signal ambiguity without scanning the whole sheet
-      return Array.from({ length: matched.length }, (_, index) => ({
-        _sheetRowNumber: -1 - index,
-      }))
+  if (preferGviz && headers.length > 0) {
+    try {
+      const headerLetterMap = buildHeaderLetterMap(headers)
+      const where = buildGvizWhereClause({
+        searchEntries,
+        headerLetterMap,
+        matchMode,
+      })
+      const firstLetter =
+        resolveHeaderLetter(headerLetterMap, searchEntries[0]![0]) ??
+        columnIndexToLetter(0)
+      const tq = `SELECT ${firstLetter} WHERE ${where} LIMIT ${Math.max(
+        maxLookupRows + 1,
+        2
+      )}`
+      const { rows: matched } = await queryGoogleSheetWithGviz({
+        auth,
+        spreadsheetId,
+        sheetName,
+        tq,
+      })
+
+      // An empty server-side result is not proof of absence — a value stored
+      // with different spacing only matches on the scan below — so only the
+      // "too many to be one record" answer short-circuits.
+      if (matched.length > maxLookupRows) {
+        return {
+          headers,
+          matches: [],
+          ambiguousCount: matched.length,
+          scanTruncated: false,
+        }
+      }
+    } catch (error) {
+      console.error(
+        "Google Sheets gviz probe failed, scanning instead:",
+        error instanceof Error ? error.message : error
+      )
     }
   }
 
@@ -498,14 +595,28 @@ const findRowsForMutation = async ({
     range: readRange,
     auth,
   })
-  const { rows } = parseSheetRowsWithIndices(values, headerRow)
-  return findMatchingRows(
-    rows,
-    searchColumns,
-    args,
-    matchMode,
-    maxLookupRows + 1
-  )
+  const parsed = parseSheetRowsWithIndices(values, headerRow)
+
+  return {
+    headers: headers.length > 0 ? headers : parsed.headers,
+    matches: findMatchingRows(
+      parsed.rows,
+      searchEntries,
+      matchMode,
+      maxLookupRows + 1
+    ),
+    scanTruncated: parsed.rows.length >= maxScanRows,
+  }
+}
+
+const appendedRowNumber = (payload: Record<string, unknown> | null) => {
+  const updatedRange = (
+    payload?.updates as { updatedRange?: string } | undefined
+  )?.updatedRange
+
+  const match = updatedRange?.match(/![A-Z]+(\d+)/)
+
+  return match?.[1] ? Number(match[1]) : null
 }
 
 export const executeGoogleSheetsOperation = async ({
@@ -533,17 +644,29 @@ export const executeGoogleSheetsOperation = async ({
   }
 
   const { sheetName } = parseSheetRange(range)
-  const searchEntries = getSearchEntries(args, searchColumns)
-  const useGviz = shouldUseGviz(auth, queryStrategy, searchEntries)
+  const argMap = normalizeArgMap(args)
+  const searchEntries = getSearchEntries(
+    argMap,
+    searchColumns,
+    operation === "update"
+      ? getNewValueParameterNames(updateColumns)
+      : new Set<string>()
+  )
+  const useGviz = shouldUseGviz(queryStrategy, searchEntries)
+  const searchColumnLabel = describeColumns(searchColumns)
 
   // A read or a write with nothing to match on is refused rather than defaulted
   // to "the first few rows". Answering an empty lookup with real rows hands the
   // sheet's contents to whoever asked for nothing, and an empty delete would
   // otherwise resolve to whichever row happened to come first.
   if (operation !== "append" && searchEntries.length === 0) {
+    const columnHint = searchColumnLabel
+      ? ` This tool finds the row by: ${searchColumnLabel}.`
+      : ""
+
     return operation === "lookup"
-      ? "No search values were provided. Ask the user for at least one of this tool's search fields, then look the record up."
-      : "No search values were provided. Ask the user which record they mean before changing anything."
+      ? `No search values were provided. Ask the user for at least one of this tool's search fields, then look the record up.${columnHint}`
+      : `No search values were provided. Ask the user which existing record they mean, then call this tool again with the value already stored in the sheet.${columnHint} Do not add a new row instead.`
   }
 
   // Append: header row only — never pull the full sheet
@@ -561,7 +684,6 @@ export const executeGoogleSheetsOperation = async ({
       )
     }
 
-    const argMap = normalizeArgMap(args)
     const rowValues = headers.map((header) => {
       if (!header) return ""
       if (valueColumns.length > 0 && !columnListIncludes(valueColumns, header)) {
@@ -573,7 +695,7 @@ export const executeGoogleSheetsOperation = async ({
     const endColumn = columnIndexToLetter(Math.max(headers.length - 1, 0))
     const appendRange = `${sheetName}!A:${endColumn}`
 
-    await sheetsRequest(
+    const payload = await sheetsRequest(
       auth,
       `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
         appendRange
@@ -584,13 +706,18 @@ export const executeGoogleSheetsOperation = async ({
       }
     )
 
-    return `Added a new row to ${sheetName}: ${JSON.stringify(
+    const rowNumber = appendedRowNumber(payload)
+    const written = JSON.stringify(
       Object.fromEntries(
         headers
           .map((header, index) => [header, rowValues[index] ?? ""])
           .filter(([header]) => Boolean(header))
       )
-    )}`
+    )
+
+    return `Added ${
+      rowNumber ? `row ${rowNumber}` : "a new row"
+    } to ${sheetName}: ${written}. This record now exists — if the user corrects any of these values, change this row with the update tool instead of adding another one.`
   }
 
   // Lookup via gviz (server-side WHERE) when possible
@@ -620,17 +747,18 @@ export const executeGoogleSheetsOperation = async ({
         maxLookupRows,
       })
 
-      if (matches.length === 0) {
-        return "No matching rows were found in the Google Sheet."
+      if (matches.length > 0) {
+        const uniqueMatches = [
+          ...new Map(
+            matches.map((row) => [JSON.stringify(row), row] as const)
+          ).values(),
+        ]
+
+        return JSON.stringify(uniqueMatches, null, 2)
       }
 
-      const uniqueMatches = [
-        ...new Map(
-          matches.map((row) => [JSON.stringify(row), row] as const)
-        ).values(),
-      ]
-
-      return JSON.stringify(uniqueMatches, null, 2)
+      // An empty server-side result is not proof: a value stored as a number,
+      // or one written with different spacing, only matches on the scan below.
     } catch (error) {
       // Fall through to scan fallback
       console.error(
@@ -640,176 +768,25 @@ export const executeGoogleSheetsOperation = async ({
     }
   }
 
-  // Update/delete: gviz confirms uniqueness, then bounded scan finds row number
-  if (
-    (operation === "update" || operation === "delete") &&
-    searchEntries.length > 0
-  ) {
-    // Only the read half of this block may fall through to the scan path. A
-    // write that throws after Google already applied it must surface the error:
-    // retrying a delete would remove whichever row shifted up into its place.
-    let hasIssuedWrite = false
-
-    try {
-      const headers = await fetchHeaderRow({
-        auth,
-        spreadsheetId,
-        sheetName,
-        headerRow,
-      })
-
-      if (headers.length === 0) {
-        throw new Error(
-          "The sheet range must include a header row so columns can be mapped."
-        )
-      }
-
-      const matches = await findRowsForMutation({
-        auth,
-        spreadsheetId,
-        sheetName,
-        headers,
-        searchEntries,
-        searchColumns,
-        args,
-        matchMode,
-        maxLookupRows,
-        maxScanRows,
-        headerRow,
-        dataRange,
-        range,
-        preferGviz: useGviz,
-      })
-
-      if (matches.length === 0) {
-        return "No matching row was found to update or delete."
-      }
-
-      if (requireUniqueMatch && matches.length > 1) {
-        return `Found ${matches.length} matching rows. Please provide more specific lookup values so only one row matches.`
-      }
-
-      const targetRow = matches[0]!
-      if (targetRow._sheetRowNumber < 1) {
-        return `Found multiple matching rows. Please provide more specific lookup values so only one row matches.`
-      }
-
-      if (operation === "delete") {
-        const sheetId = await getSheetId(auth, spreadsheetId, sheetName)
-        const startIndex = targetRow._sheetRowNumber - 1
-        const endIndex = targetRow._sheetRowNumber
-
-        hasIssuedWrite = true
-        await sheetsRequest(
-          auth,
-          `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
-          {
-            method: "POST",
-            body: JSON.stringify({
-              requests: [
-                {
-                  deleteDimension: {
-                    range: {
-                      sheetId,
-                      dimension: "ROWS",
-                      startIndex,
-                      endIndex,
-                    },
-                  },
-                },
-              ],
-            }),
-          }
-        )
-
-        const { _sheetRowNumber, ...rowSnapshot } = targetRow
-        return `Deleted row ${_sheetRowNumber} from ${sheetName}: ${JSON.stringify(rowSnapshot)}`
-      }
-
-      // update
-      const argMap = normalizeArgMap(args)
-      const columnsToUpdate =
-        updateColumns.length > 0
-          ? updateColumns
-          : Object.keys(argMap).filter(
-              (key) => !columnListIncludes(searchColumns, key)
-            )
-
-      const nextRow = { ...targetRow }
-      for (const column of columnsToUpdate) {
-        const value = resolveByColumnName(argMap, column)
-
-        if (value !== undefined && value !== "") {
-          // Written under the sheet's own header, not the argument's spelling,
-          // so a canonical match cannot introduce a stray column.
-          const header = headers.find(
-            (candidate) =>
-              candidate === column ||
-              canonicalColumnKey(candidate) === canonicalColumnKey(column)
-          )
-
-          if (header) {
-            nextRow[header] = value
-          }
-        }
-      }
-
-      const rowValues = headers.map((header) =>
-        header ? (nextRow[header] ?? "") : ""
-      )
-      const a1Range = buildA1RowRange(
-        sheetName,
-        targetRow._sheetRowNumber,
-        headers.length
-      )
-
-      hasIssuedWrite = true
-      await sheetsRequest(
-        auth,
-        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
-          a1Range
-        )}?valueInputOption=USER_ENTERED`,
-        {
-          method: "PUT",
-          body: JSON.stringify({ values: [rowValues] }),
-        }
-      )
-
-      const { _sheetRowNumber, ...rowSnapshot } = nextRow
-      return `Updated row ${targetRow._sheetRowNumber} in ${sheetName}: ${JSON.stringify(rowSnapshot)}`
-    } catch (error) {
-      if (hasIssuedWrite) {
-        throw error
-      }
-
-      console.error(
-        "Google Sheets mutation lookup failed, falling back to scan:",
-        error instanceof Error ? error.message : error
-      )
-    }
-  }
-
-  // Scan fallback (bounded range) — used for no-criteria lookup, API issues, or queryStrategy=scan
-  const readRange = resolveReadRange({
-    sheetName,
-    range,
-    dataRange,
-    headerRow,
-    maxScanRows,
-  })
-
-  const values = await fetchGoogleSheetValues({
-    spreadsheetId,
-    range: readRange,
-    auth,
-  })
-  const { headers, rows } = parseSheetRowsWithIndices(values, headerRow)
-
   if (operation === "lookup") {
+    const readRange = resolveReadRange({
+      sheetName,
+      range,
+      dataRange,
+      headerRow,
+      maxScanRows,
+    })
+
+    const values = await fetchGoogleSheetValues({
+      spreadsheetId,
+      range: readRange,
+      auth,
+    })
+    const { rows } = parseSheetRowsWithIndices(values, headerRow)
+
     const matches = findMatchingRows(
       rows,
-      searchColumns,
-      args,
+      searchEntries,
       matchMode,
       maxLookupRows
     ).map(({ _sheetRowNumber, ...row }) =>
@@ -822,11 +799,9 @@ export const executeGoogleSheetsOperation = async ({
     )
 
     if (matches.length === 0) {
-      return "No matching rows were found in the Google Sheet."
-    }
-
-    if (rows.length >= maxScanRows && searchEntries.length > 0) {
-      // Soft hint when we may have truncated the scan
+      return rows.length >= maxScanRows
+        ? `No matching rows were found in the first ${maxScanRows} rows of ${sheetName}, which is as far as this tool reads. Tell the user the record could not be found rather than guessing.`
+        : "No matching rows were found in the Google Sheet."
     }
 
     const uniqueMatches = [
@@ -838,34 +813,60 @@ export const executeGoogleSheetsOperation = async ({
     return JSON.stringify(uniqueMatches, null, 2)
   }
 
+  // Update / delete: one path, so the row that is found is always the row that
+  // is written. A write that throws after Google already applied it must
+  // surface — retrying a delete would remove whichever row shifted up into its
+  // place — so nothing below this point is caught and retried.
+  const { headers, matches, ambiguousCount, scanTruncated } =
+    await resolveMutationTarget({
+      auth,
+      spreadsheetId,
+      sheetName,
+      searchEntries,
+      matchMode,
+      maxLookupRows,
+      maxScanRows,
+      headerRow,
+      dataRange,
+      range,
+      preferGviz: useGviz,
+    })
+
   if (headers.length === 0) {
     throw new Error(
       "The sheet range must include a header row so columns can be mapped."
     )
   }
 
-  const matches = findMatchingRows(
-    rows,
-    searchColumns,
-    args,
-    matchMode,
-    maxLookupRows
+  const otherColumns = describeColumns(
+    headers.filter((header) => header && !columnListIncludes(searchColumns, header))
   )
 
-  if (matches.length === 0) {
-    return "No matching row was found to update or delete."
+  if (ambiguousCount !== undefined || (requireUniqueMatch && matches.length > 1)) {
+    const count = ambiguousCount ?? matches.length
+    return `${count} rows in ${sheetName} match ${describeCriteria(
+      searchEntries
+    )}, so it is not clear which one the user means. Ask the user for a value that tells those records apart${
+      otherColumns ? ` (for example ${otherColumns})` : ""
+    }, then call this tool again. Do not guess, and do not add a new row.`
   }
 
-  if (requireUniqueMatch && matches.length > 1) {
-    return `Found ${matches.length} matching rows. Please provide more specific lookup values so only one row matches.`
+  if (matches.length === 0) {
+    const truncationNote = scanTruncated
+      ? ` Only the first ${maxScanRows} rows of the sheet were checked.`
+      : ""
+
+    return `No row in ${sheetName} matched ${describeCriteria(
+      searchEntries
+    )}.${truncationNote} The record may be stored under a different value — ask the user to confirm ${
+      searchColumnLabel || "the details you searched with"
+    } and try again. Do not add a new row unless the user explicitly asks to create a new record.`
   }
 
   const targetRow = matches[0]!
 
   if (operation === "delete") {
     const sheetId = await getSheetId(auth, spreadsheetId, sheetName)
-    const startIndex = targetRow._sheetRowNumber - 1
-    const endIndex = targetRow._sheetRowNumber
 
     await sheetsRequest(
       auth,
@@ -879,8 +880,8 @@ export const executeGoogleSheetsOperation = async ({
                 range: {
                   sheetId,
                   dimension: "ROWS",
-                  startIndex,
-                  endIndex,
+                  startIndex: targetRow._sheetRowNumber - 1,
+                  endIndex: targetRow._sheetRowNumber,
                 },
               },
             },
@@ -893,41 +894,67 @@ export const executeGoogleSheetsOperation = async ({
     return `Deleted row ${_sheetRowNumber} from ${sheetName}: ${JSON.stringify(rowSnapshot)}`
   }
 
-  if (operation === "update") {
-    const argMap = normalizeArgMap(args)
-    const columnsToUpdate =
-      updateColumns.length > 0
-        ? updateColumns
-        : Object.keys(argMap).filter((key) => !searchColumns.includes(key))
+  const updateValues = resolveUpdateValues({
+    argMap,
+    searchColumns,
+    updateColumns,
+  })
 
-    const nextRow = { ...targetRow }
-    for (const column of columnsToUpdate) {
-      if (argMap[column] !== undefined && argMap[column] !== "") {
-        nextRow[column] = argMap[column]!
-      }
-    }
-
-    const rowValues = headers.map((header) => nextRow[header] ?? "")
-    const a1Range = buildA1RowRange(
-      sheetName,
-      targetRow._sheetRowNumber,
-      headers.length
+  if (updateValues.size === 0) {
+    const changeable = describeColumns(
+      updateColumns.length > 0 ? updateColumns : headers.filter(Boolean)
     )
 
-    await sheetsRequest(
-      auth,
-      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
-        a1Range
-      )}?valueInputOption=USER_ENTERED`,
-      {
-        method: "PUT",
-        body: JSON.stringify({ values: [rowValues] }),
-      }
-    )
-
-    const { _sheetRowNumber, ...rowSnapshot } = nextRow
-    return `Updated row ${targetRow._sheetRowNumber} in ${sheetName}: ${JSON.stringify(rowSnapshot)}`
+    return `The row was found, but no new values were provided, so nothing was changed. Ask the user what the corrected value should be and call this tool again with it${
+      changeable ? ` — this tool can change: ${changeable}` : ""
+    }.`
   }
 
-  return "Unsupported Google Sheets operation."
+  // Resolved against the sheet's own header, never the argument's spelling, so
+  // a canonical match cannot invent a column that the write then misses.
+  const nextRow: SheetRowRecord = { ...targetRow }
+  const changedColumns: string[] = []
+  const writes: Array<{ range: string; values: string[][] }> = []
+
+  for (const [column, value] of updateValues) {
+    const header = resolveHeaderForColumn(headers, column)
+    const columnIndex = header ? headers.indexOf(header) : -1
+
+    if (!header || columnIndex < 0) {
+      continue
+    }
+
+    nextRow[header] = value
+    changedColumns.push(header)
+    writes.push({
+      range: `${sheetName}!${columnIndexToLetter(columnIndex)}${targetRow._sheetRowNumber}`,
+      values: [[value]],
+    })
+  }
+
+  if (writes.length === 0) {
+    return `The row was found, but none of the values provided match a column in ${sheetName}. Its columns are: ${describeColumns(
+      headers.filter(Boolean)
+    )}.`
+  }
+
+  // Only the changed cells are written. Rewriting the whole row would blank a
+  // column the sheet has but the header row does not name, and would overwrite
+  // a formula with the value it had last rendered to.
+  await sheetsRequest(
+    auth,
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchUpdate`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        valueInputOption: "USER_ENTERED",
+        data: writes,
+      }),
+    }
+  )
+
+  const { _sheetRowNumber, ...rowSnapshot } = nextRow
+  return `Updated row ${targetRow._sheetRowNumber} in ${sheetName} (changed ${describeColumns(
+    changedColumns
+  )}). The row now reads: ${JSON.stringify(rowSnapshot)}`
 }

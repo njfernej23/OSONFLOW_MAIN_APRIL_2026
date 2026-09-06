@@ -2080,7 +2080,7 @@ export const AssistantToolsView = () => {
                               operation === "delete" ? (
                                 <SheetColumnPicker
                                   columns={sheetColumnOptions}
-                                  description="Columns used to find the matching row. Tool parameters are generated from this selection."
+                                  description="Columns used to find the matching row — the assistant must send the values already stored in the sheet. Tool parameters are generated from this selection."
                                   isLoading={isLoadingSheetColumns}
                                   label="Search columns"
                                   onChange={(columns) =>
@@ -2112,7 +2112,7 @@ export const AssistantToolsView = () => {
                               {operation === "update" ? (
                                 <SheetColumnPicker
                                   columns={sheetColumnOptions}
-                                  description="Columns the assistant can change after finding a row."
+                                  description="Columns the assistant can change after finding a row. Pick a search column here too and it gets a second, new_ input for the corrected value."
                                   isLoading={isLoadingSheetColumns}
                                   label="Update columns"
                                   onChange={(columns) =>
@@ -2559,22 +2559,36 @@ export const AssistantToolsView = () => {
                                   Choose columns above to generate parameters.
                                 </p>
                               ) : (
-                                <div className="flex flex-wrap gap-1.5">
-                                  {editor.parameters.map((parameter) => (
-                                    <Pill
-                                      key={parameter.name}
-                                      tone={
-                                        parameter.required
-                                          ? "accent"
-                                          : "neutral"
-                                      }
-                                    >
-                                      <span className="font-mono">
-                                        {parameter.name}
-                                      </span>
-                                      {parameter.required ? " · required" : ""}
-                                    </Pill>
-                                  ))}
+                                <div className="space-y-2.5">
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {editor.parameters.map((parameter) => (
+                                      <Pill
+                                        key={parameter.name}
+                                        tone={
+                                          parameter.required
+                                            ? "accent"
+                                            : "neutral"
+                                        }
+                                      >
+                                        <span className="font-mono">
+                                          {parameter.name}
+                                        </span>
+                                        {parameter.required
+                                          ? " · required"
+                                          : ""}
+                                      </Pill>
+                                    ))}
+                                  </div>
+                                  {operation === "update" ? (
+                                    <p className="text-xs text-muted-foreground">
+                                      A column that both finds the row and gets
+                                      changed appears twice: the plain name
+                                      carries the value already in the sheet,
+                                      and the{" "}
+                                      <span className="font-mono">new_</span>
+                                      one carries the corrected value to write.
+                                    </p>
+                                  ) : null}
                                 </div>
                               )}
                             </PanelBody>

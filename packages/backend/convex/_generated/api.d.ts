@@ -21,6 +21,7 @@ import type * as lib_googleCalendarAuth from "../lib/googleCalendarAuth.js";
 import type * as lib_googleCalendarCrud from "../lib/googleCalendarCrud.js";
 import type * as lib_googleCalendarOAuth from "../lib/googleCalendarOAuth.js";
 import type * as lib_googleSheetsAuth from "../lib/googleSheetsAuth.js";
+import type * as lib_googleSheetsColumns from "../lib/googleSheetsColumns.js";
 import type * as lib_googleSheetsCrud from "../lib/googleSheetsCrud.js";
 import type * as lib_googleSheetsDrive from "../lib/googleSheetsDrive.js";
 import type * as lib_googleSheetsOAuth from "../lib/googleSheetsOAuth.js";
@@ -136,6 +137,7 @@ declare const fullApi: ApiFromModules<{
   "lib/googleCalendarCrud": typeof lib_googleCalendarCrud;
   "lib/googleCalendarOAuth": typeof lib_googleCalendarOAuth;
   "lib/googleSheetsAuth": typeof lib_googleSheetsAuth;
+  "lib/googleSheetsColumns": typeof lib_googleSheetsColumns;
   "lib/googleSheetsCrud": typeof lib_googleSheetsCrud;
   "lib/googleSheetsDrive": typeof lib_googleSheetsDrive;
   "lib/googleSheetsOAuth": typeof lib_googleSheetsOAuth;

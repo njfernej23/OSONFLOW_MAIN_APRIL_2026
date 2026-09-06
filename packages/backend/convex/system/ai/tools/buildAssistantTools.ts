@@ -2,6 +2,7 @@ import { createTool } from "@convex-dev/agent"
 import z from "zod"
 import { internal } from "../../../_generated/api"
 import { Doc } from "../../../_generated/dataModel"
+import { resolveGoogleSheetsToolParameters } from "../../../lib/googleSheetsColumns"
 
 const buildParameterSchema = (parameters: Doc<"assistantTools">["parameters"]) => {
   const shape: Record<string, z.ZodTypeAny> = {}
@@ -74,12 +75,15 @@ export const buildAssistantToolsForChat = (
       continue
     }
 
+    // Sheets tools take their arguments from the columns picked in the config
+    // rather than the stored list, so a tool saved before the update operation
+    // had a separate "new value" argument gets one without being re-saved.
+    const parameters = resolveGoogleSheetsToolParameters(tool)
+
     tools[tool.name] = createTool({
       description: tool.description,
       inputSchema:
-        tool.parameters.length > 0
-          ? buildParameterSchema(tool.parameters)
-          : z.object({}),
+        parameters.length > 0 ? buildParameterSchema(parameters) : z.object({}),
       // The return value goes to the model and nowhere else. It is raw
       // integration output — a spreadsheet row, an API body — and writing it
       // into the thread would put the organization's own data in front of the

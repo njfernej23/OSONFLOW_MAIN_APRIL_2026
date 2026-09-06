@@ -1,6 +1,7 @@
 "use node"
 
 import type { GoogleSheetsAuth } from "./googleSheetsAuth"
+import { canonicalColumnKey } from "./googleSheetsColumns"
 
 export type GoogleSheetsMatchMode = "contains" | "exact" | "equals"
 
@@ -34,6 +35,39 @@ export const buildHeaderLetterMap = (headers: string[]) => {
   return map
 }
 
+/**
+ * Finds a column's letter from either spelling of its name.
+ *
+ * Tool arguments are canonical (`xizmat_turi`) while the map is keyed by the
+ * sheet's own header ("Xizmat Turi"), so an exact-only lookup failed on every
+ * sheet whose headers were not already lowercase — which silently sent each
+ * query down the scan fallback after a wasted round trip.
+ */
+export const resolveHeaderLetter = (
+  headerLetterMap: Map<string, string>,
+  column: string
+) => {
+  const exact = headerLetterMap.get(column)
+
+  if (exact) {
+    return exact
+  }
+
+  const target = canonicalColumnKey(column)
+
+  if (!target) {
+    return undefined
+  }
+
+  for (const [header, letter] of headerLetterMap) {
+    if (canonicalColumnKey(header) === target) {
+      return letter
+    }
+  }
+
+  return undefined
+}
+
 export const buildGvizWhereClause = ({
   searchEntries,
   headerLetterMap,
@@ -50,7 +84,7 @@ export const buildGvizWhereClause = ({
   const parts: string[] = []
 
   for (const [column, value] of searchEntries) {
-    const letter = headerLetterMap.get(column)
+    const letter = resolveHeaderLetter(headerLetterMap, column)
     if (!letter) {
       throw new Error(
         `Search column "${column}" was not found in the sheet header row.`
@@ -87,7 +121,7 @@ export const buildGvizSelectClause = ({
       : headers.filter(Boolean)
 
   const letters = columns
-    .map((column) => headerLetterMap.get(column))
+    .map((column) => resolveHeaderLetter(headerLetterMap, column))
     .filter((letter): letter is string => Boolean(letter))
 
   if (letters.length === 0) {
