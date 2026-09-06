@@ -669,9 +669,15 @@ export const create = action({
         // A turn that spent every step calling tools leaves no text to show.
         // The tool's own output is internal data, so the visitor gets a plain
         // acknowledgement rather than a look at what the integration returned.
-        if (!assistantReplyText && didCallTool(result)) {
-          assistantReplyText =
-            "Thanks — that's been taken care of. Anything else I can help with?"
+        //
+        // A turn that produced nothing at all is answered too: with no
+        // assistant message the widget has nothing to render against, so the
+        // visitor is left watching a typing indicator over a reply that is
+        // never coming.
+        if (!assistantReplyText) {
+          assistantReplyText = didCallTool(result)
+            ? "Thanks — that's been taken care of. Anything else I can help with?"
+            : "Sorry, something went wrong on my side and I lost that reply. Could you send it again?"
 
           await saveMessage(ctx, components.agent, {
             threadId: args.threadId,

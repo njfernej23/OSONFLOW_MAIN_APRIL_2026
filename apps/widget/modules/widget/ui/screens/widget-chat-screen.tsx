@@ -443,6 +443,37 @@ export const WidgetChatScreen = () => {
     email: string
   } | null>(null)
   const isFlushingHeldMessagesRef = useRef(false)
+  // Sends that have left the composer but whose action has not returned yet.
+  //
+  // The action only resolves once the whole turn is written, so this is both
+  // the duplicate guard — a second Enter press re-reads the composer before
+  // react-hook-form's async validation has cleared it, and would send the same
+  // text twice — and the signal that nothing more is coming for a turn that
+  // produced no visible reply.
+  const inFlightSendsRef = useRef(new Set<string>())
+
+  const sendKeyFor = (prompt: string, attachmentIds: string[]) =>
+    `${prompt}\u0000${attachmentIds.join(",")}`
+
+  const beginSend = (sendKey: string) => {
+    if (inFlightSendsRef.current.has(sendKey)) {
+      return false
+    }
+
+    inFlightSendsRef.current.add(sendKey)
+    return true
+  }
+
+  const finishSend = (sendKey: string) => {
+    inFlightSendsRef.current.delete(sendKey)
+
+    if (inFlightSendsRef.current.size === 0) {
+      // Counting assistant messages cannot tell "still thinking" from "the
+      // turn ended without anything to show", which left the composer
+      // spinning until the 90 second backstop.
+      setPendingAssistantMessageCount(null)
+    }
+  }
   const visibleHeldMessages = useMemo(() => {
     if (!heldMessages) {
       return []
@@ -684,8 +715,15 @@ export const WidgetChatScreen = () => {
     isFlushingHeldMessagesRef.current = true
     setPendingAssistantMessageCount(assistantMessageCount + 1)
 
+    const batch = heldMessages.messages
+    const sendKey = sendKeyFor(
+      batch.map((held) => held.text).join("\u0000"),
+      batch.flatMap((held) => held.attachmentIds)
+    )
+    beginSend(sendKey)
+
     const flush = async () => {
-      for (const held of heldMessages.messages) {
+      for (const held of batch) {
         await createMessage({
           threadId,
           prompt: held.text,
@@ -698,15 +736,23 @@ export const WidgetChatScreen = () => {
     }
 
     void flush()
+      .then(() => {
+        // Dropped as soon as the server has them. Waiting for the echo count
+        // to catch up instead let this effect run again — it re-runs on every
+        // assistant reply — with the batch still queued, which delivered the
+        // same message a second time.
+        releaseHeldPreviews(batch)
+        setHeldMessages(null)
+      })
       .catch(() => {
-        setPendingAssistantMessageCount(null)
-        releaseHeldPreviews(heldMessages.messages)
+        releaseHeldPreviews(batch)
         setHeldMessages(null)
         setAttachmentNotice(
           "Those messages could not be sent. Please try again."
         )
       })
       .finally(() => {
+        finishSend(sendKey)
         isFlushingHeldMessagesRef.current = false
       })
   }, [
@@ -750,6 +796,12 @@ export const WidgetChatScreen = () => {
       return
     }
 
+    const sendKey = sendKeyFor(prompt, [])
+
+    if (!beginSend(sendKey)) {
+      return
+    }
+
     setOptimisticUserMessage({
       text: prompt,
       baseCount: userMessageCount,
@@ -761,15 +813,18 @@ export const WidgetChatScreen = () => {
       threadId,
       prompt,
       contactSessionId,
-    }).catch(() => {
-      setOptimisticUserMessage(null)
-      setPendingAssistantMessageCount(null)
-      form.setValue("message", prompt, {
-        shouldValidate: true,
-        shouldDirty: true,
-        shouldTouch: true,
-      })
     })
+      .catch(() => {
+        setOptimisticUserMessage(null)
+        form.setValue("message", prompt, {
+          shouldValidate: true,
+          shouldDirty: true,
+          shouldTouch: true,
+        })
+      })
+      .finally(() => {
+        finishSend(sendKey)
+      })
   }, [
     assistantMessageCount,
     userMessageCount,
@@ -805,6 +860,14 @@ export const WidgetChatScreen = () => {
       return
     }
 
+    // Two Enter presses in the time zod validation takes both read the same
+    // composer value, so the identical text would be delivered twice.
+    const sendKey = sendKeyFor(prompt, attachmentIds)
+
+    if (!beginSend(sendKey)) {
+      return
+    }
+
     form.reset()
     setAttachmentNotice(null)
 
@@ -833,6 +896,7 @@ export const WidgetChatScreen = () => {
         attachmentIds,
         attachments: optimisticAttachments,
       })
+      finishSend(sendKey)
       return
     }
 
@@ -854,7 +918,6 @@ export const WidgetChatScreen = () => {
       // The tray was emptied so the bubble could show the previews; put it back
       // so a failed send does not cost the visitor their pictures.
       setOptimisticUserMessage(null)
-      setPendingAssistantMessageCount(null)
       attachments.restoreDrafts(sentDrafts)
       form.setValue("message", prompt, {
         shouldValidate: true,
@@ -866,6 +929,8 @@ export const WidgetChatScreen = () => {
           ? "That message could not be sent. Please try again."
           : null
       )
+    } finally {
+      finishSend(sendKey)
     }
   }
 
@@ -875,6 +940,13 @@ export const WidgetChatScreen = () => {
   }) => {
     const threadId = conversation?.threadId
     if (!threadId || !contactSessionId) {
+      return
+    }
+
+    // A double-tapped choice button is the same duplicate as a double Enter.
+    const sendKey = sendKeyFor(button.label, [button.id])
+
+    if (!beginSend(sendKey)) {
       return
     }
 
@@ -894,7 +966,8 @@ export const WidgetChatScreen = () => {
       })
     } catch {
       setOptimisticUserMessage(null)
-      setPendingAssistantMessageCount(null)
+    } finally {
+      finishSend(sendKey)
     }
   }
 
@@ -1268,6 +1341,14 @@ export const WidgetChatScreen = () => {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault()
+
+                      // Key autorepeat fires keydown over and over; without
+                      // the same gate the send button has, a held Enter sends
+                      // the composer's text several times.
+                      if (e.repeat || !canSendMessage) {
+                        return
+                      }
+
                       form.handleSubmit(onSubmit)()
                     }
                   }}
