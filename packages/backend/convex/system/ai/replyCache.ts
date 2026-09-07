@@ -45,12 +45,47 @@ export const isCacheablePrompt = (prompt: string) => {
 const isCacheableAnswer = (answer: string) =>
   answer.trim().length > 0 && answer.length <= MAX_CACHEABLE_ANSWER_LENGTH
 
+/**
+ * A message that only means something next to the one before it — "yes please",
+ * "and the second one", "tell me more" — has an answer that depends on the
+ * thread, not on the words. The cache is keyed on the words alone, so those
+ * messages are always answered live.
+ *
+ * The length floor does most of the work and is language-neutral, which matters
+ * because visitors write in Uzbek and Russian as well as English; the phrase
+ * list catches the longer English follow-ups that clear it.
+ */
+const MIN_SELF_CONTAINED_LENGTH = 20
+
+const followUpPattern =
+  /^(?:ok(?:ay)?|yes|yeah|yep|sure|no|nope|nah|thanks|thank you|great|perfect|please|more|continue|go on|what about|how about|tell me more|and (?:the|what|how)|the (?:first|second|third|last|other) one)\b/i
+
+export const isSelfContainedQuestion = (prompt: string) => {
+  const normalized = normalizeForCache(prompt)
+
+  return (
+    normalized.length >= MIN_SELF_CONTAINED_LENGTH &&
+    !followUpPattern.test(prompt.trim())
+  )
+}
+
+/**
+ * An entry is only served under the tool roster it was produced with. Entries
+ * stored before fingerprints existed carry none, and are treated as matching
+ * only when no tools are configured now either.
+ */
+const matchesToolsFingerprint = (
+  entry: { toolsFingerprint?: string },
+  toolsFingerprint?: string
+) => (entry.toolsFingerprint ?? "") === (toolsFingerprint ?? "")
+
 export const find = internalQuery({
   args: {
     organizationId: v.string(),
     prompt: v.string(),
     model: v.string(),
     systemPrompt: v.string(),
+    toolsFingerprint: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     if (!isCacheablePrompt(args.prompt)) {
@@ -73,6 +108,7 @@ export const find = internalQuery({
         (entry) =>
           entry.model === args.model &&
           entry.systemPromptKey === promptKey &&
+          matchesToolsFingerprint(entry, args.toolsFingerprint) &&
           entry.updatedAt >= minUpdatedAt
       ) ?? null
     )
@@ -85,6 +121,7 @@ export const getByCacheKey = internalQuery({
     cacheKey: v.string(),
     model: v.string(),
     systemPrompt: v.string(),
+    toolsFingerprint: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const promptKey = systemPromptKey(args.systemPrompt)
@@ -104,6 +141,7 @@ export const getByCacheKey = internalQuery({
         (entry) =>
           entry.model === args.model &&
           entry.systemPromptKey === promptKey &&
+          matchesToolsFingerprint(entry, args.toolsFingerprint) &&
           entry.updatedAt >= minUpdatedAt
       ) ?? null
     )
@@ -135,6 +173,7 @@ export const upsert = internalMutation({
     answer: v.string(),
     model: v.string(),
     systemPrompt: v.string(),
+    toolsFingerprint: v.optional(v.string()),
     sourceThreadId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -154,13 +193,16 @@ export const upsert = internalMutation({
 
     const existing = matches.find(
       (entry) =>
-        entry.model === args.model && entry.systemPromptKey === promptKey
+        entry.model === args.model &&
+        entry.systemPromptKey === promptKey &&
+        matchesToolsFingerprint(entry, args.toolsFingerprint)
     )
 
     if (existing) {
       await ctx.db.patch(existing._id, {
         sourcePrompt: args.prompt,
         answer: args.answer.trim(),
+        toolsFingerprint: args.toolsFingerprint,
         sourceThreadId: args.sourceThreadId,
         updatedAt: now,
         lastUsedAt: now,
@@ -176,6 +218,7 @@ export const upsert = internalMutation({
       model: args.model,
       sourcePrompt: args.prompt,
       answer: args.answer.trim(),
+      toolsFingerprint: args.toolsFingerprint,
       sourceThreadId: args.sourceThreadId,
       hitCount: 0,
       createdAt: now,

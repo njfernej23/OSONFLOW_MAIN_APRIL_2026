@@ -736,6 +736,10 @@ export default defineSchema({
     model: v.string(),
     sourcePrompt: v.string(),
     answer: v.string(),
+    // The tool roster the answer was produced under. An entry is only replayed
+    // while that roster is unchanged, so enabling or editing a tool retires the
+    // answers it could have influenced.
+    toolsFingerprint: v.optional(v.string()),
     sourceThreadId: v.optional(v.string()),
     semanticEntryId: v.optional(v.string()),
     semanticIndexedAt: v.optional(v.number()),

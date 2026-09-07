@@ -158,3 +158,22 @@ Enhanced: "Thank you for your patience. I've identified the issue - your account
 * Preserve any specific promises or commitments
 * Return ONLY the enhanced message, nothing else
 `;
+/**
+ * How many prior thread messages are replayed to the model on each generation.
+ *
+ * The agent component's own default is 100, which means a long support thread
+ * was re-sent in full on every turn — and, because a turn can take several
+ * steps, more than once per visitor message. Support conversations stay
+ * coherent on the last few exchanges, so the window is capped here and the
+ * saving compounds with the length of the conversation.
+ */
+export const CHAT_RECENT_MESSAGES = 12
+
+/**
+ * Ceiling on a single reply. Support answers run to a few sentences; this only
+ * stops a runaway generation from being billed in full.
+ */
+export const CHAT_MAX_OUTPUT_TOKENS = 800
+
+/** Ceiling on a knowledge-base answer, which is a short summary of the sources. */
+export const KNOWLEDGE_BASE_MAX_OUTPUT_TOKENS = 400

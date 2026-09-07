@@ -6,12 +6,7 @@ import { internal } from "../../_generated/api"
 import { Doc } from "../../_generated/dataModel"
 import { interpolateTemplate } from "../../lib/assistantTools"
 import { filterAssistantToolsByIds } from "./getChatTools"
-import { generateText } from "ai"
-import { getRagForOrganization } from "../ai/rag"
-import { SEARCH_INTERPRETER_PROMPT } from "../ai/constants"
-import {
-  getOpenAIChatModelFromSecretValue,
-} from "../../lib/openai"
+import { answerFromKnowledgeBase } from "../../lib/knowledgeBaseAnswer"
 import { resolveGoogleSheetsAuth } from "../../lib/googleSheetsAuth"
 import {
   executeGoogleSheetsOperation,
@@ -276,37 +271,12 @@ const executeQuery = async (
     }
   )
 
-  const rag = await getRagForOrganization(openAIPlugin?.secretValue)
-  const searchResult = await rag.search(ctx, {
-    namespace: tool.organizationId,
+  return await answerFromKnowledgeBase(ctx, {
+    organizationId: tool.organizationId,
     query,
-    limit: 5,
+    model: tool.config?.knowledgeBaseModel,
+    openAISecretValue: openAIPlugin?.secretValue,
   })
-
-  if (!searchResult.entries.length) {
-    return "I couldn't find specific information about that in our knowledge base."
-  }
-
-  const contextText = `Found results in ${searchResult.entries
-    .map((entry) => entry.title || null)
-    .filter((title) => title !== null)
-    .join(", ")}. Here is the context:\n\n${searchResult.text}`
-
-  const response = await generateText({
-    system: SEARCH_INTERPRETER_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: `User asked: "${query}"\n\nSearch results: ${contextText}`,
-      },
-    ],
-    model: getOpenAIChatModelFromSecretValue(
-      openAIPlugin?.secretValue,
-      tool.config?.knowledgeBaseModel
-    ),
-  })
-
-  return response.text
 }
 
 export const executeTool = internalAction({

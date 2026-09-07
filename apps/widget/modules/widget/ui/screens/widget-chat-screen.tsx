@@ -261,8 +261,14 @@ export const WidgetChatScreen = () => {
       : "skip"
   )
   // undefined = still loading; hold messages until we know the session is identified.
-  const needsEmail =
-    contactSessionDetails === undefined
+  //
+  // A published workflow asks for whatever it needs through its own steps, so
+  // the widget never puts its own name-and-email gate in front of the visitor
+  // there. Otherwise a booking flow that has just asked for a full name is
+  // interrupted by a form asking for it again.
+  const needsEmail = workflowOnly
+    ? false
+    : contactSessionDetails === undefined
       ? undefined
       : contactSessionDetails === null
         ? false
@@ -520,15 +526,15 @@ export const WidgetChatScreen = () => {
         ? "Typing…"
         : copy.onlineLabel
 
-  const composerPlaceholder = isConversationResolved
-    ? "This conversation has been resolved"
-    : isInputLockedForEmail
-      ? "Enter your email above to continue…"
-      : workflowChoices?.waitingMode === "capture"
-        ? "Type your reply…"
-        : workflowChoices?.waitingMode === "choice"
-          ? "Choose an option or type it…"
-          : copy.inputPlaceholder
+  // A resolved conversation is called out in the note above the composer, so the
+  // placeholder does not say it a second time inside the disabled input.
+  const composerPlaceholder = isInputLockedForEmail
+    ? "Enter your email above to continue…"
+    : workflowChoices?.waitingMode === "capture"
+      ? "Type your reply…"
+      : workflowChoices?.waitingMode === "choice"
+        ? "Choose an option or type it…"
+        : copy.inputPlaceholder
 
   useEffect(() => {
     if (pendingAssistantMessageCount === null) {

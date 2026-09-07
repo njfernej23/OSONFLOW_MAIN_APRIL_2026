@@ -9,10 +9,11 @@ import { resolveConversation } from "../system/ai/tools/resolveConversation"
 import { saveMessage } from "@convex-dev/agent"
 import { search } from "../system/ai/tools/search"
 import {
+  buildChatToolsFingerprint,
   buildToolAwareSystemPrompt,
   filterAssistantToolsByIds,
   getEnabledChatTools,
-  requiresLiveToolExecution,
+  getLiveChatToolNames,
   resolveChatToolsForWidget,
 } from "../system/assistantTools/getChatTools"
 import { SUPPORT_AGENT_PROMPT } from "../system/ai/constants"
@@ -28,11 +29,13 @@ import {
   getReplyCacheDocumentText,
   getReplyCacheNamespace,
   isCacheablePrompt,
+  isSelfContainedQuestion,
 } from "../system/ai/replyCache"
+import { extractAgentMessageText } from "../lib/agentMessageText"
 import {
-  extractAgentMessageText,
-  getLatestTextAgentMessage,
-} from "../lib/agentMessageText"
+  getCalledToolNames,
+  getLatestAssistantMessage,
+} from "../lib/chatReply"
 import {
   requireContactSessionConversation,
   requireContactSessionThread,
@@ -65,26 +68,6 @@ const getAgentMessageId = (message: any, fallbackIndex: number): string => {
     : `message-${fallbackIndex}`
 }
 
-const getLatestAssistantMessage = async (ctx: any, threadId: string) => {
-  const messages = await supportAgent.listMessages(ctx, {
-    threadId,
-    excludeToolMessages: true,
-    paginationOpts: { numItems: 20, cursor: null },
-  })
-  const message = getLatestTextAgentMessage(
-    messages.page.filter((item: any) => item?.message?.role === "assistant")
-  )
-
-  if (!message) {
-    return null
-  }
-
-  return {
-    id: String(message._id ?? message.id ?? message.order ?? ""),
-    text: extractAgentMessageText(message),
-  }
-}
-
 const findSemanticCachedReply = async (
   ctx: any,
   args: {
@@ -92,6 +75,7 @@ const findSemanticCachedReply = async (
     prompt: string
     model: string
     systemPrompt: string
+    toolsFingerprint: string
     openAISecretValue?: string | null
   }
 ) => {
@@ -144,6 +128,7 @@ const findSemanticCachedReply = async (
         cacheKey,
         model: args.model,
         systemPrompt: args.systemPrompt,
+        toolsFingerprint: args.toolsFingerprint,
       }
     )
 
@@ -281,11 +266,7 @@ const hasPaidOrganizationSubscription = async (
 }
 
 /** Whether the generation actually invoked a tool on any of its steps. */
-const didCallTool = (result: any) =>
-  Boolean(
-    result?.toolCalls?.length ||
-      result?.steps?.some((step: any) => step?.toolCalls?.length)
-  )
+const didCallTool = (result: any) => getCalledToolNames(result).length > 0
 
 const describeAttachmentsForModel = (count: number, promptText: string) => {
   const notice = `[The visitor attached ${count} image${count === 1 ? "" : "s"}. You cannot see ${count === 1 ? "it" : "them"} — ask about ${count === 1 ? "it" : "them"} in words if you need the detail.]`
@@ -505,9 +486,20 @@ export const create = action({
       enabledToolIds
     )
     // An answer keyed on text alone must never be replayed for a message that
-    // also carried an image, and such an answer must not be cached either.
+    // also carried an image, and such an answer must not be cached either. The
+    // same goes for a message that only means something next to the previous
+    // one, whose answer depends on the thread rather than on the words.
+    //
+    // Having a live integration switched on is deliberately not part of this:
+    // the cache used to be disabled outright for any organization with one,
+    // which meant the organizations sending the most traffic never got a single
+    // hit. What actually matters is whether a live tool ran while producing a
+    // given answer, and that is decided per answer further down.
     const bypassReplyCache =
-      requiresLiveToolExecution(activeTools) || attachments.length > 0
+      attachments.length > 0 || !isSelfContainedQuestion(args.prompt)
+
+    const liveToolNames = getLiveChatToolNames(activeTools)
+    const toolsFingerprint = buildChatToolsFingerprint(activeTools)
 
     // With attachments the visitor's message is written here rather than by the
     // generate call below, so the uploads can be bound to a real message id
@@ -552,6 +544,7 @@ export const create = action({
             prompt: args.prompt,
             model: chatModel,
             systemPrompt,
+            toolsFingerprint,
           }
         )
 
@@ -561,6 +554,7 @@ export const create = action({
             prompt: args.prompt,
             model: chatModel,
             systemPrompt,
+            toolsFingerprint,
             openAISecretValue,
           })
         }
@@ -695,10 +689,18 @@ export const create = action({
           }
         )
 
+        // An answer that came out of a spreadsheet, a calendar or someone's API
+        // was true for that one moment, so it is never stored — while an answer
+        // to "what are your opening hours" from the same assistant still is.
+        const usedLiveTool = getCalledToolNames(result).some((name) =>
+          liveToolNames.includes(name)
+        )
+
         if (
           assistantReplyText &&
           updatedConversation?.status === conversation.status &&
-          !bypassReplyCache
+          !bypassReplyCache &&
+          !usedLiveTool
         ) {
           const cacheResult = await ctx.runMutation(
             (internal as any).system.ai.replyCache.upsert,
@@ -708,6 +710,7 @@ export const create = action({
               answer: assistantReplyText,
               model: chatModel,
               systemPrompt,
+              toolsFingerprint,
               sourceThreadId: args.threadId,
             }
           )

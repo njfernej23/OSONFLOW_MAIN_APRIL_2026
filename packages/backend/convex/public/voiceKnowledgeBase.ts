@@ -1,10 +1,7 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { action } from "../_generated/server";
-import { generateText } from "ai";
-import { getRagForOrganization } from "../system/ai/rag";
-import { SEARCH_INTERPRETER_PROMPT } from "../system/ai/constants";
-import { getOpenAIChatModelFromSecretValue } from "../lib/openai";
+import { answerFromKnowledgeBase } from "../lib/knowledgeBaseAnswer";
 import { enforceRateLimit } from "../lib/rateLimits";
 import { requireContactSessionFromAction } from "../lib/widgetAuth";
 
@@ -39,33 +36,11 @@ export const search = action({
                 service: "openai_realtime",
             },
         );
-        const rag = await getRagForOrganization(openAIPlugin?.secretValue);
-        const searchResult = await rag.search(ctx, {
-            namespace: args.organizationId,
+
+        return await answerFromKnowledgeBase(ctx, {
+            organizationId: args.organizationId,
             query: args.query,
-            limit: 5,
+            openAISecretValue: openAIPlugin?.secretValue,
         });
-
-        if (!searchResult.entries.length) {
-            return "I couldn't find specific information about that in our knowledge base.";
-        }
-
-        const contextText = `Found results in ${searchResult.entries
-            .map((e) => e.title || null)
-            .filter((t) => t !== null)
-            .join(", ")}. Here is the context:\n\n${searchResult.text}`;
-
-        const response: any = await generateText({
-            system: SEARCH_INTERPRETER_PROMPT,
-            messages: [
-                {
-                    role: "user",
-                    content: `User asked: "${args.query}"\n\nSearch results: ${contextText}`,
-                },
-            ],
-            model: getOpenAIChatModelFromSecretValue(openAIPlugin?.secretValue),
-        });
-
-        return response.text;
     },
 });

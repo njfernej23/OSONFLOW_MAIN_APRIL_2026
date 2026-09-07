@@ -1,7 +1,11 @@
 import { openai } from "@ai-sdk/openai";
 import { Agent } from "@convex-dev/agent";
 import { components } from "../../../_generated/api";
-import { SUPPORT_AGENT_PROMPT } from "../constants";
+import {
+  CHAT_MAX_OUTPUT_TOKENS,
+  CHAT_RECENT_MESSAGES,
+  SUPPORT_AGENT_PROMPT,
+} from "../constants";
 
 
 export const supportAgent = new Agent(components.agent, {
@@ -9,6 +13,17 @@ export const supportAgent = new Agent(components.agent, {
   languageModel: openai.chat("gpt-4o-mini"),
 
   instructions: SUPPORT_AGENT_PROMPT,
+
+  // Set here rather than at each call site: the agent merges a call's own
+  // contextOptions over these, so widget, WhatsApp, Telegram and Instagram all
+  // keep the window even though each passes `excludeToolMessages` of its own.
+  contextOptions: {
+    recentMessages: CHAT_RECENT_MESSAGES,
+  },
+
+  callSettings: {
+    maxOutputTokens: CHAT_MAX_OUTPUT_TOKENS,
+  },
 
   // A tool call and its result are one step, so with the default of 1 the model
   // stops the moment a tool returns and never gets to write the reply. Anything

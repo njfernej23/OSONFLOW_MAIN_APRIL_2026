@@ -20,16 +20,43 @@ export const filterAssistantToolsByIds = (
   return tools.filter((tool) => allowed.has(String(tool._id)))
 }
 
-export const requiresLiveToolExecution = (tools: Doc<"assistantTools">[]) =>
-  tools.some(
-    (tool) =>
-      tool.isEnabled &&
-      tool.enabledForChat &&
-      (tool.type === "google_sheets" ||
-        tool.type === "google_calendar" ||
-        tool.type === "api_request" ||
-        tool.type === "custom_webhook")
-  )
+/**
+ * Tool types that either reach outside the app or change something when they
+ * run. Their answers are true only for the moment they were produced, so a
+ * reply that involved one must never be replayed from a cache.
+ */
+const LIVE_TOOL_TYPES = new Set([
+  "google_sheets",
+  "google_calendar",
+  "api_request",
+  "custom_webhook",
+])
+
+const isActiveChatTool = (tool: Doc<"assistantTools">) =>
+  tool.isEnabled && tool.enabledForChat
+
+/**
+ * Names of the live tools the model may call on this turn. A reply is cacheable
+ * only if none of these were actually invoked while producing it — which is a
+ * far narrower rule than refusing to cache anything at all for an organization
+ * that merely has an integration switched on.
+ */
+export const getLiveChatToolNames = (tools: Doc<"assistantTools">[]) =>
+  tools
+    .filter((tool) => isActiveChatTool(tool) && LIVE_TOOL_TYPES.has(tool.type))
+    .map((tool) => tool.name)
+
+/**
+ * Identifies the tool roster a cached answer was produced under. Editing,
+ * enabling or removing a tool changes what the assistant would say next time,
+ * so entries carrying a different fingerprint are ignored rather than served.
+ */
+export const buildChatToolsFingerprint = (tools: Doc<"assistantTools">[]) =>
+  tools
+    .filter(isActiveChatTool)
+    .map((tool) => `${tool.name}@${tool.updatedAt}`)
+    .sort()
+    .join("|")
 
 export const resolveChatToolsForWidget = (
   dynamicTools: Record<string, any>,

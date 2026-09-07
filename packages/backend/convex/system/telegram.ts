@@ -9,21 +9,8 @@ import {
 import { SESSION_DURATION_MS } from "../constants"
 import { supportAgent } from "./ai/agents/supportAgent"
 import { SUPPORT_AGENT_PROMPT } from "./ai/constants"
-import { escalateConversation } from "./ai/tools/escalateConversation"
-import { resolveConversation } from "./ai/tools/resolveConversation"
-import { search } from "./ai/tools/search"
-import {
-  buildToolAwareSystemPrompt,
-  filterAssistantToolsByIds,
-  getEnabledChatTools,
-  resolveChatToolsForWidget,
-} from "./assistantTools/getChatTools"
-import { getOpenAIChatModelFromSecretValue } from "../lib/openai"
+import { generateChannelReply } from "../lib/chatReply"
 import { checkRateLimit } from "../lib/rateLimits"
-import {
-  extractAgentMessageText,
-  getLatestTextAgentMessage,
-} from "../lib/agentMessageText"
 
 type TelegramIntegration = {
   _id: any
@@ -99,26 +86,6 @@ const createTelegramSessionMetadata = ({
   telegramUsername: username,
   telegramLanguageCode: languageCode,
 })
-
-const getLatestAssistantMessage = async (ctx: any, threadId: string) => {
-  const messages = await supportAgent.listMessages(ctx, {
-    threadId,
-    excludeToolMessages: true,
-    paginationOpts: { numItems: 20, cursor: null },
-  })
-  const message = getLatestTextAgentMessage(
-    messages.page.filter((item: any) => item?.message?.role === "assistant")
-  )
-
-  if (!message) {
-    return null
-  }
-
-  return {
-    id: String(message._id ?? message.id ?? message.order ?? ""),
-    text: extractAgentMessageText(message),
-  }
-}
 
 const escapeTelegramHtml = (value: string) =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -648,74 +615,15 @@ export const handleIncomingUpdate: any = internalAction({
     let replyText: string | null = null
 
     if (status === "unresolved" && subscription?.status === "active") {
-      const openAIPlugin = await ctx.runQuery(
-        internal.system.plugins.getByOrganizationIdAndService,
-        {
-          organizationId: integration.organizationId,
-          service: "openai_realtime",
-        }
-      )
-      const previousAssistantMessage = await getLatestAssistantMessage(
-        ctx,
-        threadId
-      )
-      const configuredTools = await ctx.runQuery(
-        internal.system.assistantTools.listEnabledForOrganization,
-        {
-          organizationId: integration.organizationId,
-          channel: "chat",
-        }
-      )
-      const activeTools = filterAssistantToolsByIds(
-        configuredTools,
-        enabledToolIds
-      )
-      const dynamicTools = await getEnabledChatTools(
-        ctx,
-        integration.organizationId,
-        enabledToolIds
-      )
-      const legacyTools = {
-        escalateConversationTool: escalateConversation,
-        resolveConversationTool: resolveConversation,
-        searchTool: search,
-      }
-      const chatTools = resolveChatToolsForWidget(
-        dynamicTools,
-        enabledToolIds,
-        legacyTools
-      )
-      const toolAwareSystemPrompt = buildToolAwareSystemPrompt(
-        systemPrompt,
-        activeTools
-      )
-      const result = await supportAgent.generateText(
-        ctx,
-        { threadId },
-        {
-          model: getOpenAIChatModelFromSecretValue(openAIPlugin?.secretValue),
-          system: toolAwareSystemPrompt,
-          prompt: text,
-          tools: chatTools,
-        },
-        {
-          contextOptions: {
-            excludeToolMessages: true,
-          },
-        }
-      )
-
-      const latestAssistantMessage = await getLatestAssistantMessage(
-        ctx,
-        threadId
-      )
       replyText =
-        result.text?.trim() ||
-        (latestAssistantMessage &&
-        latestAssistantMessage.id !== previousAssistantMessage?.id
-          ? latestAssistantMessage.text
-          : null) ||
-        replyText
+        (await generateChannelReply(ctx, {
+          organizationId: integration.organizationId,
+          threadId,
+          text,
+          systemPrompt,
+          conversationStatus: status,
+          enabledToolIds,
+        })) || replyText
     } else {
       await saveMessage(ctx, components.agent, {
         threadId,
