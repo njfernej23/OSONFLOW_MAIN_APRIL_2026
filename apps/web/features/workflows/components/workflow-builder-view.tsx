@@ -1956,6 +1956,10 @@ export const WorkflowBuilderView = ({
   const clearSelectedNode = useCallback(() => {
     setSelectedNodeId(null)
     setSelectedNodeIds([])
+    // A step is only ever selected as part of its block, so it cannot outlive
+    // the node's selection — left behind, its ring keeps reading as active
+    // after a click on empty canvas.
+    setBlockStepSelection(null)
     setNodes((next) => {
       let changed = false
       const cleared = next.map((node) => {

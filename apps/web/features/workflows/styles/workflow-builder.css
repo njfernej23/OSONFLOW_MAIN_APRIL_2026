@@ -3712,6 +3712,8 @@ button.node-title {
 /* A step inside a block is selected the same way a whole node is: the grey
    frame around it opens into a white gap and an accent ring. */
 .block-step.selected {
+  /* Lifts the ring above the neighbouring step's background, which would
+     otherwise clip it where the two meet in the 4px frame gap. */
   z-index: 1;
   background: var(--surface);
   box-shadow: var(--sel-ring);
@@ -4263,7 +4265,10 @@ button.node-title {
    Geometry here is load-bearing: handles sit ON the node's right edge and
    stay centred on whatever row they belong to, so they do not drift as a
    node grows. Only the appearance below is cosmetic. */
+/* Ports sit above a selected step: that step is lifted to carry its ring, and
+   without this the ring paints over the connector on the node's edge. */
 .node-handle {
+  z-index: 3;
   width: 11px;
   height: 11px;
   border: 2px solid var(--surface);
