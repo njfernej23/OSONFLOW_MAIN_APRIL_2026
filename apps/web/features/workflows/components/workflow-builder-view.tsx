@@ -222,9 +222,72 @@ const WORKFLOW_FIT_VIEW_OPTIONS: FitViewOptions = {
   padding: 0.18,
   maxZoom: 0.88,
 }
-const CANVAS_DOT_GAP = 24
-const CANVAS_DOT_SIZE = 1.4
-const CANVAS_DOT_COLOR = "rgba(26, 29, 35, 0.14)"
+const CANVAS_DOT_GAP = 16
+const CANVAS_DOT_SIZE = 1.14
+const CANVAS_DOT_COLOR = "#dae2e2"
+
+/* Edges are drawn as right angles with a small fillet rather than as curves:
+   at canvas density a bundle of orthogonal lines stays readable where a bundle
+   of beziers turns into a knot. */
+/** Matches --frame-w: the grey ring a node card sits inside. */
+const NODE_FRAME_WIDTH = 4
+
+const EDGE_CORNER_RADIUS = 10
+const EDGE_STROKE_WIDTH = 1.5
+const EDGE_STROKE_WIDTH_SELECTED = 2
+const EDGE_ACTIVE_COLOR = "#3d82e2"
+
+/* An edge stops short of the card it points at by exactly the width of the
+   node's frame, so the arrowhead's tip meets the frame's outer edge and its
+   body sits on the canvas. Running the path to the card itself would draw the
+   head on top of the frame, where a grey arrow simply disappears. */
+const EDGE_TARGET_GAP = NODE_FRAME_WIDTH
+
+/* An SVG marker cannot inherit the stroke of the path it terminates, so every
+   colour an edge can take needs its own registered arrowhead. */
+const arrowMarkerId = (hex: string) =>
+  `wf-arrow-${hex.replace("#", "").toLowerCase()}`
+
+const ARROW_HEAD_PATH =
+  "M7.07138888,5.50174526 L2.43017246,7.82235347 C1.60067988,8.23709976 " +
+  "0.592024983,7.90088146 0.177278692,7.07138888 C0.0606951226,6.83822174 " +
+  "0,6.58111307 0,6.32042429 L0,1.67920787 C0,0.751806973 0.751806973,0 " +
+  "1.67920787,0 C1.93989666,0 2.19700532,0.0606951226 2.43017246,0.177278692 " +
+  "L7,3 C7.82949258,3.41474629 8.23709976,3.92128809 7.82235347,4.75078067 " +
+  "C7.6598671,5.07575341 7.39636161,5.33925889 7.07138888,5.50174526 Z"
+
+/** Registers one arrowhead per palette colour for the edges to point at. */
+const EdgeArrowDefs = () => {
+  const colors = Array.from(
+    new Set([
+      DEFAULT_EDGE_COLOR,
+      EDGE_ACTIVE_COLOR,
+      ...edgeColorOptions.map((option) => option.hex),
+    ])
+  )
+
+  return (
+    <svg className="edge-arrow-defs" aria-hidden focusable="false">
+      <defs>
+        {colors.map((hex) => (
+          <marker
+            key={hex}
+            id={arrowMarkerId(hex)}
+            viewBox="0 0 20 20"
+            refX="8"
+            refY="4"
+            markerUnits="userSpaceOnUse"
+            markerWidth="20"
+            markerHeight="20"
+            orient="auto"
+          >
+            <path d={ARROW_HEAD_PATH} fill={hex} />
+          </marker>
+        ))}
+      </defs>
+    </svg>
+  )
+}
 const CONNECT_MENU_WIDTH = 246
 const CONNECT_SUBMENU_WIDTH = 228
 const CONNECT_MENU_GAP = 10
@@ -375,7 +438,7 @@ const getNodePositionForTargetPoint = (
 
 const buildEdgeStyle = (color = DEFAULT_EDGE_COLOR): CSSProperties => ({
   stroke: color,
-  strokeWidth: 2,
+  strokeWidth: EDGE_STROKE_WIDTH,
 })
 
 const buildInitials = (name: string) => {
@@ -407,8 +470,7 @@ const createWorkflowEdge = (
 ): WorkflowEdge => {
   // Graphs saved before the palette change carry the old slate default; treat
   // it as "unset" so they pick up the current neutral instead of staying dark.
-  const savedColor = data?.color === LEGACY_EDGE_COLOR ? undefined : data?.color
-  const color = savedColor ?? DEFAULT_EDGE_COLOR
+  const color = resolveEdgeColor(data?.color)
 
   return {
     ...edge,
@@ -435,7 +497,6 @@ const SmartWorkflowEdge = ({
   sourcePosition,
   targetPosition,
   markerStart,
-  markerEnd,
   interactionWidth,
   data,
   style,
@@ -443,6 +504,13 @@ const SmartWorkflowEdge = ({
 }: EdgeProps<WorkflowEdgeData>) => {
   const sourceNode = useStore((store) => store.nodeInternals.get(source))
   const targetNode = useStore((store) => store.nodeInternals.get(target))
+  /* Selecting a node lights up everything it is wired to, so the branch you
+     are working on separates itself from the rest of the graph. */
+  const touchesSelection = useStore(
+    (store) =>
+      (store.nodeInternals.get(source)?.selected ?? false) ||
+      (store.nodeInternals.get(target)?.selected ?? false)
+  )
   const sourceBounds = getNodeBounds(sourceNode)
   const targetBounds = getNodeBounds(targetNode)
 
@@ -467,8 +535,8 @@ const SmartWorkflowEdge = ({
     : sourceX
   const nextTargetX = targetBounds
     ? sourceIsLeftOfTarget
-      ? targetBounds.x
-      : targetBounds.x + targetBounds.width
+      ? targetBounds.x - EDGE_TARGET_GAP
+      : targetBounds.x + targetBounds.width + EDGE_TARGET_GAP
     : targetX
 
   const [path, labelX, labelY] = getSmoothStepPath({
@@ -478,9 +546,13 @@ const SmartWorkflowEdge = ({
     targetX: nextTargetX,
     targetY,
     targetPosition: nextTargetPosition,
-    borderRadius: 16,
+    borderRadius: EDGE_CORNER_RADIUS,
   })
-  const color = data?.color ?? DEFAULT_EDGE_COLOR
+  const color = resolveEdgeColor(data?.color)
+  // The arrowhead is a marker, and a marker cannot inherit the path's stroke,
+  // so each colour the palette offers gets its own pre-registered marker.
+  const highlighted = selected || touchesSelection
+  const strokeColor = highlighted ? EDGE_ACTIVE_COLOR : color
 
   return (
     <>
@@ -488,12 +560,14 @@ const SmartWorkflowEdge = ({
         id={id}
         path={path}
         markerStart={markerStart}
-        markerEnd={markerEnd}
+        markerEnd={`url(#${arrowMarkerId(strokeColor)})`}
         interactionWidth={interactionWidth}
         style={{
           ...style,
-          stroke: color,
-          strokeWidth: selected ? 3 : 2,
+          stroke: strokeColor,
+          strokeWidth: highlighted
+            ? EDGE_STROKE_WIDTH_SELECTED
+            : EDGE_STROKE_WIDTH,
         }}
       />
       {data?.label && (
@@ -547,7 +621,7 @@ const DynamicConnectionLine = ({
     targetX: toX,
     targetY: toY,
     targetPosition,
-    borderRadius: 16,
+    borderRadius: EDGE_CORNER_RADIUS,
   })
 
   return (
@@ -561,16 +635,23 @@ const DynamicConnectionLine = ({
 }
 
 const colorOptions: Array<{ value: BlockColor; label: string; hex: string }> = [
-  { value: "default", label: "Default", hex: "#d5dfe1" },
-  { value: "blue", label: "Blue", hex: "#4385f5" },
-  { value: "green", label: "Green", hex: "#4d8d35" },
-  { value: "orange", label: "Orange", hex: "#e4a62f" },
-  { value: "purple", label: "Purple", hex: "#9b5bd5" },
-  { value: "rose", label: "Rose", hex: "#bd4d68" },
+  { value: "default", label: "Default", hex: "#515a63" },
+  { value: "blue", label: "Blue", hex: "#5b9fd7" },
+  { value: "green", label: "Green", hex: "#56b365" },
+  { value: "orange", label: "Orange", hex: "#dc8879" },
+  { value: "purple", label: "Purple", hex: "#9a63bc" },
+  { value: "rose", label: "Rose", hex: "#cb627b" },
 ]
 
-const DEFAULT_EDGE_COLOR = "#b0b6c0"
-const LEGACY_EDGE_COLOR = "#395064"
+const DEFAULT_EDGE_COLOR = "#8b9495"
+/* Defaults retired by an earlier palette change. A saved edge carrying one of
+   these was never a deliberate choice, so it is treated as unset and picks up
+   whatever the current neutral is. */
+const LEGACY_EDGE_COLORS = ["#395064", "#b0b6c0"]
+
+/** A saved colour, unless it is a retired default, in which case the current one. */
+const resolveEdgeColor = (color?: string) =>
+  color && !LEGACY_EDGE_COLORS.includes(color) ? color : DEFAULT_EDGE_COLOR
 
 const edgeColorOptions: Array<{ value: string; label: string; hex: string }> = [
   { value: DEFAULT_EDGE_COLOR, label: "Default", hex: DEFAULT_EDGE_COLOR },
@@ -1373,6 +1454,28 @@ const isConnectReleaseBlocked = (target: Element | null) =>
 
 const clampValue = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), Math.max(min, max))
+
+/* Canvas menus are absolutely positioned inside .builder-shell, so a viewport
+   point taken off an event has to be rebased onto the shell before it can be
+   used as left/top — otherwise the menu opens offset by however wide the
+   dashboard sidebar happens to be. Clamping is against the shell for the same
+   reason: the window is not the box the menu lives in. */
+const shellMenuPoint = (
+  shell: HTMLElement | null,
+  clientX: number,
+  clientY: number,
+  menuWidth: number,
+  menuHeight: number
+) => {
+  const rect = shell?.getBoundingClientRect()
+  const width = rect?.width ?? window.innerWidth
+  const height = rect?.height ?? window.innerHeight
+
+  return {
+    x: clampValue(clientX - (rect?.left ?? 0) + 8, 8, width - menuWidth - 8),
+    y: clampValue(clientY - (rect?.top ?? 0) + 8, 8, height - menuHeight - 8),
+  }
+}
 
 const isPointInsideElement = (
   point: { x: number; y: number },
@@ -3343,6 +3446,13 @@ export const WorkflowBuilderView = ({
       }
       const menuWidth = 252
       const menuHeight = 322
+      const point = shellMenuPoint(
+        builderShellRef.current,
+        event.clientX,
+        event.clientY,
+        menuWidth,
+        menuHeight
+      )
 
       setSelectedNodeId(node.id)
       setDrawerMode(null)
@@ -3351,8 +3461,8 @@ export const WorkflowBuilderView = ({
       setEdgeMenu(null)
       setNodeMenu({
         nodeId: node.id,
-        x: Math.min(event.clientX + 8, window.innerWidth - menuWidth),
-        y: Math.min(event.clientY + 8, window.innerHeight - menuHeight),
+        x: point.x,
+        y: point.y,
         colorOpen: false,
         renaming: false,
         renameValue: getNodeDisplayName(node),
@@ -3402,16 +3512,17 @@ export const WorkflowBuilderView = ({
       setNodeMenu(null)
       setCanvasMenu(null)
       setConnectMenu(null)
+      const point = shellMenuPoint(
+        builderShellRef.current,
+        event.clientX,
+        event.clientY,
+        menuWidth,
+        menuHeight
+      )
       setEdgeMenu({
         edgeId: edge.id,
-        x: Math.max(
-          8,
-          Math.min(event.clientX + 8, window.innerWidth - menuWidth)
-        ),
-        y: Math.max(
-          8,
-          Math.min(event.clientY + 8, window.innerHeight - menuHeight)
-        ),
+        x: point.x,
+        y: point.y,
         colorOpen: false,
         labeling: false,
         labelValue: edge.data?.label ?? "",
@@ -3451,15 +3562,16 @@ export const WorkflowBuilderView = ({
       setNodeMenu(null)
       setConnectMenu(null)
       setEdgeMenu(null)
+      const point = shellMenuPoint(
+        builderShellRef.current,
+        event.clientX,
+        event.clientY,
+        menuWidth,
+        menuHeight
+      )
       setCanvasMenu({
-        x: Math.max(
-          8,
-          Math.min(event.clientX + 8, window.innerWidth - menuWidth)
-        ),
-        y: Math.max(
-          8,
-          Math.min(event.clientY + 8, window.innerHeight - menuHeight)
-        ),
+        x: point.x,
+        y: point.y,
         flowPosition: reactFlow.screenToFlowPosition({
           x: event.clientX,
           y: event.clientY,
@@ -5250,6 +5362,7 @@ export const WorkflowBuilderView = ({
             fitView
             fitViewOptions={WORKFLOW_FIT_VIEW_OPTIONS}
           >
+            <EdgeArrowDefs />
             <Background
               variant={BackgroundVariant.Dots}
               gap={CANVAS_DOT_GAP}

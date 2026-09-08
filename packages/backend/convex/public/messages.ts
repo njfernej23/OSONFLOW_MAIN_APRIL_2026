@@ -6,7 +6,12 @@ import { supportAgent } from "../system/ai/agents/supportAgent"
 import { paginationOptsValidator } from "convex/server"
 import { escalateConversation } from "../system/ai/tools/escalateConversation"
 import { resolveConversation } from "../system/ai/tools/resolveConversation"
-import { saveMessage } from "@convex-dev/agent"
+import {
+  abortStream,
+  listStreams,
+  saveMessage,
+  vStreamArgs,
+} from "@convex-dev/agent"
 import { search } from "../system/ai/tools/search"
 import {
   buildChatToolsFingerprint,
@@ -267,6 +272,48 @@ const hasPaidOrganizationSubscription = async (
 
 /** Whether the generation actually invoked a tool on any of its steps. */
 const didCallTool = (result: any) => getCalledToolNames(result).length > 0
+
+/**
+ * How the reply is written to the thread while the model is still producing it.
+ *
+ * Deltas are what the widget subscribes to, so this is the shape of the typing
+ * animation the visitor sees: whole words rather than fragments of them, and a
+ * write every 150ms so a long answer costs a couple of dozen small writes
+ * rather than one per token.
+ */
+const CHAT_STREAMING_OPTIONS = {
+  chunking: "word",
+  throttleMs: 150,
+} as const
+
+/**
+ * Closes off a reply that stopped halfway.
+ *
+ * A stream that is never finished stays "streaming" in the thread, and the
+ * widget goes on rendering the half-written sentence as if more were coming.
+ * Marking it aborted lets the client settle on what actually arrived.
+ */
+const abortDanglingStreams = async (
+  ctx: any,
+  threadId: string,
+  reason: string
+) => {
+  try {
+    const streams = await listStreams(ctx, components.agent, {
+      threadId,
+      includeStatuses: ["streaming"],
+    })
+
+    for (const stream of streams) {
+      await abortStream(ctx, components.agent, {
+        reason,
+        streamId: stream.streamId,
+      })
+    }
+  } catch (error) {
+    console.error("Could not abort a dangling reply stream", error)
+  }
+}
 
 const describeAttachmentsForModel = (count: number, promptText: string) => {
   const notice = `[The visitor attached ${count} image${count === 1 ? "" : "s"}. You cannot see ${count === 1 ? "it" : "them"} — ask about ${count === 1 ? "it" : "them"} in words if you need the detail.]`
@@ -628,7 +675,12 @@ export const create = action({
             ]
           : args.prompt
 
-        const result = await supportAgent.generateText(
+        // Streamed rather than generated in one piece: the deltas go into the
+        // thread as they are produced, so the widget renders the answer while
+        // it is being written instead of showing a typing dot for the whole
+        // turn. The call still waits for the stream to finish, so everything
+        // below sees a complete turn exactly as it did before.
+        const stream = await supportAgent.streamText(
           ctx,
           { threadId: args.threadId },
           {
@@ -647,8 +699,24 @@ export const create = action({
             contextOptions: {
               excludeToolMessages: true,
             },
+            saveStreamDeltas: CHAT_STREAMING_OPTIONS,
           }
-        )
+        ).catch(async (error) => {
+          await abortDanglingStreams(
+            ctx,
+            args.threadId,
+            "The reply could not be finished."
+          )
+          throw error
+        })
+
+        // streamText hands back promises where generateText had values, so the
+        // turn is settled here and read from a plain object below.
+        const result = {
+          text: await stream.text,
+          steps: await stream.steps,
+        }
+
         const latestAssistantMessage = await getLatestAssistantMessage(
           ctx,
           args.threadId
@@ -793,6 +861,9 @@ export const getMany = query({
     threadId: v.string(),
     paginationOpts: paginationOptsValidator,
     contactSessionId: v.id("contactSessions"),
+    // Sent by the widget's `stream: true` subscription. Absent for every other
+    // caller, which then gets exactly the page it got before.
+    streamArgs: vStreamArgs,
   },
   handler: async (ctx, args) => {
     // A valid session alone is not enough: the thread must belong to a
@@ -809,7 +880,15 @@ export const getMany = query({
       paginationOpts: args.paginationOpts,
     })
 
-    return paginated
+    // The deltas of a reply that is still being written. They live only until
+    // the finished message lands in the page above, so the visitor reads the
+    // answer as it is produced instead of waiting out the whole turn.
+    const streams = await supportAgent.syncStreams(ctx, {
+      threadId: args.threadId,
+      streamArgs: args.streamArgs,
+    })
+
+    return { ...paginated, streams }
   },
 })
 

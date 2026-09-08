@@ -6,7 +6,8 @@
    ===================================================================== */
 .builder-shell {
   /* surfaces, lightest to heaviest */
-  --canvas: #f7f8fa;
+  --canvas: #eef3f3;
+  --canvas-dot: #dae2e2;
   --surface: #ffffff;
   --surface-2: #f8f9fa;
   --surface-3: #f2f3f5;
@@ -22,6 +23,14 @@
   --line: #e4e6ea;
   --line-2: #d6d9df;
 
+  /* Canvas chrome: every node is a white card sitting inside an opaque grey
+     frame, and every floating panel sits inside a translucent one. Both are
+     drawn as a 4px ring, so the outer radius is always the inner radius + 4. */
+  --node-frame: #d4d7d7;
+  --panel-frame: rgba(238, 243, 243, 0.5);
+  --frame-w: 4px;
+  --step-divider: rgba(22, 26, 30, 0.06);
+
   /* brand */
   --accent: #397dff;
   --accent-strong: #2563eb;
@@ -35,6 +44,21 @@
   --danger-soft: #fef3f2;
   --warning: #dc6803;
   --warning-soft: #fffaeb;
+
+  /* The Start pill is its own small palette: a seated green with a tinted
+     ink, rather than the neutral ink used by every other card. */
+  --start-green: #387642;
+  --start-green-hover: #2f6738;
+  --start-ink: #cfe9d4;
+
+  /* Colour themes offered on a node. Muted, mid-value hues so a themed card
+     still sits behind its own content instead of shouting over it. */
+  --theme-default: #515a63;
+  --theme-blue: #5b9fd7;
+  --theme-rose: #cb627b;
+  --theme-green: #56b365;
+  --theme-orange: #dc8879;
+  --theme-purple: #9a63bc;
 
   /* step-category accents */
   --talk: #397dff;
@@ -50,12 +74,34 @@
   --r-lg: 14px;
   --r-xl: 18px;
 
-  /* elevation — neutral, never tinted */
-  --sh-1: 0 1px 2px rgba(16, 19, 23, 0.05), 0 1px 1px rgba(16, 19, 23, 0.04);
-  --sh-2: 0 1px 2px rgba(16, 19, 23, 0.04), 0 4px 12px rgba(16, 19, 23, 0.07);
-  --sh-3: 0 2px 6px rgba(16, 19, 23, 0.05), 0 12px 28px rgba(16, 19, 23, 0.1);
-  --sh-4: 0 4px 10px rgba(16, 19, 23, 0.05), 0 24px 56px rgba(16, 19, 23, 0.13);
+  /* Elevation — neutral, never tinted. Three tiers only: a hairline, a
+     resting surface (cards, nodes, docked panels) and a lifted surface
+     (menus, popovers). Each is a stack of low-opacity layers with a negative
+     spread, so the shadow reads as depth rather than as a grey smudge. */
+  --sh-1: 0 1px 0 0 rgba(22, 26, 30, 0.04), 0 0 0 1px rgba(22, 26, 30, 0.04);
+  --sh-2:
+    0 1px 3px 1px rgba(22, 26, 30, 0.01), 0 4px 8px -6px rgba(22, 26, 30, 0.08),
+    0 1px 5px -4px rgba(22, 26, 30, 0.08), 0 0 0 1px rgba(22, 26, 30, 0.04),
+    0 1px 0 0 rgba(22, 26, 30, 0.02);
+  --sh-3:
+    0 20px 44px -18px rgba(22, 26, 30, 0.12),
+    0 16px 28px -18px rgba(22, 26, 30, 0.12),
+    0 12px 20px -18px rgba(22, 26, 30, 0.08),
+    0 10px 16px -18px rgba(22, 26, 30, 0.08),
+    0 8px 12px -18px rgba(22, 26, 30, 0.04), 0 0 0 1px rgba(22, 26, 30, 0.04);
+  --sh-4:
+    0 40px 64px -32px rgba(22, 26, 30, 0.12),
+    0 32px 40px -32px rgba(22, 26, 30, 0.1),
+    0 24px 32px -32px rgba(22, 26, 30, 0.08),
+    0 16px 20px -32px rgba(22, 26, 30, 0.08),
+    0 10px 16px -32px rgba(22, 26, 30, 0.06), 0 0 0 1px rgba(22, 26, 30, 0.04);
   --ring: 0 0 0 3px rgba(57, 125, 255, 0.18);
+  /* A selected card is ringed, not recoloured: a white gap, then the accent. */
+  --sel-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--edge-active);
+  /* Solid pills (Start, primary buttons) carry a lit top edge and a seated
+     bottom edge, which is what stops them reading as flat swatches. */
+  --pill-inset: inset 0 0 2px -1px rgba(255, 255, 255, 0.24),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.1);
 
   /* motion */
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -78,8 +124,8 @@
      whatever shape the source image is. */
   --chat-media-h: 132px;
 
-  --edge-default: #b0b6c0;
-  --edge-active: #397dff;
+  --edge-default: #8b9495;
+  --edge-active: #3d82e2;
 
   position: relative;
   min-height: 100vh;
@@ -98,7 +144,8 @@
    colour coding are tuned for it, so pin the tokens even under .dark. */
 .dark .builder-shell {
   color-scheme: light;
-  --canvas: #f7f8fa;
+  --canvas: #eef3f3;
+  --canvas-dot: #dae2e2;
   --surface: #ffffff;
   --surface-2: #f8f9fa;
   --surface-3: #f2f3f5;
@@ -109,8 +156,13 @@
   --faint: #9096a1;
   --line: #e4e6ea;
   --line-2: #d6d9df;
-  --edge-default: #b0b6c0;
-  --edge-active: #397dff;
+  --edge-default: #8b9495;
+  --edge-active: #3d82e2;
+  --node-frame: #d4d7d7;
+  --panel-frame: rgba(238, 243, 243, 0.5);
+  --start-green: #387642;
+  --start-green-hover: #2f6738;
+  --start-ink: #cfe9d4;
 }
 
 .canvas-stage {
@@ -119,16 +171,8 @@
 }
 
 .canvas-stage::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background: radial-gradient(
-    120% 80% at 50% 0%,
-    rgba(255, 255, 255, 0.9),
-    transparent 62%
-  );
-  pointer-events: none;
+  /* The canvas is one flat tint; the dot grid alone carries the depth. */
+  display: none;
 }
 
 .react-flow {
@@ -174,10 +218,10 @@
   flex-direction: column;
   gap: 2px;
   padding: 5px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
+  border: 0;
+  border-radius: var(--r-md);
   background: var(--surface);
-  box-shadow: var(--sh-2);
+  box-shadow: 0 0 0 var(--frame-w) var(--panel-frame), var(--sh-2);
 }
 
 .category-tab {
@@ -228,19 +272,20 @@
   left: 86px;
   z-index: 24;
   width: 244px;
-  padding: 6px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
+  padding: 4px 0;
+  border: 0;
+  border-radius: var(--r-md);
   background: var(--surface);
-  box-shadow: var(--sh-3);
+  box-shadow: 0 0 0 var(--frame-w) var(--panel-frame), var(--sh-2);
   animation: popoverIn 0.16s var(--ease) both;
 }
 
 .step-option {
-  width: 100%;
-  min-height: 38px;
+  width: calc(100% - 8px);
+  min-height: 36px;
+  margin: 0 4px;
   border: 0;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-xs);
   background: transparent;
   color: var(--ink);
   display: grid;
@@ -764,13 +809,13 @@
   z-index: 28;
   height: 40px;
   padding: 4px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
+  border: 0;
+  border-radius: var(--r-md);
   background: var(--surface);
   display: flex;
   align-items: center;
   gap: 2px;
-  box-shadow: var(--sh-2);
+  box-shadow: 0 0 0 var(--frame-w) var(--panel-frame), var(--sh-2);
 }
 
 .bottom-tools button {
@@ -808,11 +853,11 @@
   bottom: 62px;
   z-index: 30;
   width: min(320px, calc(100vw - 2 * var(--panel-inset)));
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
+  border: 0;
+  border-radius: var(--r-md);
   background: var(--surface);
-  box-shadow: var(--sh-3);
-  padding: 5px;
+  box-shadow: 0 0 0 var(--frame-w) var(--panel-frame), var(--sh-4);
+  padding: 4px 0;
   animation: sheetIn 0.18s var(--ease) both;
 }
 
@@ -888,26 +933,27 @@
   position: absolute;
   z-index: 45;
   width: 248px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
+  border: 0;
+  border-radius: var(--r-sm);
   background: var(--surface);
-  padding: 5px;
-  box-shadow: var(--sh-3);
+  padding: 4px 0;
+  box-shadow: var(--sh-4);
   animation: menuIn var(--dur) var(--ease) both;
 }
 
 .node-menu-row {
-  width: 100%;
-  min-height: 34px;
+  width: calc(100% - 8px);
+  min-height: 36px;
+  margin: 0 4px;
   border: 0;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-xs);
   background: transparent;
   color: var(--ink);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 0 10px;
+  padding: 0 8px 0 12px;
   cursor: pointer;
   font: inherit;
   font-size: 13px;
@@ -970,35 +1016,32 @@
 
 .node-menu-colors {
   display: flex;
-  gap: 8px;
-  padding: 8px 12px 12px;
+  gap: 12px;
+  padding: 10px 14px 14px;
 }
 
+/* The dot is 20px and the ring it selects into is 32px, so the row keeps its
+   rhythm whether or not a swatch is currently chosen. */
 .color-swatch {
-  width: 22px;
-  height: 22px;
-  border: 2px solid var(--surface);
+  width: 20px;
+  height: 20px;
+  border: 0;
   border-radius: 50%;
   background: var(--swatch);
-  box-shadow: 0 0 0 1px var(--line-2);
+  box-shadow: inset 0 -2px 0 0 rgba(0, 0, 0, 0.16);
+  outline: 2px solid transparent;
+  outline-offset: 4px;
   cursor: pointer;
-  transition:
-    transform var(--dur) var(--ease),
-    box-shadow var(--dur) var(--ease);
+  transition: outline-color var(--dur) var(--ease);
 }
 
 .color-swatch:hover,
 .color-swatch:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 1px var(--line-2),
-    0 0 0 4px var(--surface-3);
+  outline-color: var(--line-2);
 }
 
 .color-swatch.selected {
-  box-shadow:
-    0 0 0 2px var(--accent),
-    0 5px 12px rgba(26, 29, 35, 0.12);
+  outline-color: var(--accent);
 }
 
 .edge-action-menu {
@@ -1260,10 +1303,10 @@
   flex-direction: column;
   overflow: hidden;
   padding: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
+  border: 0;
+  border-radius: var(--r-md);
   background: var(--surface);
-  box-shadow: var(--sh-4);
+  box-shadow: 0 0 0 var(--frame-w) var(--panel-frame), var(--sh-2);
   animation: sheetIn 0.22s var(--ease) both;
 }
 
@@ -2564,14 +2607,15 @@ body.dock-resizing {
 .node {
   position: relative;
   min-width: 168px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
+  border: 0;
+  border-radius: var(--r-sm);
   background: var(--surface);
   color: var(--ink);
-  box-shadow: var(--sh-2);
+  /* The grey frame is the ring, not a wrapper element, so the outer corner
+     lands at --r-sm + --frame-w without any extra markup. */
+  box-shadow: 0 0 0 var(--frame-w) var(--node-frame), var(--sh-2);
   overflow: visible;
   transition:
-    border-color var(--dur) var(--ease),
     box-shadow var(--dur) var(--ease),
     transform var(--dur) var(--ease);
 }
@@ -2585,42 +2629,38 @@ body.dock-resizing {
 
   width: 272px;
   padding: 0;
-  border: 1px solid var(--node-border);
-  border-radius: var(--r-md);
+  border: 0;
+  border-radius: var(--r-sm);
   background: var(--surface);
-  box-shadow: var(--sh-2);
+  box-shadow: 0 0 0 var(--frame-w) var(--node-frame), var(--sh-2);
 }
 
 .react-flow__node {
   transition: filter var(--dur) var(--ease);
 }
 
-.react-flow__node:hover .node,
-.react-flow__node:hover .node:not(.node-start) {
-  border-color: var(--line-2);
-  box-shadow: var(--sh-3);
-}
+/* Hover is announced by the strip that rises on the node's top edge, so the
+   frame itself must not also change colour. */
 
+/* Selection detaches the frame into a white gap and an accent ring, so a
+   selected card reads the same whatever colour theme it carries. */
 .react-flow__node.selected .node,
 .react-flow__node.selected .node:not(.node-start) {
-  border-color: var(--node-accent, var(--accent));
-  box-shadow:
-    0 0 0 3px
-      color-mix(in srgb, var(--node-accent, var(--accent)) 16%, transparent),
-    var(--sh-3);
+  box-shadow: var(--sel-ring), var(--sh-2);
+}
+
+/* Clicking a step selects both the step and the block that holds it. Only the
+   step should be ringed, or the card would wear two rings at once. */
+.react-flow__node.selected .node-block:has(.block-step.selected) {
+  box-shadow: 0 0 0 var(--frame-w) var(--node-frame), var(--sh-2);
 }
 
 .react-flow__node.remote-selected-node .node,
 .react-flow__node.remote-selected-node .node:not(.node-start) {
-  border-color: var(--remote-selection-color, var(--accent));
   box-shadow:
-    0 0 0 3px
-      color-mix(
-        in srgb,
-        var(--remote-selection-color, #397dff) 18%,
-        transparent
-      ),
-    var(--sh-3);
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--remote-selection-color, var(--accent)),
+    var(--sh-2);
 }
 
 /* header */
@@ -2700,7 +2740,7 @@ button.node-title {
   min-height: 38px;
   margin: 0;
   padding: 9px 11px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--step-divider);
   color: var(--node-title);
   font-size: 12.5px;
   font-weight: 600;
@@ -3398,14 +3438,16 @@ button.node-title {
   --node-handle: var(--agent);
 }
 
-/* An explicit colour from the node menu is a deliberate marker, so it also
-   tints the header rule and the icon chip. */
-.node-color-blue,
-.node-color-green,
-.node-color-orange,
-.node-color-purple,
-.node-color-rose {
-  border-color: color-mix(in srgb, var(--node-accent) 40%, var(--line));
+/* An explicit colour from the node menu is a deliberate marker, so it tints
+   the frame the card sits in as well as the header rule and the icon chip.
+   These carry `.node` so they out-specify `.node:not(.node-start)`, which
+   otherwise pins --node-accent to the neutral for every themed card. */
+.node.node-color-blue,
+.node.node-color-green,
+.node.node-color-orange,
+.node.node-color-purple,
+.node.node-color-rose {
+  --node-frame: color-mix(in srgb, var(--node-accent) 28%, #ffffff);
 }
 
 .node-color-blue .node-title,
@@ -3413,7 +3455,11 @@ button.node-title {
 .node-color-orange .node-title,
 .node-color-purple .node-title,
 .node-color-rose .node-title {
-  border-bottom-color: color-mix(in srgb, var(--node-accent) 32%, var(--line));
+  border-bottom-color: color-mix(
+    in srgb,
+    var(--node-accent) 32%,
+    var(--step-divider)
+  );
   background: color-mix(in srgb, var(--node-accent) 6%, transparent);
 }
 
@@ -3425,48 +3471,57 @@ button.node-title {
   --chip-color: var(--node-accent);
 }
 
-.node-color-blue {
-  --node-accent: var(--accent);
-  --node-handle: var(--accent);
+.node.node-color-blue {
+  --node-accent: var(--theme-blue);
+  --node-handle: var(--theme-blue);
 }
 
-.node-color-green {
-  --node-accent: var(--success);
-  --node-handle: var(--success);
+.node.node-color-green {
+  --node-accent: var(--theme-green);
+  --node-handle: var(--theme-green);
 }
 
-.node-color-orange {
-  --node-accent: var(--warning);
-  --node-handle: var(--warning);
+.node.node-color-orange {
+  --node-accent: var(--theme-orange);
+  --node-handle: var(--theme-orange);
 }
 
-.node-color-purple {
-  --node-accent: var(--listen);
-  --node-handle: var(--listen);
+.node.node-color-purple {
+  --node-accent: var(--theme-purple);
+  --node-handle: var(--theme-purple);
 }
 
-.node-color-rose {
-  --node-accent: var(--danger);
-  --node-handle: var(--danger);
+.node.node-color-rose {
+  --node-accent: var(--theme-rose);
+  --node-handle: var(--theme-rose);
 }
 
 /* The entry point reads as a marker, not as a step: a compact ink pill with
    a live dot, so it never competes with the cards it feeds. */
 .node-start {
-  min-width: 124px;
-  border: 1px solid var(--ink);
+  min-width: 98px;
+  border: 0;
   border-radius: 999px;
-  background: var(--ink);
-  color: #ffffff;
-  box-shadow: var(--sh-2);
+  background: var(--start-green);
+  color: var(--start-ink);
+  box-shadow: var(--pill-inset);
+}
+
+/* Selected, the pill seats harder and takes the same ring every card takes. */
+.react-flow__node.selected .node-start,
+.react-flow__node.selected .node.node-start {
+  background: var(--start-green);
+  box-shadow:
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.32),
+    var(--sel-ring);
 }
 
 .node-start .node-title {
-  min-height: 36px;
-  gap: 8px;
+  min-height: 32px;
+  gap: 6px;
   border: 0;
-  padding: 0 18px 0 14px;
-  color: #ffffff;
+  padding: 0 11px 0 12px;
+  color: var(--start-ink);
   font-size: 12.5px;
   font-weight: 600;
   justify-content: center;
@@ -3478,8 +3533,8 @@ button.node-title {
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: #32d583;
-  box-shadow: 0 0 0 3px rgba(50, 213, 131, 0.22);
+  background: var(--start-ink);
+  box-shadow: 0 0 0 3px rgba(207, 233, 212, 0.22);
 }
 
 .node-start::before,
@@ -3592,20 +3647,52 @@ button.node-title {
   position: relative;
 }
 
-.block-body {
+/* A block is a stack of separate cards floating in its frame: 4px of frame
+   shows between them, and only the outermost corners are rounded, so the
+   stack still reads as one node. Each selector has to out-specify the shared
+   `.node:not(.node-start) .node-body` rules these parts otherwise inherit. */
+.node.node-block {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: var(--frame-w);
+  background: var(--node-frame);
+}
+
+.node.node-block > .node-title,
+.node:not(.node-start).node-block > .node-title {
+  border-bottom: 0;
+  border-radius: var(--r-sm) var(--r-sm) 1px 1px;
+  background: var(--surface);
+}
+
+.node.node-block > .block-body,
+.node:not(.node-start).node-block > .node-body.block-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--frame-w);
+  min-height: 0;
   padding: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
-.block-step {
+.node.node-block .block-step {
   position: relative;
-  border-top: 1px solid var(--line);
+  border-radius: 1px;
+  background: var(--surface);
 }
 
-.block-step:first-child {
-  border-top: none;
+.node.node-block .block-step:last-child {
+  border-radius: 1px 1px var(--r-sm) var(--r-sm);
+}
+
+/* A block with no title row above it rounds its own first step instead. */
+.node.node-block > .block-body:first-child > .block-step:first-child {
+  border-radius: var(--r-sm) var(--r-sm) 1px 1px;
+}
+
+.node.node-block > .block-body:first-child > .block-step:only-child {
+  border-radius: var(--r-sm);
 }
 
 .block-step-main {
@@ -3622,9 +3709,12 @@ button.node-title {
   transition: background var(--dur) var(--ease);
 }
 
+/* A step inside a block is selected the same way a whole node is: the grey
+   frame around it opens into a white gap and an accent ring. */
 .block-step.selected {
-  background: var(--accent-soft);
-  box-shadow: inset 2px 0 0 var(--accent);
+  z-index: 1;
+  background: var(--surface);
+  box-shadow: var(--sel-ring);
 }
 
 .block-step-main:hover {
@@ -4199,12 +4289,21 @@ button.node-title {
     0 1px 2px rgba(16, 19, 23, 0.14);
 }
 
-.react-flow__node:hover .node:not(.node-start) .node-handle,
-.node:not(.node-start) .node-handle:hover,
-.react-flow__node.selected .node:not(.node-start) .node-handle {
+/* Only the visible source dots take the ring. The left catch area must be
+   excluded: it is 28px wide and 60px tall, so a ring on it reads as a grey
+   pill swallowing the side of the card. */
+.node:not(.node-start) .node-handle:not(.react-flow__handle-left):hover {
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--node-handle) 55%, var(--line-2)),
     0 0 0 5px color-mix(in srgb, var(--node-handle) 16%, transparent);
+}
+
+.react-flow__node.selected
+  .node:not(.node-start)
+  .node-handle:not(.react-flow__handle-left) {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--node-handle) 55%, var(--line-2)),
+    0 0 0 4px color-mix(in srgb, var(--node-handle) 14%, transparent);
 }
 
 /* The target side is a wide invisible catch area down the left edge, so a
@@ -4221,6 +4320,18 @@ button.node-title {
   background: transparent;
   box-shadow: none;
   opacity: 1;
+}
+
+/* Whatever state the node is in, the catch area stays invisible. */
+.node:not(.node-start) .node-handle.react-flow__handle-left,
+.node:not(.node-start) .node-handle.react-flow__handle-left:hover,
+.react-flow__node:hover .node:not(.node-start) .node-handle.react-flow__handle-left,
+.react-flow__node.selected
+  .node:not(.node-start)
+  .node-handle.react-flow__handle-left {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 
 /*
@@ -4343,10 +4454,18 @@ button.node-title {
 /* --- edges -----------------------------------------------------------
    Solid and quiet by default. Dashes are reserved for the run overlay, so
    motion on the canvas always means "this is executing right now". */
+/* The arrowhead markers live in a zero-sized svg inside the pane. */
+.edge-arrow-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
 .react-flow__edge-path {
   stroke: var(--edge-default);
-  stroke-width: 2;
-  stroke-linecap: round;
+  stroke-width: 1.5;
+  stroke-linecap: butt;
   transition: stroke var(--dur) var(--ease);
 }
 
@@ -4359,14 +4478,16 @@ button.node-title {
 .react-flow__edge:focus .react-flow__edge-path,
 .react-flow__edge:hover .react-flow__edge-path {
   stroke: var(--edge-active) !important;
-  stroke-width: 2.5;
+  stroke-width: 2;
 }
 
+/* A pending connection is the one dashed line on a resting canvas, so the
+   dashes always mean "this is not committed yet". */
 .react-flow__connection-path {
   stroke: var(--edge-active);
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  stroke-dasharray: 6 5;
+  stroke-width: 1.5;
+  stroke-linecap: butt;
+  stroke-dasharray: 5 4;
   animation: dashFlow 0.6s linear infinite;
 }
 

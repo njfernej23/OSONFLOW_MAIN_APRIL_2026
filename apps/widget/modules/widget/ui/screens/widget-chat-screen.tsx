@@ -3,7 +3,11 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
-import { useThreadMessages, toUIMessages } from "@convex-dev/agent/react"
+import {
+  useSmoothText,
+  useThreadMessages,
+  toUIMessages,
+} from "@convex-dev/agent/react"
 import { WidgetHeader } from "@/modules/widget/ui/components/widget-header"
 import { Button } from "@workspace/ui/components/button"
 import { useAtomValue, useSetAtom } from "jotai"
@@ -59,7 +63,13 @@ import { useInfiniteScroll } from "@workspace/ui/hooks/use-infinite-scroll"
 import { useNotifyOnNewMessages } from "@workspace/ui/hooks/use-notify-on-new-messages"
 import { InfiniteScrollTrigger } from "@workspace/ui/components/infinite-scroll-trigger"
 import { DicebearAvatar } from "@workspace/ui/components/dicebear-avatar"
-import { useEffect, useMemo, useRef, useState } from "react"
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+} from "react"
 import {
   mergeWidgetAppearance,
   mergeWidgetCopy,
@@ -100,6 +110,56 @@ const getUiMessageText = (message: {
     message.parts
       ?.map((part) => (part.type === "text" ? (part.text ?? "") : ""))
       .join("") ?? ""
+  )
+}
+
+/**
+ * Hides a fenced block that has been opened but not yet closed.
+ *
+ * Cards and carousels arrive as ```osonflow-* fences, and half of one is raw
+ * markup — showing it would flash JSON at the visitor for as long as the rest
+ * of the block takes to arrive.
+ */
+const withoutUnclosedFence = (text: string) => {
+  const fences = text.split("```").length - 1
+
+  if (fences % 2 === 0) {
+    return text
+  }
+
+  return text.slice(0, text.lastIndexOf("```")).trimEnd()
+}
+
+/**
+ * The text of one message, revealed at reading speed while it is still
+ * arriving.
+ *
+ * Only an assistant reply that is genuinely mid-flight animates — the
+ * visitor's own messages and everything already complete render at once, so
+ * opening the widget never re-types the transcript they have already read.
+ */
+const MessageText = ({
+  isStreaming,
+  richActions,
+  text,
+}: {
+  isStreaming: boolean
+  richActions?: ComponentProps<typeof AIResponse>["richActions"]
+  text: string
+}) => {
+  const [visibleText] = useSmoothText(text, { startStreaming: isStreaming })
+  const isRevealing = visibleText.length < text.length
+  const shownText = isRevealing ? withoutUnclosedFence(visibleText) : visibleText
+
+  return (
+    <AIResponse
+      className={isRevealing ? "owc-streaming" : undefined}
+      // Buttons belong to a finished message: a card is not clickable while
+      // half of it is still being written.
+      richActions={isRevealing ? undefined : richActions}
+    >
+      {shownText}
+    </AIResponse>
   )
 }
 
@@ -345,7 +405,9 @@ export const WidgetChatScreen = () => {
           contactSessionId,
         }
       : "skip",
-    { initialNumItems: 10 }
+    // Deltas of a reply that is still being written arrive alongside the page,
+    // so the answer can be read as it is produced.
+    { initialNumItems: 10, stream: true }
   )
   const uiMessages = useMemo(
     () => toUIMessages(messages.results ?? []),
@@ -1121,7 +1183,11 @@ export const WidgetChatScreen = () => {
               <AIMessage
                 className="owc-msg"
                 from={message.role === "user" ? "user" : "assistant"}
-                key={message.id}
+                // Keyed by thread position, not by id: a streaming reply is
+                // given a real message id once it finishes, and keying on that
+                // would remount the bubble mid-animation and snap it to the
+                // finished text.
+                key={message.key}
               >
                 <AIMessageContent
                   className={cn(
@@ -1130,7 +1196,8 @@ export const WidgetChatScreen = () => {
                   )}
                 >
                   {messageText.trim() ? (
-                    <AIResponse
+                    <MessageText
+                      isStreaming={message.status === "streaming"}
                       richActions={
                         message.id === latestAssistantMessage?.id
                           ? {
@@ -1139,9 +1206,8 @@ export const WidgetChatScreen = () => {
                             }
                           : undefined
                       }
-                    >
-                      {messageText}
-                    </AIResponse>
+                      text={messageText}
+                    />
                   ) : null}
                   {messageAttachments ? (
                     <AIMessageAttachments attachments={messageAttachments} />

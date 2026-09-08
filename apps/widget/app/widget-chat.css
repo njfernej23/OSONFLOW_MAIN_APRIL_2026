@@ -184,6 +184,27 @@
   visibility: hidden;
 }
 
+/* A caret trailing the words as they arrive, so a pause between them reads as
+   the assistant still writing rather than an answer that stopped short. */
+.owc-streaming > *:last-child::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 0.95em;
+  margin-left: 2px;
+  vertical-align: -0.13em;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.5;
+  animation: owc-caret 1s steps(2, start) infinite;
+}
+
+@keyframes owc-caret {
+  to {
+    opacity: 0;
+  }
+}
+
 /* ── typing indicator ────────────────────────────────────────────────────── */
 
 .owc-typing {
@@ -393,6 +414,11 @@
 @media (prefers-reduced-motion: reduce) {
   .owc-bubble,
   .owc-typing-dot {
+    animation: none;
+  }
+
+  /* The caret still marks where the text has got to, it just stops blinking. */
+  .owc-streaming > *:last-child::after {
     animation: none;
   }
 }
